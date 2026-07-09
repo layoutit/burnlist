@@ -1,29 +1,18 @@
 # <img src="skills/burnlist/dashboard/public/favicon.svg" width="30" height="30" alt="Burnlist logo" /> Burnlist
 
-Burnlist is a real-time, non-invasive tracker for agents. It keeps repo-local task state as a small, shrinking queue and exposes it through a read-only local dashboard without taking over implementation, tests, or delivery. It includes two default Ovens and lets anyone create their own.
+Burnlist is a real-time, non-invasive tracker for agents. It tracks a repo-local, shrinking work queue in a read-only local dashboard and stays out of implementation, testing, and delivery.
 
 ## What ships
 
 - One agent skill for creating, hardening, executing, and maintaining Burnlists.
 - A local observer dashboard with two default Ovens:
-  - **Checklist** preserves the current Burnlist Progress queue-completion behavior.
-  - **Target** applies source-backed, current-gate discipline to measured convergence work.
-- **Custom Ovens** created from Markdown instructions and a non-executable detail skeleton.
+  - **Checklist** tracks completion of the active work queue.
+  - **Target** tracks a measured value against a specific goal and focuses work on the next actionable constraint.
+- Custom Ovens built from Markdown instructions and a non-executable detail skeleton.
 
-An Oven is a declarative Burn recipe: Markdown instructions plus a non-executable detail skeleton. It can describe outcome, state, inputs, evidence, and normalized data presentation; it cannot execute code, mutate project state, or start an agent. See the [Oven contract](skills/burnlist/references/oven-contract.md).
+An Oven is a declarative recipe for an agent run. It defines the goal, canonical state, inputs, evidence, and normalized data presentation. It cannot execute code, produce project data, or change project state. See the [Oven contract](skills/burnlist/references/oven-contract.md).
 
-```text
-skills/
-  burnlist/                 # the single installed skill
-    SKILL.md
-    ovens/
-      checklist/
-        instructions.md
-        detail.json
-      target/
-        instructions.md
-        detail.json
-```
+Anyone can create a custom Oven. Burnlist stores it under local state and snapshots it when a run starts.
 
 ## Install
 
@@ -31,7 +20,7 @@ skills/
 npm install --global burnlist
 ```
 
-That is the entire public installation flow. It installs the `burnlist` command and automatically registers the bundled `burnlist` skill under `$HOME/.agents/skills`.
+This installs the `burnlist` command and registers the bundled skill under `$HOME/.agents/skills`.
 
 Start the local dashboard from any project:
 
@@ -39,7 +28,7 @@ Start the local dashboard from any project:
 burnlist
 ```
 
-Uninstall through the Burnlist CLI so it removes only its own skill symlinks before asking npm to remove the package:
+To uninstall, run:
 
 ```sh
 burnlist uninstall
@@ -55,7 +44,7 @@ npm run verify:package
 npm run test:global-install
 ```
 
-`verify:clean` repeats source, npm payload, and isolated global install/uninstall checks from a temporary copy without local state or generated artifacts.
+`verify:clean` runs the source, npm payload, and isolated global install checks from a temporary copy.
 
 ## Boundaries
 
