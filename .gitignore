@@ -1,0 +1,11 @@
+.DS_Store
+.local/
+notes/burnlists/
+dist/
+node_modules/
+.playwright-cli/
+output/
+build/
+*.zip
+*.tgz
+*.log

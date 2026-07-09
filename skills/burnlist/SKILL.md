@@ -1,0 +1,120 @@
+---
+name: burnlist
+description: >-
+  Create, harden, execute, maintain, and repair repo-local Burnlists: turn goals into strict shrinking checklists, finalize draft-to-ready plans, run active items with atomic completion, split or reorder work, coordinate parent and lane Burnlists, manage lifecycle folders and terse completed ledgers, and repair the local dashboard/tracker. Use for both planning a new Burnlist and implementing or continuing an existing one.
+---
+
+# Burnlist
+
+Use one skill for the full Burnlist lifecycle. Burnlist is task state, not implementation strategy; let the repo or domain skill own code, tests, browser or oracle evidence, performance rules, deploy rules, and PR packaging.
+
+## Choose A Mode
+
+- **Creation mode:** when creating, hardening, restructuring, or readying a Burnlist, read `references/burnlist-creation.md` completely before editing Burnlist files. Creation owns `draft -> ready` and does not implement the planned work unless the user also asks to continue into execution.
+- **Execution mode:** when implementing or continuing a ready/in-progress Burnlist, follow the execution path below. Keep the hot working set small: the active item, relevant `goal.md` guardrails, current implementation evidence, and the state mutation being performed.
+- **Combined request:** finish and validate creation first, park the folder in `ready/`, then switch explicitly to execution mode and move the whole folder to `inprogress/`.
+
+## Cold References
+
+Read references only when their trigger applies:
+
+- `references/burnlist-creation.md`: mandatory for creation, hardening, draft repair, and `draft -> ready` work.
+- `references/burnlist-protocol.md`: lifecycle moves, required file shapes, `goal.md`, `completed.md`, scratch, legacy migration, closeout, local artifacts.
+- `references/burnlist-splitting-lanes.md`: split/reorder decisions, recursive gates, parent/lane Burnlists, parallel lane handoff.
+- `references/burnlist-visible-output.md`: detailed silence rules, forbidden narration examples, checkpoint policy.
+- `references/burnlist-dashboard.md`: dashboard/chart/log/timeline/repo-graph behavior or dashboard repair only.
+
+Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
+
+## Canonical Files
+
+Execution-ready Burnlists live in:
+
+```text
+notes/burnlists/ready/<YYMMDD-NNN>/burnlist.md
+```
+
+Execution moves the whole folder to:
+
+```text
+notes/burnlists/inprogress/<YYMMDD-NNN>/
+```
+
+Closeout moves it to:
+
+```text
+notes/burnlists/completed/<YYMMDD-NNN>/
+```
+
+Do not execute from `draft/<id>/`. If the user names a draft, switch to creation mode and read `references/burnlist-creation.md`, or ask for an explicit readying step.
+
+`burnlist.md` is hot shrinking state:
+
+- metadata
+- `## Active Checklist`
+- terse `## Completed` ledger
+
+`goal.md` is the stable contract. Read it before moving `ready` to `inprogress`, before burning the first item of an active Burnlist, after compaction only when the stable contract is unclear, and whenever scope/proof authority is unclear. Do not reread it before every routine step.
+
+`completed.md` is optional durable history for humans. It is not canonical dashboard progress. Missing historical entries must not block progress or `--check`.
+
+## Normal Execution Path
+
+1. Confirm the Burnlist folder is in `inprogress/<id>/`; if it is in `ready/<id>/`, move the whole folder first.
+2. Read the current top active item and the relevant `goal.md` guardrails.
+3. Implement and validate the active item with repo-appropriate proof.
+4. If the item is too broad, split or reorder explicitly before continuing. Read `references/burnlist-splitting-lanes.md` first.
+5. If validation passes, burn the item atomically:
+   - generate a local ISO timestamp mechanically, preferably:
+     ```sh
+     burnlist --stamp
+     ```
+   - append one terse completed ledger line:
+     ```markdown
+     - <id> | <YYYY-MM-DDTHH:mm:ss±HH:mm> | <short item title>
+     ```
+   - delete the active item
+   - append/update one compact `completed.md` record when useful
+   - run the protocol check
+6. If active checklist is empty, close out: digest if needed, check, then move the folder to `completed/<id>/`. Read `references/burnlist-protocol.md` for closeout details.
+
+Run the protocol check with:
+
+```sh
+burnlist --plan notes/burnlists/inprogress/<YYMMDD-NNN>/burnlist.md --check
+```
+
+Fix only protocol errors reported by the checker unless the user asks for broader hardening.
+
+## Execution Invariants
+
+- Work from the top active item unless the user explicitly selected another item.
+- Active checklist order is canonical; numeric ids are stable labels, not execution order after splits/reorders.
+- `Pending` is dashboard-computed. Never write or treat it as an agent decision to skip work.
+- Do not silently remove future active items. Future-item deletion must be an explicit split/reorder/contract repair.
+- Do not casually rewrite `goal.md` during execution. If the contract is wrong, move back to `draft/` and switch to creation mode.
+- Do not add stable contract sections, archived items, changelogs, test logs, progress metadata, dashboard state, or telemetry to `burnlist.md`.
+- Keep Burnlist artifacts local unless the user explicitly asks to stage or commit them.
+- Do not stage, commit, push, deploy, clean, or rewrite unrelated files unless explicitly asked.
+
+## Visible Output Boundary
+
+Do not reduce reasoning depth; reduce visible narration. Use internal reasoning, tools, tests, and the dashboard as working-state channels. Visible chat is for user decisions, blockers, real scope changes, split decisions, completed atomic results, and final handoff.
+
+During a normal burn transaction, stay silent from the moment validation passes until the transaction completes, fails, or exposes a real blocker/split/scope decision. Do not narrate ledger edits, timestamp generation, `completed.md` writes, active-list updates, or protocol-check starts.
+
+After compaction or context refresh, do not summarize skill instructions back to the user unless explicitly asked. Refresh missing guidance silently, then continue from the active item.
+
+For detailed examples and banned narration, read `references/burnlist-visible-output.md`.
+
+## Dashboard Boundary
+
+The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task.
+
+The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
+
+`New Oven` and `Run Burn` are explicit user-controlled local controller surfaces. For Oven contract, UI, validation, or Run-snapshot work, read `references/oven-contract.md`. Preserve its two-file declarative package and ownership boundary: custom Ovens may be created under ignored `.local/burnlist/ovens/` state and snapshotted under `.local/burnlist/runs/`, but neither surface may execute instructions, produce project data, own canonical project state, mutate Burnlists, import arbitrary UI code, or start an agent.
+
+Do not embed repo/domain dashboards inside the Burnlist dashboard. Domain-specific viewers must live in their repo-local tools and may be linked or launched separately. Share state only through Burnlist lifecycle files, explicit URLs, or a narrow message contract; do not share CSS, layout code, routes, or polling loops.
+
+Read `references/burnlist-dashboard.md` only for dashboard/chart/log/timeline/repo-graph questions or dashboard repair.

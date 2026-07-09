@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 10,
+  "rowHeight": 48,
+  "cells": [
+    {
+      "id": "gate",
+      "title": "Active gate",
+      "widget": "target",
+      "source": "/summary/gate",
+      "format": "plain",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "current",
+      "title": "Current value",
+      "widget": "metric",
+      "source": "/summary/current",
+      "format": "number",
+      "column": 4,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "target",
+      "title": "Target",
+      "widget": "target",
+      "source": "/summary/target",
+      "format": "plain",
+      "column": 7,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "status",
+      "title": "Gate status",
+      "widget": "status",
+      "source": "/summary/status",
+      "format": "plain",
+      "column": 10,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "history",
+      "title": "Comparable history",
+      "widget": "line-chart",
+      "source": "/history",
+      "format": "number",
+      "column": 1,
+      "row": 3,
+      "columnSpan": 8,
+      "rowSpan": 4
+    },
+    {
+      "id": "decision",
+      "title": "Current evidence decision",
+      "widget": "markdown",
+      "source": "/decision",
+      "format": "plain",
+      "column": 9,
+      "row": 3,
+      "columnSpan": 4,
+      "rowSpan": 4
+    },
+    {
+      "id": "cycles",
+      "title": "Cycle ledger",
+      "widget": "timeline",
+      "source": "/cycles",
+      "format": "plain",
+      "column": 1,
+      "row": 7,
+      "columnSpan": 7,
+      "rowSpan": 4
+    },
+    {
+      "id": "evidence",
+      "title": "Proof and artifacts",
+      "widget": "markdown",
+      "source": "/evidence",
+      "format": "plain",
+      "column": 8,
+      "row": 7,
+      "columnSpan": 5,
+      "rowSpan": 4
+    }
+  ]
+}

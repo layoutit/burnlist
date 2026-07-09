@@ -1,0 +1,4 @@
+interface:
+  display_name: "Burnlist"
+  short_description: "Create and run shrinking Burnlists"
+  default_prompt: "Use $burnlist to create, harden, or execute a repo-local Burnlist."

@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 10,
+  "rowHeight": 48,
+  "cells": [
+    {
+      "id": "completed",
+      "title": "Completed",
+      "widget": "metric",
+      "source": "/summary/completed",
+      "format": "number",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "progress",
+      "title": "Progress",
+      "widget": "progress",
+      "source": "/summary/percent",
+      "format": "percent",
+      "column": 4,
+      "row": 1,
+      "columnSpan": 5,
+      "rowSpan": 2
+    },
+    {
+      "id": "status",
+      "title": "Status",
+      "widget": "status",
+      "source": "/summary/status",
+      "format": "plain",
+      "column": 9,
+      "row": 1,
+      "columnSpan": 4,
+      "rowSpan": 2
+    },
+    {
+      "id": "active",
+      "title": "Active checklist",
+      "widget": "list",
+      "source": "/active",
+      "format": "plain",
+      "column": 1,
+      "row": 3,
+      "columnSpan": 6,
+      "rowSpan": 4
+    },
+    {
+      "id": "timeline",
+      "title": "Timeline",
+      "widget": "timeline",
+      "source": "/timeline",
+      "format": "plain",
+      "column": 7,
+      "row": 3,
+      "columnSpan": 6,
+      "rowSpan": 4
+    },
+    {
+      "id": "log",
+      "title": "Burnlist log",
+      "widget": "log",
+      "source": "/log",
+      "format": "plain",
+      "column": 1,
+      "row": 7,
+      "columnSpan": 12,
+      "rowSpan": 4
+    }
+  ]
+}
