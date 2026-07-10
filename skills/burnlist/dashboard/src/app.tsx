@@ -8,7 +8,6 @@ import {
   FileText,
   Flame,
   ListChecks,
-  Target,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,6 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 const PAGE_SIZE = 20;
 
 function currentSection() {
-  if (window.location.pathname === "/targets") return "targets";
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/compare/view") return "compare-oven";
   if (window.location.pathname === "/runs/new") return "run-burn";
@@ -433,11 +431,6 @@ export function App() {
           <NewOvenPage />
         ) : section === "run-burn" ? (
           <RunBurnPage />
-        ) : section === "targets" ? (
-          <Card className="border-white/8 bg-card/80 shadow-xl shadow-black/10 backdrop-blur-sm">
-            <CardHeader><CardTitle>Targets</CardTitle><CardDescription>Measured goal state stays separate from the Burnlist queue.</CardDescription></CardHeader>
-            <CardContent><EmptyState title="No Targets configured" detail="Add a repo-local target report when there is a measured value to observe." icon={Target} /></CardContent>
-          </Card>
         ) : selected ? (
           error ? (
             <Card className="border-destructive/35 bg-destructive/10 py-5 text-destructive-foreground"><CardContent className="flex gap-3 px-5"><AlertTriangle className="size-5 shrink-0" /><p className="text-sm">{error}</p></CardContent></Card>

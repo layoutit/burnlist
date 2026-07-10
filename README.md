@@ -5,9 +5,8 @@ Burnlist is a real-time, non-invasive tracker for agents. It tracks a repo-local
 ## What ships
 
 - One agent skill for creating, hardening, executing, and maintaining Burnlists.
-- A local observer dashboard with three default Ovens:
+- A local observer dashboard with two default Ovens:
   - **Checklist** tracks completion of the active work queue.
-  - **Target** tracks a measured value against a specific goal and focuses work on the next actionable constraint.
   - **Compare** evaluates aligned reference and candidate series through one trusted presentation contract.
 - Custom Ovens built from Markdown instructions and a non-executable detail skeleton.
 

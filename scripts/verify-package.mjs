@@ -45,7 +45,6 @@ const required = [
   "skills/burnlist/examples/compare/candidate.json",
   "skills/burnlist/dashboard/fallback-compare-oven.css",
   "skills/burnlist/dashboard/fallback-compare-oven.js",
-  "skills/burnlist/ovens/target/instructions.md",
 ];
 
 for (const path of required) {
@@ -65,6 +64,7 @@ const forbidden = [
   /^output(?:\/|$)/u,
   /^scripts\/(?:build-release|install)\.mjs$/u,
   /^skills\/burnlist-create(?:\/|$)/u,
+  /^skills\/burnlist\/ovens\/target(?:\/|$)/u,
   /\.zip$/u,
 ];
 

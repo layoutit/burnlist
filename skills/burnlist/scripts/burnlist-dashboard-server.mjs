@@ -754,7 +754,7 @@ function routeSelection(url) {
       return part;
     }
   });
-  if (parts.length === 2 && !["api", "targets", "ovens", "types", "runs"].includes(parts[0])) return { repo: parts[0], id: parts[1] };
+  if (parts.length === 2 && !["api", "ovens", "types", "runs"].includes(parts[0])) return { repo: parts[0], id: parts[1] };
   return null;
 }
 
@@ -1047,14 +1047,13 @@ function fallbackNewOven() {
 }
 
 function fallbackRunBurn() {
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>Run Burn</h1><p>Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions.</p></header><form class="form-shell form-card" id="run-form"><label class="field"><span>Oven</span><select id="run-oven" required></select></label><label class="field"><span>Repository</span><select id="run-repo" required></select></label><label class="field"><span>Run title</span><input id="run-title" maxlength="120" placeholder="Release readiness pass" required></label><label class="field"><span>Objective</span><textarea id="run-objective" maxlength="12000" placeholder="Describe the outcome and any Oven-required inputs. For Target, include the measurement source, target, active gate, and comparable procedure." required></textarea></label><p class="hint">The Run snapshots the selected Oven instructions and detail skeleton under ignored local state. It does not execute commands from the instructions.</p><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="create-run" type="submit">Run Burn</button></div><output class="form-status" id="run-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
+  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>Run Burn</h1><p>Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions.</p></header><form class="form-shell form-card" id="run-form"><label class="field"><span>Oven</span><select id="run-oven" required></select></label><label class="field"><span>Repository</span><select id="run-repo" required></select></label><label class="field"><span>Run title</span><input id="run-title" maxlength="120" placeholder="Release readiness pass" required></label><label class="field"><span>Objective</span><textarea id="run-objective" maxlength="12000" placeholder="Describe the outcome and any Oven-required inputs. For Compare, include the reference, candidate, alignment contract, and comparable rerun procedure." required></textarea></label><p class="hint">The Run snapshots the selected Oven instructions and detail skeleton under ignored local state. It does not execute commands from the instructions.</p><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="create-run" type="submit">Run Burn</button></div><output class="form-status" id="run-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
 }
 
 function dashboardFallback(url) {
   if (url.pathname === "/ovens/compare/view") return `<main id="compare-root"><div class="compare-empty">Loading Compare Oven.</div></main><link rel="stylesheet" href="/assets/fallback-compare-oven.css"><script src="/assets/fallback-compare-oven.js" defer></script>`;
   if (url.pathname === "/ovens/new") return fallbackNewOven();
   if (url.pathname === "/runs/new") return fallbackRunBurn();
-  if (url.pathname === "/targets") return `<main class="burnlist-fallback">${FALLBACK_STYLE}<h1>Targets</h1><p>No Targets configured.</p></main>`;
   const selection = selectedBurnlist(url);
   if (selection.burnlist) {
     try {
@@ -1077,258 +1076,6 @@ function serveDashboardShell(res, url) {
 </head>
 <body>${dashboardFallback(url)}</body>
 </html>`);
-}
-
-function page() {
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Burnlists and Targets</title>
-<style>
-:root { color-scheme: dark; --bg:#101214; --panel:#171a1e; --line:#2a3036; --text:#e8edf2; --muted:#97a2ad; --accent:#6db6ff; --done:#67d391; --warn:#f2bf73; --bad:#ff8a8a; }
-* { box-sizing: border-box; }
-body { margin:0; font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); }
-[hidden] { display:none !important; }
-.topbar { border-bottom:1px solid var(--line); background:#0d0f11; }
-.topbar-inner { width:min(1180px, calc(100vw - 32px)); margin:0 auto; display:flex; gap:6px; align-items:center; padding:10px 0; }
-.brand-mark { width:28px; height:28px; display:inline-grid; place-items:center; flex:0 0 auto; margin-right:6px; border:1px solid rgba(232,237,242,.18); border-radius:6px; background:#e8edf2; }
-.brand-mark svg { width:20px; height:20px; display:block; }
-.nav-link { color:var(--muted); padding:7px 10px; border:1px solid transparent; border-radius:6px; font-weight:650; }
-.nav-link:hover { color:var(--text); }
-.nav-link.selected { color:#fff; border-color:rgba(109,182,255,.55); background:#151a1f; }
-.shell { width:min(1180px, calc(100vw - 32px)); margin:0 auto; padding:18px 0 28px; }
-header { display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:16px; }
-h1 { margin:0; font-size:22px; font-weight:650; letter-spacing:0; }
-a { color:var(--accent); text-decoration:none; }
-button, select { color:var(--text); background:#20252b; border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:inherit; }
-button { cursor:pointer; }
-button.selected { border-color:var(--accent); color:#fff; }
-.toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.grid { display:grid; grid-template-columns: minmax(280px, 360px) 1fr; gap:14px; align-items:start; }
-.panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
-.list { display:grid; gap:8px; }
-.row { display:grid; grid-template-columns:1fr auto; gap:8px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#13161a; }
-.row strong { display:block; font-weight:650; }
-.meta { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
-.timestamp { font-size:13px; }
-.pill { justify-self:end; color:var(--muted); font-size:12px; border:1px solid var(--line); border-radius:999px; padding:2px 8px; }
-.pill.active { color:var(--accent); border-color:rgba(109,182,255,.55); }
-.pill.complete { color:var(--done); border-color:rgba(103,211,145,.55); }
-.stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; margin-bottom:14px; }
-.stat { padding:10px; border:1px solid var(--line); border-radius:6px; background:#13161a; }
-.label { color:var(--muted); font-size:12px; }
-.value { font-size:24px; font-weight:700; margin-top:2px; }
-.bar { height:12px; overflow:hidden; border-radius:999px; background:#242a30; border:1px solid var(--line); margin-bottom:14px; }
-.bar > div { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--done)); }
-.columns { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.items { display:grid; gap:8px; }
-.item { border:1px solid var(--line); border-radius:6px; padding:10px; background:#13161a; }
-.item-title { font-weight:650; }
-.item-body { margin-top:6px; color:var(--muted); white-space:pre-wrap; overflow-wrap:anywhere; }
-.warning { color:var(--warn); }
-.error { color:var(--bad); }
-.empty { color:var(--muted); padding:12px; }
-@media (max-width: 800px) { .grid, .columns, .stats { grid-template-columns:1fr; } header { display:block; } .toolbar { margin-top:12px; } }
-</style>
-</head>
-<body>
-<nav class="topbar" aria-label="Dashboard sections">
-  <div class="topbar-inner">
-    <span class="brand-mark">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="burnlist-logo-title burnlist-logo-desc">
-        <title id="burnlist-logo-title">Burnlist</title>
-        <desc id="burnlist-logo-desc">Star flame icon</desc>
-        <path fill="#000000" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/>
-      </svg>
-    </span>
-    <a class="nav-link" data-section="burnlists" href="/">Burnlists</a>
-    <a class="nav-link" data-section="targets" href="/targets">Targets</a>
-  </div>
-</nav>
-<div class="shell">
-  <header>
-    <div>
-      <h1 id="title">Burnlists</h1>
-      <div class="meta" id="subtitle">notes/burnlists</div>
-    </div>
-    <div class="toolbar" id="filters">
-      <button data-filter="active">Active</button>
-      <button data-filter="draft">Draft</button>
-      <button data-filter="ready">Ready</button>
-      <button data-filter="complete">Done</button>
-      <button data-filter="all">All</button>
-    </div>
-  </header>
-  <main class="grid" id="burnlists-view">
-    <section class="panel">
-      <div class="list" id="burnlists"></div>
-    </section>
-    <section class="panel" id="detail">
-      <div class="empty">Select a Burnlist.</div>
-    </section>
-  </main>
-  <main class="panel" id="targets-view" hidden>
-    <div class="empty">No Targets configured.</div>
-  </main>
-</div>
-<script>
-let filter = new URLSearchParams(location.search).get("filter") || "active";
-let burnlists = [];
-function qs(value) { return encodeURIComponent(value); }
-function setText(node, text) { if (node) node.textContent = text; }
-function itemUrl(item) { return "/" + qs(item.repo) + "/" + qs(item.id); }
-function currentSection() { return location.pathname === "/targets" ? "targets" : "burnlists"; }
-function selectedKey() {
-  if (currentSection() === "targets") return "";
-  const parts = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-  if (parts.length === 2) return parts.join("/");
-  const params = new URLSearchParams(location.search);
-  return params.get("repo") && params.get("id") ? params.get("repo") + "/" + params.get("id") : "";
-}
-function renderChrome() {
-  const section = currentSection();
-  document.querySelectorAll("[data-section]").forEach((link) => link.classList.toggle("selected", link.dataset.section === section));
-  document.querySelector("#burnlists-view").hidden = section !== "burnlists";
-  document.querySelector("#targets-view").hidden = section !== "targets";
-  document.querySelector("#filters").hidden = section !== "burnlists";
-  if (section === "targets") {
-    setText(document.querySelector("#title"), "Targets");
-    setText(document.querySelector("#subtitle"), "Target");
-  } else if (!selectedKey()) {
-    setText(document.querySelector("#title"), "Burnlists");
-    setText(document.querySelector("#subtitle"), "notes/burnlists");
-  }
-}
-function renderIndex() {
-  document.querySelectorAll("[data-filter]").forEach((button) => button.classList.toggle("selected", button.dataset.filter === filter));
-  const selected = selectedKey();
-  const rows = burnlists.filter((item) => filter === "all" || item.status === filter);
-  const root = document.querySelector("#burnlists");
-  root.replaceChildren();
-  if (!rows.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "No Burnlists in this view.";
-    root.append(empty);
-    return;
-  }
-  for (const item of rows) {
-    const row = document.createElement("a");
-    row.className = "row";
-    row.href = itemUrl(item);
-    if (selected === item.repo + "/" + item.id) row.style.borderColor = "var(--accent)";
-    const text = document.createElement("div");
-    const title = document.createElement("strong");
-    title.textContent = item.repo + "/" + item.id;
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.textContent = item.title + " - " + item.done + "/" + item.total + " done";
-    text.append(title, meta);
-    const pill = document.createElement("div");
-    pill.className = "pill " + item.status;
-    pill.textContent = item.statusLabel;
-    row.append(text, pill);
-    root.append(row);
-  }
-}
-function renderDetail(data) {
-  const detail = document.querySelector("#detail");
-  setText(document.querySelector("#title"), data.title || "Burnlist Progress");
-  setText(document.querySelector("#subtitle"), data.repo + "/" + data.planLabel);
-  const bar = document.createElement("div");
-  bar.className = "bar";
-  const fill = document.createElement("div");
-  fill.style.width = data.percent + "%";
-  bar.append(fill);
-  const stats = document.createElement("div");
-  stats.className = "stats";
-  for (const [label, value] of [["Done", data.done + "/" + data.total], ["Remaining", data.remaining], ["Progress", data.percent + "%"], ["Warnings", data.warnings.length]]) {
-    const stat = document.createElement("div");
-    stat.className = "stat";
-    const l = document.createElement("div");
-    l.className = "label";
-    l.textContent = label;
-    const v = document.createElement("div");
-    v.className = "value";
-    v.textContent = value;
-    stat.append(l, v);
-    stats.append(stat);
-  }
-  const warnings = document.createElement("div");
-  warnings.className = "items";
-  for (const issue of data.warnings || []) {
-    const row = document.createElement("div");
-    row.className = "item " + (issue.severity === "error" ? "error" : "warning");
-    row.textContent = issue.severity.toUpperCase() + ": " + issue.message;
-    warnings.append(row);
-  }
-  const columns = document.createElement("div");
-  columns.className = "columns";
-  columns.append(listSection("Active Checklist", data.active || [], true), listSection("Completed", data.completed || [], false));
-  detail.replaceChildren(stats, bar, warnings, columns);
-}
-function listSection(titleText, rows, active) {
-  const section = document.createElement("section");
-  const title = document.createElement("h2");
-  title.textContent = titleText;
-  const list = document.createElement("div");
-  list.className = "items";
-  if (!rows.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = active ? "No active items." : "No completed ledger entries.";
-    list.append(empty);
-  }
-  for (const row of rows) {
-    const item = document.createElement("article");
-    item.className = "item";
-    const head = document.createElement("div");
-    head.className = "item-title";
-    head.textContent = row.id + " | " + row.title;
-    item.append(head);
-    if (active) {
-      const body = document.createElement("div");
-      body.className = "item-body timestamp";
-      body.textContent = Object.entries(row.fields || {}).map(([key, value]) => key + ": " + value).join("\\n");
-      item.append(body);
-    } else {
-      const body = document.createElement("div");
-      body.className = "item-body";
-      body.textContent = row.completedAt;
-      item.append(body);
-    }
-    list.append(item);
-  }
-  section.append(title, list);
-  return section;
-}
-async function refresh() {
-  renderChrome();
-  if (currentSection() === "targets") return;
-  const indexRes = await fetch("/api/burnlists", { cache: "no-store" });
-  const indexData = await indexRes.json();
-  burnlists = indexData.burnlists || [];
-  renderIndex();
-  if (selectedKey()) {
-    const parts = selectedKey().split("/");
-    const res = await fetch("/api/progress?repo=" + qs(parts[0]) + "&id=" + qs(parts[1]), { cache: "no-store" });
-    if (res.ok) renderDetail(await res.json());
-  }
-}
-document.querySelectorAll("[data-filter]").forEach((button) => {
-  button.addEventListener("click", () => {
-    filter = button.dataset.filter;
-    history.replaceState(null, "", "?filter=" + qs(filter));
-    renderIndex();
-  });
-});
-refresh();
-setInterval(refresh, 5000);
-</script>
-</body>
-</html>`;
 }
 
 if (!reportMode) mkdirSync(stateDir, { recursive: true });
@@ -1479,7 +1226,7 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    if (["/", "/index.html", "/targets", "/ovens/new", "/ovens/compare/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens/new", "/ovens/compare/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res, url);
       return;

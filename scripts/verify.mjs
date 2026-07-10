@@ -197,7 +197,7 @@ for (const file of jsFiles) {
   run(process.execPath, ["--check", relative(repoRoot, file)]);
 }
 
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Burnlist Progress", "Dashboard page is missing.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Let it cook", "Dashboard page is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
@@ -227,9 +227,6 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "o
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'option.value === "checklist"', "Fallback Run Burn does not default to Checklist.");
 assertSourceIncludes("skills/burnlist/ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
-assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "Work only the active gate", "Target is missing current-gate discipline.");
-assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "earliest proven actionable producer", "Target is missing upstream producer discipline.");
-assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "Revert exactly that change", "Target is missing exact regression-revert discipline.");
 assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "fix the capture, adapter, or comparator", "Compare is missing source-fix discipline.");
 assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "null values remain distinguishable from numeric zero", "Compare is missing null-preservation discipline.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
@@ -242,11 +239,14 @@ assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.m
 assertSourceIncludes("scripts/register-skills.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the agent skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
 assertSourceIncludes("bin/burnlist.mjs", 'args[0] === "uninstall"', "Burnlist CLI does not own safe uninstall cleanup.");
+assertSourceExcludes("README.md", "**Target**", "README still advertises the removed Target Oven.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
+assertSourceExcludes("skills/burnlist/dashboard/src/app.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
+assertSourceExcludes("skills/burnlist/scripts/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "compare", "target"]);
+assertBuiltInOvenSet(["checklist", "compare"]);
 assertBuiltInOven("checklist", "Checklist");
 assertBuiltInOven("compare", "Compare");
-assertBuiltInOven("target", "Target");
 assertCompareContractAssets();
 assertPublishablePackage();
 

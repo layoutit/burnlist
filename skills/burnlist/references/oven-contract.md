@@ -35,7 +35,7 @@ Default Ovens ship with the skill. Custom Ovens are created once under ignored `
 
 `Run Burn` records a repository, title, and objective, then copies the selected `instructions.md` and `detail.json` into a new ignored `.local/burnlist/runs/` directory. That snapshot is immutable run provenance; the app does not execute it or start Codex.
 
-Oven-specific inputs belong in the objective unless the generic Run contract is deliberately expanded for every Oven. For Target, the objective names the measurement source, explicit target and direction, active gate or ladder, and comparable measurement procedure.
+Oven-specific inputs belong in the objective unless the generic Run contract is deliberately expanded for every Oven. For Compare, the objective names the reference and candidate artifacts, project adapter or report, active scenario and alignment contract, and comparable rerun procedure.
 
 The run manifest's `schemaVersion` versions the manifest shape. It is not an Oven revision. The copied Oven files are the authoritative definition used by that Run.
 
