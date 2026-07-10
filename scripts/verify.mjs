@@ -153,6 +153,15 @@ function assertBuiltInOven(id, expectedName) {
   }
 }
 
+function assertCompareContractAssets() {
+  const schemaPath = resolve(repoRoot, "skills/burnlist/contracts/compare-data.schema.json");
+  const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+  if (schema.$id !== "urn:burnlist:compare-data:1" || schema.properties?.schema?.const !== "burnlist-compare-data@1") {
+    console.error("Compare JSON Schema id and payload version must describe burnlist-compare-data@1.");
+    process.exit(1);
+  }
+}
+
 function assertPublishablePackage() {
   if (packageJson.private === true) {
     console.error("package.json still marks Burnlist private.");
@@ -181,6 +190,7 @@ const jsFiles = [
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "skills/burnlist/dashboard/fallback-burn-ovens.js"),
+  resolve(repoRoot, "skills/burnlist/dashboard/fallback-compare-oven.js"),
 ].sort();
 
 for (const file of jsFiles) {
@@ -190,6 +200,11 @@ for (const file of jsFiles) {
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Burnlist Progress", "Dashboard page is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertCompareData(payload)", "Compare data is not validated at the server boundary.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'href="/ovens/compare/view">Compare</a>', "Configured Compare Oven is not linked from the dashboard index.");
+assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
+assertSourceIncludes("bin/burnlist.mjs", "compare validate <compare.json>", "Burnlist CLI is missing Compare data validation help.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Oven detail page skeleton", "Oven detail skeleton is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "Draft detail section", "Oven inline detail-section editor is missing.");
@@ -215,21 +230,34 @@ assertSourceIncludes("skills/burnlist/ovens/checklist/instructions.md", "## Acti
 assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "Work only the active gate", "Target is missing current-gate discipline.");
 assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "earliest proven actionable producer", "Target is missing upstream producer discipline.");
 assertSourceIncludes("skills/burnlist/ovens/target/instructions.md", "Revert exactly that change", "Target is missing exact regression-revert discipline.");
+assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "fix the capture, adapter, or comparator", "Compare is missing source-fix discipline.");
+assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "null values remain distinguishable from numeric zero", "Compare is missing null-preservation discipline.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
+assertSourceIncludes("skills/burnlist/dashboard/src/compare-oven.tsx", 'fetch("/api/oven-data/compare"', "Compare Oven renderer is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/src/compare-oven.tsx", "field.samples", "Compare Oven renderer is missing paired sample charts.");
+assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'id: "comparison"', "Fallback New Oven is missing the controlled Comparison widget.");
+assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", 'fetch("/api/oven-data/compare"', "Fallback Compare Oven is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", "field.samples", "Fallback Compare Oven is missing paired sample charts.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
 assertSourceIncludes("scripts/register-skills.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the agent skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
 assertSourceIncludes("bin/burnlist.mjs", 'args[0] === "uninstall"', "Burnlist CLI does not own safe uninstall cleanup.");
 assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "target"]);
+assertBuiltInOvenSet(["checklist", "compare", "target"]);
 assertBuiltInOven("checklist", "Checklist");
+assertBuiltInOven("compare", "Compare");
 assertBuiltInOven("target", "Target");
+assertCompareContractAssets();
 assertPublishablePackage();
+
+run(process.execPath, ["--test", "skills/burnlist/scripts/compare-data-contract.test.mjs"]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
   env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },
 });
 run(process.execPath, ["bin/burnlist.mjs", "--version"]);
 run(process.execPath, ["bin/burnlist.mjs", "--stamp"]);
+run(process.execPath, ["bin/burnlist.mjs", "compare", "schema"]);
 
 scanSourceLeaks();
 

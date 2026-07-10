@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:burnlist:compare-data:1",
+  "title": "Burnlist Compare data",
+  "description": "Structural schema for burnlist-compare-data@1. The packaged validator additionally enforces count reconciliation, state/value agreement, exact cross-field tick alignment, chronology, and summary invariants.",
+  "type": "object",
+  "required": ["schema", "generatedAt", "title", "subtitle", "adapter", "trust", "summary", "progress", "log", "fields"],
+  "properties": {
+    "schema": { "const": "burnlist-compare-data@1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "subtitle": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "adapter": {
+      "type": "object",
+      "required": ["id"],
+      "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 160 } },
+      "additionalProperties": true
+    },
+    "trust": {
+      "type": "object",
+      "required": ["status", "blockers"],
+      "properties": {
+        "status": { "enum": ["pass", "blocked"] },
+        "reportStatus": { "type": ["string", "null"] },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": ["runs", "fields", "frames"],
+      "properties": {
+        "runs": { "$ref": "#/$defs/metric" },
+        "fields": { "$ref": "#/$defs/metric" },
+        "frames": {
+          "allOf": [
+            { "$ref": "#/$defs/metric" },
+            { "type": "object", "required": ["uniqueTicks"], "properties": { "uniqueTicks": { "$ref": "#/$defs/count" } } }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "progress": { "type": "array", "items": { "$ref": "#/$defs/resultRow" } },
+    "log": { "type": "array", "items": { "$ref": "#/$defs/resultRow" } },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "metric": {
+      "type": "object",
+      "required": ["label", "total", "passed", "failed", "blocked"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "blocked": { "$ref": "#/$defs/count" },
+        "status": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "result": { "enum": ["pass", "improved", "unchanged", "worsened", "blocked"] },
+    "resultRow": {
+      "type": "object",
+      "required": ["timestamp", "result", "value"],
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "result": { "$ref": "#/$defs/result" },
+        "value": { "type": "number", "minimum": 0 },
+        "delta": { "type": ["number", "null"] },
+        "fieldCount": { "$ref": "#/$defs/count" },
+        "failedFieldCount": { "$ref": "#/$defs/count" },
+        "frames": { "$ref": "#/$defs/count" },
+        "firstFailingTick": { "type": ["number", "null"] },
+        "firstFailingLabel": { "type": ["string", "null"], "maxLength": 160 }
+      },
+      "additionalProperties": true
+    },
+    "scalar": { "type": ["string", "number", "boolean", "null"] },
+    "sample": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "$ref": "#/$defs/scalar" },
+        { "$ref": "#/$defs/scalar" },
+        { "type": "integer", "minimum": 0, "maximum": 4 }
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "field": {
+      "type": "object",
+      "required": ["id", "label", "sourceOwner", "semantics", "unit", "tolerance", "trustStatus", "driftClass", "driftReason", "sampleCount", "failedSampleCount", "missingSampleCount", "firstFailingTick", "maxDelta", "samples"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceOwner": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "semantics": {
+          "type": "object",
+          "required": ["meaning"],
+          "properties": { "meaning": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+          "additionalProperties": true
+        },
+        "unit": { "type": ["string", "null"], "maxLength": 80 },
+        "tolerance": { "type": "number", "minimum": 0 },
+        "trustStatus": { "enum": ["pass", "blocked"] },
+        "driftClass": { "type": ["string", "null"], "maxLength": 120 },
+        "driftReason": { "type": ["string", "null"], "maxLength": 2000 },
+        "sampleCount": { "$ref": "#/$defs/count" },
+        "failedSampleCount": { "$ref": "#/$defs/count" },
+        "missingSampleCount": { "$ref": "#/$defs/count" },
+        "firstFailingTick": { "type": ["number", "null"] },
+        "maxDelta": { "type": ["number", "null"], "minimum": 0 },
+        "samples": { "type": "array", "items": { "$ref": "#/$defs/sample" } }
+      },
+      "additionalProperties": true
+    }
+  }
+}

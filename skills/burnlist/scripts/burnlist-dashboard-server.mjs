@@ -21,6 +21,7 @@ import {
   normalizeOvenPackage,
   ovenId,
 } from "./oven-contract.mjs";
+import { assertCompareData } from "./compare-data-contract.mjs";
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 1) {
@@ -46,17 +47,21 @@ const initialPort = positiveInteger(args.get("port") ?? process.env.PORT ?? "451
 const autoPort = args.has("auto-port");
 const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "max-plan-bytes");
 const maxHistoryEntries = positiveInteger(args.get("max-history-entries") ?? "1000", "max-history-entries");
+const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
 const historyPath = resolve(stateDir, "index.history.jsonl");
 const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fallbackBurnOvensScriptPath = resolve(skillDir, "dashboard", "fallback-burn-ovens.js");
+const fallbackCompareOvenScriptPath = resolve(skillDir, "dashboard", "fallback-compare-oven.js");
+const fallbackCompareOvenStylePath = resolve(skillDir, "dashboard", "fallback-compare-oven.css");
 const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 // Read-only compatibility for the short-lived pre-Oven schema. New writes never use these paths.
 const legacyBuiltInTypesDir = resolve(skillDir, "types");
 const legacyCustomTypesDir = resolve(launchCwd, args.get("types-dir") ?? ".local/burnlist/types");
 const runsDir = resolve(launchCwd, args.get("runs-dir") ?? ".local/burnlist/runs");
+const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const legacyDetailOrigin = String(args.get("legacy-detail-origin") ?? "").replace(/\/+$/u, "");
 
@@ -67,6 +72,25 @@ function positiveInteger(value, name) {
     process.exit(2);
   }
   return parsed;
+}
+
+function parseOvenDataBindings(value) {
+  const bindings = new Map();
+  for (const rawBinding of String(value).split(",").map((entry) => entry.trim()).filter(Boolean)) {
+    const separator = rawBinding.indexOf("=");
+    if (separator <= 0 || separator === rawBinding.length - 1) {
+      console.error(`Invalid --oven-data binding: ${rawBinding}. Expected <oven-id>=<json-path>.`);
+      process.exit(2);
+    }
+    const id = ovenId(rawBinding.slice(0, separator));
+    const path = resolve(launchCwd, rawBinding.slice(separator + 1));
+    if (bindings.has(id)) {
+      console.error(`Duplicate --oven-data binding for ${id}.`);
+      process.exit(2);
+    }
+    bindings.set(id, path);
+  }
+  return bindings;
 }
 
 function twoDigit(value) {
@@ -914,6 +938,15 @@ function javascript(res, status, body) {
   res.end(body);
 }
 
+function stylesheet(res, status, body) {
+  res.writeHead(status, {
+    "content-type": "text/css; charset=utf-8",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+  });
+  res.end(body);
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/gu, (character) => ({
     "&": "&amp;",
@@ -998,7 +1031,8 @@ function fallbackIndex(url) {
   const pagination = totalPages > 1
     ? `<nav class="pagination" aria-label="Burnlist table pages"><span>Showing ${firstIndex + 1}–${Math.min(firstIndex + fallbackPageSize, filteredRows.length)} of ${filteredRows.length}</span><span class="page-controls">${previous}<span>Page ${page} of ${totalPages}</span>${next}</span></nav>`
     : "";
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<header class="page-header"><div class="brand-lockup"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 512 512"><path fill="#d4d4d8" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/></svg><div><h1>Burnlists</h1><p>Let it cook</p></div></div></header><div class="table-toolbar"><nav class="filters" aria-label="Burnlist lifecycle">${filters}</nav><nav class="burn-actions" aria-label="Burn actions"><a class="action-button" href="/ovens/new">New Oven</a><a class="action-button primary" href="/runs/new">Run Burn</a></nav></div><div class="table-wrap"><table><thead><tr><th>Burnlist</th><th>Lifecycle</th><th>Progress</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table>${pagination}</div></main>`;
+  const boundOvenActions = ovenDataBindings.has("compare") ? `<a class="action-button" href="/ovens/compare/view">Compare</a>` : "";
+  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<header class="page-header"><div class="brand-lockup"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 512 512"><path fill="#d4d4d8" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/></svg><div><h1>Burnlists</h1><p>Let it cook</p></div></div></header><div class="table-toolbar"><nav class="filters" aria-label="Burnlist lifecycle">${filters}</nav><nav class="burn-actions" aria-label="Burn actions">${boundOvenActions}<a class="action-button" href="/ovens/new">New Oven</a><a class="action-button primary" href="/runs/new">Run Burn</a></nav></div><div class="table-wrap"><table><thead><tr><th>Burnlist</th><th>Lifecycle</th><th>Progress</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table>${pagination}</div></main>`;
 }
 
 function fallbackDetail(data, filter, page) {
@@ -1017,6 +1051,7 @@ function fallbackRunBurn() {
 }
 
 function dashboardFallback(url) {
+  if (url.pathname === "/ovens/compare/view") return `<main id="compare-root"><div class="compare-empty">Loading Compare Oven.</div></main><link rel="stylesheet" href="/assets/fallback-compare-oven.css"><script src="/assets/fallback-compare-oven.js" defer></script>`;
   if (url.pathname === "/ovens/new") return fallbackNewOven();
   if (url.pathname === "/runs/new") return fallbackRunBurn();
   if (url.pathname === "/targets") return `<main class="burnlist-fallback">${FALLBACK_STYLE}<h1>Targets</h1><p>No Targets configured.</p></main>`;
@@ -1324,6 +1359,16 @@ const server = createServer(async (req, res) => {
       javascript(res, 200, readTextFileWithLimit(fallbackBurnOvensScriptPath, 262144, "Fallback Oven script"));
       return;
     }
+    if (url.pathname === "/assets/fallback-compare-oven.js") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      javascript(res, 200, readTextFileWithLimit(fallbackCompareOvenScriptPath, 262144, "Fallback Compare Oven script"));
+      return;
+    }
+    if (url.pathname === "/assets/fallback-compare-oven.css") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      stylesheet(res, 200, readTextFileWithLimit(fallbackCompareOvenStylePath, 131072, "Fallback Compare Oven style"));
+      return;
+    }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       json(res, 200, { generatedAt: new Date().toISOString(), burnlists: discoverBurnlists() });
@@ -1362,6 +1407,25 @@ const server = createServer(async (req, res) => {
       const oven = discoverOvens().find((entry) => entry.id === ovenRoute[1]);
       if (!oven) return json(res, 404, { error: "oven not found" });
       json(res, 200, { oven });
+      return;
+    }
+    const ovenDataRoute = url.pathname.match(/^\/api\/oven-data\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);
+    if (ovenDataRoute) {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      const id = ovenDataRoute[1];
+      const path = ovenDataBindings.get(id);
+      if (!path) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
+      if (!safeStat(path)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
+      try {
+        const payload = JSON.parse(readTextFileWithLimit(path, maxOvenDataBytes, `Oven ${id} data`));
+        if (id === "compare") assertCompareData(payload);
+        json(res, 200, { ovenId: id, path, payload });
+      } catch (error) {
+        json(res, 422, {
+          error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
+          issues: Array.isArray(error.issues) ? error.issues : undefined,
+        });
+      }
       return;
     }
     // Legacy API aliases are read-compatible; the app itself only speaks Oven.
@@ -1415,7 +1479,7 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    if (["/", "/index.html", "/targets", "/ovens/new", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    if (["/", "/index.html", "/targets", "/ovens/new", "/ovens/compare/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res, url);
       return;

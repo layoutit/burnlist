@@ -5,6 +5,7 @@ const ovenWidgets = new Set([
   "bar-chart",
   "pie-chart",
   "table",
+  "comparison",
   "target",
   "status",
   "chart",

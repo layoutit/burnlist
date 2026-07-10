@@ -14,6 +14,7 @@ import {
   ChartPie,
   Eye,
   Gauge,
+  GitCompareArrows,
   LayoutGrid,
   Pencil,
   Play,
@@ -81,6 +82,7 @@ const DETAIL_TYPES = [
   { value: "bar-chart", label: "Bar chart", Icon: ChartBar },
   { value: "pie-chart", label: "Pie chart", Icon: ChartPie },
   { value: "table", label: "Table", Icon: Table2 },
+  { value: "comparison", label: "Comparison", Icon: GitCompareArrows },
 ] as const;
 
 type DetailType = (typeof DETAIL_TYPES)[number]["value"];

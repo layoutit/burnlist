@@ -1,0 +1,9 @@
+{
+  "captureId": "candidate-fixture",
+  "generatedAt": "2026-01-01T12:00:00.000Z",
+  "samples": [
+    { "tick": 0, "values": { "position": 0, "active": false } },
+    { "tick": 1, "values": { "position": 1.005, "active": true } },
+    { "tick": 2, "values": { "position": 2.1, "active": true } }
+  ]
+}

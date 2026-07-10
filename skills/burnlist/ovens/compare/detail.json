@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 14,
+  "rowHeight": 48,
+  "cells": [
+    {
+      "id": "runs",
+      "title": "Runs",
+      "widget": "metric",
+      "source": "/summary/runs",
+      "format": "plain",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 4,
+      "rowSpan": 2
+    },
+    {
+      "id": "fields",
+      "title": "Fields",
+      "widget": "metric",
+      "source": "/summary/fields",
+      "format": "plain",
+      "column": 5,
+      "row": 1,
+      "columnSpan": 4,
+      "rowSpan": 2
+    },
+    {
+      "id": "frames",
+      "title": "Frames",
+      "widget": "metric",
+      "source": "/summary/frames",
+      "format": "plain",
+      "column": 9,
+      "row": 1,
+      "columnSpan": 4,
+      "rowSpan": 2
+    },
+    {
+      "id": "progress",
+      "title": "Burn Progress",
+      "widget": "line-chart",
+      "source": "/progress",
+      "format": "number",
+      "column": 1,
+      "row": 3,
+      "columnSpan": 6,
+      "rowSpan": 5
+    },
+    {
+      "id": "log",
+      "title": "Burn Log",
+      "widget": "log",
+      "source": "/log",
+      "format": "plain",
+      "column": 7,
+      "row": 3,
+      "columnSpan": 6,
+      "rowSpan": 5
+    },
+    {
+      "id": "field-details",
+      "title": "Field Details",
+      "widget": "comparison",
+      "source": "/fields",
+      "format": "plain",
+      "column": 1,
+      "row": 8,
+      "columnSpan": 12,
+      "rowSpan": 7
+    }
+  ]
+}

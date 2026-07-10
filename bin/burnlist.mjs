@@ -52,6 +52,30 @@ if (args[0] === "uninstall") {
   process.exit(removal.status || 0);
 }
 
+if (args[0] === "compare" && args[1] === "schema") {
+  console.log(resolve(packageRoot, "skills", "burnlist", "contracts", "compare-data.schema.json"));
+  process.exit(0);
+}
+
+if (args[0] === "compare" && args[1] === "validate") {
+  if (!args[2]) {
+    console.error("Usage: burnlist compare validate <compare.json>");
+    process.exit(2);
+  }
+  try {
+    const path = resolve(process.cwd(), args[2]);
+    const payload = JSON.parse(readFileSync(path, "utf8"));
+    const { assertCompareData } = await import("../skills/burnlist/scripts/compare-data-contract.mjs");
+    assertCompareData(payload);
+    const sampleCount = payload.fields.reduce((total, field) => total + field.sampleCount, 0);
+    console.log(`Valid Compare data: ${payload.fields.length} fields, ${sampleCount} samples, ${payload.summary.frames.uniqueTicks} aligned ticks.`);
+    process.exit(0);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`Burnlist
 
@@ -61,6 +85,8 @@ Usage:
   burnlist --plan <burnlist.md> --digest
   burnlist --close-completed [--scan-root <repo[,repo...]>]
   burnlist --stamp
+  burnlist compare validate <compare.json>
+  burnlist compare schema
   burnlist uninstall
 
 Options:
@@ -69,6 +95,7 @@ Options:
   --state-dir <path>    Override ignored dashboard observer state.
   --ovens-dir <path>    Override custom Oven storage.
   --runs-dir <path>     Override Run snapshot storage.
+  --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
   --version, -v         Print the installed Burnlist version.
   --help, -h            Show this help.`);
   process.exit(0);

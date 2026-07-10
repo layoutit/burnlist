@@ -23,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { BurnActions, NewOvenPage, RunBurnPage } from "@/burn-ovens";
+import { CompareOvenPage } from "@/compare-oven";
 
 type Filter = "active" | "draft" | "ready" | "complete" | "all";
 
@@ -75,6 +76,7 @@ const PAGE_SIZE = 20;
 function currentSection() {
   if (window.location.pathname === "/targets") return "targets";
   if (window.location.pathname === "/ovens/new") return "new-oven";
+  if (window.location.pathname === "/ovens/compare/view") return "compare-oven";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
@@ -424,8 +426,10 @@ export function App() {
 
   return (
     <div className="min-h-screen">
-      <main className={cn("mx-auto px-4 py-8 sm:px-6 lg:px-8", section === "new-oven" ? "max-w-none" : "max-w-7xl")}>
-        {section === "new-oven" ? (
+      <main className={cn("mx-auto", section === "compare-oven" ? "max-w-none" : "px-4 py-8 sm:px-6 lg:px-8", section === "new-oven" ? "max-w-none" : section === "compare-oven" ? "" : "max-w-7xl")}>
+        {section === "compare-oven" ? (
+          <CompareOvenPage />
+        ) : section === "new-oven" ? (
           <NewOvenPage />
         ) : section === "run-burn" ? (
           <RunBurnPage />

@@ -8,6 +8,7 @@
     { id: "bar-chart", label: "Bar chart" },
     { id: "pie-chart", label: "Pie chart" },
     { id: "table", label: "Table" },
+    { id: "comparison", label: "Comparison" },
   ];
 
   function chartTypeLabel(type) {
@@ -70,6 +71,9 @@
       table: [
         ["rect", { x: 3, y: 5, width: 18, height: 14, rx: 1 }],
         ["path", { d: "M3 10h18M3 14.5h18M9 5v14M15 5v14" }],
+      ],
+      comparison: [
+        ["path", { d: "M7 7h10M14 4l3 3-3 3M17 17H7M10 14l-3 3 3 3" }],
       ],
     };
     (shapes[type] || shapes.metric).forEach(([name, attributes]) => svg.append(svgNode(name, attributes)));

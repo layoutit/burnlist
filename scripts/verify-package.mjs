@@ -35,6 +35,16 @@ const required = [
   "skills/burnlist/SKILL.md",
   "skills/burnlist/references/burnlist-creation.md",
   "skills/burnlist/ovens/checklist/instructions.md",
+  "skills/burnlist/ovens/compare/instructions.md",
+  "skills/burnlist/ovens/compare/detail.json",
+  "skills/burnlist/contracts/compare-data.schema.json",
+  "skills/burnlist/references/compare-data.md",
+  "skills/burnlist/scripts/compare-data-contract.mjs",
+  "skills/burnlist/examples/compare/adapter.mjs",
+  "skills/burnlist/examples/compare/reference.json",
+  "skills/burnlist/examples/compare/candidate.json",
+  "skills/burnlist/dashboard/fallback-compare-oven.css",
+  "skills/burnlist/dashboard/fallback-compare-oven.js",
   "skills/burnlist/ovens/target/instructions.md",
 ];
 
