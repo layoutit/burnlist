@@ -951,7 +951,7 @@ body.driving-parity-view {
 .driving-parity-view .driving-parity-controls select,
 .driving-parity-view .driving-parity-controls input,
 .driving-parity-view .driving-parity-overall-toggle {
-  font: 13px/1.2 var(--dashboard-title-font);
+  font: 14px/1.2 var(--dashboard-font);
 }
 .driving-parity-view .driving-parity-controls .view-toggle,
 .driving-parity-view .driving-parity-controls .chart-toggle,
