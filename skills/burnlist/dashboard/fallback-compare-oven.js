@@ -1,3 +1,7 @@
+export function compareSampleStateIsNonPass(sampleState) {
+  return sampleState !== 0;
+}
+
 export function mountCompareDashboard(root, oven, payload) {
   const WIDTH = 900;
   const HEIGHT = 58;
@@ -288,8 +292,7 @@ export function mountCompareDashboard(root, oven, payload) {
     const exactFailure = (index) => {
       const row = rows[index];
       if (!row) return false;
-      if (row.reference === null || row.candidate === null) return row.reference !== row.candidate;
-      return row.reference !== row.candidate;
+      return compareSampleStateIsNonPass(row.state);
     };
     const intervalFails = (index) => exactFailure(index) || exactFailure(index + 1);
     const frameStep = (() => {

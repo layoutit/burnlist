@@ -5,7 +5,11 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { buildPayload } from "../examples/compare/adapter.mjs";
-import { COMPARE_REFRESH_MS, startCompareDashboardLiveUpdates } from "../dashboard/fallback-compare-oven.js";
+import {
+  COMPARE_REFRESH_MS,
+  compareSampleStateIsNonPass,
+  startCompareDashboardLiveUpdates,
+} from "../dashboard/fallback-compare-oven.js";
 import { assertCompareData, validateCompareData } from "./compare-data-contract.mjs";
 
 const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../examples/compare");
@@ -58,6 +62,21 @@ test("accepts populated data and reconciles its mismatch", () => {
   assert.equal(payload.summary.frames.failed, 1);
   assert.equal(payload.fields[0].firstFailingTick, 2);
   assert.doesNotThrow(() => assertCompareData(payload));
+});
+
+test("chart failure bands honor normalized sample state instead of strict raw equality", () => {
+  const payload = buildPayload(...populatedCaptures());
+  const withinTolerance = payload.fields[0].samples[1];
+  const outsideTolerance = payload.fields[0].samples[2];
+
+  assert.notEqual(withinTolerance[1], withinTolerance[2]);
+  assert.equal(withinTolerance[3], 0);
+  assert.equal(compareSampleStateIsNonPass(withinTolerance[3]), false);
+  assert.equal(outsideTolerance[3], 1);
+  assert.equal(compareSampleStateIsNonPass(outsideTolerance[3]), true);
+  assert.equal(compareSampleStateIsNonPass(2), true);
+  assert.equal(compareSampleStateIsNonPass(3), true);
+  assert.equal(compareSampleStateIsNonPass(4), true);
 });
 
 test("rejects a sample state that disagrees with values and tolerance", () => {
