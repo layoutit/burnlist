@@ -2,18 +2,29 @@
   "version": 1,
   "columns": 12,
   "rows": 14,
-  "rowHeight": 48,
+  "rowHeight": 64,
   "cells": [
     {
-      "id": "runs",
-      "title": "Runs",
-      "widget": "metric",
-      "source": "/summary/runs",
+      "id": "title",
+      "title": "Compare",
+      "widget": "status",
+      "source": "/",
       "format": "plain",
       "column": 1,
       "row": 1,
       "columnSpan": 4,
-      "rowSpan": 2
+      "rowSpan": 1
+    },
+    {
+      "id": "burns",
+      "title": "Burns",
+      "widget": "pie-chart",
+      "source": "/log",
+      "format": "plain",
+      "column": 5,
+      "row": 1,
+      "columnSpan": 2,
+      "rowSpan": 1
     },
     {
       "id": "fields",
@@ -21,10 +32,10 @@
       "widget": "metric",
       "source": "/summary/fields",
       "format": "plain",
-      "column": 5,
+      "column": 7,
       "row": 1,
-      "columnSpan": 4,
-      "rowSpan": 2
+      "columnSpan": 3,
+      "rowSpan": 1
     },
     {
       "id": "frames",
@@ -32,19 +43,19 @@
       "widget": "metric",
       "source": "/summary/frames",
       "format": "plain",
-      "column": 9,
+      "column": 10,
       "row": 1,
-      "columnSpan": 4,
-      "rowSpan": 2
+      "columnSpan": 3,
+      "rowSpan": 1
     },
     {
       "id": "progress",
-      "title": "Burn Progress",
+      "title": "Goal Progress",
       "widget": "line-chart",
       "source": "/progress",
       "format": "number",
       "column": 1,
-      "row": 3,
+      "row": 2,
       "columnSpan": 6,
       "rowSpan": 5
     },
@@ -55,7 +66,7 @@
       "source": "/log",
       "format": "plain",
       "column": 7,
-      "row": 3,
+      "row": 2,
       "columnSpan": 6,
       "rowSpan": 5
     },
@@ -66,7 +77,7 @@
       "source": "/fields",
       "format": "plain",
       "column": 1,
-      "row": 8,
+      "row": 7,
       "columnSpan": 12,
       "rowSpan": 7
     }

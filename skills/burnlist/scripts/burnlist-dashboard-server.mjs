@@ -1051,7 +1051,7 @@ function fallbackRunBurn() {
 }
 
 function dashboardFallback(url) {
-  if (url.pathname === "/ovens/compare/view") return `<main id="compare-root"><div class="compare-empty">Loading Compare Oven.</div></main><link rel="stylesheet" href="/assets/fallback-compare-oven.css"><script src="/assets/fallback-compare-oven.js" defer></script>`;
+  if (url.pathname === "/ovens/compare/view") return `<main id="compare-root"><div class="compare-empty">Loading Compare Oven.</div></main><link rel="stylesheet" href="/assets/fallback-compare-oven.css"><script src="/assets/fallback-compare-oven.js" type="module"></script>`;
   if (url.pathname === "/ovens/new") return fallbackNewOven();
   if (url.pathname === "/runs/new") return fallbackRunBurn();
   const selection = selectedBurnlist(url);

@@ -1,13 +1,6 @@
 {
   "captureId": "reference-fixture",
   "generatedAt": "2026-01-01T12:00:00.000Z",
-  "fields": [
-    { "id": "position", "label": "Position", "sourceOwner": "engine/state", "meaning": "One-dimensional position after the update", "unit": "units", "tolerance": 0.01 },
-    { "id": "active", "label": "Active", "sourceOwner": "engine/state", "meaning": "Whether the object is active after the update", "unit": null, "tolerance": 0 }
-  ],
-  "samples": [
-    { "tick": 0, "values": { "position": 0, "active": false } },
-    { "tick": 1, "values": { "position": 1, "active": true } },
-    { "tick": 2, "values": { "position": 2, "active": true } }
-  ]
+  "fields": [],
+  "samples": []
 }

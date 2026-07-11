@@ -73,7 +73,8 @@ export function buildPayload(referenceCapture, candidateCapture, provenance = {}
   const blocked = fields.some((field) => field.trustStatus === "blocked");
   const fieldSummary = partitionFields(fields);
   const frameSummary = partitionSamples(fields);
-  const result = blocked ? "blocked" : frameSummary.failed ? "unchanged" : "pass";
+  const hasComparison = fields.length > 0;
+  const result = hasComparison ? (blocked ? "blocked" : frameSummary.failed ? "unchanged" : "pass") : null;
   const failureValue = frameSummary.failed + frameSummary.blocked;
   const timestamp = candidateCapture.generatedAt;
   return {
@@ -84,12 +85,12 @@ export function buildPayload(referenceCapture, candidateCapture, provenance = {}
     adapter: { id: "compare-example", ...provenance },
     trust: { status: blocked ? "blocked" : "pass", reportStatus: result, blockers: blocked ? ["At least one aligned sample is missing."] : [] },
     summary: {
-      runs: { label: "Runs", total: 1, passed: result === "pass" ? 1 : 0, failed: result !== "pass" && result !== "blocked" ? 1 : 0, blocked: result === "blocked" ? 1 : 0 },
+      runs: { label: "Runs", total: hasComparison ? 1 : 0, passed: result === "pass" ? 1 : 0, failed: result !== null && result !== "pass" && result !== "blocked" ? 1 : 0, blocked: result === "blocked" ? 1 : 0 },
       fields: { label: "Fields", ...fieldSummary },
-      frames: { label: "Samples", ...frameSummary, uniqueTicks: ticks.length },
+      frames: { label: "Samples", ...frameSummary, uniqueTicks: hasComparison ? ticks.length : 0 },
     },
-    progress: [{ timestamp, result, value: failureValue, fieldCount: fields.length, failedFieldCount: fieldSummary.failed, frames: ticks.length }],
-    log: [{ timestamp, result, value: failureValue, delta: null, failedFieldCount: fieldSummary.failed, firstFailingTick: fields.map((field) => field.firstFailingTick).filter((tick) => tick !== null).sort((a, b) => a - b)[0] ?? null, firstFailingLabel: fields.find((field) => field.firstFailingTick !== null)?.label ?? null }],
+    progress: hasComparison ? [{ timestamp, result, value: failureValue, fieldCount: fields.length, failedFieldCount: fieldSummary.failed, frames: ticks.length }] : [],
+    log: hasComparison ? [{ timestamp, result, value: failureValue, delta: null, failedFieldCount: fieldSummary.failed, firstFailingTick: fields.map((field) => field.firstFailingTick).filter((tick) => tick !== null).sort((a, b) => a - b)[0] ?? null, firstFailingLabel: fields.find((field) => field.firstFailingTick !== null)?.label ?? null }] : [],
     fields,
   };
 }
