@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config skills/burnlist/dashboard/vite.config.mjs",
-    "test:compare": "node --test skills/burnlist/scripts/compare-data-contract.test.mjs",
+    "test:differential-testing": "node --test skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",

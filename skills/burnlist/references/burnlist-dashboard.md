@@ -2,7 +2,7 @@
 
 Read this reference only when changing or repairing the live Burnlist Progress dashboard, investigating chart/log behavior, or preparing a handoff where chart trust matters.
 
-Burnlist Progress is queue state: active checklist items burn down and completed ledger entries move progress toward `100%`. Checklist is the default Oven for that behavior. Compare is source-backed reference-versus-candidate state: aligned values move toward the trusted reference at a declared active gate. Keep the Compare detail surface separate from this Progress dashboard and bind project data only through its normalized read-only contract.
+Burnlist Progress is queue state: active checklist items burn down and completed ledger entries move progress toward `100%`. Checklist is the default Oven for that behavior. Differential Testing is source-backed reference-versus-candidate state: aligned values move toward the trusted reference under a declared comparison contract. Keep the Differential Testing detail surface separate from this Progress dashboard and bind project data only through its normalized read-only contract.
 
 ## Canonical State
 
@@ -43,7 +43,7 @@ Agents should not start, stop, or announce this server during ordinary Burnlist 
 
 Paginate the main Burnlist table after lifecycle filtering, with `20` rows per page. Store pages in `?page=<number>`, reset to page one when the lifecycle filter changes, clamp invalid or oversized pages, and preserve the current filter and page through detail and back links.
 
-Place `New Oven` and `Run Burn` at the top right of the main table. The normative definition and ownership boundary are in `oven-contract.md`; this UI must preserve them. Checklist and Compare are the only immutable default Ovens. Each positioned detail section chooses a controlled chart type by icon and stores one plain-language metric description; it may remain unbound until a project adapter supplies normalized data. Keep Columns and Rows with the upper Oven definition fields, and use a fixed `50px` row-height constant for newly built skeletons instead of exposing row-height configuration. Persist custom Ovens under ignored `.local/burnlist/ovens/` state and immutable Run snapshots under `.local/burnlist/runs/`. The grid builder should faithfully reuse aiterator's rectangle-drag interaction pattern, but not its raw HTML generation path.
+Place `New Oven` and `Run Burn` at the top right of the main table. The normative definition and ownership boundary are in `oven-contract.md`; this UI must preserve them. Checklist and Differential Testing are the only immutable default Ovens. Each positioned detail section chooses a controlled chart type by icon and stores one plain-language metric description; it may remain unbound until a project adapter supplies normalized data. Keep Columns and Rows with the upper Oven definition fields, and use a fixed `50px` row-height constant for newly built skeletons instead of exposing row-height configuration. Persist custom Ovens under ignored `.local/burnlist/ovens/` state and immutable Run snapshots under `.local/burnlist/runs/`. The grid builder should faithfully reuse aiterator's rectangle-drag interaction pattern, but not its raw HTML generation path.
 
 ## Local Observer State
 

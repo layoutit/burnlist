@@ -22,7 +22,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { BurnActions, NewOvenPage, RunBurnPage } from "@/burn-ovens";
-import { CompareOvenPage } from "@/compare-oven";
+import { DifferentialTestingPage } from "@/differential-testing";
 
 type Filter = "active" | "draft" | "ready" | "complete" | "all";
 
@@ -74,7 +74,7 @@ const PAGE_SIZE = 20;
 
 function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
-  if (window.location.pathname === "/ovens/compare/view") return "compare-oven";
+  if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
@@ -424,9 +424,9 @@ export function App() {
 
   return (
     <div className="min-h-screen">
-      <main className={cn("mx-auto", section === "compare-oven" ? "max-w-none" : "px-4 py-8 sm:px-6 lg:px-8", section === "new-oven" ? "max-w-none" : section === "compare-oven" ? "" : "max-w-7xl")}>
-        {section === "compare-oven" ? (
-          <CompareOvenPage />
+      <main className={cn("mx-auto", section === "differential-testing" ? "max-w-none" : "px-4 py-8 sm:px-6 lg:px-8", section === "new-oven" ? "max-w-none" : section === "differential-testing" ? "" : "max-w-7xl")}>
+        {section === "differential-testing" ? (
+          <DifferentialTestingPage />
         ) : section === "new-oven" ? (
           <NewOvenPage />
         ) : section === "run-burn" ? (

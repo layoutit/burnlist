@@ -52,23 +52,23 @@ if (args[0] === "uninstall") {
   process.exit(removal.status || 0);
 }
 
-if (args[0] === "compare" && args[1] === "schema") {
-  console.log(resolve(packageRoot, "skills", "burnlist", "contracts", "compare-data.schema.json"));
+if (args[0] === "differential-testing" && args[1] === "schema") {
+  console.log(resolve(packageRoot, "skills", "burnlist", "contracts", "differential-testing-data.schema.json"));
   process.exit(0);
 }
 
-if (args[0] === "compare" && args[1] === "validate") {
+if (args[0] === "differential-testing" && args[1] === "validate") {
   if (!args[2]) {
-    console.error("Usage: burnlist compare validate <compare.json>");
+    console.error("Usage: burnlist differential-testing validate <differential-testing.json>");
     process.exit(2);
   }
   try {
     const path = resolve(process.cwd(), args[2]);
     const payload = JSON.parse(readFileSync(path, "utf8"));
-    const { assertCompareData } = await import("../skills/burnlist/scripts/compare-data-contract.mjs");
-    assertCompareData(payload);
+    const { assertDifferentialTestingData } = await import("../skills/burnlist/scripts/differential-testing-data-contract.mjs");
+    assertDifferentialTestingData(payload);
     const sampleCount = payload.fields.reduce((total, field) => total + field.sampleCount, 0);
-    console.log(`Valid Compare data: ${payload.fields.length} fields, ${sampleCount} samples, ${payload.summary.frames.uniqueTicks} aligned ticks.`);
+    console.log(`Valid Differential Testing data: ${payload.fields.length} fields, ${sampleCount} samples, ${payload.summary.frames.uniqueTicks} aligned ticks.`);
     process.exit(0);
   } catch (error) {
     console.error(error.message);
@@ -85,8 +85,8 @@ Usage:
   burnlist --plan <burnlist.md> --digest
   burnlist --close-completed [--scan-root <repo[,repo...]>]
   burnlist --stamp
-  burnlist compare validate <compare.json>
-  burnlist compare schema
+  burnlist differential-testing validate <differential-testing.json>
+  burnlist differential-testing schema
   burnlist uninstall
 
 Options:

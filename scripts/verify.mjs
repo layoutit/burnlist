@@ -44,6 +44,13 @@ const repoSpecificTerms = [
   ["vk", "quake"],
 ].map((parts) => parts.join(""));
 
+function withoutCanonicalTemplateVocabulary(text) {
+  return text
+    .replaceAll(/driving-parity/giu, "")
+    .replaceAll(/driving parity/giu, "")
+    .replaceAll(/parity progress/giu, "");
+}
+
 const leakPatterns = [
   { name: "personal home path", pattern: /\/Users\//u },
   { name: "local username", pattern: /\bekrof\b/u },
@@ -74,7 +81,8 @@ function shouldScanSourceFile(path) {
 
 function assertNoLeaks(label, text) {
   for (const { name, pattern } of leakPatterns) {
-    if (pattern.test(text)) {
+    const source = name === "repo-specific term" ? withoutCanonicalTemplateVocabulary(text) : text;
+    if (pattern.test(source)) {
       console.error(`Leak scan failed in ${label}: ${name}`);
       process.exit(1);
     }
@@ -153,11 +161,52 @@ function assertBuiltInOven(id, expectedName) {
   }
 }
 
-function assertCompareContractAssets() {
-  const schemaPath = resolve(repoRoot, "skills/burnlist/contracts/compare-data.schema.json");
+function assertDifferentialTestingContractAssets() {
+  const schemaPath = resolve(repoRoot, "skills/burnlist/contracts/differential-testing-data.schema.json");
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
-  if (schema.$id !== "urn:burnlist:compare-data:1" || schema.properties?.schema?.const !== "burnlist-compare-data@1") {
-    console.error("Compare JSON Schema id and payload version must describe burnlist-compare-data@1.");
+  if (schema.$id !== "urn:burnlist:differential-testing-data:1" || schema.properties?.schema?.const !== "burnlist-differential-testing-data@1") {
+    console.error("Differential Testing JSON Schema id and payload version must describe burnlist-differential-testing-data@1.");
+    process.exit(1);
+  }
+  if (schema.properties?.telemetry?.$ref !== "#/$defs/telemetry") {
+    console.error("Differential Testing JSON Schema is missing aggregate telemetry.");
+    process.exit(1);
+  }
+  if (schema.properties?.telemetryGate?.$ref !== "#/$defs/telemetryGate") {
+    console.error("Differential Testing JSON Schema is missing configured-scenario gate telemetry.");
+    process.exit(1);
+  }
+  if (schema.properties?.exactSession?.$ref !== "#/$defs/exactSession") {
+    console.error("Differential Testing JSON Schema is missing exact-session authority.");
+    process.exit(1);
+  }
+  const exactSession = schema.$defs?.exactSession;
+  const exactSessionIdentity = schema.$defs?.exactSessionIdentity;
+  const exactDecision = schema.$defs?.exactDecision;
+  const exactResults = new Set(exactSession?.properties?.result?.enum || []);
+  if (!["advanced", "complete", "rejected", "evidence-only", "blocked"].every((result) => exactResults.has(result)) || exactResults.size !== 5) {
+    console.error("Differential Testing exact sessions do not expose the lean composed-loop result set.");
+    process.exit(1);
+  }
+  if (!schema.$defs?.telemetryArtifact?.required?.includes("stateVectorSha256") || !schema.$defs?.telemetryArtifact?.required?.includes("stateVectorCheck")) {
+    console.error("Differential Testing telemetry artifacts do not seal normalized tick/state vectors.");
+    process.exit(1);
+  }
+  const retainedIdentityKeys = ["referenceSha256", "reportSha256", "stateSha256", "runtimeTreeSha256", "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames", "nextBoundary"];
+  if (!retainedIdentityKeys.every((key) => exactSessionIdentity?.required?.includes(key))) {
+    console.error("Differential Testing retained sessions do not directly bind their compact exact authority.");
+    process.exit(1);
+  }
+  if (!exactDecision?.required?.includes("retainedSessionId") || !exactDecision?.required?.includes("candidateSessionId")) {
+    console.error("Differential Testing decisions do not distinguish retained and evaluated sessions.");
+    process.exit(1);
+  }
+  if (schema.$defs?.telemetryGateScenario?.properties?.cadenceFrames?.const !== 10) {
+    console.error("Differential Testing telemetry cadence must be fixed at 10 cleared frames.");
+    process.exit(1);
+  }
+  if (schema.properties?.exactCycles !== undefined || schema.$defs?.exactBinding !== undefined || schema.$defs?.exactComparison !== undefined || schema.$defs?.exactLifecycle !== undefined || schema.$defs?.exactCycle !== undefined) {
+    console.error("Differential Testing still exposes superseded per-candidate ceremony.");
     process.exit(1);
   }
 }
@@ -190,7 +239,8 @@ const jsFiles = [
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "skills/burnlist/dashboard/fallback-burn-ovens.js"),
-  resolve(repoRoot, "skills/burnlist/dashboard/fallback-compare-oven.js"),
+  resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-progress-chart.js"),
+  resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-renderer.js"),
 ].sort();
 
 for (const file of jsFiles) {
@@ -201,10 +251,10 @@ assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "L
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertCompareData(payload)", "Compare data is not validated at the server boundary.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'href="/ovens/compare/view">Compare</a>', "Configured Compare Oven is not linked from the dashboard index.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'href="/ovens/differential-testing/view">Differential Testing</a>', "Configured Differential Testing Oven is not linked from the dashboard index.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
-assertSourceIncludes("bin/burnlist.mjs", "compare validate <compare.json>", "Burnlist CLI is missing Compare data validation help.");
+assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Oven detail page skeleton", "Oven detail skeleton is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "Draft detail section", "Oven inline detail-section editor is missing.");
@@ -227,23 +277,65 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "o
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'option.value === "checklist"', "Fallback Run Burn does not default to Checklist.");
 assertSourceIncludes("skills/burnlist/ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
-assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "fix the capture, adapter, or comparator", "Compare is missing source-fix discipline.");
-assertSourceIncludes("skills/burnlist/ovens/compare/instructions.md", "null values remain distinguishable from numeric zero", "Compare is missing null-preservation discipline.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "null remains distinguishable from numeric zero", "Differential Testing is missing null-preservation discipline.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", 'authority: "telemetry-only"', "Differential Testing is missing the telemetry authority boundary.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", 'authority: "adapter-attested"', "Differential Testing is missing the exact-session attestation boundary.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "one composed candidate transaction", "Differential Testing is missing the lean composed transaction.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "Keep the edit only for `advanced` or `complete`", "Differential Testing is missing the composed keep/reject rule.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "cadence is fixed at 10 newly cleared frames", "Differential Testing is missing the automatic 10-frame cadence.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "No per-candidate ledger", "Differential Testing still requires per-candidate history ceremony.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "full configured-scenario telemetry gate", "Differential Testing is missing configured-gate telemetry discipline.");
+assertSourceExcludes("skills/burnlist/ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
+assertSourceIncludes("skills/burnlist/scripts/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("skills/burnlist/dashboard/src/compare-oven.tsx", 'fetch("/api/oven-data/compare"', "Compare Oven renderer is not bound to normalized Oven data.");
-assertSourceIncludes("skills/burnlist/dashboard/src/compare-oven.tsx", "mountCompareDashboard", "Compare Oven renderer is not using the shared dashboard.");
+assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", 'fetch("/api/oven-data/differential-testing"', "Differential Testing is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "mountDifferentialTestingDashboard", "Differential Testing is not using the shared dashboard.");
+assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "differentialPayloadRevision", "React Differential Testing polling does not observe complete payload revisions.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'id: "comparison"', "Fallback New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", 'read("/api/oven-data/compare"', "Fallback Compare Oven is not bound to normalized Oven data.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", "startCompareDashboardLiveUpdates", "Fallback Compare Oven does not refresh live data.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", "field.samples", "Fallback Compare Oven is missing paired sample charts.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", 'role="button" tabindex="0" aria-expanded=', "Compare field cards do not preserve the reference template interaction contract.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", '<option value="improved">Changed</option>', "Compare controls do not preserve the reference template sort contract.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.js", "filteredPoints.length === 1", "Compare progress does not handle one-run history without a floating label.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.css", "grid-template-columns: 196px minmax(260px, 1fr)", "Compare field cards do not preserve the reference template geometry.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.css", "height: 327px", "Compare top panels do not preserve the reference template height.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.css", ".compare-toggle { font-size: 14px; }", "Compare toolbar groups do not preserve the reference template type scale.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-compare-oven.css", "flex: 0 0 auto;", "Compare log rows can stretch to fill the panel.");
-assertSourceExcludes("skills/burnlist/dashboard/fallback-compare-oven.js", "Targeted Burn", "Compare renderer still hardcodes the source dashboard title.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'read("/api/oven-data/differential-testing"', "Differential Testing is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "exactSession?.exactComparison", "Differential Testing renderer still reads the removed exact-comparison surface.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "reconciled telemetry only", "Differential Testing does not visibly distinguish aggregate telemetry from exact authority.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "field.samples", "Differential Testing is missing paired sample charts.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-metric"', "Differential Testing does not preserve the canonical hybrid metric cell.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-chart"', "Differential Testing does not preserve the canonical hybrid chart cell.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", '`Δ ${value(field.maxDelta)}`', "Differential Testing still invents a Greek delta prefix that the canonical hybrid row never renders.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'failedRatio.toFixed(4)', "Differential Testing does not preserve the canonical four-decimal failure ratio.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-progress-chart.js", "maxTime = Math.max(minTime + 1", "Differential Testing history does not handle one-run data without a floating label.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "spikeThreshold", "Differential Testing history still erases losing telemetry runs that later restore baseline.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-progress-chart.js", "withoutBacktrackedFailedSpikes", "Differential Testing is not using the canonical progress-chart history projection.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "Cards view", "Differential Testing still carries the removed legacy cards view.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "Table view", "Differential Testing still carries the removed legacy table view.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "grid-template-columns: 20% 10% minmax(0, 70%)", "Differential Testing rows do not use the canonical hybrid geometry.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "height: 90px", "Differential Testing collapsed rows do not use the canonical height.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "height: 220px", "Differential Testing expanded rows do not use the canonical height.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "height: 390px", "Differential Testing top panels do not preserve the canonical height.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "inset: 28px 0 0", "Differential Testing top panels do not preserve the shared-card template.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", ".driving-parity-controls .chart-toggle", "Differential Testing toolbar groups do not preserve the shared type scale.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", '--dashboard-title-font: "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', "Differential Testing does not preserve the canonical title font stack.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "font: 13px/1.2 var(--dashboard-title-font);", "Differential Testing controls do not preserve the canonical title font.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "h2 { margin: 0 0 12px; font-size: 16px; font-weight: 400; letter-spacing: 0; }", "Differential Testing panel headings do not preserve the canonical type scale.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'return minutes === 0 ? "now" : minutes + "m";', "Differential Testing Age values do not preserve the canonical minute display.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", '`${hours}h`', "Differential Testing Age values still collapse minutes into hours.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", '<h2 id="progress-panel-title">Parity Progress</h2>', "Differential Testing does not render the canonical progress title.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'id="driving-parity-inline-renderer"', "Differential Testing does not preserve the canonical inline renderer boundary.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "isolateDrivingParityFrame", "Differential Testing still moves the canonical inline renderer into a non-reference frame.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "frame.srcdoc", "Differential Testing still publishes the canonical inline renderer through srcdoc.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "flex: 0 0 auto;", "Differential Testing log rows can stretch to fill the panel.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differential-exact-session", "Differential Testing adds a non-template exact-authority panel.");
+assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "Targeted Burn", "Differential Testing renderer still hardcodes a project workflow title.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
+assertSourceExcludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "exact comparator when used", "React Run Burn still requests the superseded manual comparator workflow.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
 assertSourceIncludes("scripts/register-skills.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the agent skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
@@ -253,20 +345,20 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"
 assertSourceExcludes("skills/burnlist/dashboard/src/app.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("skills/burnlist/scripts/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "compare"]);
+assertBuiltInOvenSet(["checklist", "differential-testing"]);
 assertBuiltInOven("checklist", "Checklist");
-assertBuiltInOven("compare", "Compare");
-assertCompareContractAssets();
+assertBuiltInOven("differential-testing", "Differential Testing");
+assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
-run(process.execPath, ["--test", "skills/burnlist/scripts/compare-data-contract.test.mjs"]);
+run(process.execPath, ["--test", "skills/burnlist/scripts/differential-testing-data-contract.test.mjs"]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
   env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },
 });
 run(process.execPath, ["bin/burnlist.mjs", "--version"]);
 run(process.execPath, ["bin/burnlist.mjs", "--stamp"]);
-run(process.execPath, ["bin/burnlist.mjs", "compare", "schema"]);
+run(process.execPath, ["bin/burnlist.mjs", "differential-testing", "schema"]);
 
 scanSourceLeaks();
 

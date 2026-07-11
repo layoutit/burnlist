@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../fallback-compare-oven.css";
+@import "../differential-testing.css";
 
 @custom-variant dark (&:is(.dark *));
 

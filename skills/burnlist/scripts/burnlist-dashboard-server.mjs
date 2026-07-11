@@ -21,7 +21,7 @@ import {
   normalizeOvenPackage,
   ovenId,
 } from "./oven-contract.mjs";
-import { assertCompareData } from "./compare-data-contract.mjs";
+import { assertDifferentialTestingData } from "./differential-testing-data-contract.mjs";
 
 const args = new Map();
 for (let index = 2; index < process.argv.length; index += 1) {
@@ -53,8 +53,9 @@ const runtimePath = resolve(stateDir, "index.server.json");
 const historyPath = resolve(stateDir, "index.history.jsonl");
 const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fallbackBurnOvensScriptPath = resolve(skillDir, "dashboard", "fallback-burn-ovens.js");
-const fallbackCompareOvenScriptPath = resolve(skillDir, "dashboard", "fallback-compare-oven.js");
-const fallbackCompareOvenStylePath = resolve(skillDir, "dashboard", "fallback-compare-oven.css");
+const differentialTestingScriptPath = resolve(skillDir, "dashboard", "differential-testing-renderer.js");
+const differentialTestingProgressChartPath = resolve(skillDir, "dashboard", "differential-testing-progress-chart.js");
+const differentialTestingStylePath = resolve(skillDir, "dashboard", "differential-testing.css");
 const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 // Read-only compatibility for the short-lived pre-Oven schema. New writes never use these paths.
@@ -1031,7 +1032,7 @@ function fallbackIndex(url) {
   const pagination = totalPages > 1
     ? `<nav class="pagination" aria-label="Burnlist table pages"><span>Showing ${firstIndex + 1}–${Math.min(firstIndex + fallbackPageSize, filteredRows.length)} of ${filteredRows.length}</span><span class="page-controls">${previous}<span>Page ${page} of ${totalPages}</span>${next}</span></nav>`
     : "";
-  const boundOvenActions = ovenDataBindings.has("compare") ? `<a class="action-button" href="/ovens/compare/view">Compare</a>` : "";
+  const boundOvenActions = ovenDataBindings.has("differential-testing") ? `<a class="action-button" href="/ovens/differential-testing/view">Differential Testing</a>` : "";
   return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<header class="page-header"><div class="brand-lockup"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 512 512"><path fill="#d4d4d8" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/></svg><div><h1>Burnlists</h1><p>Let it cook</p></div></div></header><div class="table-toolbar"><nav class="filters" aria-label="Burnlist lifecycle">${filters}</nav><nav class="burn-actions" aria-label="Burn actions">${boundOvenActions}<a class="action-button" href="/ovens/new">New Oven</a><a class="action-button primary" href="/runs/new">Run Burn</a></nav></div><div class="table-wrap"><table><thead><tr><th>Burnlist</th><th>Lifecycle</th><th>Progress</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table>${pagination}</div></main>`;
 }
 
@@ -1047,11 +1048,11 @@ function fallbackNewOven() {
 }
 
 function fallbackRunBurn() {
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>Run Burn</h1><p>Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions.</p></header><form class="form-shell form-card" id="run-form"><label class="field"><span>Oven</span><select id="run-oven" required></select></label><label class="field"><span>Repository</span><select id="run-repo" required></select></label><label class="field"><span>Run title</span><input id="run-title" maxlength="120" placeholder="Release readiness pass" required></label><label class="field"><span>Objective</span><textarea id="run-objective" maxlength="12000" placeholder="Describe the outcome and any Oven-required inputs. For Compare, include the reference, candidate, alignment contract, and comparable rerun procedure." required></textarea></label><p class="hint">The Run snapshots the selected Oven instructions and detail skeleton under ignored local state. It does not execute commands from the instructions.</p><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="create-run" type="submit">Run Burn</button></div><output class="form-status" id="run-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
+  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>Run Burn</h1><p>Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions.</p></header><form class="form-shell form-card" id="run-form"><label class="field"><span>Oven</span><select id="run-oven" required></select></label><label class="field"><span>Repository</span><select id="run-repo" required></select></label><label class="field"><span>Run title</span><input id="run-title" maxlength="120" placeholder="Release readiness pass" required></label><label class="field"><span>Objective</span><textarea id="run-objective" maxlength="12000" placeholder="Describe the outcome and any Oven-required inputs. For Differential Testing, include the trusted reference, scenario/replay/profile, alignment and exact contract, and retained session location." required></textarea></label><p class="hint">The Run snapshots the selected Oven instructions and detail skeleton under ignored local state. It does not execute commands from the instructions.</p><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="create-run" type="submit">Run Burn</button></div><output class="form-status" id="run-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
 }
 
 function dashboardFallback(url) {
-  if (url.pathname === "/ovens/compare/view") return `<main id="compare-root"><div class="compare-empty">Loading Compare Oven.</div></main><link rel="stylesheet" href="/assets/fallback-compare-oven.css"><script src="/assets/fallback-compare-oven.js" type="module"></script>`;
+  if (url.pathname === "/ovens/differential-testing/view") return `<div class="shell driving-parity-view"><div class="empty">Loading Differential Testing Oven.</div></div><link rel="stylesheet" href="/assets/differential-testing.css"><script src="/assets/differential-testing-renderer.js" type="module"></script>`;
   if (url.pathname === "/ovens/new") return fallbackNewOven();
   if (url.pathname === "/runs/new") return fallbackRunBurn();
   const selection = selectedBurnlist(url);
@@ -1106,14 +1107,19 @@ const server = createServer(async (req, res) => {
       javascript(res, 200, readTextFileWithLimit(fallbackBurnOvensScriptPath, 262144, "Fallback Oven script"));
       return;
     }
-    if (url.pathname === "/assets/fallback-compare-oven.js") {
+    if (url.pathname === "/assets/differential-testing-renderer.js") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      javascript(res, 200, readTextFileWithLimit(fallbackCompareOvenScriptPath, 262144, "Fallback Compare Oven script"));
+      javascript(res, 200, readTextFileWithLimit(differentialTestingScriptPath, 262144, "Differential Testing renderer"));
       return;
     }
-    if (url.pathname === "/assets/fallback-compare-oven.css") {
+    if (url.pathname === "/assets/differential-testing-progress-chart.js") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      stylesheet(res, 200, readTextFileWithLimit(fallbackCompareOvenStylePath, 131072, "Fallback Compare Oven style"));
+      javascript(res, 200, readTextFileWithLimit(differentialTestingProgressChartPath, 131072, "Differential Testing progress chart"));
+      return;
+    }
+    if (url.pathname === "/assets/differential-testing.css") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      stylesheet(res, 200, readTextFileWithLimit(differentialTestingStylePath, 131072, "Differential Testing style"));
       return;
     }
     if (url.pathname === "/api/burnlists") {
@@ -1165,7 +1171,7 @@ const server = createServer(async (req, res) => {
       if (!safeStat(path)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
       try {
         const payload = JSON.parse(readTextFileWithLimit(path, maxOvenDataBytes, `Oven ${id} data`));
-        if (id === "compare") assertCompareData(payload);
+        if (id === "differential-testing") assertDifferentialTestingData(payload);
         json(res, 200, { ovenId: id, path, payload });
       } catch (error) {
         json(res, 422, {
@@ -1226,7 +1232,7 @@ const server = createServer(async (req, res) => {
       res.end();
       return;
     }
-    if (["/", "/index.html", "/ovens/new", "/ovens/compare/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res, url);
       return;

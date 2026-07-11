@@ -3,18 +3,18 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { assertCompareData, COMPARE_DATA_SCHEMA } from "../../scripts/compare-data-contract.mjs";
+import { assertDifferentialTestingData, DIFFERENTIAL_TESTING_DATA_SCHEMA } from "../../scripts/differential-testing-data-contract.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const referencePath = resolve(process.argv[2] ?? resolve(here, "reference.json"));
   const candidatePath = resolve(process.argv[3] ?? resolve(here, "candidate.json"));
-  const outputPath = resolve(process.argv[4] ?? resolve(process.cwd(), "compare.example.json"));
+  const outputPath = resolve(process.argv[4] ?? resolve(process.cwd(), "differential-testing.example.json"));
   const reference = JSON.parse(readFileSync(referencePath, "utf8"));
   const candidate = JSON.parse(readFileSync(candidatePath, "utf8"));
   const payload = buildPayload(reference, candidate, { referencePath, candidatePath });
-  assertCompareData(payload);
+  assertDifferentialTestingData(payload);
   mkdirSync(dirname(outputPath), { recursive: true });
   const temporaryPath = `${outputPath}.tmp-${process.pid}`;
   writeFileSync(temporaryPath, `${JSON.stringify(payload, null, 2)}\n`);
@@ -78,11 +78,11 @@ export function buildPayload(referenceCapture, candidateCapture, provenance = {}
   const failureValue = frameSummary.failed + frameSummary.blocked;
   const timestamp = candidateCapture.generatedAt;
   return {
-    schema: COMPARE_DATA_SCHEMA,
-    generatedAt: timestamp,
-    title: "Compare example",
+    schema: DIFFERENTIAL_TESTING_DATA_SCHEMA,
+    publishedAt: timestamp,
+    title: "Differential Testing example",
     subtitle: `${referenceCapture.captureId} / ${candidateCapture.captureId}`,
-    adapter: { id: "compare-example", ...provenance },
+    adapter: { id: "differential-testing-example", ...provenance },
     trust: { status: blocked ? "blocked" : "pass", reportStatus: result, blockers: blocked ? ["At least one aligned sample is missing."] : [] },
     summary: {
       runs: { label: "Runs", total: hasComparison ? 1 : 0, passed: result === "pass" ? 1 : 0, failed: result !== null && result !== "pass" && result !== "blocked" ? 1 : 0, blocked: result === "blocked" ? 1 : 0 },

@@ -940,7 +940,7 @@ export function RunBurnPage() {
               className={[fieldClass, "min-h-44 resize-y"].join(" ")}
               maxLength={12000}
               onChange={(event) => setObjective(event.target.value)}
-              placeholder="Describe the outcome and any Oven-required inputs. For Compare, include the reference, candidate, alignment contract, and comparable rerun procedure."
+              placeholder="Describe the outcome and any Oven-required inputs. For Differential Testing, include the trusted reference, scenario/replay/profile, alignment and exact contract, and retained session location."
               required
               value={objective}
             />

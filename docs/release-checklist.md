@@ -14,5 +14,5 @@ Before sharing this repo:
 - run `npm publish --dry-run`
 - inspect the npm payload for `.local`, `notes/burnlists`, personal paths, secrets, and generated reports
 - confirm the source and npm payload do not contain repo-specific workflow names
-- confirm README wording keeps Checklist and Compare distinct
-- confirm `skills/burnlist/ovens/` contains exactly `checklist` and `compare`
+- confirm README wording keeps Checklist and Differential Testing distinct
+- confirm `skills/burnlist/ovens/` contains exactly `checklist` and `differential-testing`

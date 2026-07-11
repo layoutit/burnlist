@@ -6,7 +6,7 @@
   "cells": [
     {
       "id": "title",
-      "title": "Compare",
+      "title": "Differential Testing",
       "widget": "status",
       "source": "/",
       "format": "plain",
@@ -17,7 +17,7 @@
     },
     {
       "id": "burns",
-      "title": "Burns",
+      "title": "Results",
       "widget": "pie-chart",
       "source": "/log",
       "format": "plain",
@@ -50,24 +50,24 @@
     },
     {
       "id": "progress",
-      "title": "Goal Progress",
+      "title": "Parity Progress",
       "widget": "line-chart",
       "source": "/progress",
       "format": "number",
-      "column": 1,
+      "column": 5,
       "row": 2,
-      "columnSpan": 6,
+      "columnSpan": 8,
       "rowSpan": 5
     },
     {
       "id": "log",
-      "title": "Burn Log",
+      "title": "Parity Progress",
       "widget": "log",
       "source": "/log",
       "format": "plain",
-      "column": 7,
+      "column": 1,
       "row": 2,
-      "columnSpan": 6,
+      "columnSpan": 4,
       "rowSpan": 5
     },
     {

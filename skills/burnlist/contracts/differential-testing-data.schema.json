@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:burnlist:differential-testing-data:1",
+  "title": "Burnlist Differential Testing data",
+  "description": "Structural schema for burnlist-differential-testing-data@1. The packaged validator additionally enforces count reconciliation, state/value agreement, exact cross-field tick alignment, chronology, and summary invariants.",
+  "type": "object",
+  "required": ["schema", "publishedAt", "title", "subtitle", "adapter", "trust", "summary", "progress", "log", "fields"],
+  "properties": {
+    "schema": { "const": "burnlist-differential-testing-data@1" },
+    "publishedAt": { "type": "string", "format": "date-time" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "subtitle": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "adapter": {
+      "type": "object",
+      "required": ["id"],
+      "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 160 } },
+      "additionalProperties": true
+    },
+    "trust": {
+      "type": "object",
+      "required": ["status", "blockers"],
+      "properties": {
+        "status": { "enum": ["pass", "blocked"] },
+        "reportStatus": { "type": ["string", "null"] },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": ["runs", "fields", "frames"],
+      "properties": {
+        "runs": { "$ref": "#/$defs/metric" },
+        "fields": { "$ref": "#/$defs/metric" },
+        "frames": {
+          "allOf": [
+            { "$ref": "#/$defs/metric" },
+            { "type": "object", "required": ["uniqueTicks"], "properties": { "uniqueTicks": { "$ref": "#/$defs/count" } } }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "progress": { "type": "array", "items": { "$ref": "#/$defs/resultRow" } },
+    "log": { "type": "array", "items": { "$ref": "#/$defs/resultRow" } },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "telemetry": { "$ref": "#/$defs/telemetry" },
+    "telemetryGate": { "$ref": "#/$defs/telemetryGate" },
+    "exactSession": { "$ref": "#/$defs/exactSession" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "metric": {
+      "type": "object",
+      "required": ["label", "total", "passed", "failed", "blocked"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "failed": { "$ref": "#/$defs/count" },
+        "blocked": { "$ref": "#/$defs/count" },
+        "status": { "type": ["string", "null"] },
+        "uniqueTicks": { "$ref": "#/$defs/count" }
+      },
+      "additionalProperties": false
+    },
+    "result": { "enum": ["pass", "improved", "unchanged", "worsened", "blocked"] },
+    "resultRow": {
+      "type": "object",
+      "required": ["timestamp", "result", "value"],
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "result": { "$ref": "#/$defs/result" },
+        "value": { "type": "number", "minimum": 0 },
+        "delta": { "type": ["number", "null"] },
+        "fieldCount": { "$ref": "#/$defs/count" },
+        "failedFieldCount": { "$ref": "#/$defs/count" },
+        "frames": { "$ref": "#/$defs/count" },
+        "firstFailingTick": { "type": ["number", "null"] },
+        "firstFailingLabel": { "type": ["string", "null"], "maxLength": 160 },
+        "gateId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "scenarioId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "runtimeTreeSha256": { "$ref": "#/$defs/sha256" },
+        "contractSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "scalar": { "type": ["string", "number", "boolean", "null"] },
+    "sample": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "$ref": "#/$defs/scalar" },
+        { "$ref": "#/$defs/scalar" },
+        { "type": "integer", "minimum": 0, "maximum": 4 }
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "telemetryArtifact": {
+      "type": "object",
+      "required": ["id", "generatedAt", "artifactSha256", "contractSha256", "failedSampleCount", "check", "stateVectorSha256", "stateVectorCheck"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" },
+        "contractSha256": { "$ref": "#/$defs/sha256" },
+        "failedSampleCount": { "$ref": "#/$defs/count" },
+        "check": { "$ref": "#/$defs/exactCheck" },
+        "stateVectorSha256": { "$ref": "#/$defs/sha256" },
+        "stateVectorCheck": { "$ref": "#/$defs/stateVectorCheck" }
+      },
+      "additionalProperties": false
+    },
+    "stateVectorCheck": {
+      "type": "object",
+      "required": ["status", "id", "sha256", "subjectSha256", "artifactSha256"],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "missing"] },
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "telemetryTransition": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "enum": [0, 1] },
+        { "enum": [0, 1] }
+      ],
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "telemetryField": {
+      "type": "object",
+      "required": ["id", "baselineFailedSampleCount", "candidateFailedSampleCount", "failToPassCount", "passToFailCount", "stayedPassCount", "stayedFailCount", "netFailedSampleDelta", "residualCount", "reconciliation", "baselineStates", "transitions"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "baselineFailedSampleCount": { "$ref": "#/$defs/count" },
+        "candidateFailedSampleCount": { "$ref": "#/$defs/count" },
+        "failToPassCount": { "$ref": "#/$defs/count" },
+        "passToFailCount": { "$ref": "#/$defs/count" },
+        "stayedPassCount": { "$ref": "#/$defs/count" },
+        "stayedFailCount": { "$ref": "#/$defs/count" },
+        "netFailedSampleDelta": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "residualCount": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "reconciliation": { "const": "reconciled" },
+        "baselineStates": { "type": "array", "items": { "enum": [0, 1] } },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/telemetryTransition" } }
+      },
+      "additionalProperties": false
+    },
+    "telemetrySummary": {
+      "type": "object",
+      "required": ["failToPassCount", "passToFailCount", "stayedPassCount", "stayedFailCount", "netFailedSampleDelta", "residualCount", "reconciliation"],
+      "properties": {
+        "failToPassCount": { "$ref": "#/$defs/count" },
+        "passToFailCount": { "$ref": "#/$defs/count" },
+        "stayedPassCount": { "$ref": "#/$defs/count" },
+        "stayedFailCount": { "$ref": "#/$defs/count" },
+        "netFailedSampleDelta": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "residualCount": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        "reconciliation": { "const": "reconciled" }
+      },
+      "additionalProperties": false
+    },
+    "telemetryComparison": {
+      "type": "object",
+      "required": ["referenceId", "referenceSha256", "scenarioId", "alignmentKey"],
+      "properties": {
+        "referenceId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "referenceSha256": { "$ref": "#/$defs/sha256" },
+        "scenarioId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "alignmentKey": { "type": "string", "minLength": 1, "maxLength": 160 }
+      },
+      "additionalProperties": false
+    },
+    "telemetry": {
+      "type": "object",
+      "required": ["status", "authority", "blockers"],
+      "properties": {
+        "status": { "enum": ["comparable", "blocked"] },
+        "authority": { "const": "telemetry-only" },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "comparison": { "$ref": "#/$defs/telemetryComparison" },
+        "baseline": { "$ref": "#/$defs/telemetryArtifact" },
+        "candidate": { "$ref": "#/$defs/telemetryArtifact" },
+        "summary": { "$ref": "#/$defs/telemetrySummary" },
+        "fields": { "type": "array", "items": { "$ref": "#/$defs/telemetryField" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "comparable" } }, "required": ["status"] },
+          "then": {
+            "required": ["comparison", "baseline", "candidate", "summary", "fields"],
+            "properties": { "blockers": { "maxItems": 0 } }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
+          "then": {
+            "properties": { "blockers": { "minItems": 1 } },
+            "not": { "anyOf": [{ "required": ["summary"] }, { "required": ["fields"] }] }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "telemetryGateScenario": {
+      "type": "object",
+      "required": ["id", "frameCount", "cadenceFrames", "replaySha256", "profileSha256", "contractSha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "frameCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "cadenceFrames": { "const": 10 },
+        "replaySha256": { "$ref": "#/$defs/sha256" },
+        "profileSha256": { "$ref": "#/$defs/sha256" },
+        "contractSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "telemetryGateReport": {
+      "type": "object",
+      "required": ["id", "generatedAt", "artifactSha256", "runtimeTreeSha256", "contractSha256", "scenarioId", "frameCount", "completedBoundary", "replaySha256", "profileSha256", "result", "check"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" },
+        "runtimeTreeSha256": { "$ref": "#/$defs/sha256" },
+        "contractSha256": { "$ref": "#/$defs/sha256" },
+        "scenarioId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "frameCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "completedBoundary": { "$ref": "#/$defs/count" },
+        "replaySha256": { "$ref": "#/$defs/sha256" },
+        "profileSha256": { "$ref": "#/$defs/sha256" },
+        "result": { "$ref": "#/$defs/result" },
+        "check": { "$ref": "#/$defs/exactCheck" }
+      },
+      "additionalProperties": false
+    },
+    "telemetryGate": {
+      "type": "object",
+      "required": ["status", "authority", "blockers", "configuredScenario", "clearedPrefixFrames", "completedBoundary", "nextBoundary", "gateId"],
+      "properties": {
+        "status": { "enum": ["not-due", "current", "blocked"] },
+        "authority": { "const": "telemetry-only" },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "configuredScenario": { "$ref": "#/$defs/telemetryGateScenario" },
+        "clearedPrefixFrames": { "$ref": "#/$defs/count" },
+        "completedBoundary": { "$ref": "#/$defs/count" },
+        "nextBoundary": { "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 9007199254740991 }, { "type": "null" }] },
+        "gateId": { "type": ["string", "null"], "maxLength": 160 },
+        "report": { "$ref": "#/$defs/telemetryGateReport" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "current" } }, "required": ["status"] },
+          "then": { "required": ["report"], "properties": { "gateId": { "type": "string", "minLength": 1 }, "blockers": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not-due" } }, "required": ["status"] },
+          "then": { "properties": { "gateId": { "type": "null" }, "blockers": { "maxItems": 0 } }, "not": { "required": ["report"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
+          "then": { "properties": { "blockers": { "minItems": 1 } } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "exactCheck": {
+      "type": "object",
+      "required": ["status", "id", "sha256", "subjectSha256"],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "missing"] },
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "subjectSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "exactSessionIdentity": {
+      "type": "object",
+      "required": ["id", "generatedAt", "scenarioId", "scenarioFrameCount", "profileId", "runtimeSide", "reportSha256", "stateSha256", "referenceSha256", "runtimeTreeSha256", "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames", "nextBoundary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "scenarioId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "scenarioFrameCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "profileId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "runtimeSide": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "stateSha256": { "$ref": "#/$defs/sha256" },
+        "referenceSha256": { "$ref": "#/$defs/sha256" },
+        "runtimeTreeSha256": { "$ref": "#/$defs/sha256" },
+        "replaySha256": { "$ref": "#/$defs/sha256" },
+        "profileSha256": { "$ref": "#/$defs/sha256" },
+        "contractSha256": { "$ref": "#/$defs/sha256" },
+        "clearedPrefixFrames": { "$ref": "#/$defs/count" },
+        "nextBoundary": { "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 9007199254740991 }, { "type": "null" }] }
+      },
+      "additionalProperties": false
+    },
+    "exactContract": {
+      "type": "object",
+      "required": ["schema", "sha256", "scope", "order", "numericAuthority", "retentionScope"],
+      "properties": {
+        "schema": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "order": { "const": ["frame", "control", "tick", "call", "phaseOrder", "phase", "operationId", "fieldId"] },
+        "numericAuthority": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "retentionScope": { "type": "string", "minLength": 1, "maxLength": 160 }
+      },
+      "additionalProperties": false
+    },
+    "exactFrontier": {
+      "type": "object",
+      "required": ["kind", "frame", "control", "tick", "call", "phaseOrder", "phase", "fieldId", "label", "sourceOwner", "operationId", "reference", "candidate", "referenceBits", "candidateBits", "prefixCount", "prefixSha256"],
+      "properties": {
+        "kind": { "enum": ["divergence", "complete"] },
+        "frame": { "$ref": "#/$defs/count" },
+        "control": { "type": ["integer", "null"], "minimum": 0 },
+        "tick": { "type": "number" },
+        "call": { "type": ["integer", "null"], "minimum": 0 },
+        "phaseOrder": { "type": ["integer", "null"], "minimum": 0 },
+        "phase": { "type": ["string", "null"], "maxLength": 160 },
+        "fieldId": { "type": ["string", "null"], "maxLength": 160 },
+        "label": { "type": ["string", "null"], "maxLength": 160 },
+        "sourceOwner": { "type": ["string", "null"], "maxLength": 500 },
+        "operationId": { "type": ["string", "null"], "maxLength": 160 },
+        "reference": { "$ref": "#/$defs/scalar" },
+        "candidate": { "$ref": "#/$defs/scalar" },
+        "referenceBits": { "type": ["string", "null"], "maxLength": 160 },
+        "candidateBits": { "type": ["string", "null"], "maxLength": 160 },
+        "prefixCount": { "$ref": "#/$defs/count" },
+        "prefixSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "exactProducer": {
+      "type": "object",
+      "required": ["fieldId", "label", "sourceOwner", "sourceAnchor", "operationId", "frame", "tick", "phase", "candidateClass", "verdict", "lifecycle", "inputProof", "provenance", "dependencyCoverage", "oracleMode", "sourceOrder", "changeScope"],
+      "properties": {
+        "fieldId": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceOwner": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "sourceAnchor": { "type": ["string", "null"], "maxLength": 1000 },
+        "operationId": { "type": ["string", "null"], "maxLength": 160 },
+        "frame": { "$ref": "#/$defs/count" },
+        "tick": { "type": "number" },
+        "phase": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "candidateClass": { "enum": ["edit-candidate", "input-trace", "carrier", "render-symptom", "lifetime-symptom", "diagnostic", "coverage-gap", "symptom"] },
+        "verdict": { "enum": ["actionable", "trace-first", "evidence-gap"] },
+        "lifecycle": { "enum": ["source-phase", "mechanics", "contact", "render-committed", "top-level", "diagnostic", "mixed", "unknown"] },
+        "inputProof": { "enum": ["proven", "not-applicable", "drifting", "missing", "unknown"] },
+        "provenance": { "enum": ["source-provided", "not-applicable", "substitute", "generic-default", "mixed", "missing", "unknown"] },
+        "dependencyCoverage": { "enum": ["covered", "not-applicable", "gap", "unknown"] },
+        "oracleMode": { "enum": ["strict", "numeric-toleranced", "diagnostic", "source-blocked", "noisy"] },
+        "sourceOrder": { "enum": ["single-operation", "atomic-proven", "unproven"] },
+        "changeScope": { "enum": ["single-source-coherent", "atomic-source-order", "unproven"] }
+      },
+      "additionalProperties": false
+    },
+    "exactDecision": {
+      "type": "object",
+      "required": ["kind", "targetFieldId", "targetLabel", "nextAction", "blockers", "retainedSessionId", "candidateSessionId"],
+      "properties": {
+        "kind": { "enum": ["runtime-change", "evidence-change", "complete", "blocked"] },
+        "targetFieldId": { "type": ["string", "null"], "maxLength": 160 },
+        "targetLabel": { "type": ["string", "null"], "maxLength": 160 },
+        "nextAction": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "retainedSessionId": { "type": ["string", "null"], "maxLength": 160 },
+        "candidateSessionId": { "type": ["string", "null"], "maxLength": 160 }
+      },
+      "additionalProperties": false
+    },
+    "exactSession": {
+      "type": "object",
+      "required": ["strategy", "status", "authority", "blockers", "result", "decision"],
+      "properties": {
+        "strategy": { "const": "exact-first" },
+        "status": { "enum": ["ready", "complete", "blocked"] },
+        "authority": { "const": "adapter-attested" },
+        "blockers": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "result": { "enum": ["advanced", "complete", "rejected", "evidence-only", "blocked"] },
+        "session": { "$ref": "#/$defs/exactSessionIdentity" },
+        "contract": { "$ref": "#/$defs/exactContract" },
+        "frontier": { "$ref": "#/$defs/exactFrontier" },
+        "producer": { "$ref": "#/$defs/exactProducer" },
+        "decision": { "$ref": "#/$defs/exactDecision" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "ready" } }, "required": ["status"] },
+          "then": { "required": ["session", "contract", "frontier", "producer"], "properties": { "blockers": { "maxItems": 0 }, "result": { "enum": ["advanced", "rejected", "evidence-only"] }, "frontier": { "properties": { "kind": { "const": "divergence" } } } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "complete" } }, "required": ["status"] },
+          "then": {
+            "required": ["session", "contract", "frontier"],
+            "properties": {
+              "blockers": { "maxItems": 0 },
+              "result": { "const": "complete" },
+              "frontier": { "properties": { "kind": { "const": "complete" } } },
+              "decision": { "properties": { "kind": { "const": "complete" } } }
+            },
+            "not": { "required": ["producer"] }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "blocked" } }, "required": ["status"] },
+          "then": {
+            "properties": {
+              "blockers": { "minItems": 1 },
+              "result": { "const": "blocked" },
+              "decision": { "properties": { "kind": { "const": "blocked" } } }
+            },
+            "not": { "required": ["producer"] }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "required": ["id", "label", "sourceOwner", "semantics", "unit", "tolerance", "trustStatus", "driftClass", "driftReason", "sampleCount", "failedSampleCount", "missingSampleCount", "firstFailingTick", "maxDelta", "samples"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceOwner": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "semantics": {
+          "type": "object",
+          "required": ["meaning"],
+          "properties": { "meaning": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+          "additionalProperties": true
+        },
+        "unit": { "type": ["string", "null"], "maxLength": 80 },
+        "tolerance": { "type": "number", "minimum": 0 },
+        "trustStatus": { "enum": ["pass", "blocked"] },
+        "driftClass": { "type": ["string", "null"], "maxLength": 120 },
+        "driftReason": { "type": ["string", "null"], "maxLength": 2000 },
+        "sampleCount": { "$ref": "#/$defs/count" },
+        "failedSampleCount": { "$ref": "#/$defs/count" },
+        "missingSampleCount": { "$ref": "#/$defs/count" },
+        "firstFailingTick": { "type": ["number", "null"] },
+        "maxDelta": { "type": ["number", "null"], "minimum": 0 },
+        "samples": { "type": "array", "items": { "$ref": "#/$defs/sample" } }
+      },
+      "additionalProperties": true
+    }
+  }
+}
