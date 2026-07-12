@@ -104,7 +104,7 @@ Do not split this transaction into manual capture, locate, compare, refresh, or 
 
 ## Event-Driven Refresh
 
-Every newly advanced exact prefix automatically requests a full configured-scenario refresh. The project-owned service, not the agent and not Burnlist, moves the request through `queued`, `running`, `complete`, or `failed`. It may coalesce several pending advancement events into the newest revision.
+The first durably retained exact scenario automatically requests `scenario-initialized` publication before any full-scenario report exists. An unavailable initialization signal is retried by the next composed-loop invocation, never manually by the agent. Every newly advanced exact prefix automatically requests `exact-prefix-advanced` full configured-scenario refresh. The project-owned service, not the agent and not Burnlist, moves either request through `queued`, `running`, `complete`, or `failed`. It may coalesce several pending advancement events into the newest revision.
 
 The refresh does not recapture exact evidence, rebuild the candidate decision, or rerun exact extraction. Refresh failures, exit status, aggregate totals, intervals, and charts remain telemetry only. They never accept or reject an engine edit. Bounded candidate evidence must not promote the selected scenario's current full-scenario report; only the project refresh service may do that.
 

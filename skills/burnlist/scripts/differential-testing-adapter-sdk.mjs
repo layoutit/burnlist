@@ -281,8 +281,8 @@ export function publishDifferentialTestingOvenBundle({
   const temporaryLink = resolve(parent, `.${outputName}.${process.pid}.${randomUUID()}.link`);
   mkdirSync(resolve(generation, "scenarios"), { recursive: true });
   try {
-    for (const [scenarioId, payload] of payloads) writeJsonAtomic(resolve(generation, "scenarios", `${scenarioId}.json`), payload);
-    writeJsonAtomic(resolve(generation, "current.json"), currentPayload);
+    for (const [scenarioId, payload] of payloads) writeJsonAtomic(resolve(generation, "scenarios", `${scenarioId}.json`), payload, { compact: true });
+    writeJsonAtomic(resolve(generation, "current.json"), currentPayload, { compact: true });
     if (existsSync(root) && !lstatSync(root).isSymbolicLink()) throw new Error(`Oven bundle path must be an atomic symlink: ${root}`);
     symlinkSync(basename(generation), temporaryLink, "dir");
     renameSync(temporaryLink, root);
@@ -538,11 +538,11 @@ function assertNoSymlinkComponents(root, target, label) {
   }
 }
 
-function writeJsonAtomic(path, value) {
+function writeJsonAtomic(path, value, { compact = false } = {}) {
   mkdirSync(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`);
+    writeFileSync(temporary, `${JSON.stringify(value, null, compact ? undefined : 2)}\n`);
     renameSync(temporary, path);
   } finally {
     rmSync(temporary, { force: true });

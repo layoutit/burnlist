@@ -27,7 +27,7 @@ When an adapter declares exact-first mode, the normalized runtime target follows
 
 These surfaces do not collapse into each other. Tolerance-state transitions locate changed evidence. Exact-prefix movement requires no earlier divergence and a strictly later exact prefix. Only `advanced` or `complete` retains a changed engine candidate.
 
-Every exact-prefix advancement requests a full-scenario telemetry refresh. The project-owned service coalesces requests, publishes `queued` and `running` while work is in flight, then atomically publishes `complete` with a checked report or `failed` with an error. Aggregate totals, transitions, exit status, intervals, absence, failure, or lag cannot authorize or veto retention.
+The first durably retained exact scenario automatically requests scenario initialization, even before a full-scenario report exists. If that signal is unavailable, the next composed-loop invocation retries it without agent intervention. Every later exact-prefix advancement requests a full-scenario telemetry refresh. The project-owned service coalesces requests, publishes `queued` and `running` while work is in flight, then atomically publishes `complete` with a checked report or `failed` with an error. Aggregate totals, transitions, exit status, intervals, absence, failure, or lag cannot authorize or veto retention.
 
 ## Lean Exact-First Workflow
 
@@ -35,7 +35,7 @@ The project owns one composed candidate transaction:
 
 1. Read the retained first-failure session and trace its exact field to an edit-ready source-owned producer.
 2. Apply one source-coherent engine change and run focused cheap checks.
-3. Invoke the composed loop once. It runs the engine once, extracts the exact prefix once, compares directly with the retained summary, publishes one result, and automatically requests a refresh when the exact prefix advances.
+3. Invoke the composed loop once. It runs the engine once, extracts the exact prefix once, compares directly with the retained summary, publishes one result, and automatically requests initial scenario registration or a refresh when the exact prefix advances.
 4. Keep the change for `advanced` or `complete`. Reverse only the latest change for `rejected`. Treat `evidence-only` as source/tool evidence progress and `blocked` as a named seam to repair.
 5. Continue immediately from the retained next frontier.
 

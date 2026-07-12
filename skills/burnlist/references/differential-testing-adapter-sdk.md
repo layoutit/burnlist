@@ -66,7 +66,7 @@ One process may own a store at a time. Interrupted `running` jobs are automatica
 
 ## Signal Client
 
-`submitDifferentialTestingRequest({ endpoint, request })` performs the generic HTTP POST and reports `queued`, `rejected`, or `unavailable`. The project composes and seals the request before calling it. The client does not inspect evidence or retry manually on behalf of an agent.
+`submitDifferentialTestingRequest({ endpoint, request })` performs the generic HTTP POST and reports `queued`, `rejected`, or `unavailable`. The project composes and seals the request before calling it. After durably publishing the first retained exact session, the composed loop automatically submits a `scenario-initialized` request; if unavailable, its next invocation retries. Later retained exact-prefix advances submit `exact-prefix-advanced`. The client does not inspect evidence or retry manually on behalf of an agent.
 
 ## Worker HTTP Handler
 
@@ -81,7 +81,7 @@ One process may own a store at a time. Interrupted `running` jobs are automatica
 - `scenarioPayloads`: a `Map` or object keyed by scenario id
 - `keepGenerations`: optional retained generation count from 1 through 20
 
-Every payload is checked with the packaged Differential Testing validator. Payload keys must exactly equal all catalog scenario ids, all scenario documents must carry the same catalog, each file must select its own key, and `currentPayload` must exactly equal the selected scenario document. Publication writes a complete generation and atomically switches the stable symlink only after all checks pass.
+Every payload is checked with the packaged Differential Testing validator. Payload keys must exactly equal all catalog scenario ids, all scenario documents must carry the same catalog, each file must select its own key, and `currentPayload` must exactly equal the selected scenario document. Publication writes compact JSON into a complete generation and atomically switches the stable symlink only after all checks pass.
 
 ## Project-Owned Authority
 
@@ -94,5 +94,10 @@ The SDK deliberately does not provide generic implementations for:
 - full-scenario command selection
 - report/field/producer projection
 - causal-successor semantics
+- retention and cleanup of project artifacts
 
 These are project facts. An adapter that cannot prove them must publish blocked state rather than configure Burnlist to guess them.
+
+Before canonical commit, `publishTelemetry` should validate a sealed project proof binding the request id, scenario id, triggering artifact and event kind, exact contract, runtime tree, and cleared-frame movement. Scenario initialization uses no baseline; an exact-prefix advancement must prove a strictly later cleared prefix.
+
+Project cleanup must treat every artifact referenced by the current request, pending request, retained exact session, canonical manifest, and stable report aliases as pinned. Invalid refresh state cannot authorize deletion. This retention policy remains project-owned because job and artifact layouts are deliberately opaque to the SDK.

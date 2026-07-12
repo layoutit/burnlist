@@ -190,8 +190,12 @@ test("generic Oven publisher validates and atomically switches a scenario bundle
     });
     assert.equal(published.scenarioCount, 1);
     assert.equal((await lstat(outputRoot)).isSymbolicLink(), true);
-    assert.deepEqual(JSON.parse(await readFile(join(outputRoot, "current.json"), "utf8")), payload);
-    assert.deepEqual(JSON.parse(await readFile(join(outputRoot, "scenarios", `${scenarioId}.json`), "utf8")), payload);
+    const currentBytes = await readFile(join(outputRoot, "current.json"), "utf8");
+    const scenarioBytes = await readFile(join(outputRoot, "scenarios", `${scenarioId}.json`), "utf8");
+    assert.equal(currentBytes, `${JSON.stringify(payload)}\n`);
+    assert.equal(scenarioBytes, `${JSON.stringify(payload)}\n`);
+    assert.deepEqual(JSON.parse(currentBytes), payload);
+    assert.deepEqual(JSON.parse(scenarioBytes), payload);
 
     const secondScenarioId = "fedcba9876543210";
     const catalog = [payload.scenarioCatalog.scenarios[0], { ...payload.scenarioCatalog.scenarios[0], id: secondScenarioId, label: "Second scenario" }];
