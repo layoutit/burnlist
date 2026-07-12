@@ -1,5 +1,6 @@
 .DS_Store
 .local/
+docs/
 notes/burnlists/
 dist/
 node_modules/
