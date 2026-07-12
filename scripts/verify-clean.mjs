@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tmpRoot = mkdtempSync(join(tmpdir(), "burnlist-clean-"));
 const cleanRoot = join(tmpRoot, "burnlist");
-const excludeNames = new Set([".DS_Store", ".git", ".local", "build", "dist", "node_modules", "output"]);
-const excludePaths = new Set(["notes/burnlists"]);
+const excludeNames = new Set([".DS_Store", ".git", ".local", "build", "node_modules", "output"]);
+const excludePaths = new Set(["dist", "notes/burnlists"]);
 
 function run(command, args, cwd) {
   const label = [command, ...args].join(" ");
@@ -49,6 +49,7 @@ function copyTree(source, target) {
 
 let exitCode = 0;
 try {
+  run("npm", ["run", "build:dashboard"], repoRoot);
   copyTree(repoRoot, cleanRoot);
   if (!existsSync(join(cleanRoot, "package.json"))) {
     throw new Error("Clean copy is missing package.json.");

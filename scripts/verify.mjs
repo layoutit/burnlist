@@ -255,7 +255,7 @@ for (const file of jsFiles) {
   run(process.execPath, ["--check", relative(repoRoot, file)]);
 }
 
-assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", "Let it cook", "Dashboard page is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", ">Ovens</h1>", "Dashboard page is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", "<ChecklistDashboard", "Checklist Oven is not using the canonical React dashboard.");
 for (const surface of ["ProgressPanel", "Timeline", "Target", "Log", "RepoGraph", "Changes"]) {
   assertSourceIncludes("skills/burnlist/dashboard/src/checklist-dashboard.tsx", `function ${surface}`, `Checklist dashboard is missing ${surface}.`);

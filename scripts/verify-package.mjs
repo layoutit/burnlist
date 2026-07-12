@@ -48,11 +48,19 @@ const required = [
   "skills/burnlist/dashboard/differential-testing.css",
   "skills/burnlist/dashboard/differential-testing-progress-chart.js",
   "skills/burnlist/dashboard/differential-testing-renderer.js",
+  "skills/burnlist/dashboard/dist/index.html",
 ];
 
 for (const path of required) {
   if (!files.has(path)) {
     console.error(`npm package is missing required file: ${path}`);
+    process.exit(1);
+  }
+}
+
+for (const extension of [".css", ".js"]) {
+  if (![...files.keys()].some((path) => path.startsWith("skills/burnlist/dashboard/dist/assets/") && path.endsWith(extension))) {
+    console.error(`npm package is missing the built dashboard ${extension} asset.`);
     process.exit(1);
   }
 }
