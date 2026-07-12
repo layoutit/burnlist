@@ -172,8 +172,12 @@ function assertDifferentialTestingContractAssets() {
     console.error("Differential Testing JSON Schema is missing aggregate telemetry.");
     process.exit(1);
   }
-  if (schema.properties?.telemetryGate?.$ref !== "#/$defs/telemetryGate") {
-    console.error("Differential Testing JSON Schema is missing configured-scenario gate telemetry.");
+  if (schema.properties?.scenarioCatalog?.$ref !== "#/$defs/scenarioCatalog") {
+    console.error("Differential Testing JSON Schema is missing scenario selection metadata.");
+    process.exit(1);
+  }
+  if (schema.properties?.refresh?.$ref !== "#/$defs/refresh") {
+    console.error("Differential Testing JSON Schema is missing event-driven refresh state.");
     process.exit(1);
   }
   if (schema.properties?.exactSession?.$ref !== "#/$defs/exactSession") {
@@ -192,7 +196,7 @@ function assertDifferentialTestingContractAssets() {
     console.error("Differential Testing telemetry artifacts do not seal normalized tick/state vectors.");
     process.exit(1);
   }
-  const retainedIdentityKeys = ["referenceSha256", "reportSha256", "stateSha256", "runtimeTreeSha256", "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames", "nextBoundary"];
+  const retainedIdentityKeys = ["referenceSha256", "reportSha256", "stateSha256", "runtimeTreeSha256", "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames"];
   if (!retainedIdentityKeys.every((key) => exactSessionIdentity?.required?.includes(key))) {
     console.error("Differential Testing retained sessions do not directly bind their compact exact authority.");
     process.exit(1);
@@ -201,11 +205,16 @@ function assertDifferentialTestingContractAssets() {
     console.error("Differential Testing decisions do not distinguish retained and evaluated sessions.");
     process.exit(1);
   }
-  if (schema.$defs?.telemetryGateScenario?.properties?.cadenceFrames?.const !== 10) {
-    console.error("Differential Testing telemetry cadence must be fixed at 10 cleared frames.");
+  const refreshStatuses = new Set(schema.$defs?.refreshRecord?.properties?.status?.enum || []);
+  if (!["queued", "running", "complete", "failed"].every((status) => refreshStatuses.has(status)) || refreshStatuses.size !== 4) {
+    console.error("Differential Testing refresh state must expose queued, running, complete, and failed.");
     process.exit(1);
   }
-  if (schema.properties?.exactCycles !== undefined || schema.$defs?.exactBinding !== undefined || schema.$defs?.exactComparison !== undefined || schema.$defs?.exactLifecycle !== undefined || schema.$defs?.exactCycle !== undefined) {
+  if (!schema.$defs?.scenarioCatalog?.properties?.selectedScenarioId?.anyOf?.some((entry) => entry.type === "null") || !schema.$defs?.refresh?.anyOf?.some((entry) => entry.type === "null")) {
+    console.error("Differential Testing does not expose the explicit empty scenario bundle.");
+    process.exit(1);
+  }
+  if (schema.properties?.telemetryGate !== undefined || schema.$defs?.telemetryGate !== undefined || schema.$defs?.telemetryGateScenario !== undefined || schema.properties?.exactCycles !== undefined || schema.$defs?.exactBinding !== undefined || schema.$defs?.exactComparison !== undefined || schema.$defs?.exactLifecycle !== undefined || schema.$defs?.exactCycle !== undefined) {
     console.error("Differential Testing still exposes superseded per-candidate ceremony.");
     process.exit(1);
   }
@@ -251,11 +260,27 @@ assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "L
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
+assertSourceIncludes("skills/burnlist/scripts/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'href="/ovens/differential-testing/view">Differential Testing</a>', "Configured Differential Testing Oven is not linked from the dashboard index.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Oven detail page skeleton", "Oven detail skeleton is missing.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "legacy-detail-origin", "Burnlist still accepts the retired detail proxy.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/types"', "Burnlist still exposes the retired type API.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/types/new"', "Burnlist still redirects the retired type UI.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"definition.md"', "Burnlist still discovers retired Oven filenames.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"dashboard.json"', "Burnlist still discovers retired Oven detail filenames.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'value.instructions ?? value.definition', "Oven creation still accepts the retired definition field.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'value.detail ?? value.dashboard', "Oven creation still accepts the retired dashboard field.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"typeId"', "Burn runs still accept the retired typeId field.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'record.typeId', "Burn run reads still accept retired typeId records.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/assets/fallback-burn-types.js", "Burnlist still exposes the retired type asset alias.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '["api", "ovens", "types", "runs"]', "Burnlist still reserves the retired types route.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "Draft detail section", "Oven inline detail-section editor is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "grid-chart-type", "Oven chart-type icon picker is missing.");
@@ -283,17 +308,17 @@ assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", 'authority: "adapter-attested"', "Differential Testing is missing the exact-session attestation boundary.");
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "one composed candidate transaction", "Differential Testing is missing the lean composed transaction.");
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "Keep the edit only for `advanced` or `complete`", "Differential Testing is missing the composed keep/reject rule.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "cadence is fixed at 10 newly cleared frames", "Differential Testing is missing the automatic 10-frame cadence.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "Every newly advanced exact prefix automatically requests", "Differential Testing is missing automatic event-driven refresh.");
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "No per-candidate ledger", "Differential Testing still requires per-candidate history ceremony.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "full configured-scenario telemetry gate", "Differential Testing is missing configured-gate telemetry discipline.");
+assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
 assertSourceExcludes("skills/burnlist/ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("skills/burnlist/scripts/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", 'fetch("/api/oven-data/differential-testing"', "Differential Testing is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "/api/oven-data/differential-testing?scenario=", "Differential Testing React view is not bound to read-only scenario selection.");
 assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "mountDifferentialTestingDashboard", "Differential Testing is not using the shared dashboard.");
 assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "differentialPayloadRevision", "React Differential Testing polling does not observe complete payload revisions.");
 assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'id: "comparison"', "Fallback New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'read("/api/oven-data/differential-testing"', "Differential Testing is not bound to normalized Oven data.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "/api/oven-data/differential-testing?scenario=", "Differential Testing is not bound to read-only scenario selection.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
@@ -309,7 +334,7 @@ assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-metric"', "Differential Testing does not preserve the canonical hybrid metric cell.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-chart"', "Differential Testing does not preserve the canonical hybrid chart cell.");
 assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", '`Δ ${value(field.maxDelta)}`', "Differential Testing still invents a Greek delta prefix that the canonical hybrid row never renders.");
-assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'failedRatio.toFixed(4)', "Differential Testing does not preserve the canonical four-decimal failure ratio.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'value(field.maxDelta)', "Differential Testing drops the canonical plain numeric value line.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-progress-chart.js", "maxTime = Math.max(minTime + 1", "Differential Testing history does not handle one-run data without a floating label.");
 assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", "spikeThreshold", "Differential Testing history still erases losing telemetry runs that later restore baseline.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-progress-chart.js", "withoutBacktrackedFailedSpikes", "Differential Testing is not using the canonical progress-chart history projection.");
@@ -351,7 +376,11 @@ assertBuiltInOven("differential-testing", "Differential Testing");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
-run(process.execPath, ["--test", "skills/burnlist/scripts/differential-testing-data-contract.test.mjs"]);
+run(process.execPath, [
+  "--test",
+  "skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
+  "skills/burnlist/scripts/repo-map.test.mjs",
+]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
   env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },

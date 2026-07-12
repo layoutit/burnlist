@@ -16,14 +16,16 @@ Anyone can create a custom Oven. Burnlist stores it under local state and snapsh
 
 ## Differential Testing data
 
-Projects can feed the shared Differential Testing renderer without importing project code. Produce one `burnlist-differential-testing-data@1` JSON file, validate it, then bind it read-only:
+Projects can feed the shared Differential Testing renderer without importing project code. Publish a `burnlist-differential-testing-data@1` current payload plus catalog-listed sibling scenario payloads, validate the current payload, then bind it read-only:
 
 ```sh
-burnlist differential-testing validate /absolute/path/to/differential-testing.json
-burnlist --oven-data differential-testing=/absolute/path/to/differential-testing.json
+burnlist differential-testing validate /absolute/path/to/bundle/current.json
+burnlist --oven-data differential-testing=/absolute/path/to/bundle/current.json
 ```
 
-Run `burnlist differential-testing schema` to locate the packaged JSON Schema. The [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) defines sample states, reconciliation, history identity, the adapter boundary, aggregate telemetry, and adapter-attested exact sessions with fail-closed Target selection. Exact-prefix verification is the only retention authority; configured full-scenario gates remain telemetry.
+Run `burnlist differential-testing schema` to locate the packaged JSON Schema. The [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) defines sample states, reconciliation, scenario selection, event-driven refresh state, history identity, the adapter boundary, aggregate telemetry, and adapter-attested exact sessions with fail-closed Target selection. Exact-prefix verification is the only retention authority; refresh state remains telemetry.
+
+A project with no canonical scenarios publishes the explicit empty bundle state; Burnlist shows `No Differential Testing scenarios` and does not discover legacy files.
 
 ## Install
 

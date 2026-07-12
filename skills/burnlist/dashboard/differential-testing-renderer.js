@@ -3,12 +3,30 @@ import {
   renderDifferentialTestingProgressChart,
 } from "./differential-testing-progress-chart.js";
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 export function differentialSampleStateIsNonPass(sampleState) {
   return sampleState !== 0;
 }
 
 export function differentialPayloadRevision(payload) {
   return JSON.stringify(payload ?? null);
+}
+
+export function differentialRefreshStatusLabel(refresh, clientStatus = null) {
+  if (clientStatus === "loading") return "Loading";
+  if (clientStatus === "failed") return "Update failed";
+  if (refresh?.status === "queued") return "Queued";
+  if (refresh?.status === "running") return "Updating";
+  if (refresh?.status === "failed") return "Update failed";
+  return "";
 }
 
 export function differentialHistoryPoints(points) {
@@ -126,7 +144,7 @@ export function differentialExactTarget(payload) {
   return { mode: "exact", status: "ready", fieldId: decision.targetFieldId, label: decision.targetLabel, reason: decision.nextAction };
 }
 
-export function mountDifferentialTestingDashboard(root, oven, payload) {
+export function mountDifferentialTestingDashboard(root, oven, payload, { onScenarioChange = () => {} } = {}) {
   const WIDTH = 900;
   const HEIGHT = 58;
   const GREEN = "#61d394";
@@ -143,21 +161,14 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     expanded: new Set(),
     telemetryByField: differentialTelemetryFieldMap(payload),
     telemetryAvailability,
+    clientRefreshStatus: null,
+    pendingScenarioId: null,
     oven,
     payload,
   };
   let inputRenderTimer = 0;
 
   root.className = "shell driving-parity-view";
-
-  function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
 
   function count(value) { return Number(value || 0).toLocaleString("en-US"); }
   function kpiTotal(value) {
@@ -192,24 +203,16 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     append("primary", payload?.trust?.status, payload?.trust?.blockers);
     append("telemetry", payload?.telemetry?.status, payload?.telemetry?.blockers);
     append("exact", payload?.exactSession?.status, payload?.exactSession?.blockers);
-    append("gate", payload?.telemetryGate?.status, payload?.telemetryGate?.blockers);
     return unique(result);
   }
-  function gateSummary(gate) {
-    if (!gate) return "gate unavailable · telemetry only";
-    const scenario = gate.configuredScenario || {};
-    const summary = [
-      `gate ${gate.status || "unavailable"}`,
-      scenario.id ? `scenario ${scenario.id}` : "",
-      scenario.frameCount !== undefined ? `${count(scenario.frameCount)} frames` : "",
-      scenario.cadenceFrames !== undefined ? `cadence ${count(scenario.cadenceFrames)} frames` : "",
-      gate.clearedPrefixFrames !== undefined ? `cleared ${count(gate.clearedPrefixFrames)}` : "",
-      gate.completedBoundary !== undefined ? `boundary ${count(gate.completedBoundary)}→${gate.nextBoundary === null ? "complete" : count(gate.nextBoundary)}` : "",
-      gate.report?.result ? `report ${gate.report.result}` : "",
-      ...blockers(gate.blockers).map((entry) => `blocked: ${entry}`),
-      "telemetry only",
-    ];
-    return summary.filter(Boolean).join(" · ");
+  function scenarioSelector() {
+    const catalog = state.payload.scenarioCatalog;
+    const scenarios = Array.isArray(catalog?.scenarios) ? catalog.scenarios : [];
+    const selected = state.pendingScenarioId || catalog?.selectedScenarioId || "";
+    const options = scenarios.map((scenario) => `<option value="${escapeHtml(scenario.id)}"${scenario.id === selected ? " selected" : ""}>${escapeHtml(scenario.label)}</option>`).join("");
+    const status = differentialRefreshStatusLabel(state.payload.refresh, state.clientRefreshStatus);
+    const statusTitle = state.payload.refresh?.status === "failed" ? state.payload.refresh.error || status : status;
+    return `<span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario"${scenarios.length < 2 ? " disabled" : ""}>${options}</select><span id="differential-refresh-status" class="differential-refresh-status ${escapeHtml(state.clientRefreshStatus || state.payload.refresh?.status || "")}" title="${escapeHtml(statusTitle)}"${status ? "" : " hidden"}>${escapeHtml(status)}</span></span>`;
   }
   function nonPass(field) { return Number(field.failedSampleCount || 0) + Number(field.missingSampleCount || 0); }
   function fieldResult(field) { return field.trustStatus === "blocked" || field.missingSampleCount > 0 ? "BLOCKED" : field.failedSampleCount > 0 ? "FAIL" : "PASS"; }
@@ -457,10 +460,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     const transitionTitle = telemetry
       ? `${count(telemetry.failToPassCount)} fail-to-pass; ${count(telemetry.passToFailCount)} pass-to-fail; ${count(telemetry.stayedPassCount)} stayed-pass; ${count(telemetry.stayedFailCount)} stayed-fail; residual ${count(telemetry.residualCount)}`
       : "";
-    const failedRatio = Number(field.sampleCount) > 0
-      ? Number(field.failedSampleCount || 0) / Number(field.sampleCount)
-      : 0;
-    const valueDelta = failedRatio > 0 ? failedRatio.toFixed(4) : "";
+    const valueDelta = field.maxDelta === null || !Number.isFinite(Number(field.maxDelta))
+      ? ""
+      : value(field.maxDelta);
     return `<span class="hybrid-cell hybrid-metric"><span class="hybrid-count">${count(countValue)}</span><span class="hybrid-delta ${deltaClass}"${transitionTitle ? ` title="${escapeHtml(transitionTitle)}"` : ""}><span class="hybrid-delta-symbol">${deltaSymbol}</span><span class="hybrid-delta-value">${deltaValue}</span></span><span class="hybrid-value-delta">${escapeHtml(valueDelta)}</span></span>`;
   }
   function visibleFields() {
@@ -508,6 +510,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
   }
   function renderProgressChart() {
     const progressChart = root.querySelector("#progress-chart");
+    if (!progressChart) return;
     if (state.progressChart === "delta") {
       renderDifferentialTestingFrameDeltaChart(progressChart, differentialFrameDeltaMetrics(state.payload));
       return;
@@ -520,7 +523,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
   }
   function templateHtml() {
     return `  <main id="burnlist-detail" class="detail-view" hidden>
-    <section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Driving parity field KPIs" hidden></section>
+    <section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>
     <div class="detail-workspace" id="detail-workspace" data-detail-tab="dashboard">
       <div class="detail-report-column">
         <section class="top" id="detail-top-stack">
@@ -669,19 +672,19 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     <div class="driving-parity-toolbar meta-row plan-meta-row">
       <h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>
       <div id="driving-parity-controls" class="driving-parity-controls" hidden>
-	        <input id="driving-parity-field-search" type="search" placeholder="Search Fields..." aria-label="Driving parity search fields">
+	        <input id="driving-parity-field-search" type="search" placeholder="Search Fields..." aria-label="Differential Testing search fields">
 	        <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-chart-toggle" class="chart-toggle" role="group" aria-label="Driving parity chart mode">
+	        <div id="driving-parity-chart-toggle" class="chart-toggle" role="group" aria-label="Differential Testing chart mode">
 	          <button type="button" data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false">Value</button>
 	          <span class="sep" aria-hidden="true">·</span>
 	          <button type="button" data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true">Delta</button>
 	        </div>
 	        <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle" role="group" aria-label="Driving parity sort">
+	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle" role="group" aria-label="Differential Testing sort">
 	          <button type="button" data-driving-parity-sort="improved" aria-pressed="true">Changed</button>
         </div>
         <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-filter-toggle" class="chart-toggle filter-toggle" role="group" aria-label="Driving parity field filter">
+	        <div id="driving-parity-filter-toggle" class="chart-toggle filter-toggle" role="group" aria-label="Differential Testing field filter">
 	          <button type="button" data-driving-parity-filter="failing" aria-pressed="true">Failed</button>
 	        </div>
       </div>
@@ -1489,15 +1492,15 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
   </main>
     </section>
     <div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>
-      <select id="driving-parity-page-size" aria-label="Driving parity rows per page">
+      <select id="driving-parity-page-size" aria-label="Differential Testing rows per page">
         <option value="25" selected>25</option>
         <option value="50">50</option>
         <option value="100">100</option>
         <option value="200">200</option>
       </select>
-      <button type="button" id="driving-parity-page-prev" aria-label="Driving parity previous page">Prev</button>
+      <button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page">Prev</button>
       <span class="page-status" id="driving-parity-page-status">0-0 / 0</span>
-      <button type="button" id="driving-parity-page-next" aria-label="Driving parity next page">Next</button>
+      <button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page">Next</button>
     </div>
   </main>`;
   }
@@ -1506,25 +1509,27 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
     const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
     if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
+    const titleText = String(state.payload.title || title.title || "Differential Testing");
+    if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
+      root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
+      return;
+    }
     const visible = visibleFields();
     state.pageIndex = Math.max(0, Math.min(state.pageIndex, Math.max(0, Math.ceil(visible.length / state.pageSize) - 1)));
     const start = state.pageIndex * state.pageSize;
     const page = visible.slice(start, start + state.pageSize);
-    const titleText = String(state.payload.title || title.title || "Differential Testing");
     const telemetrySummary = state.payload.telemetry?.status === "comparable"
       ? `${count(state.payload.telemetry.summary.failToPassCount)} F→P · ${count(state.payload.telemetry.summary.passToFailCount)} P→F · reconciled telemetry only`
       : "";
-    const gateText = state.payload.telemetryGate ? gateSummary(state.payload.telemetryGate) : "";
-    const subtitleParts = [state.payload.subtitle, dateTime(state.payload.publishedAt), telemetrySummary, gateText, ...trustBlockerSummaries(state.payload)].filter(Boolean);
-    const visibleSubtitle = dateTime(state.payload.publishedAt);
+    const subtitleParts = [state.payload.subtitle, dateTime(state.payload.publishedAt), telemetrySummary, ...trustBlockerSummaries(state.payload)].filter(Boolean);
     const changedUnavailable = state.telemetryAvailability.status !== "comparable";
     const pageState = paginationState(visible.length);
     const pageOptions = [25, 50, 100, 200].map((size) => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("");
-    const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visible.length <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Driving parity rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Driving parity previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visible.length}</span><button type="button" id="driving-parity-page-next" aria-label="Driving parity next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
-    const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle">${escapeHtml(visibleSubtitle)}</span></div>${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
+    const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visible.length <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visible.length}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
+    const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle">${scenarioSelector()}</span></div>${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
     let html = templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
-      .replace('<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Driving parity field KPIs" hidden></section>', `<section class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Driving parity field KPIs">${kpiHtml}</section>`)
+      .replace('<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>', `<section class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${kpiHtml}</section>`)
       .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
       .replace('<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>', progress(state.payload.progress))
       .replace('<div class="checklist-log" id="checklist-log"></div>', `<div class="checklist-log" id="checklist-log">${log(state.payload.log)}</div>`)
@@ -1571,6 +1576,16 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     render();
   });
   root.addEventListener("change", (event) => {
+    if (event.target.matches("#differential-scenario-selector")) {
+      const scenarioId = String(event.target.value || "");
+      if (scenarioId && scenarioId !== state.payload.scenarioCatalog?.selectedScenarioId) {
+        state.clientRefreshStatus = "loading";
+        state.pendingScenarioId = scenarioId;
+        render();
+        onScenarioChange(scenarioId);
+      }
+      return;
+    }
     if (event.target.matches("#driving-parity-page-size")) { state.pageSize = Number(event.target.value) || 25; state.pageIndex = 0; }
     render();
   });
@@ -1610,9 +1625,16 @@ export function mountDifferentialTestingDashboard(root, oven, payload) {
     update(nextOven, nextPayload) {
       state.oven = nextOven;
       state.payload = nextPayload;
+      state.clientRefreshStatus = null;
+      state.pendingScenarioId = null;
       state.telemetryByField = differentialTelemetryFieldMap(nextPayload);
       state.telemetryAvailability = differentialTelemetryAvailability(nextPayload);
       if (state.sort === "changed" && state.telemetryAvailability.status !== "comparable") state.sort = "default";
+      render();
+    },
+    setClientRefreshStatus(status) {
+      state.clientRefreshStatus = status;
+      if (status === null) state.pendingScenarioId = null;
       render();
     },
     destroy() {
@@ -1629,10 +1651,12 @@ export function startDifferentialTestingLiveUpdates(root, {
   fetchImpl = globalThis.fetch,
   setIntervalImpl = globalThis.setInterval.bind(globalThis),
   clearIntervalImpl = globalThis.clearInterval.bind(globalThis),
+  locationImpl = globalThis.location,
+  historyImpl = globalThis.history,
   mount = mountDifferentialTestingDashboard,
   refreshMs = DIFFERENTIAL_TESTING_REFRESH_MS,
   onError = (error, hasDashboard) => {
-    if (!hasDashboard) root.innerHTML = `<div class="empty">${String(error?.message || error)}</div>`;
+    if (!hasDashboard) root.innerHTML = `<div class="empty">${escapeHtml(String(error?.message || error))}</div>`;
     else console.error("Could not refresh Differential Testing data.", error);
   },
 } = {}) {
@@ -1641,7 +1665,16 @@ export function startDifferentialTestingLiveUpdates(root, {
   let payloadRevision = "";
   let refreshInFlight = false;
   let refreshQueued = false;
+  let scenarioGeneration = 0;
   let stopped = false;
+  let selectedScenarioId = (() => {
+    try { return new URLSearchParams(locationImpl?.search || "").get("scenario") || ""; }
+    catch { return ""; }
+  })();
+
+  const payloadUrl = (scenarioId) => scenarioId
+    ? `/api/oven-data/differential-testing?scenario=${encodeURIComponent(scenarioId)}`
+    : "/api/oven-data/differential-testing";
 
   const read = async (url, key, fallbackMessage) => {
     const response = await fetchImpl(url, { cache: "no-store" });
@@ -1657,19 +1690,25 @@ export function startDifferentialTestingLiveUpdates(root, {
       return;
     }
     refreshInFlight = true;
+    const requestGeneration = scenarioGeneration;
+    const requestScenarioId = selectedScenarioId;
     try {
       const [nextOven, payload] = await Promise.all([
         oven ?? read("/api/ovens/differential-testing", "oven", "Could not load Differential Testing Oven."),
-        read("/api/oven-data/differential-testing", "payload", "Could not load Differential Testing data."),
+        read(payloadUrl(requestScenarioId), "payload", "Could not load Differential Testing data."),
       ]);
-      if (stopped) return;
+      if (stopped || requestGeneration !== scenarioGeneration) return;
       const nextRevision = differentialPayloadRevision(payload);
       oven = nextOven;
-      if (!dashboard) dashboard = mount(root, oven, payload);
+      if (!dashboard) dashboard = mount(root, oven, payload, { onScenarioChange: selectScenario });
       else if (nextRevision !== payloadRevision) dashboard.update(oven, payload);
+      else dashboard.setClientRefreshStatus?.(null);
       payloadRevision = nextRevision;
     } catch (error) {
-      if (!stopped) onError(error, Boolean(dashboard));
+      if (!stopped) {
+        dashboard?.setClientRefreshStatus?.("failed");
+        onError(error, Boolean(dashboard));
+      }
     } finally {
       refreshInFlight = false;
       if (refreshQueued && !stopped) {
@@ -1679,11 +1718,23 @@ export function startDifferentialTestingLiveUpdates(root, {
     }
   };
 
+  const selectScenario = (scenarioId) => {
+    scenarioGeneration += 1;
+    selectedScenarioId = scenarioId;
+    try {
+      const nextUrl = new URL(locationImpl?.href || "/ovens/differential-testing/view", "http://localhost");
+      nextUrl.searchParams.set("scenario", scenarioId);
+      historyImpl?.replaceState?.(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    } catch {}
+    return refresh();
+  };
+
   const ready = refresh();
   const timer = setIntervalImpl(refresh, refreshMs);
   return {
     ready,
     refresh,
+    selectScenario,
     stop() {
       stopped = true;
       refreshQueued = false;

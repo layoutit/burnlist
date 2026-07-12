@@ -39,6 +39,4 @@ Oven-specific inputs belong in the objective unless the generic Run contract is 
 
 The run manifest's `schemaVersion` versions the manifest shape. It is not an Oven revision. The copied Oven files are the authoritative definition used by that Run.
 
-## Compatibility
-
-`definition.md`, `dashboard.json`, and the legacy type API are read-only compatibility aliases. New Ovens and Runs use only the canonical Oven names and files above.
+There are no alternate filenames, legacy type routes, or compatibility discovery paths. Invalid or incomplete Oven packages are rejected.

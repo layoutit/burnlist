@@ -22,11 +22,12 @@ When an adapter declares exact-first mode, the normalized runtime target follows
 
 - Primary fields are candidate-versus-reference truth under declared tolerances. Null remains a present value and missing samples remain explicit missing states.
 - Aggregate telemetry reports reconciled fail-to-pass, pass-to-fail, stayed-pass, stayed-fail, and zero residual between two candidates. It remains `telemetry-only`.
-- One retained exact session reports adapter-attested trusted-reference and runtime/report state, replay/profile/contract identity, the exact prefix and frontier, a source-owned producer, the composed-loop result, blockers, next telemetry boundary, and one next action.
+- One retained exact session reports adapter-attested trusted-reference and runtime/report state, replay/profile/contract identity, the exact prefix and frontier, a source-owned producer, the composed-loop result, blockers, and one next action.
+- One scenario catalog and event-driven refresh record identify the selected scenario and whether its latest automatic update is queued, running, complete, or failed.
 
 These surfaces do not collapse into each other. Tolerance-state transitions locate changed evidence. Exact-prefix movement requires no earlier divergence and a strictly later exact prefix. Only `advanced` or `complete` retains a changed engine candidate.
 
-The configured full-scenario gate is automatic telemetry at a fixed 10-cleared-frame cadence. One gate run covers multiple 10-frame boundaries crossed by the same accepted candidate. Its aggregate totals, transitions, exit status, intervals, absence, blocked state, or lag cannot authorize or veto retention.
+Every exact-prefix advancement requests a full-scenario telemetry refresh. The project-owned service coalesces requests, publishes `queued` and `running` while work is in flight, then atomically publishes `complete` with a checked report or `failed` with an error. Aggregate totals, transitions, exit status, intervals, absence, failure, or lag cannot authorize or veto retention.
 
 ## Lean Exact-First Workflow
 
@@ -34,7 +35,7 @@ The project owns one composed candidate transaction:
 
 1. Read the retained first-failure session and trace its exact field to an edit-ready source-owned producer.
 2. Apply one source-coherent engine change and run focused cheap checks.
-3. Invoke the composed loop once. It runs the engine once, extracts the exact prefix once, compares directly with the retained summary, applies automatic telemetry cadence, and publishes one result.
+3. Invoke the composed loop once. It runs the engine once, extracts the exact prefix once, compares directly with the retained summary, publishes one result, and automatically requests a refresh when the exact prefix advances.
 4. Keep the change for `advanced` or `complete`. Reverse only the latest change for `rejected`. Treat `evidence-only` as source/tool evidence progress and `blocked` as a named seam to repair.
 5. Continue immediately from the retained next frontier.
 
@@ -44,7 +45,7 @@ Only after `complete` should a project run its full tool suite once, inspect the
 
 ## Authority Boundary
 
-The project adapter owns artifact discovery, file hashing, project checks, freshness, source evidence, composed execution, retained-session replacement, telemetry cadence, and atomic publication. Burnlist validates normalized arithmetic, required identities, result consistency, and trust state. It never receives raw reports, raw state bodies, replays, source files, commands, or engine diffs.
+The project adapter owns artifact discovery, file hashing, project checks, freshness, source evidence, composed execution, retained-session replacement, refresh execution, request coalescing, and atomic publication. Burnlist validates normalized arithmetic, required identities, result consistency, scenario selection, and refresh state. It only reads published JSON and never executes project commands. It never receives raw reports, raw state bodies, replays, source files, commands, or engine diffs.
 
 Target selection remains source-owned and exact-first. Carrier, render, lifetime, diagnostic, derived, and uncovered rows must be traced upstream. Unknown inputs, substitute configuration, missing provenance, noisy or diagnostic oracles, and unproven edit scope fail closed to evidence work. A smaller error at the same exact coordinate is not progress.
 
@@ -60,6 +61,6 @@ Rows are 90px collapsed and 220px expanded. There is no alternate Cards/Table mo
 
 The visible surface uses the canonical template's HTML and CSS directly: the Parity Progress table and history chart, Search Fields, Value/Delta, Changed, Failed, pagination, and hybrid rows. Exact authority remains in the validated payload and does not add a separate panel.
 
-The dashboard polls every two seconds. Its revision includes the complete compact retained session, so exact-frontier or evidence-only changes appear without waiting for a new aggregate report or page refresh.
+The dashboard polls every two seconds. The scenario selector loads only catalog-listed sibling payloads from the bound read-only bundle. The status beside it shows Loading, Queued, Updating, or Update failed while the project-owned refresh pipeline changes state. Payload revisions include the complete compact retained session, so exact-frontier or evidence-only changes appear without a page refresh.
 
 See [Differential Testing Data Contract](../skills/burnlist/references/differential-testing-data.md) for the complete payload and validation rules.

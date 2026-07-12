@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -22,12 +23,41 @@ import {
   ovenId,
 } from "./oven-contract.mjs";
 import { assertDifferentialTestingData } from "./differential-testing-data-contract.mjs";
+import { buildRepoMapAsync } from "./repo-map.mjs";
 
 const args = new Map();
+const allowedArgs = new Set([
+  "allow-non-loopback",
+  "auto-port",
+  "check",
+  "close-completed",
+  "digest",
+  "host",
+  "max-history-entries",
+  "max-oven-data-bytes",
+  "max-plan-bytes",
+  "oven-data",
+  "ovens-dir",
+  "plan",
+  "port",
+  "replace",
+  "runs-dir",
+  "scan-root",
+  "stamp",
+  "state-dir",
+  "stop",
+]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const arg = process.argv[index];
-  if (!arg.startsWith("--")) continue;
+  if (!arg.startsWith("--")) {
+    console.error(`Unexpected argument: ${arg}`);
+    process.exit(2);
+  }
   const key = arg.slice(2);
+  if (!allowedArgs.has(key)) {
+    console.error(`Unknown option: --${key}`);
+    process.exit(2);
+  }
   const next = process.argv[index + 1];
   if (next && !next.startsWith("--")) {
     args.set(key, next);
@@ -58,13 +88,25 @@ const differentialTestingProgressChartPath = resolve(skillDir, "dashboard", "dif
 const differentialTestingStylePath = resolve(skillDir, "dashboard", "differential-testing.css");
 const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
-// Read-only compatibility for the short-lived pre-Oven schema. New writes never use these paths.
-const legacyBuiltInTypesDir = resolve(skillDir, "types");
-const legacyCustomTypesDir = resolve(launchCwd, args.get("types-dir") ?? ".local/burnlist/types");
 const runsDir = resolve(launchCwd, args.get("runs-dir") ?? ".local/burnlist/runs");
 const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
-const legacyDetailOrigin = String(args.get("legacy-detail-origin") ?? "").replace(/\/+$/u, "");
+const repoMapCache = new Map();
+const REPO_MAP_CACHE_MS = 2_000;
+
+function cachedRepoMap(repo) {
+  const key = repo.root;
+  const now = Date.now();
+  const cached = repoMapCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.promise;
+  const promise = buildRepoMapAsync({ repoRoot: repo.root, repoName: repo.name })
+    .catch((error) => {
+      if (repoMapCache.get(key)?.promise === promise) repoMapCache.delete(key);
+      throw error;
+    });
+  repoMapCache.set(key, { expiresAt: now + REPO_MAP_CACHE_MS, promise });
+  return promise;
+}
 
 function positiveInteger(value, name) {
   const parsed = Number(value);
@@ -538,12 +580,8 @@ function instructionsDescription(instructions) {
 function readOven(root, id, builtIn) {
   const safeId = ovenId(id);
   const ovenRoot = join(root, safeId);
-  const canonicalInstructionsPath = join(ovenRoot, "instructions.md");
-  const canonicalDetailPath = join(ovenRoot, "detail.json");
-  const legacyInstructionsPath = join(ovenRoot, "definition.md");
-  const legacyDetailPath = join(ovenRoot, "dashboard.json");
-  const instructionsPath = safeStat(canonicalInstructionsPath)?.isFile() ? canonicalInstructionsPath : legacyInstructionsPath;
-  const detailPath = safeStat(canonicalDetailPath)?.isFile() ? canonicalDetailPath : legacyDetailPath;
+  const instructionsPath = join(ovenRoot, "instructions.md");
+  const detailPath = join(ovenRoot, "detail.json");
   if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
   const ovenPackage = normalizeOvenPackage({
     id: safeId,
@@ -571,12 +609,6 @@ function ovensIn(root, builtIn) {
 function discoverOvens() {
   const byId = new Map();
   for (const oven of ovensIn(builtInOvensDir, true)) byId.set(oven.id, oven);
-  for (const oven of ovensIn(legacyBuiltInTypesDir, true)) {
-    if (!byId.has(oven.id)) byId.set(oven.id, oven);
-  }
-  for (const oven of ovensIn(legacyCustomTypesDir, false)) {
-    if (!byId.has(oven.id)) byId.set(oven.id, oven);
-  }
   for (const oven of ovensIn(customOvensDir, false)) {
     if (!byId.get(oven.id)?.builtIn) byId.set(oven.id, oven);
   }
@@ -614,17 +646,17 @@ function atomicDirectory(parent, id, files) {
 }
 
 function createOven(value) {
-  assertKnownKeys(value, new Set(["id", "name", "instructions", "detail", "definition", "dashboard"]), "Oven");
+  assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
   const id = ovenId(value.id);
   if (discoverOvens().some((oven) => oven.id === id)) throw new Error(`Oven ${id} already exists.`);
   const name = boundedText(value.name, "Oven name", 80);
-  let instructions = boundedText(value.instructions ?? value.definition, "Markdown instructions", 65536);
+  let instructions = boundedText(value.instructions, "Markdown instructions", 65536);
   const instructionLines = instructions.split(/\r?\n/u);
   const titleLine = instructionLines.findIndex((line) => /^#\s+\S/u.test(line.trim()));
   if (titleLine === -1) instructionLines.unshift(`# ${name}`, "");
   else instructionLines[titleLine] = `# ${name}`;
   instructions = instructionLines.join("\n");
-  const detail = normalizeOvenDetail(value.detail ?? value.dashboard);
+  const detail = normalizeOvenDetail(value.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
   const path = atomicDirectory(customOvensDir, id, {
     "instructions.md": `${ovenPackage.instructions}\n`,
@@ -635,6 +667,22 @@ function createOven(value) {
 
 function discoveredRepos() {
   return candidateRepoRoots().map((root) => ({ name: basename(root), root }));
+}
+
+function repoMapSelection(url) {
+  const queryKeys = [...url.searchParams.keys()];
+  if (queryKeys.some((key) => key !== "repo")) {
+    return { status: 400, error: "repo is the only supported repo-map query parameter." };
+  }
+  const requestedRepos = url.searchParams.getAll("repo");
+  if (requestedRepos.length !== 1 || requestedRepos[0].trim() === "") {
+    return { status: 400, error: "repo must be supplied exactly once." };
+  }
+  const requestedRepo = requestedRepos[0];
+  const matches = discoveredRepos().filter((repo) => repo.name === requestedRepo);
+  if (matches.length === 0) return { status: 404, error: `Unknown repository: ${requestedRepo}` };
+  if (matches.length > 1) return { status: 409, error: `Ambiguous repository: ${requestedRepo}` };
+  return { status: 200, repo: matches[0] };
 }
 
 function runId(date = new Date()) {
@@ -652,8 +700,8 @@ function runId(date = new Date()) {
 }
 
 function createBurnRun(value) {
-  assertKnownKeys(value, new Set(["ovenId", "typeId", "repoRoot", "title", "objective"]), "Burn run");
-  const selectedOvenId = ovenId(value.ovenId ?? value.typeId);
+  assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
+  const selectedOvenId = ovenId(value.ovenId);
   const oven = discoverOvens().find((entry) => entry.id === selectedOvenId);
   if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
@@ -691,7 +739,22 @@ function readBurnRun(id) {
   const path = join(runsDir, safeId, "run.json");
   if (!safeStat(path)?.isFile()) return null;
   const record = JSON.parse(readTextFileWithLimit(path, 131072, "Burn run"));
-  return { ...record, ovenId: record.ovenId ?? record.typeId };
+  assertKnownKeys(record, new Set([
+    "schemaVersion",
+    "id",
+    "ovenId",
+    "repoRoot",
+    "repo",
+    "title",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "inputs",
+    "summary",
+    "sections",
+  ]), "Burn run");
+  ovenId(record.ovenId);
+  return record;
 }
 
 async function readJsonRequest(req) {
@@ -755,7 +818,11 @@ function routeSelection(url) {
       return part;
     }
   });
-  if (parts.length === 2 && !["api", "ovens", "types", "runs"].includes(parts[0])) return { repo: parts[0], id: parts[1] };
+  if (
+    parts.length === 2
+    && !["api", "ovens", "runs"].includes(parts[0])
+    && discoveredRepos().some((repo) => repo.name === parts[0])
+  ) return { repo: parts[0], id: parts[1] };
   return null;
 }
 
@@ -982,8 +1049,7 @@ function detailHref(repo, id, filter, page = 1) {
   const params = new URLSearchParams({ filter });
   if (page > 1) params.set("page", String(page));
   const search = params.toString();
-  const path = `/${encodeURIComponent(repo)}/${encodeURIComponent(id)}?${search}`;
-  return legacyDetailOrigin ? `${legacyDetailOrigin}${path}` : path;
+  return `/${encodeURIComponent(repo)}/${encodeURIComponent(id)}?${search}`;
 }
 
 const FALLBACK_STYLE = `<style>
@@ -1102,7 +1168,7 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
-    if (["/assets/fallback-burn-ovens.js", "/assets/fallback-burn-types.js"].includes(url.pathname)) {
+    if (url.pathname === "/assets/fallback-burn-ovens.js") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       javascript(res, 200, readTextFileWithLimit(fallbackBurnOvensScriptPath, 262144, "Fallback Oven script"));
       return;
@@ -1168,11 +1234,35 @@ const server = createServer(async (req, res) => {
       const id = ovenDataRoute[1];
       const path = ovenDataBindings.get(id);
       if (!path) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
-      if (!safeStat(path)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
       try {
-        const payload = JSON.parse(readTextFileWithLimit(path, maxOvenDataBytes, `Oven ${id} data`));
-        if (id === "differential-testing") assertDifferentialTestingData(payload);
-        json(res, 200, { ovenId: id, path, payload });
+        const readPath = id === "differential-testing"
+          ? resolve(realpathSync(dirname(path)), basename(path))
+          : path;
+        if (!safeStat(readPath)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
+        const indexPayload = JSON.parse(readTextFileWithLimit(readPath, maxOvenDataBytes, `Oven ${id} data`));
+        if (id !== "differential-testing") return json(res, 200, { ovenId: id, path: readPath, payload: indexPayload });
+        assertDifferentialTestingData(indexPayload);
+        const requestedScenarioIds = url.searchParams.getAll("scenario");
+        if (requestedScenarioIds.length > 1) return json(res, 400, { error: "scenario must be supplied at most once" });
+        const requestedScenarioId = requestedScenarioIds[0] ?? "";
+        if (!requestedScenarioId) return json(res, 200, { ovenId: id, path: readPath, scenarioId: indexPayload.scenarioCatalog.selectedScenarioId, payload: indexPayload });
+        if (!/^[a-f0-9]{16}$/u.test(requestedScenarioId)) return json(res, 400, { error: "scenario must be a lowercase 16-character hexadecimal id" });
+        if (!indexPayload.scenarioCatalog.scenarios.some((scenario) => scenario.id === requestedScenarioId)) return json(res, 404, { error: `scenario ${requestedScenarioId} is not in the published catalog` });
+        if (requestedScenarioId === indexPayload.scenarioCatalog.selectedScenarioId) return json(res, 200, { ovenId: id, path: readPath, scenarioId: requestedScenarioId, payload: indexPayload });
+        const scenariosDir = resolve(dirname(readPath), "scenarios");
+        const scenarioPath = resolve(scenariosDir, `${requestedScenarioId}.json`);
+        const scenarioRelativePath = relative(scenariosDir, scenarioPath);
+        if (!scenarioRelativePath || scenarioRelativePath.startsWith("..") || resolve(scenariosDir, scenarioRelativePath) !== scenarioPath) return json(res, 400, { error: "scenario path escapes the published bundle" });
+        if (!safeStat(scenarioPath)?.isFile()) return json(res, 404, { error: `published data for scenario ${requestedScenarioId} is missing` });
+        const scenarioPayload = JSON.parse(readTextFileWithLimit(scenarioPath, maxOvenDataBytes, `Differential Testing scenario ${requestedScenarioId}`));
+        assertDifferentialTestingData(scenarioPayload);
+        if (scenarioPayload.scenarioCatalog.selectedScenarioId !== requestedScenarioId) return json(res, 422, { error: `scenario file ${requestedScenarioId} selects ${scenarioPayload.scenarioCatalog.selectedScenarioId}` });
+        const indexScenario = indexPayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === requestedScenarioId);
+        const payloadScenario = scenarioPayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === requestedScenarioId);
+        if (JSON.stringify(payloadScenario) !== JSON.stringify(indexScenario)) return json(res, 422, { error: `scenario file ${requestedScenarioId} does not match its published catalog entry` });
+        const payload = { ...scenarioPayload, scenarioCatalog: { selectedScenarioId: requestedScenarioId, scenarios: indexPayload.scenarioCatalog.scenarios } };
+        assertDifferentialTestingData(payload);
+        json(res, 200, { ovenId: id, path: scenarioPath, scenarioId: requestedScenarioId, payload });
       } catch (error) {
         json(res, 422, {
           error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
@@ -1181,24 +1271,15 @@ const server = createServer(async (req, res) => {
       }
       return;
     }
-    // Legacy API aliases are read-compatible; the app itself only speaks Oven.
-    if (url.pathname === "/api/types") {
+    if (url.pathname === "/api/repo-map") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, {
-        types: discoverOvens().map((oven) => ({
-          ...ovenSummary(oven),
-          dashboard: { columns: oven.detail.columns, rows: oven.detail.rows, cells: oven.detail.cells.length },
-        })),
-        writeToken,
-      });
-      return;
-    }
-    const legacyTypeRoute = url.pathname.match(/^\/api\/types\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);
-    if (legacyTypeRoute) {
-      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      const oven = discoverOvens().find((entry) => entry.id === legacyTypeRoute[1]);
-      if (!oven) return json(res, 404, { error: "oven not found" });
-      json(res, 200, { type: { ...oven, definition: oven.instructions, dashboard: oven.detail } });
+      const selection = repoMapSelection(url);
+      if (!selection.repo) return json(res, selection.status, { error: selection.error });
+      try {
+        json(res, 200, await cachedRepoMap(selection.repo));
+      } catch (error) {
+        json(res, 422, { error: `Could not build repository map: ${error.message}` });
+      }
       return;
     }
     if (url.pathname === "/api/repos") {
@@ -1219,17 +1300,6 @@ const server = createServer(async (req, res) => {
       const run = readBurnRun(runRoute[1]);
       if (!run) return json(res, 404, { error: "burn run not found" });
       json(res, 200, { run });
-      return;
-    }
-    if (legacyDetailOrigin && routeSelection(url)) {
-      res.writeHead(302, { location: `${legacyDetailOrigin}${url.pathname}${url.search}` });
-      res.end();
-      return;
-    }
-    if (url.pathname === "/types/new") {
-      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      res.writeHead(308, { location: "/ovens/new" });
-      res.end();
       return;
     }
     if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {

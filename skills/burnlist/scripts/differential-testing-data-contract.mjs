@@ -4,7 +4,6 @@ export const DIFFERENTIAL_TESTING_DATA_SCHEMA = "burnlist-differential-testing-d
 export const DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY = "telemetry-only";
 export const DIFFERENTIAL_TESTING_EXACT_AUTHORITY = "adapter-attested";
 export const DIFFERENTIAL_TESTING_EXACT_COORDINATE_ORDER = Object.freeze(["frame", "control", "tick", "call", "phaseOrder", "phase", "operationId", "fieldId"]);
-export const DIFFERENTIAL_TESTING_CADENCE_FRAMES = 10;
 
 export const DIFFERENTIAL_SAMPLE_STATES = Object.freeze({
   match: 0,
@@ -17,6 +16,7 @@ export const DIFFERENTIAL_SAMPLE_STATES = Object.freeze({
 const resultValues = new Set(["pass", "improved", "unchanged", "worsened", "blocked"]);
 const trustValues = new Set(["pass", "blocked"]);
 const telemetryStatusValues = new Set(["comparable", "blocked"]);
+const refreshStatusValues = new Set(["queued", "running", "complete", "failed"]);
 const exactStatusValues = new Set(["ready", "complete", "blocked"]);
 const exactResultValues = new Set(["advanced", "complete", "rejected", "evidence-only", "blocked"]);
 const exactDecisionKinds = new Set(["runtime-change", "evidence-change", "complete", "blocked"]);
@@ -31,6 +31,7 @@ const exactSourceOrderStates = new Set(["single-operation", "atomic-proven", "un
 const exactChangeScopeStates = new Set(["single-source-coherent", "atomic-source-order", "unproven"]);
 const scalarTypes = new Set(["string", "number", "boolean"]);
 const sha256Pattern = /^[a-f0-9]{64}$/u;
+const scenarioIdPattern = /^[a-f0-9]{16}$/u;
 
 export class DifferentialTestingDataValidationError extends Error {
   constructor(issues) {
@@ -178,7 +179,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
     issue("$", "must be an object");
     return { ok: false, issues };
   }
-  onlyKeys(payload, "$", new Set(["schema", "publishedAt", "title", "subtitle", "adapter", "trust", "summary", "progress", "log", "fields", "telemetry", "telemetryGate", "exactSession"]), "Differential Testing data contract");
+  onlyKeys(payload, "$", new Set(["schema", "publishedAt", "title", "subtitle", "adapter", "trust", "scenarioCatalog", "refresh", "summary", "progress", "log", "fields", "telemetry", "exactSession"]), "Differential Testing data contract");
   if (payload.schema !== DIFFERENTIAL_TESTING_DATA_SCHEMA) issue("$.schema", `must equal ${DIFFERENTIAL_TESTING_DATA_SCHEMA}`);
   if (!validTimestamp(payload.publishedAt)) issue("$.publishedAt", "must be a parseable timestamp");
   text(payload.title, "$.title", { max: 160 });
@@ -202,6 +203,46 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       trust.blockers.forEach((entry, index) => text(entry, `$.trust.blockers[${index}]`, { max: 1000 }));
       if (trust.status === "pass" && trust.blockers.length > 0) issue("$.trust.blockers", "must be empty when trust status is pass");
       if (trust.status === "blocked" && trust.blockers.length === 0) issue("$.trust.blockers", "must explain why trust is blocked");
+    }
+  }
+
+  let selectedScenario = null;
+  let emptyCatalog = false;
+  const scenarioCatalog = payload.scenarioCatalog;
+  if (!plainObject(scenarioCatalog)) {
+    issue("$.scenarioCatalog", "must be a scenario catalog");
+  } else {
+    onlyKeys(scenarioCatalog, "$.scenarioCatalog", new Set(["selectedScenarioId", "scenarios"]), "scenario-catalog contract");
+    if (!Array.isArray(scenarioCatalog.scenarios)) {
+      issue("$.scenarioCatalog.scenarios", "must be an array");
+    } else if (scenarioCatalog.scenarios.length === 0) {
+      emptyCatalog = true;
+      if (scenarioCatalog.selectedScenarioId !== null) issue("$.scenarioCatalog.selectedScenarioId", "must be null when there are no scenarios");
+    } else {
+      if (typeof scenarioCatalog.selectedScenarioId !== "string" || !scenarioIdPattern.test(scenarioCatalog.selectedScenarioId)) {
+        issue("$.scenarioCatalog.selectedScenarioId", "must be a lowercase 16-character hexadecimal scenario id");
+      }
+      const scenarioIds = new Set();
+      scenarioCatalog.scenarios.forEach((scenario, index) => {
+        const path = `$.scenarioCatalog.scenarios[${index}]`;
+        if (!plainObject(scenario)) {
+          issue(path, "must be a scenario catalog entry");
+          return;
+        }
+        onlyKeys(scenario, path, new Set(["id", "label", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"]), "scenario-catalog contract");
+        if (typeof scenario.id !== "string" || !scenarioIdPattern.test(scenario.id)) issue(`${path}.id`, "must be a lowercase 16-character hexadecimal scenario id");
+        else if (scenarioIds.has(scenario.id)) issue(`${path}.id`, `duplicates scenario id ${scenario.id}`);
+        else scenarioIds.add(scenario.id);
+        text(scenario.label, `${path}.label`, { max: 160 });
+        count(scenario.frameCount, `${path}.frameCount`);
+        if (scenario.frameCount === 0) issue(`${path}.frameCount`, "must be greater than zero");
+        sha256(scenario.replaySha256, `${path}.replaySha256`);
+        sha256(scenario.profileSha256, `${path}.profileSha256`);
+        sha256(scenario.contractSha256, `${path}.contractSha256`);
+        if (!validTimestamp(scenario.updatedAt)) issue(`${path}.updatedAt`, "must be a parseable timestamp");
+      });
+      selectedScenario = scenarioCatalog.scenarios.find((scenario) => scenario?.id === scenarioCatalog.selectedScenarioId) ?? null;
+      if (!selectedScenario) issue("$.scenarioCatalog.selectedScenarioId", "must identify exactly one catalog scenario");
     }
   }
 
@@ -243,7 +284,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         issue(rowPath, "must be an object");
         return;
       }
-      onlyKeys(row, rowPath, new Set(["timestamp", "result", "value", "delta", "fieldCount", "failedFieldCount", "frames", "firstFailingTick", "firstFailingLabel", "gateId", "scenarioId", "reportSha256", "runtimeTreeSha256", "contractSha256"]), "result-row contract");
+      onlyKeys(row, rowPath, new Set(["timestamp", "result", "value", "delta", "fieldCount", "failedFieldCount", "frames", "firstFailingTick", "firstFailingLabel", "refreshId", "scenarioId", "reportSha256", "runtimeTreeSha256", "contractSha256"]), "result-row contract");
       if (!validTimestamp(row.timestamp)) {
         issue(`${rowPath}.timestamp`, "must be a parseable timestamp");
       } else {
@@ -261,8 +302,9 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       if (Object.hasOwn(row, "frames")) count(row.frames, `${rowPath}.frames`);
       if (Object.hasOwn(row, "firstFailingTick")) finite(row.firstFailingTick, `${rowPath}.firstFailingTick`, { nullable: true });
       if (Object.hasOwn(row, "firstFailingLabel") && row.firstFailingLabel !== null) text(row.firstFailingLabel, `${rowPath}.firstFailingLabel`, { max: 160 });
-      if (Object.hasOwn(row, "gateId")) text(row.gateId, `${rowPath}.gateId`, { max: 160 });
-      if (Object.hasOwn(row, "scenarioId")) text(row.scenarioId, `${rowPath}.scenarioId`, { max: 160 });
+      if (Object.hasOwn(row, "refreshId")) text(row.refreshId, `${rowPath}.refreshId`, { max: 160 });
+      if (typeof row.scenarioId !== "string" || !scenarioIdPattern.test(row.scenarioId)) issue(`${rowPath}.scenarioId`, "must be a lowercase 16-character hexadecimal scenario id");
+      else if (selectedScenario && row.scenarioId !== selectedScenario.id) issue(`${rowPath}.scenarioId`, "must equal the selected scenario id");
       if (Object.hasOwn(row, "reportSha256")) sha256(row.reportSha256, `${rowPath}.reportSha256`);
       if (Object.hasOwn(row, "runtimeTreeSha256")) sha256(row.runtimeTreeSha256, `${rowPath}.runtimeTreeSha256`);
       if (Object.hasOwn(row, "contractSha256")) sha256(row.contractSha256, `${rowPath}.contractSha256`);
@@ -427,6 +469,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       text(value.referenceId, `${path}.referenceId`, { max: 160 });
       sha256(value.referenceSha256, `${path}.referenceSha256`);
       text(value.scenarioId, `${path}.scenarioId`, { max: 160 });
+      if (selectedScenario && value.scenarioId !== selectedScenario.id) issue(`${path}.scenarioId`, "must equal the selected scenario id");
       text(value.alignmentKey, `${path}.alignmentKey`, { max: 160 });
       return value;
     };
@@ -685,140 +728,101 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
     }
   }
 
-  if (payload.telemetryGate !== undefined) {
-    const gate = payload.telemetryGate;
-    const gatePath = "$.telemetryGate";
-    if (!plainObject(gate)) {
-      issue(gatePath, "must be an automatic configured-scenario telemetry gate record");
+  const refresh = payload.refresh;
+  const refreshPath = "$.refresh";
+  if (refresh === null) {
+    if (!emptyCatalog) issue(refreshPath, "may be null only when there are no scenarios");
+  } else if (!plainObject(refresh)) {
+    issue(refreshPath, "must be an event-driven refresh record");
+  } else {
+    onlyKeys(refresh, refreshPath, new Set(["id", "status", "scenarioId", "event", "requestedAt", "startedAt", "completedAt", "error", "report"]), "refresh contract");
+    text(refresh.id, `${refreshPath}.id`, { max: 160 });
+    if (!refreshStatusValues.has(refresh.status)) issue(`${refreshPath}.status`, "must be queued, running, complete, or failed");
+    if (typeof refresh.scenarioId !== "string" || !scenarioIdPattern.test(refresh.scenarioId)) issue(`${refreshPath}.scenarioId`, "must be a lowercase 16-character hexadecimal scenario id");
+    if (selectedScenario && refresh.scenarioId !== selectedScenario.id) issue(`${refreshPath}.scenarioId`, "must equal the selected scenario id");
+    if (!validTimestamp(refresh.requestedAt)) issue(`${refreshPath}.requestedAt`, "must be a parseable timestamp");
+    if (refresh.startedAt !== null && !validTimestamp(refresh.startedAt)) issue(`${refreshPath}.startedAt`, "must be a parseable timestamp or null");
+    if (refresh.completedAt !== null && !validTimestamp(refresh.completedAt)) issue(`${refreshPath}.completedAt`, "must be a parseable timestamp or null");
+    if (refresh.error !== null) text(refresh.error, `${refreshPath}.error`, { max: 1000 });
+
+    const event = refresh.event;
+    if (!plainObject(event)) {
+      issue(`${refreshPath}.event`, "must describe the event that requested this refresh");
     } else {
-      onlyKeys(gate, gatePath, new Set(["status", "authority", "blockers", "configuredScenario", "clearedPrefixFrames", "completedBoundary", "nextBoundary", "gateId", "report"]), "telemetry-gate contract");
-      if (!["not-due", "current", "blocked"].includes(gate.status)) issue(`${gatePath}.status`, "must be not-due, current, or blocked");
-      if (gate.authority !== DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY) issue(`${gatePath}.authority`, `must equal ${DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY}`);
-      const gateBlockers = Array.isArray(gate.blockers) ? gate.blockers : [];
-      if (!Array.isArray(gate.blockers)) issue(`${gatePath}.blockers`, "must be an array");
-      else gateBlockers.forEach((entry, index) => text(entry, `${gatePath}.blockers[${index}]`, { max: 1000 }));
+      onlyKeys(event, `${refreshPath}.event`, new Set(["kind", "revision", "occurredAt"]), "refresh-event contract");
+      text(event.kind, `${refreshPath}.event.kind`, { max: 160 });
+      text(event.revision, `${refreshPath}.event.revision`, { max: 160 });
+      if (!validTimestamp(event.occurredAt)) issue(`${refreshPath}.event.occurredAt`, "must be a parseable timestamp");
+      if (validTimestamp(event.occurredAt) && validTimestamp(refresh.requestedAt) && Date.parse(event.occurredAt) > Date.parse(refresh.requestedAt)) issue(`${refreshPath}.event.occurredAt`, "cannot be later than requestedAt");
+    }
+    if (validTimestamp(refresh.requestedAt) && validTimestamp(refresh.startedAt) && Date.parse(refresh.startedAt) < Date.parse(refresh.requestedAt)) issue(`${refreshPath}.startedAt`, "cannot be earlier than requestedAt");
+    const completionFloor = validTimestamp(refresh.startedAt) ? Date.parse(refresh.startedAt) : Date.parse(refresh.requestedAt);
+    if (Number.isFinite(completionFloor) && validTimestamp(refresh.completedAt) && Date.parse(refresh.completedAt) < completionFloor) issue(`${refreshPath}.completedAt`, "cannot be earlier than the refresh start");
 
-      const scenario = gate.configuredScenario;
-      if (!plainObject(scenario)) {
-        issue(`${gatePath}.configuredScenario`, "must describe the complete configured scenario and cadence");
+    let refreshReport = null;
+    if (refresh.report !== undefined) {
+      if (!plainObject(refresh.report)) {
+        issue(`${refreshPath}.report`, "must be a checked full-scenario report");
       } else {
-        onlyKeys(scenario, `${gatePath}.configuredScenario`, new Set(["id", "frameCount", "cadenceFrames", "replaySha256", "profileSha256", "contractSha256"]), "telemetry-gate contract");
-        text(scenario.id, `${gatePath}.configuredScenario.id`, { max: 160 });
-        count(scenario.frameCount, `${gatePath}.configuredScenario.frameCount`);
-        count(scenario.cadenceFrames, `${gatePath}.configuredScenario.cadenceFrames`);
-        sha256(scenario.replaySha256, `${gatePath}.configuredScenario.replaySha256`);
-        sha256(scenario.profileSha256, `${gatePath}.configuredScenario.profileSha256`);
-        sha256(scenario.contractSha256, `${gatePath}.configuredScenario.contractSha256`);
-        if (scenario.frameCount === 0) issue(`${gatePath}.configuredScenario.frameCount`, "must be greater than zero");
-        if (scenario.cadenceFrames !== DIFFERENTIAL_TESTING_CADENCE_FRAMES) issue(`${gatePath}.configuredScenario.cadenceFrames`, `must equal the fixed workflow cadence of ${DIFFERENTIAL_TESTING_CADENCE_FRAMES} frames`);
-      }
-      count(gate.clearedPrefixFrames, `${gatePath}.clearedPrefixFrames`);
-      count(gate.completedBoundary, `${gatePath}.completedBoundary`);
-      if (gate.nextBoundary !== null) {
-        count(gate.nextBoundary, `${gatePath}.nextBoundary`);
-        if (gate.nextBoundary === 0) issue(`${gatePath}.nextBoundary`, "must be greater than zero");
-      }
-      if (gate.gateId !== null) text(gate.gateId, `${gatePath}.gateId`, { max: 160 });
-      if (Number.isSafeInteger(gate.completedBoundary) && Number.isSafeInteger(gate.clearedPrefixFrames) && gate.completedBoundary > gate.clearedPrefixFrames) {
-        issue(`${gatePath}.completedBoundary`, "cannot exceed clearedPrefixFrames");
-      }
-      if (plainObject(scenario) && Number.isSafeInteger(scenario.frameCount) && scenario.frameCount > 0) {
-        if (Number.isSafeInteger(gate.clearedPrefixFrames) && gate.clearedPrefixFrames > scenario.frameCount) issue(`${gatePath}.clearedPrefixFrames`, "cannot exceed the configured scenario frameCount");
-        if (Number.isSafeInteger(gate.completedBoundary) && gate.completedBoundary > scenario.frameCount) issue(`${gatePath}.completedBoundary`, "cannot exceed the configured scenario frameCount");
-        if (gate.completedBoundary === scenario.frameCount) {
-          if (gate.nextBoundary !== null) issue(`${gatePath}.nextBoundary`, "must be null after the terminal scenario boundary");
-        } else if (gate.nextBoundary === null) {
-          issue(`${gatePath}.nextBoundary`, "must identify the next automatic boundary before the scenario is complete");
-        } else if (Number.isSafeInteger(gate.nextBoundary) && gate.nextBoundary > scenario.frameCount) {
-          issue(`${gatePath}.nextBoundary`, "cannot exceed the configured scenario frameCount");
+        refreshReport = refresh.report;
+        onlyKeys(refreshReport, `${refreshPath}.report`, new Set(["id", "generatedAt", "artifactSha256", "runtimeTreeSha256", "contractSha256", "scenarioId", "frameCount", "replaySha256", "profileSha256", "result", "check"]), "refresh-report contract");
+        text(refreshReport.id, `${refreshPath}.report.id`, { max: 160 });
+        if (!validTimestamp(refreshReport.generatedAt)) issue(`${refreshPath}.report.generatedAt`, "must be a parseable timestamp");
+        sha256(refreshReport.artifactSha256, `${refreshPath}.report.artifactSha256`);
+        sha256(refreshReport.runtimeTreeSha256, `${refreshPath}.report.runtimeTreeSha256`);
+        sha256(refreshReport.contractSha256, `${refreshPath}.report.contractSha256`);
+        if (typeof refreshReport.scenarioId !== "string" || !scenarioIdPattern.test(refreshReport.scenarioId)) issue(`${refreshPath}.report.scenarioId`, "must be a lowercase 16-character hexadecimal scenario id");
+        count(refreshReport.frameCount, `${refreshPath}.report.frameCount`);
+        sha256(refreshReport.replaySha256, `${refreshPath}.report.replaySha256`);
+        sha256(refreshReport.profileSha256, `${refreshPath}.report.profileSha256`);
+        if (!resultValues.has(refreshReport.result)) issue(`${refreshPath}.report.result`, "uses an unsupported result");
+        checkerAttestation(refreshReport.check, `${refreshPath}.report.check`);
+        if (refreshReport.check?.subjectSha256 !== refreshReport.artifactSha256) issue(`${refreshPath}.report.check.subjectSha256`, "must equal the report SHA-256");
+        if (refreshReport.scenarioId !== refresh.scenarioId) issue(`${refreshPath}.report.scenarioId`, "must equal the refresh scenario id");
+        if (selectedScenario) {
+          if (refreshReport.frameCount !== selectedScenario.frameCount) issue(`${refreshPath}.report.frameCount`, "must cover the full selected scenario");
+          if (refreshReport.replaySha256 !== selectedScenario.replaySha256) issue(`${refreshPath}.report.replaySha256`, "must equal the selected scenario replay SHA-256");
+          if (refreshReport.profileSha256 !== selectedScenario.profileSha256) issue(`${refreshPath}.report.profileSha256`, "must equal the selected scenario profile SHA-256");
+          if (refreshReport.contractSha256 !== selectedScenario.contractSha256) issue(`${refreshPath}.report.contractSha256`, "must equal the selected scenario contract SHA-256");
         }
       }
-      if (plainObject(scenario)) {
-        const terminalBoundary = gate.completedBoundary === scenario.frameCount;
-        if (Number.isSafeInteger(gate.completedBoundary) && !terminalBoundary && gate.completedBoundary % DIFFERENTIAL_TESTING_CADENCE_FRAMES !== 0) issue(`${gatePath}.completedBoundary`, "must align to the fixed 10-frame cadence unless it is the terminal scenario boundary");
-        const nextIsTerminal = gate.nextBoundary === scenario.frameCount;
-        if (Number.isSafeInteger(gate.nextBoundary) && !nextIsTerminal && gate.nextBoundary % DIFFERENTIAL_TESTING_CADENCE_FRAMES !== 0) issue(`${gatePath}.nextBoundary`, "must align to the fixed 10-frame cadence unless it is the terminal scenario boundary");
-        if (Number.isSafeInteger(gate.nextBoundary) && Number.isSafeInteger(gate.completedBoundary) && gate.nextBoundary <= gate.completedBoundary) issue(`${gatePath}.nextBoundary`, "must be later than completedBoundary");
-        if (Number.isSafeInteger(gate.completedBoundary) && Number.isSafeInteger(scenario.frameCount) && scenario.frameCount > 0) {
-          const expectedNextBoundary = gate.completedBoundary >= scenario.frameCount
-            ? null
-            : Math.min(gate.completedBoundary + DIFFERENTIAL_TESTING_CADENCE_FRAMES, scenario.frameCount);
-          if (gate.nextBoundary !== expectedNextBoundary) issue(`${gatePath}.nextBoundary`, "must be derived from completedBoundary and the fixed 10-frame cadence");
-        }
-      }
+    }
 
-      let gateReport = null;
-      if (gate.report !== undefined) {
-        if (!plainObject(gate.report)) {
-          issue(`${gatePath}.report`, "must be a checked full-scenario telemetry report");
-        } else {
-          gateReport = gate.report;
-          onlyKeys(gateReport, `${gatePath}.report`, new Set(["id", "generatedAt", "artifactSha256", "runtimeTreeSha256", "contractSha256", "scenarioId", "frameCount", "completedBoundary", "replaySha256", "profileSha256", "result", "check"]), "telemetry-gate contract");
-          text(gateReport.id, `${gatePath}.report.id`, { max: 160 });
-          if (!validTimestamp(gateReport.generatedAt)) issue(`${gatePath}.report.generatedAt`, "must be a parseable timestamp");
-          sha256(gateReport.artifactSha256, `${gatePath}.report.artifactSha256`);
-          sha256(gateReport.runtimeTreeSha256, `${gatePath}.report.runtimeTreeSha256`);
-          sha256(gateReport.contractSha256, `${gatePath}.report.contractSha256`);
-          text(gateReport.scenarioId, `${gatePath}.report.scenarioId`, { max: 160 });
-          count(gateReport.frameCount, `${gatePath}.report.frameCount`);
-          count(gateReport.completedBoundary, `${gatePath}.report.completedBoundary`);
-          sha256(gateReport.replaySha256, `${gatePath}.report.replaySha256`);
-          sha256(gateReport.profileSha256, `${gatePath}.report.profileSha256`);
-          if (!resultValues.has(gateReport.result)) issue(`${gatePath}.report.result`, "uses an unsupported telemetry result");
-          checkerAttestation(gateReport.check, `${gatePath}.report.check`);
-          if (gateReport.check?.subjectSha256 !== gateReport.artifactSha256) issue(`${gatePath}.report.check.subjectSha256`, "must equal the telemetry report SHA-256");
-          if (plainObject(scenario)) {
-            if (gateReport.scenarioId !== scenario.id) issue(`${gatePath}.report.scenarioId`, "must equal the configured scenario id");
-            if (gateReport.frameCount !== scenario.frameCount) issue(`${gatePath}.report.frameCount`, "must prove the report covers the full configured scenario");
-            if (gateReport.replaySha256 !== scenario.replaySha256) issue(`${gatePath}.report.replaySha256`, "must equal the configured replay SHA-256");
-            if (gateReport.profileSha256 !== scenario.profileSha256) issue(`${gatePath}.report.profileSha256`, "must equal the configured profile SHA-256");
-            if (gateReport.contractSha256 !== scenario.contractSha256) issue(`${gatePath}.report.contractSha256`, "must equal the configured contract SHA-256");
-          }
-          if (gateReport.completedBoundary !== gate.completedBoundary) issue(`${gatePath}.report.completedBoundary`, "must equal the recorded completed cadence boundary");
+    if (refresh.status === "queued") {
+      if (refresh.startedAt !== null || refresh.completedAt !== null || refresh.error !== null || refreshReport) issue(refreshPath, "queued refresh must not be started, completed, failed, or report-bearing");
+    } else if (refresh.status === "running") {
+      if (!validTimestamp(refresh.startedAt)) issue(`${refreshPath}.startedAt`, "is required for a running refresh");
+      if (refresh.completedAt !== null || refresh.error !== null || refreshReport) issue(refreshPath, "running refresh must not be completed, failed, or report-bearing");
+    } else if (refresh.status === "complete") {
+      if (!validTimestamp(refresh.startedAt)) issue(`${refreshPath}.startedAt`, "is required for a complete refresh");
+      if (!validTimestamp(refresh.completedAt)) issue(`${refreshPath}.completedAt`, "is required for a complete refresh");
+      if (refresh.error !== null) issue(`${refreshPath}.error`, "must be null for a complete refresh");
+      if (!refreshReport) issue(`${refreshPath}.report`, "is required for a complete refresh");
+      if (refreshReport?.check?.status !== "pass") issue(`${refreshPath}.report.check.status`, "must pass for a complete refresh");
+      const validateRefreshRow = (row, path) => {
+        if (!plainObject(row)) {
+          issue(path, "must contain the completed refresh result");
+          return;
         }
-      }
-
-      if (gate.status === "current") {
-        if (gateBlockers.length > 0) issue(`${gatePath}.blockers`, "must be empty for a current telemetry gate");
-        if (!gate.gateId) issue(`${gatePath}.gateId`, "must identify the current telemetry gate");
-        if (!gateReport) issue(`${gatePath}.report`, "is required for a current telemetry gate");
-        if (gateReport?.check?.status !== "pass") issue(`${gatePath}.report.check.status`, "must pass for a current telemetry gate");
-        if (gate.completedBoundary === 0) issue(`${gatePath}.completedBoundary`, "must identify a crossed configured cadence boundary for a current telemetry gate");
-        if (plainObject(scenario) && Number.isSafeInteger(scenario.frameCount) && Number.isSafeInteger(gate.clearedPrefixFrames)) {
-          const highestCrossedBoundary = gate.clearedPrefixFrames >= scenario.frameCount
-            ? scenario.frameCount
-            : Math.floor(gate.clearedPrefixFrames / DIFFERENTIAL_TESTING_CADENCE_FRAMES) * DIFFERENTIAL_TESTING_CADENCE_FRAMES;
-          if (gate.completedBoundary !== highestCrossedBoundary) issue(`${gatePath}.completedBoundary`, "must equal the highest fixed 10-frame boundary crossed by clearedPrefixFrames");
-        }
-        const validateGateRow = (row, path) => {
-          if (!plainObject(row)) {
-            issue(path, "must contain the current configured-scenario telemetry result");
-            return;
-          }
-          const expected = {
-            gateId: gate.gateId,
-            scenarioId: scenario?.id,
-            reportSha256: gateReport?.artifactSha256,
-            runtimeTreeSha256: gateReport?.runtimeTreeSha256,
-            contractSha256: gateReport?.contractSha256,
-          };
-          for (const [key, expectedValue] of Object.entries(expected)) {
-            if (row[key] !== expectedValue) issue(`${path}.${key}`, `must bind the current telemetry gate ${key}`);
-          }
-          if (gateReport && row.result !== gateReport.result) issue(`${path}.result`, "must equal the current telemetry gate result");
-          if (gateReport && row.timestamp !== gateReport.generatedAt) issue(`${path}.timestamp`, "must equal the current telemetry report timestamp");
+        const expected = {
+          refreshId: refresh.id,
+          scenarioId: refresh.scenarioId,
+          reportSha256: refreshReport?.artifactSha256,
+          runtimeTreeSha256: refreshReport?.runtimeTreeSha256,
+          contractSha256: refreshReport?.contractSha256,
         };
-        validateGateRow(log[0], "$.log[0]");
-        validateGateRow(progressRows.at(-1), `$.progress[${Math.max(0, progressRows.length - 1)}]`);
-      } else if (gate.status === "not-due") {
-        if (gateBlockers.length > 0) issue(`${gatePath}.blockers`, "must be empty when the automatic telemetry gate is not due");
-        if (gate.gateId !== null) issue(`${gatePath}.gateId`, "must be null when no telemetry gate is due");
-        if (gateReport) issue(`${gatePath}.report`, "must be absent when no telemetry gate is due");
-        if (gate.completedBoundary !== 0) issue(`${gatePath}.completedBoundary`, "must be zero before the first configured cadence boundary is due");
-        if (plainObject(scenario) && Number.isSafeInteger(gate.clearedPrefixFrames) && Number.isSafeInteger(gate.nextBoundary) && gate.clearedPrefixFrames >= gate.nextBoundary) issue(`${gatePath}.clearedPrefixFrames`, "cannot cross nextBoundary while telemetry gate status is not-due");
-      } else if (gate.status === "blocked") {
-        if (gateBlockers.length === 0) issue(`${gatePath}.blockers`, "must explain why automatic telemetry is blocked");
-      }
+        for (const [key, expectedValue] of Object.entries(expected)) {
+          if (row[key] !== expectedValue) issue(`${path}.${key}`, `must bind the completed refresh ${key}`);
+        }
+        if (refreshReport && row.result !== refreshReport.result) issue(`${path}.result`, "must equal the completed refresh result");
+        if (refreshReport && row.timestamp !== refreshReport.generatedAt) issue(`${path}.timestamp`, "must equal the completed report timestamp");
+      };
+      validateRefreshRow(log[0], "$.log[0]");
+      validateRefreshRow(progressRows.at(-1), `$.progress[${Math.max(0, progressRows.length - 1)}]`);
+    } else if (refresh.status === "failed") {
+      if (!validTimestamp(refresh.completedAt)) issue(`${refreshPath}.completedAt`, "is required for a failed refresh");
+      if (typeof refresh.error !== "string" || refresh.error.trim().length === 0) issue(`${refreshPath}.error`, "must explain the refresh failure");
+      if (refreshReport) issue(`${refreshPath}.report`, "must be absent for a failed refresh");
     }
   }
 
@@ -849,7 +853,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
           onlyKeys(session, `${exactPath}.session`, new Set([
             "id", "generatedAt", "scenarioId", "scenarioFrameCount", "profileId", "runtimeSide",
             "reportSha256", "stateSha256", "referenceSha256", "runtimeTreeSha256",
-            "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames", "nextBoundary",
+            "replaySha256", "profileSha256", "contractSha256", "clearedPrefixFrames",
           ]), "exact-session contract");
           text(session.id, `${exactPath}.session.id`, { max: 160 });
           if (!validTimestamp(session.generatedAt)) issue(`${exactPath}.session.generatedAt`, "must be a parseable timestamp");
@@ -862,16 +866,8 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
             sha256(session[key], `${exactPath}.session.${key}`);
           }
           count(session.clearedPrefixFrames, `${exactPath}.session.clearedPrefixFrames`);
-          if (session.nextBoundary !== null) {
-            count(session.nextBoundary, `${exactPath}.session.nextBoundary`);
-            if (session.nextBoundary === 0) issue(`${exactPath}.session.nextBoundary`, "must be greater than zero");
-          }
           if (Number.isSafeInteger(session.scenarioFrameCount) && Number.isSafeInteger(session.clearedPrefixFrames)) {
             if (session.clearedPrefixFrames > session.scenarioFrameCount) issue(`${exactPath}.session.clearedPrefixFrames`, "cannot exceed scenarioFrameCount");
-            const expectedNextBoundary = session.clearedPrefixFrames >= session.scenarioFrameCount
-              ? null
-              : Math.min((Math.floor(session.clearedPrefixFrames / DIFFERENTIAL_TESTING_CADENCE_FRAMES) + 1) * DIFFERENTIAL_TESTING_CADENCE_FRAMES, session.scenarioFrameCount);
-            if (session.nextBoundary !== expectedNextBoundary) issue(`${exactPath}.session.nextBoundary`, "must identify the next fixed 10-frame boundary after clearedPrefixFrames");
           }
         }
       }
@@ -1056,20 +1052,32 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         else if (!exactJsonEqual(decision.blockers, blockers)) issue(`${exactPath}.decision.blockers`, "must equal the exact-session blockers");
       }
 
-      if (plainObject(payload.telemetryGate) && session) {
-        const gate = payload.telemetryGate;
-        const scenario = gate.configuredScenario;
-        if (plainObject(scenario)) {
-          if (scenario.id !== session.scenarioId) issue("$.telemetryGate.configuredScenario.id", "must equal the retained exact-session scenario id");
-          if (scenario.frameCount !== session.scenarioFrameCount) issue("$.telemetryGate.configuredScenario.frameCount", "must equal the retained exact-session scenario frame count");
-          if (scenario.replaySha256 !== session.replaySha256) issue("$.telemetryGate.configuredScenario.replaySha256", "must equal the retained exact-session replay SHA-256");
-          if (scenario.profileSha256 !== session.profileSha256) issue("$.telemetryGate.configuredScenario.profileSha256", "must equal the retained exact-session profile SHA-256");
-          if (scenario.contractSha256 !== session.contractSha256) issue("$.telemetryGate.configuredScenario.contractSha256", "must equal the retained exact-session contract SHA-256");
-        }
-        if (gate.clearedPrefixFrames !== session.clearedPrefixFrames) issue("$.telemetryGate.clearedPrefixFrames", "must equal the retained exact-session clearedPrefixFrames");
-        if (gate.nextBoundary !== session.nextBoundary) issue("$.telemetryGate.nextBoundary", "must equal the retained exact-session nextBoundary");
+      if (selectedScenario && session) {
+        if (selectedScenario.id !== session.scenarioId) issue("$.scenarioCatalog.selectedScenarioId", "must equal the retained exact-session scenario id");
+        if (selectedScenario.frameCount !== session.scenarioFrameCount) issue("$.scenarioCatalog.scenarios", "selected scenario frameCount must equal the retained exact-session scenario frame count");
+        if (selectedScenario.replaySha256 !== session.replaySha256) issue("$.scenarioCatalog.scenarios", "selected scenario replay SHA-256 must equal the retained exact-session replay SHA-256");
+        if (selectedScenario.profileSha256 !== session.profileSha256) issue("$.scenarioCatalog.scenarios", "selected scenario profile SHA-256 must equal the retained exact-session profile SHA-256");
+        if (selectedScenario.contractSha256 !== session.contractSha256) issue("$.scenarioCatalog.scenarios", "selected scenario contract SHA-256 must equal the retained exact-session contract SHA-256");
+      }
+      if (session && plainObject(refresh?.event) && refresh.event.kind === "exact-prefix-advanced" && refresh.event.revision !== String(session.clearedPrefixFrames)) {
+        issue("$.refresh.event.revision", "must equal retained clearedPrefixFrames for an exact-prefix-advanced event");
       }
     }
+  }
+  if (emptyCatalog) {
+    if (payload.refresh !== null) issue("$.refresh", "must be null when there are no scenarios");
+    if (payload.progress.length !== 0) issue("$.progress", "must be empty when there are no scenarios");
+    if (payload.log.length !== 0) issue("$.log", "must be empty when there are no scenarios");
+    if (payload.fields.length !== 0) issue("$.fields", "must be empty when there are no scenarios");
+    for (const [path, metricValue, keys] of [
+      ["$.summary.runs", runsMetric, ["total", "passed", "failed", "blocked"]],
+      ["$.summary.fields", fieldsMetric, ["total", "passed", "failed", "blocked"]],
+      ["$.summary.frames", framesMetric, ["total", "passed", "failed", "blocked", "uniqueTicks"]],
+    ]) {
+      if (metricValue && keys.some((key) => metricValue[key] !== 0)) issue(path, "must be all zero when there are no scenarios");
+    }
+    if (payload.telemetry !== undefined) issue("$.telemetry", "must be absent when there are no scenarios");
+    if (payload.exactSession !== undefined) issue("$.exactSession", "must be absent when there are no scenarios");
   }
   return { ok: issues.length === 0, issues };
 }

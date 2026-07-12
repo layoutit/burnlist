@@ -35,22 +35,25 @@ The adapter must never invent points, stretch one series to another, select newe
 The required comparison surface contains:
 
 - `summary.runs`, `summary.fields`, and `summary.frames`
+- `scenarioCatalog` with one selected scenario and contained sibling payloads
+- `refresh` with one event-driven `queued`, `running`, `complete`, or `failed` state
 - chronological `progress` and reverse-chronological `log`
 - aligned `fields` with paired reference/candidate samples and normalized state
 
 Optional surfaces are independent:
 
 - `telemetry` compares two candidates against one reference. It uses `authority: "telemetry-only"` and contains reconciled fail-to-pass, pass-to-fail, stayed-pass, stayed-fail, and residual counts.
-- `telemetryGate` reports the controller-owned full-scenario telemetry gate. Its cadence is fixed at 10 newly cleared frames. It records the highest crossed boundary and may cover multiple boundaries with one run. It uses `authority: "telemetry-only"`; its result, absence, blocked state, or lag cannot authorize or veto retention.
-- `exactSession` uses `authority: "adapter-attested"`. It is the one retained exact-first session and contains the compact runtime/report state, replay/profile/contract identity, exact prefix and frontier, source-owned producer, composed-loop result, blockers, next telemetry boundary, and one next action.
+- `exactSession` uses `authority: "adapter-attested"`. It is the one retained exact-first session and contains the compact runtime/report state, replay/profile/contract identity, exact prefix and frontier, source-owned producer, composed-loop result, blockers, and one next action.
 
 Raw reports, raw state bodies, replay bodies, source files, commands, engine diffs, and full project packets stay outside the Oven.
+
+When no scenarios exist, publish the explicit empty state: a null selection, an empty catalog, `refresh: null`, zero summaries, and no rows or fields. Do not synthesize an id or discover legacy files.
 
 ## Adapter Attestation Boundary
 
 Burnlist validates normalized structure, arithmetic, chronology, required identities, and session consistency. It cannot prove that a declared digest matches bytes it never receives.
 
-The project adapter owns file reopening, hashing, project-specific checker execution, freshness checks, exact extraction, candidate comparison, telemetry cadence, retained-session replacement, and atomic publication. `adapter-attested` means those checks were reported by the adapter. It does not mean Burnlist independently verified project artifacts.
+The project adapter owns file reopening, hashing, project-specific checker execution, freshness checks, exact extraction, candidate comparison, event-driven refresh execution, request coalescing, retained-session replacement, and atomic publication. `adapter-attested` means those checks were reported by the adapter. It does not mean Burnlist independently verified project artifacts.
 
 An authoritative retained session must attest one comparable scenario, trusted reference, replay, profile, exact contract, retained runtime tree, report/state pair, exact prefix, and frontier. Its surfaced producer and next action must describe that same frontier. A complete session has no divergence or runtime target. A blocked session names the concrete evidence, source, replay, mapping, or tool gap. Any stale or contradictory identity blocks exact authority.
 
@@ -97,13 +100,13 @@ The project owns one composed candidate transaction:
 
 One invocation executes the candidate engine once for combined report and raw tick evidence, extracts the exact prefix once, detects whether the runtime tree changed, compares the candidate summary directly with the retained summary, returns one disposition, and materializes the next retained session only when appropriate. Rejected candidates stop before downstream analysis and never replace the retained session.
 
-Do not split this transaction into manual capture, locate, compare, cadence, or authority commands. Do not add a second deterministic capture, rebuild the same comparison independently, make per-candidate diff artifacts or clones, run a frame ladder, or require interim repository work. The Oven observes the adapter's published result; it does not run the transaction.
+Do not split this transaction into manual capture, locate, compare, refresh, or authority commands. Do not add a second deterministic capture, rebuild the same comparison independently, make per-candidate diff artifacts or clones, run a frame ladder, or require interim repository work. The Oven observes the adapter's published result; it does not run the transaction.
 
-## Automatic Telemetry Cadence
+## Event-Driven Refresh
 
-The composed controller owns one full configured-scenario telemetry gate. It runs automatically whenever an accepted result crosses a new 10-cleared-frame boundary. One gate run covers all 10-frame boundaries crossed by the same accepted candidate.
+Every newly advanced exact prefix automatically requests a full configured-scenario refresh. The project-owned service, not the agent and not Burnlist, moves the request through `queued`, `running`, `complete`, or `failed`. It may coalesce several pending advancement events into the newest revision.
 
-The gate does not recapture exact evidence, rebuild the candidate decision, or rerun exact extraction. Gate failures, exit status, aggregate totals, intervals, and charts remain telemetry only. They never accept or reject an engine edit. Bounded candidate evidence must not promote the dashboard's current full-scenario report; only the cadence controller may do that.
+The refresh does not recapture exact evidence, rebuild the candidate decision, or rerun exact extraction. Refresh failures, exit status, aggregate totals, intervals, and charts remain telemetry only. They never accept or reject an engine edit. Bounded candidate evidence must not promote the selected scenario's current full-scenario report; only the project refresh service may do that.
 
 ## Result Semantics
 
@@ -129,11 +132,11 @@ Threshold loosening, excluded failures, fabricated values, role reversal, and sa
 
 Only after `complete` for the configured scenario should the project run its full tool suite once, optionally audit saved artifacts, inspect the cumulative dirty engine diff, perform authorized repository actions, and write one durable handoff or history update.
 
-If work stops before completion, retain a compact session containing the trusted reference, runtime tree, report/state identity, scenario/replay/profile/contract, exact frontier and prefix, cleared frames, next 10-frame boundary, telemetry gate state, source owner, current result, blockers, and one next action. No per-candidate ledger, diff hash, or command transcript is required.
+If work stops before completion, retain a compact session containing the trusted reference, runtime tree, report/state identity, scenario/replay/profile/contract, exact frontier and prefix, cleared frames, refresh state, source owner, current result, blockers, and one next action. No per-candidate ledger, diff hash, or command transcript is required.
 
 ## History And Refresh
 
-Progress and log rows are gate-bound only when they carry gate, scenario, report, runtime-tree, and contract identities. Otherwise the dashboard labels them display only. The cadence controller owns durable aggregate history publication. Exact-session revisions replace the compact retained session rather than appending candidate-cycle rows, so polling observes source/tool evidence and exact-frontier changes even when no new aggregate report exists.
+Progress and log rows are refresh-bound only when they carry refresh, scenario, report, runtime-tree, and contract identities. Otherwise the dashboard labels them display only. The project refresh service owns durable aggregate history publication. Exact-session revisions replace the compact retained session rather than appending candidate-cycle rows, so polling observes source/tool evidence and exact-frontier changes even when no new aggregate report exists.
 
 ## Presentation
 

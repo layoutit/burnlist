@@ -1,4 +1,4 @@
-// Lifted from the canonical Driving Parity progress chart.
+// Canonical Differential Testing progress chart.
 // The Oven maps generic history into the chart input; rendering stays source-identical.
 
 const isDrivingParityPage = true;

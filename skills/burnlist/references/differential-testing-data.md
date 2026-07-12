@@ -1,10 +1,10 @@
 # Differential Testing Data Contract
 
-Projects feed Differential Testing with one JSON document using schema `burnlist-differential-testing-data@1`. The project owns capture, composed exact-first execution, project-specific checks, normalization, and atomic publication. Burnlist validates and renders the result without importing project code.
+Projects feed Differential Testing with a read-only bundle of JSON documents using schema `burnlist-differential-testing-data@1`. The project owns capture, composed exact-first execution, project-specific checks, normalization, refresh execution, and atomic publication. Burnlist validates and renders the result without importing project code or executing project commands.
 
 ```sh
 burnlist differential-testing validate /absolute/path/to/differential-testing.json
-burnlist --oven-data differential-testing=/absolute/path/to/differential-testing.json
+burnlist --oven-data differential-testing=/absolute/path/to/current.json
 ```
 
 The structural schema is `skills/burnlist/contracts/differential-testing-data.schema.json`. The packaged validator is authoritative because it also recomputes relationships that JSON Schema cannot express.
@@ -42,21 +42,50 @@ The validator recomputes:
 
 A blocked payload names at least one blocker. It may retain valid partial rows or publish no rows when normalization is unsafe. It cannot manufacture passed or failed fields from unavailable data.
 
+## Scenario Bundle
+
+The bound document is the currently selected payload and catalog index. Other scenarios are contained siblings:
+
+```text
+bundle/
+  current.json
+  scenarios/
+    0123456789abcdef.json
+    fedcba9876543210.json
+```
+
+The bound current payload carries the authoritative `scenarioCatalog.scenarios` array. Each sibling payload names itself with `scenarioCatalog.selectedScenarioId` and may carry only its own catalog entry, so adding a scenario never requires rewriting every large payload. Scenario ids are lowercase 16-character hexadecimal strings. Each catalog entry binds its label, full frame count, replay/profile/contract digests, and update timestamp. The server requires the sibling's selected entry to match the current index, then attaches the authoritative catalog to the validated response.
+
+The dashboard loads `?scenario=<id>` only when the id is in the bound catalog, then reads exactly `scenarios/<id>.json`. It rejects malformed ids, missing files, selected-entry drift, and a scenario file that selects a different id. There is no legacy path scan or newest-file fallback.
+
+A clean bundle with no reports uses exactly `scenarioCatalog: { "selectedScenarioId": null, "scenarios": [] }` and `refresh: null`, with zero summary metrics and empty `progress`, `log`, and `fields`. It carries no telemetry or exact session. Burnlist renders `No Differential Testing scenarios` and does not scan the sibling directory.
+
+## Refresh State
+
+`refresh` is the project-owned event-driven update record. It contains a stable request id, the selected scenario id, the triggering event kind/revision/time, and request lifecycle timestamps. Its states are:
+
+- `queued`: accepted but not started
+- `running`: full-scenario comparison is updating
+- `complete`: atomically published with a checked full-scenario report
+- `failed`: finished without a report and names the error
+
+Every exact-prefix advancement should automatically request a refresh. For `event.kind: "exact-prefix-advanced"`, the event revision is the decimal retained `clearedPrefixFrames`; the validator rejects a stale revision. The project service may coalesce several events into its newest queued revision. Burnlist only reads the published state; it does not signal a runtime, start a comparison, invoke an adapter, or execute commands. Refresh success, failure, or lag is telemetry and never changes exact-prefix retention authority.
+
 ## History Identity
 
 Result rows may carry:
 
 ```json
 {
-  "gateId": "gate-17",
-  "scenarioId": "scenario-a",
+  "refreshId": "refresh-17",
+  "scenarioId": "0123456789abcdef",
   "reportSha256": "...",
   "runtimeTreeSha256": "...",
   "contractSha256": "..."
 }
 ```
 
-History without all five identities is display only. A current configured-scenario gate requires the current `log` row and latest `progress` row to bind its gate, report, runtime tree, scenario, and contract.
+Every history row must name the selected scenario, so one payload can never mix scenario events. Rows without the other four identities are display only. A completed refresh requires the current `log` row and latest `progress` row to bind its refresh, report, runtime tree, scenario, and contract.
 
 ## Adapter Boundary
 
@@ -70,7 +99,7 @@ An adapter must:
 6. Run the project-owned checks required by the composed controller.
 7. Normalize one retained exact session rather than selecting newest files independently.
 8. Emit blocked state for stale, contradictory, incomplete, or partially written evidence.
-9. Publish atomically.
+9. Publish scenario files and the current index atomically.
 
 Burnlist validates the reported identities, arithmetic, and session consistency. It does not receive project artifact bytes, so project hash and checker claims are `adapter-attested`, not independently verified by Burnlist.
 
@@ -112,16 +141,6 @@ Adapters use `differentialStateVectorSha256(payload)` from the packaged contract
 
 A blocked telemetry names a blocker and carries no transition summary or field claims. It does not block or rewrite the primary comparison. Changed uses only these tolerance-state transitions; it never grants source, experiment, retention, application, or repository authority.
 
-## Automatic Configured-Scenario Gate
-
-`telemetryGate` describes the controller-owned full-scenario telemetry gate. It always has `authority: "telemetry-only"`, and `configuredScenario.cadenceFrames` is fixed at `10`.
-
-The gate records the configured scenario frame count, replay/profile/contract identities, cleared exact-prefix frames, completed and next boundaries, and the checked report when current. The validator derives `nextBoundary` from the highest crossed boundary. The terminal scenario frame count is also a valid final boundary when it is not a multiple of 10.
-
-After an accepted exact result crosses one or more new 10-frame boundaries, the composed controller runs the full-scenario gate once. That single run records the highest crossed boundary and covers every lower boundary crossed by the same candidate. For example, moving from 9 to 31 cleared frames runs one gate and records boundary 30.
-
-The gate refreshes aggregate reports, progress/log history, and dashboard charts. It does not recapture exact evidence, rerun exact extraction, or rebuild the candidate decision. Its result, exit status, aggregate failure totals, transition counts, intervals, absence, blocked state, or lag cannot authorize or veto engine retention. Only the cadence controller may promote the current full-scenario report.
-
 ## Retained Exact Session
 
 `exactSession` is optional. When present, it has:
@@ -137,7 +156,7 @@ It is one compact retained session, not a candidate-cycle history. A ready or co
 
 - `id`, `generatedAt`, `scenarioId`, `scenarioFrameCount`, `profileId`, and `runtimeSide`
 - `referenceSha256`, `reportSha256`, `stateSha256`, `runtimeTreeSha256`, `replaySha256`, `profileSha256`, and `contractSha256`
-- `clearedPrefixFrames` and `nextBoundary`
+- `clearedPrefixFrames`
 - the exact contract, including schema, hash, scope, canonical order, numeric authority, and retention scope
 - the current exact frontier and prefix identity
 - one compact decision with retained/candidate session identity, blockers, next action, and a target only when applicable
@@ -155,7 +174,7 @@ The compact decision kind is `runtime-change`, `evidence-change`, `complete`, or
 - `evidence-only`: source or tool evidence improved without an engine-retention decision or runtime-tree replacement.
 - `blocked`: a concrete source, replay, mapping, evidence, or tool gap prevents a trustworthy result.
 
-Only `advanced` and `complete` retain a changed engine runtime tree. Aggregate improvements, smaller same-coordinate errors, dashboard results, and configured-gate exit status cannot satisfy either result.
+Only `advanced` and `complete` retain a changed engine runtime tree. Aggregate improvements, smaller same-coordinate errors, dashboard results, and refresh status cannot satisfy either result.
 
 ### Exact Frontier And Producer
 
@@ -197,9 +216,9 @@ Do not require a separate capture and comparison command, a second deterministic
 
 ## End-of-Scenario History
 
-There is no per-candidate exact ledger in the normalized contract. Exact-first publication replaces the compact retained session. Progress and log remain aggregate telemetry history and update at the automatic gate cadence.
+There is no per-candidate exact ledger in the normalized contract. Exact-first publication replaces the compact retained session. Progress and log remain aggregate telemetry history and update whenever the project completes an event-driven refresh.
 
-Only after `result: "complete"` should a project run its full tool suite once, optionally audit saved artifacts, inspect the cumulative dirty engine diff, perform authorized repository actions, and publish one durable handoff or history update. If work stops earlier, the retained session itself is the handoff: trusted reference, runtime/report state, scenario/replay/profile/contract, exact frontier and prefix, cleared frames, next boundary, telemetry gate state, source owner, current result, blockers, and one next action.
+Only after `result: "complete"` should a project run its full tool suite once, optionally audit saved artifacts, inspect the cumulative dirty engine diff, perform authorized repository actions, and publish one durable handoff or history update. If work stops earlier, the retained session itself is the handoff: trusted reference, runtime/report state, scenario/replay/profile/contract, exact frontier and prefix, cleared frames, refresh state, source owner, current result, blockers, and one next action.
 
 ## Renderer Semantics
 
@@ -208,5 +227,5 @@ Only after `result: "complete"` should a project run its full tool suite once, o
 - The normalized runtime target uses only the retained exact frontier and its surfaced producer when exact-first is active.
 - A blocked or complete exact session declares no runtime target.
 - Exact authority remains contract data and does not add a non-template dashboard panel.
-- The configured full-scenario gate is telemetry only and never changes the exact retention result.
-- Polling observes primary results, telemetry seals, configured-gate state, and the complete compact retained session so evidence-only changes refresh without a page reload.
+- Refresh state is telemetry only and never changes the exact retention result.
+- Polling observes primary results, telemetry seals, refresh state, scenario selection, and the complete compact retained session so evidence-only changes refresh without a page reload.

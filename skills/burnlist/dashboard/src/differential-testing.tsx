@@ -11,9 +11,13 @@ type DifferentialTestingPayload = {
   progress: unknown[];
   log: unknown[];
   fields: unknown[];
+  scenarioCatalog: {
+    selectedScenarioId: string | null;
+    scenarios: Array<{ id: string; label: string }>;
+  };
+  refresh: { status: "queued" | "running" | "complete" | "failed" } | null;
   exactSession?: unknown;
   telemetry?: unknown;
-  telemetryGate?: unknown;
 };
 
 type DifferentialTestingOven = {
@@ -25,12 +29,15 @@ type DifferentialTestingOven = {
 type MountedDashboard = {
   update: (oven: DifferentialTestingOven, payload: DifferentialTestingPayload) => void;
   destroy?: () => void;
+  setClientRefreshStatus?: (status: "loading" | "failed" | null) => void;
 };
 
 export function DifferentialTestingPage() {
   const [payload, setPayload] = useState<DifferentialTestingPayload | null>(null);
   const [oven, setOven] = useState<DifferentialTestingOven | null>(null);
   const [error, setError] = useState("");
+  const [clientRefreshStatus, setClientRefreshStatus] = useState<"loading" | "failed" | null>(null);
+  const [scenarioId, setScenarioId] = useState(() => new URLSearchParams(window.location.search).get("scenario") ?? "");
 
   useEffect(() => {
     document.body.classList.add("driving-parity-view");
@@ -51,7 +58,7 @@ export function DifferentialTestingPage() {
       try {
         const [ovenResponse, dataResponse] = await Promise.all([
           fetch("/api/ovens/differential-testing", { cache: "no-store" }),
-          fetch("/api/oven-data/differential-testing", { cache: "no-store" }),
+          fetch(scenarioId ? `/api/oven-data/differential-testing?scenario=${encodeURIComponent(scenarioId)}` : "/api/oven-data/differential-testing", { cache: "no-store" }),
         ]);
         const ovenJson = await ovenResponse.json();
         const dataJson = await dataResponse.json();
@@ -65,8 +72,12 @@ export function DifferentialTestingPage() {
           payloadRevision = nextRevision;
         }
         setError("");
+        setClientRefreshStatus(null);
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load Differential Testing dashboard.");
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : "Could not load Differential Testing dashboard.");
+          setClientRefreshStatus("failed");
+        }
       } finally {
         refreshInFlight = false;
         if (refreshQueued && !cancelled) {
@@ -81,22 +92,34 @@ export function DifferentialTestingPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [scenarioId]);
 
-  if (error) return <div className="shell driving-parity-view"><div className="empty">{error}</div></div>;
+  const selectScenario = (nextScenarioId: string) => {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("scenario", nextScenarioId);
+    window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+    setClientRefreshStatus("loading");
+    setScenarioId(nextScenarioId);
+  };
+
+  if (error && (!oven || !payload)) return <div className="shell driving-parity-view"><div className="empty">{error}</div></div>;
   if (!oven || !payload) return <div className="shell driving-parity-view"><div className="empty">Loading Differential Testing Oven.</div></div>;
-  return <SharedDifferentialTestingDashboard oven={oven} payload={payload} />;
+  return <SharedDifferentialTestingDashboard oven={oven} payload={payload} onScenarioChange={selectScenario} clientRefreshStatus={clientRefreshStatus} />;
 }
 
-function SharedDifferentialTestingDashboard({ oven, payload }: { oven: DifferentialTestingOven; payload: DifferentialTestingPayload }) {
+function SharedDifferentialTestingDashboard({ oven, payload, onScenarioChange, clientRefreshStatus }: { oven: DifferentialTestingOven; payload: DifferentialTestingPayload; onScenarioChange: (scenarioId: string) => void; clientRefreshStatus: "loading" | "failed" | null }) {
   const root = useRef<HTMLDivElement>(null);
   const mounted = useRef<MountedDashboard | null>(null);
 
   useEffect(() => {
     if (!root.current) return;
-    if (!mounted.current) mounted.current = mountDifferentialTestingDashboard(root.current, oven, payload);
+    if (!mounted.current) mounted.current = mountDifferentialTestingDashboard(root.current, oven, payload, { onScenarioChange });
     else mounted.current.update(oven, payload);
   }, [oven, payload]);
+
+  useEffect(() => {
+    mounted.current?.setClientRefreshStatus?.(clientRefreshStatus);
+  }, [clientRefreshStatus]);
 
   useEffect(() => () => {
     mounted.current?.destroy?.();

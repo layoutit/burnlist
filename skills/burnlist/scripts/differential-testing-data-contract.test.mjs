@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -11,6 +13,7 @@ import {
   differentialExactTarget,
   differentialTelemetryFieldMap,
   differentialPayloadRevision,
+  differentialRefreshStatusLabel,
   differentialHistoryPoints,
   differentialProgressChartHistory,
   differentialSampleStateIsNonPass,
@@ -21,7 +24,6 @@ import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
   differentialStateVectorSha256,
-  DIFFERENTIAL_TESTING_CADENCE_FRAMES,
   DIFFERENTIAL_TESTING_EXACT_AUTHORITY,
   DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
   validateDifferentialTestingData,
@@ -86,6 +88,9 @@ function telemetryPayloads({ baselineMode = "mixed" } = {}) {
   const baseline = buildPayload(reference, baselineCapture);
   const candidate = buildPayload(reference, candidateCapture);
   const provenance = structuredClone(telemetryProvenance);
+  provenance.comparison.scenarioId = candidate.scenarioCatalog.selectedScenarioId;
+  provenance.baseline.contractSha256 = candidate.scenarioCatalog.scenarios[0].contractSha256;
+  provenance.candidate.contractSha256 = candidate.scenarioCatalog.scenarios[0].contractSha256;
   for (const [label, payload] of [["baseline", baseline], ["candidate", candidate]]) {
     const stateVectorSha256 = differentialStateVectorSha256(payload);
     provenance[label].stateVectorSha256 = stateVectorSha256;
@@ -110,7 +115,7 @@ const exactDigests = Object.freeze({
   prefix: "9".repeat(64),
   state: "a".repeat(64),
   replay: "b".repeat(64),
-  gateReport: "c".repeat(64),
+  refreshReport: "c".repeat(64),
 });
 
 function exactCheck(id, subjectSha256, status = "pass") {
@@ -125,49 +130,51 @@ function attachReadyExactSession(payload, {
 } = {}) {
   const target = payload.fields.find((field) => field.id === targetFieldId);
   assert.ok(target);
-  const scenarioId = "fixture-scenario";
+  const scenarioId = "0123456789abcdef";
   const scenarioFrameCount = 25;
   const clearedPrefixFrames = 12;
-  const completedBoundary = 10;
-  const nextBoundary = 20;
-  const gateIdentity = {
-    gateId: "gate-fixture",
+  const refreshIdentity = {
+    refreshId: "refresh-fixture",
     scenarioId,
-    reportSha256: exactDigests.gateReport,
+    reportSha256: exactDigests.refreshReport,
     runtimeTreeSha256: exactDigests.runtime,
     contractSha256: exactDigests.contract,
   };
-  Object.assign(payload.log[0], gateIdentity);
-  Object.assign(payload.progress.at(-1), gateIdentity);
-  payload.telemetryGate = {
-    status: "current",
-    authority: DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
-    blockers: [],
-    configuredScenario: {
+  Object.assign(payload.log[0], refreshIdentity);
+  Object.assign(payload.progress.at(-1), refreshIdentity);
+  payload.scenarioCatalog = {
+    selectedScenarioId: scenarioId,
+    scenarios: [{
       id: scenarioId,
+      label: "Fixture scenario",
       frameCount: scenarioFrameCount,
-      cadenceFrames: DIFFERENTIAL_TESTING_CADENCE_FRAMES,
       replaySha256: exactDigests.replay,
       profileSha256: exactDigests.profile,
       contractSha256: exactDigests.contract,
-    },
-    clearedPrefixFrames,
-    completedBoundary,
-    nextBoundary,
-    gateId: gateIdentity.gateId,
+      updatedAt: payload.publishedAt,
+    }],
+  };
+  payload.refresh = {
+    id: refreshIdentity.refreshId,
+    status: "complete",
+    scenarioId,
+    event: { kind: "exact-prefix-advanced", revision: String(clearedPrefixFrames), occurredAt: payload.publishedAt },
+    requestedAt: payload.publishedAt,
+    startedAt: payload.publishedAt,
+    completedAt: payload.publishedAt,
+    error: null,
     report: {
-      id: "gate-report-fixture",
+      id: "refresh-report-fixture",
       generatedAt: payload.log[0].timestamp,
-      artifactSha256: gateIdentity.reportSha256,
-      runtimeTreeSha256: gateIdentity.runtimeTreeSha256,
-      contractSha256: gateIdentity.contractSha256,
+      artifactSha256: refreshIdentity.reportSha256,
+      runtimeTreeSha256: refreshIdentity.runtimeTreeSha256,
+      contractSha256: refreshIdentity.contractSha256,
       scenarioId,
       frameCount: scenarioFrameCount,
-      completedBoundary,
       replaySha256: exactDigests.replay,
       profileSha256: exactDigests.profile,
       result: payload.log[0].result,
-      check: exactCheck("gate-report-check@1", gateIdentity.reportSha256),
+      check: exactCheck("refresh-report-check@1", refreshIdentity.reportSha256),
     },
   };
   payload.exactSession = {
@@ -191,7 +198,6 @@ function attachReadyExactSession(payload, {
       profileSha256: exactDigests.profile,
       contractSha256: exactDigests.contract,
       clearedPrefixFrames,
-      nextBoundary,
     },
     contract: {
       schema: "fixture-exact-contract@1",
@@ -283,7 +289,6 @@ function attachCompleteExactSession(payload) {
   exact.status = "complete";
   exact.result = "complete";
   exact.session.clearedPrefixFrames = exact.session.scenarioFrameCount;
-  exact.session.nextBoundary = null;
   exact.frontier = {
     ...exact.frontier,
     kind: "complete",
@@ -310,10 +315,7 @@ function attachCompleteExactSession(payload) {
     retainedSessionId: exact.session.id,
     candidateSessionId: exact.session.id,
   };
-  payload.telemetryGate.clearedPrefixFrames = exact.session.scenarioFrameCount;
-  payload.telemetryGate.completedBoundary = exact.session.scenarioFrameCount;
-  payload.telemetryGate.nextBoundary = null;
-  payload.telemetryGate.report.completedBoundary = exact.session.scenarioFrameCount;
+  payload.refresh.event.revision = String(exact.session.scenarioFrameCount);
   return payload;
 }
 
@@ -345,7 +347,43 @@ test("accepts the empty shipped example without inventing a run", () => {
   assert.deepEqual(payload.progress, []);
   assert.deepEqual(payload.log, []);
   assert.deepEqual(payload.fields, []);
+  assert.deepEqual(payload.scenarioCatalog, { selectedScenarioId: null, scenarios: [] });
+  assert.equal(payload.refresh, null);
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+});
+
+test("empty scenario state rejects fake selection and retained data", async (t) => {
+  await t.test("selectedScenarioId must stay null", () => {
+    const payload = buildPayload(...emptyCaptures());
+    payload.scenarioCatalog.selectedScenarioId = "0123456789abcdef";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must be null when there are no scenarios/u);
+  });
+  await t.test("refresh must stay null", () => {
+    const payload = buildPayload(...emptyCaptures());
+    payload.refresh = {};
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must be null when there are no scenarios/u);
+  });
+  await t.test("history must stay empty", () => {
+    const payload = buildPayload(...emptyCaptures());
+    payload.log.push({ timestamp: payload.publishedAt, result: "blocked", value: 0, scenarioId: "0123456789abcdef" });
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must be empty when there are no scenarios/u);
+  });
+});
+
+test("renderer shows the clean no-scenarios state without a fake id", () => {
+  const payload = buildPayload(...emptyCaptures());
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const root = { innerHTML: "", addEventListener() {}, querySelector: () => null, querySelectorAll: () => [] };
+  const previousWindow = globalThis.window;
+  globalThis.window = { addEventListener() {}, removeEventListener() {}, devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+  try {
+    mountDifferentialTestingDashboard(root, oven, payload);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+  assert.match(root.innerHTML, /No Differential Testing scenarios/u);
+  assert.match(root.innerHTML, /<option selected>No scenarios<\/option>/u);
+  assert.doesNotMatch(root.innerHTML, /[a-f0-9]{16}/u);
 });
 
 test("accepts populated data and reconciles its mismatch", () => {
@@ -431,10 +469,12 @@ test("accepts an unavailable payload that declares expected fields as blocked", 
   payload.trust = { status: "blocked", reportStatus: "blocked", blockers: ["The source capture failed validation."] };
   payload.fields = [];
   payload.progress = [];
-  payload.log = [{ timestamp: payload.publishedAt, result: "blocked", value: 0, delta: null, failedFieldCount: 2, firstFailingTick: null, firstFailingLabel: "The source capture failed validation." }];
+  payload.log = [{ timestamp: payload.publishedAt, result: "blocked", value: 0, delta: null, failedFieldCount: 2, firstFailingTick: null, firstFailingLabel: "The source capture failed validation.", scenarioId: payload.scenarioCatalog.selectedScenarioId }];
   payload.summary.runs = { label: "Runs", total: 1, passed: 0, failed: 0, blocked: 1 };
   payload.summary.fields = { label: "Fields", total: 2, passed: 0, failed: 0, blocked: 2 };
   payload.summary.frames = { label: "Samples", total: 0, passed: 0, failed: 0, blocked: 0, uniqueTicks: 0 };
+  payload.refresh = { ...payload.refresh, status: "failed", error: "The source capture failed validation." };
+  delete payload.refresh.report;
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
 });
 
@@ -443,7 +483,7 @@ test("builds sealed transition telemetry with exact per-field state transitions"
   const telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(telemetry.status, "comparable");
   assert.equal(telemetry.authority, DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY);
-  assert.deepEqual(telemetry.comparison, telemetryProvenance.comparison);
+  assert.deepEqual(telemetry.comparison, provenance.comparison);
   assert.deepEqual(telemetry.summary, {
     failToPassCount: 1,
     passToFailCount: 1,
@@ -477,6 +517,7 @@ test("keeps a globally worse telemetry candidate failed while exposing its local
   const { baseline, candidate, provenance } = telemetryPayloads({ baselineMode: "passing" });
   candidate.progress[0].result = "worsened";
   candidate.log[0].result = "worsened";
+  candidate.refresh.report.result = "worsened";
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(candidate.summary.frames.failed, 1);
   assert.equal(candidate.summary.fields.failed, 1);
@@ -687,7 +728,6 @@ test("accepts exact completion without a producer", () => {
   const payload = attachCompleteExactSession(buildPayload(...populatedCaptures()));
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
   assert.equal(payload.exactSession.producer, undefined);
-  assert.equal(payload.exactSession.session.nextBoundary, null);
   assert.equal(differentialExactTarget(payload).status, "complete");
 });
 
@@ -714,39 +754,38 @@ test("rejected candidates preserve the retained session identity", () => {
   assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must differ from the retained session id/u);
 });
 
-test("fixed cadence records the highest crossed 10-frame boundary", async (t) => {
-  await t.test("the workflow cadence is exactly ten", () => {
+test("event-driven refresh states are strict and cadence-free", async (t) => {
+  await t.test("queued refresh has not started", () => {
     const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-    payload.telemetryGate.configuredScenario.cadenceFrames = 5;
-    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /fixed workflow cadence of 10 frames/u);
-  });
-
-  await t.test("one gate covers multiple boundaries crossed by one accepted candidate", () => {
-    const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-    payload.exactSession.session.clearedPrefixFrames = 22;
-    payload.exactSession.session.nextBoundary = 25;
-    payload.exactSession.frontier.frame = 22;
-    payload.exactSession.frontier.prefixCount = 22;
-    payload.exactSession.producer.frame = 22;
-    payload.telemetryGate.clearedPrefixFrames = 22;
-    payload.telemetryGate.completedBoundary = 20;
-    payload.telemetryGate.nextBoundary = 25;
-    payload.telemetryGate.report.completedBoundary = 20;
+    payload.refresh = { ...payload.refresh, status: "queued", startedAt: null, completedAt: null, error: null };
+    delete payload.refresh.report;
     assert.doesNotThrow(() => assertDifferentialTestingData(payload));
-
-    payload.telemetryGate.completedBoundary = 10;
-    payload.telemetryGate.report.completedBoundary = 10;
-    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /highest fixed 10-frame boundary/u);
   });
 
-  await t.test("the retained session carries its next boundary directly", () => {
+  await t.test("running refresh has started but has no report", () => {
     const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-    payload.exactSession.session.nextBoundary = 25;
-    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /next fixed 10-frame boundary/u);
+    payload.refresh = { ...payload.refresh, status: "running", completedAt: null, error: null };
+    delete payload.refresh.report;
+    assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+  });
+
+  await t.test("failed refresh explains the failure", () => {
+    const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
+    payload.refresh = { ...payload.refresh, status: "failed", error: "Full-scenario report failed." };
+    delete payload.refresh.report;
+    assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+    payload.refresh.error = null;
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must explain the refresh failure/u);
+  });
+
+  await t.test("old cadence keys have no compatibility path", () => {
+    const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
+    payload.refresh.nextBoundary = 20;
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /nextBoundary.*not supported by the refresh contract/u);
   });
 });
 
-test("direct retained-session bindings reconcile contract, frontier, and telemetry gate", async (t) => {
+test("direct retained-session bindings reconcile contract, frontier, and selected scenario", async (t) => {
   const validPayload = () => attachReadyExactSession(buildPayload(...populatedCaptures()));
 
   await t.test("contract digest differs", () => {
@@ -768,16 +807,34 @@ test("direct retained-session bindings reconcile contract, frontier, and telemet
     assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /first frame after clearedPrefixFrames/u);
   });
 
-  await t.test("telemetry gate names another scenario", () => {
+  await t.test("catalog selects another scenario", () => {
     const payload = validPayload();
-    payload.telemetryGate.configuredScenario.id = "another-scenario";
+    const otherScenarioId = "fedcba9876543210";
+    payload.scenarioCatalog.scenarios.push({ ...payload.scenarioCatalog.scenarios[0], id: otherScenarioId, label: "Other scenario" });
+    payload.scenarioCatalog.selectedScenarioId = otherScenarioId;
+    payload.refresh.scenarioId = otherScenarioId;
+    payload.refresh.report.scenarioId = otherScenarioId;
+    payload.log[0].scenarioId = otherScenarioId;
+    payload.progress.at(-1).scenarioId = otherScenarioId;
     assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /retained exact-session scenario id/u);
   });
 
-  await t.test("telemetry gate cleared prefix differs", () => {
+  await t.test("refresh names another scenario", () => {
     const payload = validPayload();
-    payload.telemetryGate.clearedPrefixFrames = 11;
-    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /retained exact-session clearedPrefixFrames/u);
+    payload.refresh.scenarioId = "fedcba9876543210";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /selected scenario id|refresh scenario id/u);
+  });
+
+  await t.test("history contains another scenario", () => {
+    const payload = validPayload();
+    payload.log[0].scenarioId = "fedcba9876543210";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must equal the selected scenario id/u);
+  });
+
+  await t.test("refresh event lags the retained prefix", () => {
+    const payload = validPayload();
+    payload.refresh.event.revision = "11";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must equal retained clearedPrefixFrames/u);
   });
 });
 
@@ -838,7 +895,7 @@ test("result and status consistency is strict", async (t) => {
 
 test("removed ceremony keys are rejected with no compatibility path", async (t) => {
   const schemaText = readFileSync(resolve(exampleDir, "../../contracts/differential-testing-data.schema.json"), "utf8");
-  for (const removedDefinition of ["exactCycles", "exactComparison", "exactBinding", "exactLifecycle"]) {
+  for (const removedDefinition of ["exactCycles", "exactComparison", "exactBinding", "exactLifecycle", "telemetryGate", "cadenceFrames", "nextBoundary", "gateId"]) {
     assert.doesNotMatch(schemaText, new RegExp(`"${removedDefinition}"`, "u"));
   }
 
@@ -856,6 +913,12 @@ test("removed ceremony keys are rejected with no compatibility path", async (t) 
     assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /exactCycles.*not supported by the Differential Testing data contract/u);
   });
 
+  await t.test("rejects the removed telemetryGate", () => {
+    const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
+    payload.telemetryGate = {};
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /telemetryGate.*not supported by the Differential Testing data contract/u);
+  });
+
   await t.test("rejects old producer patchScope", () => {
     const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
     payload.exactSession.producer.patchScope = payload.exactSession.producer.changeScope;
@@ -866,12 +929,12 @@ test("removed ceremony keys are rejected with no compatibility path", async (t) 
 
 test("telemetry remains observational and cannot veto exact retention", () => {
   const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-  payload.telemetryGate.report.result = "worsened";
+  payload.refresh.report.result = "worsened";
   payload.log[0].result = "worsened";
   payload.progress.at(-1).result = "worsened";
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
   assert.equal(payload.exactSession.result, "advanced");
-  assert.equal(payload.telemetryGate.authority, "telemetry-only");
+  assert.equal(payload.telemetry?.authority ?? DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY, "telemetry-only");
 });
 
 test("an invalid exact strategy fails closed instead of selecting an aggregate target", () => {
@@ -904,6 +967,8 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
   const frameMetrics = differentialFrameDeltaMetrics({ fields: [{ samples: [[0, 0, 0, 0], [1, 0, 1, 1], [2, null, null, 4]] }, { samples: [[0, 0, 0, 0], [1, 0, 0, 0], [2, 0, 0, 0]] }] });
   assert.deepEqual(frameMetrics.frameDeviationRatios, [0, 0.5, 0]);
   assert.equal(frameMetrics.firstFailingFrame, 1);
+  const frameZeroMetrics = differentialFrameDeltaMetrics({ fields: [{ samples: [[0, 0, 1, 1], [1, 0, 0, 0]] }] });
+  assert.equal(frameZeroMetrics.firstFailingFrame, 0);
 
   const payload = { publishedAt: points[2].timestamp, adapter: { id: "fixture" }, summary: {}, progress: points.slice(), log: [], fields: [{ id: "field-a", label: "Field A", samples: [] }], telemetry: {
     status: "comparable",
@@ -928,10 +993,19 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
   assert.notEqual(differentialPayloadRevision(payload), afterProgress);
 });
 
+test("refresh states map to the compact selector status", () => {
+  assert.equal(differentialRefreshStatusLabel({ status: "queued" }), "Queued");
+  assert.equal(differentialRefreshStatusLabel({ status: "running" }), "Updating");
+  assert.equal(differentialRefreshStatusLabel({ status: "complete" }), "");
+  assert.equal(differentialRefreshStatusLabel({ status: "failed" }), "Update failed");
+  assert.equal(differentialRefreshStatusLabel({ status: "complete" }, "loading"), "Loading");
+});
+
 test("Changed renders telemetry transitions while primary field status stays failing", () => {
   const { baseline, candidate, provenance } = telemetryPayloads({ baselineMode: "passing" });
   candidate.progress[0].result = "worsened";
   candidate.log[0].result = "worsened";
+  candidate.refresh.report.result = "worsened";
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(differentialTelemetryFieldMap(candidate).size, candidate.fields.length);
 
@@ -1014,6 +1088,7 @@ test("hybrid rows default to Delta and label frames only on the first row", () =
   assert.equal(root.className, "shell driving-parity-view");
   assert.doesNotMatch(root.innerHTML, /class="shell driving-parity-view/u);
   assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Results</u);
+  assert.match(root.innerHTML, /id="differential-scenario-selector"/u);
   assert.match(root.innerHTML, /id="progress-panel-title">Parity Progress<\/h2>/u);
   assert.match(root.innerHTML, /class="work-panel-title">Parity Progress</u);
   assert.match(root.innerHTML, /id="progress-headline">0\/0</u);
@@ -1027,7 +1102,8 @@ test("hybrid rows default to Delta and label frames only on the first row", () =
   assert.match(root.innerHTML, /id="sort-mode" aria-label="sort cards"/u);
   assert.match(root.innerHTML, /class="coverage" id="coverage"/u);
   assert.doesNotMatch(root.innerHTML, />Δ /u);
-  assert.match(root.innerHTML, /class="hybrid-value-delta"><\/span>/u);
+  assert.match(root.innerHTML, /class="hybrid-value-delta">0\.1000<\/span>/u);
+  assert.match(root.innerHTML, /class="hybrid-value-delta">0<\/span>/u);
   assert.match(root.innerHTML, /class="checklist-log-table-header"><span>Age<\/span><span>Value<\/span><span>Result<\/span><span>Delta<\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell age">(?:now|\d+m)<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="log-table-cell age">\d+[hd]<\/span>/u);
@@ -1035,6 +1111,28 @@ test("hybrid rows default to Delta and label frames only on the first row", () =
   assert.match(root.innerHTML, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
   assert.doesNotMatch(root.innerHTML, /differential-(?:page|workspace|toolbar|controls|kpi-strip)/u);
   assert.equal((renderedHtml.match(/class="frame-tick-label"/gu) || []).length, 1);
+});
+
+test("scenario selector requests another published scenario and shows Loading", () => {
+  const payload = buildPayload(...populatedCaptures());
+  const secondScenario = { ...payload.scenarioCatalog.scenarios[0], id: "fedcba9876543210", label: "Second scenario" };
+  payload.scenarioCatalog.scenarios.push(secondScenario);
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const controls = { value: "", focus() {}, setSelectionRange() {} };
+  const listeners = new Map();
+  const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
+  const selected = [];
+  const previousWindow = globalThis.window;
+  globalThis.window = { devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+  try {
+    mountDifferentialTestingDashboard(root, oven, payload, { onScenarioChange: (scenarioId) => selected.push(scenarioId) });
+    listeners.get("change")({ target: { value: secondScenario.id, matches: (selector) => selector === "#differential-scenario-selector" } });
+  } finally {
+    globalThis.window = previousWindow;
+  }
+  assert.deepEqual(selected, [secondScenario.id]);
+  assert.match(root.innerHTML, new RegExp(`<option value="${secondScenario.id}" selected>`, "u"));
+  assert.match(root.innerHTML, /id="differential-refresh-status"[^>]*>Loading</u);
 });
 
 test("first-row tick cadence and label clearance match the shared hybrid reference", () => {
@@ -1098,9 +1196,135 @@ test("live Differential Testing dashboard polls and updates only when the payloa
   payload = { publishedAt: "2026-01-01T12:00:02.000Z" };
   await intervalCallback();
   assert.deepEqual(updatedPayloads, [payload]);
+  payload = { publishedAt: "2026-01-01T12:00:04.000Z" };
+  await controller.selectScenario("0123456789abcdef");
+  assert.equal(requests.at(-1)[0], "/api/oven-data/differential-testing?scenario=0123456789abcdef");
+  assert.deepEqual(updatedPayloads, [{ publishedAt: "2026-01-01T12:00:02.000Z" }, payload]);
   assert.equal(requests.filter(([url]) => url === "/api/ovens/differential-testing").length, 1);
   assert.ok(requests.every(([, options]) => options.cache === "no-store"));
 
   controller.stop();
   assert.equal(clearedTimer, 17);
+});
+
+test("live Differential Testing dashboard escapes an initial server error", async () => {
+  const root = { innerHTML: "" };
+  const controller = startDifferentialTestingLiveUpdates(root, {
+    fetchImpl: async () => ({
+      ok: false,
+      async json() { return { error: '<img src=x onerror="globalThis.injected=true">' }; },
+    }),
+    setIntervalImpl: () => 17,
+    clearIntervalImpl() {},
+  });
+
+  await controller.ready;
+  assert.equal(root.innerHTML, '<div class="empty">&lt;img src=x onerror=&quot;globalThis.injected=true&quot;&gt;</div>');
+  controller.stop();
+});
+
+test("live Differential Testing dashboard discards an in-flight response after scenario selection", async () => {
+  let resolveOldPayload;
+  const oldPayload = new Promise((resolvePayload) => { resolveOldPayload = resolvePayload; });
+  const applied = [];
+  let resolveApplied;
+  const newPayloadApplied = new Promise((resolvePayload) => { resolveApplied = resolvePayload; });
+  const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
+    fetchImpl: async (url) => {
+      if (url === "/api/ovens/differential-testing") return { ok: true, async json() { return { oven: {} }; } };
+      if (url === "/api/oven-data/differential-testing") return { ok: true, async json() { return { payload: await oldPayload }; } };
+      return { ok: true, async json() { return { payload: { scenario: "new" } }; } };
+    },
+    setIntervalImpl: () => 17,
+    clearIntervalImpl() {},
+    mount: (_root, _oven, payload) => {
+      applied.push(["mount", payload.scenario]);
+      resolveApplied();
+      return { update: (_nextOven, nextPayload) => applied.push(["update", nextPayload.scenario]) };
+    },
+  });
+
+  void controller.selectScenario("0123456789abcdef");
+  resolveOldPayload({ scenario: "old" });
+  await controller.ready;
+  await newPayloadApplied;
+  assert.deepEqual(applied, [["mount", "new"]]);
+  controller.stop();
+});
+
+test("Burnlist serves only catalog-listed contained scenario payloads", async (t) => {
+  const directory = mkdtempSync(resolve(tmpdir(), "burnlist-differential-scenarios-"));
+  const bundleDir = resolve(directory, "bundle");
+  const scenariosDir = resolve(bundleDir, "scenarios");
+  mkdirSync(scenariosDir, { recursive: true });
+  const current = buildPayload(...populatedCaptures());
+  const secondId = "fedcba9876543210";
+  const secondEntry = { ...current.scenarioCatalog.scenarios[0], id: secondId, label: "Second scenario" };
+  current.scenarioCatalog.scenarios.push(secondEntry);
+  const second = structuredClone(current);
+  second.scenarioCatalog.selectedScenarioId = secondId;
+  second.scenarioCatalog.scenarios = [secondEntry];
+  second.refresh.scenarioId = secondId;
+  second.refresh.report.scenarioId = secondId;
+  second.log[0].scenarioId = secondId;
+  second.progress[0].scenarioId = secondId;
+  assert.doesNotThrow(() => assertDifferentialTestingData(current));
+  assert.doesNotThrow(() => assertDifferentialTestingData(second));
+  writeFileSync(resolve(bundleDir, "current.json"), `${JSON.stringify(current)}\n`);
+  writeFileSync(resolve(scenariosDir, `${secondId}.json`), `${JSON.stringify(second)}\n`);
+
+  const serverPath = resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs");
+  const port = 48000 + Math.floor(Math.random() * 1000);
+  const child = spawn(process.execPath, [serverPath, "--port", String(port), "--auto-port", "--state-dir", resolve(directory, "state"), "--oven-data", "differential-testing=bundle/current.json"], { cwd: directory, stdio: ["ignore", "pipe", "pipe"] });
+  t.after(() => {
+    child.kill("SIGTERM");
+    rmSync(directory, { recursive: true, force: true });
+  });
+  const baseUrl = await new Promise((accept, reject) => {
+    let output = "";
+    const timer = setTimeout(() => reject(new Error(`Burnlist test server did not start: ${output}`)), 5000);
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+      const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//u);
+      if (!match) return;
+      clearTimeout(timer);
+      accept(match[0]);
+    });
+    child.stderr.on("data", (chunk) => { output += chunk; });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`Burnlist test server exited with ${code}: ${output}`));
+    });
+  });
+
+  const currentResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
+  assert.equal(currentResponse.status, 200);
+  assert.equal((await currentResponse.json()).scenarioId, current.scenarioCatalog.selectedScenarioId);
+  assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${current.scenarioCatalog.selectedScenarioId}`)).status, 200);
+  const secondResponse = await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${secondId}`);
+  assert.equal(secondResponse.status, 200);
+  const secondResponsePayload = (await secondResponse.json()).payload;
+  assert.equal(secondResponsePayload.scenarioCatalog.selectedScenarioId, secondId);
+  assert.equal(secondResponsePayload.scenarioCatalog.scenarios.length, 2);
+  assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=../../etc/passwd`)).status, 400);
+  assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=aaaaaaaaaaaaaaaa`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}api/types`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}types/new`)).status, 404);
+
+  const empty = buildPayload(...emptyCaptures());
+  writeFileSync(resolve(bundleDir, "current.json"), `${JSON.stringify(empty)}\n`);
+  rmSync(scenariosDir, { recursive: true, force: true });
+  const emptyResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
+  assert.equal(emptyResponse.status, 200);
+  assert.deepEqual((await emptyResponse.json()).payload.scenarioCatalog, { selectedScenarioId: null, scenarios: [] });
+  assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${secondId}`)).status, 404);
+});
+
+test("Burnlist rejects retired pre-Oven options instead of adapting them", () => {
+  const serverPath = resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs");
+  for (const option of ["--legacy-detail-origin", "--types-dir"]) {
+    const result = spawnSync(process.execPath, [serverPath, option, "/tmp/retired"], { encoding: "utf8" });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, new RegExp(`Unknown option: ${option}`, "u"));
+  }
 });

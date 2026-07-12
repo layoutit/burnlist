@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -77,6 +78,15 @@ export function buildPayload(referenceCapture, candidateCapture, provenance = {}
   const result = hasComparison ? (blocked ? "blocked" : frameSummary.failed ? "unchanged" : "pass") : null;
   const failureValue = frameSummary.failed + frameSummary.blocked;
   const timestamp = candidateCapture.generatedAt;
+  const digest = (value) => createHash("sha256").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex");
+  const scenarioId = digest(referenceCapture.captureId).slice(0, 16);
+  const replaySha256 = digest(referenceCapture);
+  const profileSha256 = digest("differential-testing-example-profile");
+  const contractSha256 = digest(referenceCapture.fields);
+  const artifactSha256 = digest(candidateCapture);
+  const runtimeTreeSha256 = digest(candidateCapture.samples);
+  const refreshId = `refresh-${artifactSha256.slice(0, 16)}`;
+  const rowBinding = { refreshId, scenarioId, reportSha256: artifactSha256, runtimeTreeSha256, contractSha256 };
   return {
     schema: DIFFERENTIAL_TESTING_DATA_SCHEMA,
     publishedAt: timestamp,
@@ -84,13 +94,48 @@ export function buildPayload(referenceCapture, candidateCapture, provenance = {}
     subtitle: `${referenceCapture.captureId} / ${candidateCapture.captureId}`,
     adapter: { id: "differential-testing-example", ...provenance },
     trust: { status: blocked ? "blocked" : "pass", reportStatus: result, blockers: blocked ? ["At least one aligned sample is missing."] : [] },
+    scenarioCatalog: hasComparison ? {
+      selectedScenarioId: scenarioId,
+      scenarios: [{
+        id: scenarioId,
+        label: referenceCapture.captureId,
+        frameCount: Math.max(1, ticks.length),
+        replaySha256,
+        profileSha256,
+        contractSha256,
+        updatedAt: timestamp,
+      }],
+    } : { selectedScenarioId: null, scenarios: [] },
+    refresh: hasComparison ? {
+      id: refreshId,
+      status: "complete",
+      scenarioId,
+      event: { kind: "comparison-published", revision: artifactSha256, occurredAt: timestamp },
+      requestedAt: timestamp,
+      startedAt: timestamp,
+      completedAt: timestamp,
+      error: null,
+      report: {
+        id: candidateCapture.captureId,
+        generatedAt: timestamp,
+        artifactSha256,
+        runtimeTreeSha256,
+        contractSha256,
+        scenarioId,
+        frameCount: Math.max(1, ticks.length),
+        replaySha256,
+        profileSha256,
+        result,
+        check: { status: "pass", id: "differential-testing-example-check@1", sha256: digest(`check:${artifactSha256}`), subjectSha256: artifactSha256 },
+      },
+    } : null,
     summary: {
       runs: { label: "Runs", total: hasComparison ? 1 : 0, passed: result === "pass" ? 1 : 0, failed: result !== null && result !== "pass" && result !== "blocked" ? 1 : 0, blocked: result === "blocked" ? 1 : 0 },
       fields: { label: "Fields", ...fieldSummary },
       frames: { label: "Samples", ...frameSummary, uniqueTicks: hasComparison ? ticks.length : 0 },
     },
-    progress: hasComparison ? [{ timestamp, result, value: failureValue, fieldCount: fields.length, failedFieldCount: fieldSummary.failed, frames: ticks.length }] : [],
-    log: hasComparison ? [{ timestamp, result, value: failureValue, delta: null, failedFieldCount: fieldSummary.failed, firstFailingTick: fields.map((field) => field.firstFailingTick).filter((tick) => tick !== null).sort((a, b) => a - b)[0] ?? null, firstFailingLabel: fields.find((field) => field.firstFailingTick !== null)?.label ?? null }] : [],
+    progress: hasComparison ? [{ timestamp, result, value: failureValue, fieldCount: fields.length, failedFieldCount: fieldSummary.failed, frames: ticks.length, ...rowBinding }] : [],
+    log: hasComparison ? [{ timestamp, result, value: failureValue, delta: null, failedFieldCount: fieldSummary.failed, firstFailingTick: fields.map((field) => field.firstFailingTick).filter((tick) => tick !== null).sort((a, b) => a - b)[0] ?? null, firstFailingLabel: fields.find((field) => field.firstFailingTick !== null)?.label ?? null, ...rowBinding }] : [],
     fields,
   };
 }

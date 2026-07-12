@@ -439,6 +439,55 @@ body.driving-parity-view {
   text-overflow: clip;
   white-space: nowrap;
 }
+.differential-scenario-control {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+.differential-scenario-control select {
+  width: auto;
+  max-width: 100%;
+  padding: 0 16px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  field-sizing: content;
+}
+.differential-scenario-control select:focus-visible {
+  outline: none;
+}
+.differential-scenario-control select:disabled {
+  appearance: none;
+  padding-right: 0;
+  opacity: 1;
+}
+.differential-refresh-status {
+  flex: 0 0 auto;
+  color: rgba(168,168,168,.6);
+}
+.differential-refresh-status.failed {
+  color: var(--red-muted);
+}
+.differential-testing-empty-state {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+}
+.differential-testing-empty-state .driving-parity-kpi-title-item {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+.differential-testing-empty-message {
+  padding: 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+}
 .driving-parity-kpi-heading {
   min-width: 0;
   overflow: hidden;
