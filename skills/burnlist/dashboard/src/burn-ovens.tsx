@@ -210,25 +210,6 @@ function PageHeader({
   );
 }
 
-export function BurnActions() {
-  return (
-    <div className="flex items-center gap-2">
-      <Button asChild size="sm" variant="outline">
-        <a href="/ovens/new">
-          <Plus />
-          New Oven
-        </a>
-      </Button>
-      <Button asChild size="sm">
-        <a href="/runs/new">
-          <Play />
-          Run Burn
-        </a>
-      </Button>
-    </div>
-  );
-}
-
 function DetailSkeletonBuilder({
   detail,
   onChange,

@@ -38,8 +38,8 @@ body.driving-parity-view {
 }
 .shell.driving-parity-view { --text: var(--muted); color: var(--muted); padding-top: 0; }
 .shell.driving-parity-view.detail-view-shell { padding-top: 0; }
-.shell.detail-view-shell.driving-parity-view { height: auto; min-height: 100vh; overflow: visible; }
-.shell.detail-view-shell { width: calc(100% - 32px); max-width: none; height: 100vh; display: flex; flex-direction: column; padding-bottom: 16px; overflow: hidden; }
+.shell.detail-view-shell.driving-parity-view { height: auto; min-height: calc(100vh - 50px); overflow: visible; }
+.shell.detail-view-shell { width: calc(100% - 32px); max-width: none; height: calc(100vh - 50px); display: flex; flex-direction: column; padding-bottom: 16px; overflow: hidden; }
 .shell.detail-view-shell.changes-tab-shell { height: auto; min-height: 100vh; display: block; overflow: visible; }
 .shell.index-view > header,
 .shell.repo-graph-view > header,
@@ -160,8 +160,7 @@ body.driving-parity-view {
 	.driving-parity-controls #driving-parity-field-search { width: 20ch; }
 		.driving-parity-controls input[type="checkbox"] { width: 12px; height: 12px; padding: 0; margin: 0; accent-color: var(--done); }
 			.driving-parity-controls .driving-parity-overall-toggle input { position: absolute; width: 0; height: 0; min-width: 0; padding: 0; margin: 0; border: 0; opacity: 0; pointer-events: none; }
-	.driving-parity-controls .view-toggle,
-	.driving-parity-controls .chart-toggle {
+	.driving-parity-controls .view-toggle {
 	  display: inline-flex;
 	  align-items: baseline;
 	  gap: 7px;
@@ -179,8 +178,7 @@ body.driving-parity-view {
 	  color: var(--text);
 	  font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 	}
-	.driving-parity-controls .view-toggle button,
-	.driving-parity-controls .chart-toggle button {
+	.driving-parity-controls .view-toggle button {
 	  appearance: none;
 	  width: auto;
 	  height: auto;
@@ -194,22 +192,19 @@ body.driving-parity-view {
 	  font: inherit;
 	  opacity: .5;
 		}
-	.driving-parity-controls .view-toggle button:not(:disabled):hover,
-	.driving-parity-controls .chart-toggle button:not(:disabled):hover {
+	.driving-parity-controls .view-toggle button:not(:disabled):hover {
 	  border-color: transparent;
 	  background: transparent;
 	  color: var(--text);
 	}
-		.driving-parity-controls .view-toggle button[aria-pressed="true"],
-		.driving-parity-controls .chart-toggle button[aria-pressed="true"] {
+		.driving-parity-controls .view-toggle button[aria-pressed="true"] {
 			  color: var(--text);
 			  border-bottom-color: transparent;
 			  background: transparent;
 			  box-shadow: none;
 			  opacity: 1;
 			}
-	.driving-parity-controls .view-toggle .sep,
-	.driving-parity-controls .chart-toggle .sep { color: rgba(163,172,183,.55); }
+	.driving-parity-controls .view-toggle .sep { color: rgba(163,172,183,.55); }
 	.driving-parity-controls .control-sep {
 	  margin: 0 2px;
 	  color: rgba(163,172,183,.38);
@@ -488,6 +483,24 @@ body.driving-parity-view {
   background: var(--panel);
   color: var(--muted);
 }
+.differential-testing-loading {
+  min-height: calc(100vh - 24px);
+  color: rgba(232,232,232,.82);
+}
+.differential-loading-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.differential-testing-loading-visual {
+  min-width: 0;
+}
 .driving-parity-kpi-heading {
   min-width: 0;
   overflow: hidden;
@@ -671,43 +684,7 @@ body.driving-parity-view {
   display: none;
 }
 .driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 14px;
-  font-family: var(--dashboard-title-font);
-  white-space: nowrap;
-}
-.driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle button {
-  appearance: none;
-  width: auto;
-  height: auto;
-  padding: 0 0 2px;
-  border: 0;
-  border-bottom: 1px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--muted);
-  font: inherit;
-  opacity: .5;
-}
-.driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle button.selected,
-.driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle button[aria-pressed="true"] {
-  color: var(--text);
-  border-bottom-color: transparent;
-  background: transparent;
-  box-shadow: none;
-  opacity: 1;
-}
-.driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle button:not(:disabled):hover {
-  border-color: transparent;
-  background: transparent;
-  color: var(--text);
-}
-.driving-parity-view #burnlist-detail .progress-panel .progress-chart-toggle .sep {
-  color: rgba(163,172,183,.55);
+  margin-left: auto;
 }
 .driving-parity-view #burnlist-detail .standard-progress-mode,
 .driving-parity-view #burnlist-detail .standard-progress-sep,
@@ -995,18 +972,58 @@ body.driving-parity-view {
 .driving-parity-view .timeline-step,
 .driving-parity-view .chart-reset,
 .driving-parity-view .log-file-toggle,
-.driving-parity-view .driving-parity-controls .page-status { font-size: 14px; }
+.driving-parity-view .driving-parity-controls .page-status {
+  font: 14px/1.2 var(--dashboard-title-font);
+}
 .driving-parity-view .driving-parity-controls button,
 .driving-parity-view .driving-parity-controls select,
 .driving-parity-view .driving-parity-controls input,
 .driving-parity-view .driving-parity-overall-toggle {
-  font: 14px/1.2 var(--dashboard-font);
+  font: 14px/1.2 var(--dashboard-title-font);
 }
 .driving-parity-view .driving-parity-controls .view-toggle,
-.driving-parity-view .driving-parity-controls .chart-toggle,
-.driving-parity-view .driving-parity-controls .view-toggle button,
-.driving-parity-view .driving-parity-controls .chart-toggle button {
+.driving-parity-view .driving-parity-controls .view-toggle button {
   font-size: 14px;
+  font-family: var(--dashboard-title-font);
+}
+.driving-parity-view .differential-tabs {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--muted);
+  font: 14px/1.2 var(--dashboard-title-font);
+  white-space: nowrap;
+}
+.driving-parity-view .differential-tabs button {
+  appearance: none;
+  width: auto;
+  height: auto;
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font: inherit;
+  opacity: .5;
+}
+.driving-parity-view .differential-tabs button[aria-pressed="true"] {
+  color: var(--text);
+  background: transparent;
+  opacity: 1;
+}
+.driving-parity-view .differential-tabs button:not(:disabled):hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+}
+.driving-parity-view .differential-tabs .sep {
+  color: rgba(163,172,183,.55);
+}
+.driving-parity-view .driving-parity-controls input[type="search"],
+.driving-parity-view .driving-parity-controls input[type="search"]:focus {
+  background: transparent;
 }
 .checklist-log { width: 100%; max-height: 260px; overflow: auto; padding-right: 8px; }
 .checklist-log-list { width: 100%; color: rgba(210,216,224,.62); font-size: 14px; }

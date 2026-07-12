@@ -17,6 +17,7 @@ import {
   differentialHistoryPoints,
   differentialProgressChartHistory,
   differentialSampleStateIsNonPass,
+  differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
 } from "../dashboard/differential-testing-renderer.js";
@@ -384,6 +385,28 @@ test("renderer shows the clean no-scenarios state without a fake id", () => {
   assert.match(root.innerHTML, /No Differential Testing scenarios/u);
   assert.match(root.innerHTML, /<option selected>No scenarios<\/option>/u);
   assert.doesNotMatch(root.innerHTML, /[a-f0-9]{16}/u);
+});
+
+test("Differential Testing loading state mirrors the generic Oven layout", () => {
+  const html = differentialTestingLoadingMarkup();
+  assert.match(html, /class="differential-testing-loading" aria-busy="true"/u);
+  assert.match(html, /class="differential-testing-loading-visual" aria-hidden="true" inert/u);
+  assert.match(html, />Differential Testing</u);
+  assert.match(html, />Loading scenario…</u);
+  assert.match(html, /id="burnlist-detail" class="detail-view"/u);
+  assert.match(html, /class="driving-parity-kpi-strip"/u);
+  assert.match(html, /class="detail-workspace"/u);
+  assert.match(html, /class="panel progress-panel"/u);
+  assert.match(html, /class="panel work-panel"/u);
+  assert.match(html, /data-progress-chart-mode="failed" aria-pressed="false"/u);
+  assert.match(html, /data-progress-chart-mode="delta" aria-pressed="true"/u);
+  assert.match(html, /id="driving-parity-page" class="driving-parity-page"/u);
+  assert.match(html, /data-driving-parity-chart="current"[^>]+aria-pressed="false"/u);
+  assert.match(html, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
+  assert.equal((html.match(/class="hybrid-row"/gu) || []).length, 0);
+  assert.match(html, />Fields List</u);
+  assert.doesNotMatch(html, /differential-loading-(?:placeholder|waffle)|driving-parity-kpi-gauge|checklist-log-table-header/u);
+  assert.doesNotMatch(html, /(?:^|\n)\s*header\s*\{/u);
 });
 
 test("accepts populated data and reconciles its mismatch", () => {
@@ -1104,7 +1127,7 @@ test("evidence work never appears as a runtime Target", () => {
   });
 });
 
-test("hybrid rows default to Delta and label frames only on the first row", () => {
+test("dashboard charts default to Delta and label frames only on the first row", () => {
   const payload = buildPayload(...populatedCaptures());
   const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
@@ -1123,6 +1146,7 @@ test("hybrid rows default to Delta and label frames only on the first row", () =
   assert.match(root.innerHTML, /id="differential-scenario-selector"/u);
   assert.match(root.innerHTML, /id="progress-panel-title">Parity Progress<\/h2>/u);
   assert.match(root.innerHTML, /class="work-panel-title">Parity Progress</u);
+  assert.match(root.innerHTML, /class="label-toggle progress-chart-toggle differential-tabs"/u);
   assert.match(root.innerHTML, /id="progress-headline">0\/0</u);
   assert.match(root.innerHTML, /data-work-tab-pane="timeline" hidden/u);
   assert.match(root.innerHTML, /id="target-summaries-toggle"/u);
@@ -1136,13 +1160,80 @@ test("hybrid rows default to Delta and label frames only on the first row", () =
   assert.doesNotMatch(root.innerHTML, />Δ /u);
   assert.match(root.innerHTML, /class="hybrid-value-delta">0\.1000<\/span>/u);
   assert.match(root.innerHTML, /class="hybrid-value-delta">0<\/span>/u);
-  assert.match(root.innerHTML, /class="checklist-log-table-header"><span>Age<\/span><span>Value<\/span><span>Result<\/span><span>Delta<\/span>/u);
+  assert.match(root.innerHTML, /class="checklist-log-table-header"><span>Age<\/span><span>Frame<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell age">(?:now|\d+m)<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="log-table-cell age">\d+[hd]<\/span>/u);
   assert.match(root.innerHTML, /id="driving-parity-controls" class="driving-parity-controls"/u);
+  assert.match(root.innerHTML, /id="driving-parity-chart-toggle" class="chart-toggle differential-tabs"/u);
+  assert.match(root.innerHTML, /data-progress-chart-mode="failed" aria-pressed="false"/u);
+  assert.match(root.innerHTML, /data-progress-chart-mode="delta" aria-pressed="true"/u);
   assert.match(root.innerHTML, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
   assert.doesNotMatch(root.innerHTML, /differential-(?:page|workspace|toolbar|controls|kpi-strip)/u);
   assert.equal((renderedHtml.match(/class="frame-tick-label"/gu) || []).length, 1);
+});
+
+test("project payloads cannot rename the generic Differential Testing Oven", () => {
+  const payload = buildPayload(...populatedCaptures());
+  payload.title = "Project Alpha Differential Testing";
+  const oven = { name: "Differential Testing", detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const controls = { value: "", focus() {}, setSelectionRange() {} };
+  const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
+  const previousWindow = globalThis.window;
+  globalThis.window = { devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+  try {
+    mountDifferentialTestingDashboard(root, oven, payload);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+  assert.match(root.innerHTML, /class="driving-parity-kpi-title">Differential Testing<\/span>/u);
+  assert.doesNotMatch(root.innerHTML, /Project Alpha Differential Testing/u);
+});
+
+test("Value charts merge contiguous failing reference intervals into bounded SVG paths", () => {
+  const renderReferencePathCount = (states) => {
+    const payload = buildPayload(...populatedCaptures());
+    const field = structuredClone(payload.fields[0]);
+    field.samples = states.map((state, tick) => [tick, tick, tick + 1, state]);
+    field.failedSampleCount = states.filter((state) => state !== 0).length;
+    payload.fields = [field];
+    const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+    const controls = { value: "", focus() {}, setSelectionRange() {} };
+    const listeners = new Map();
+    const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
+    const previousWindow = globalThis.window;
+    globalThis.window = { devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+    try {
+      mountDifferentialTestingDashboard(root, oven, payload);
+      listeners.get("click")({
+        target: {
+          closest: (selector) => selector === "[data-driving-parity-chart]"
+            ? { dataset: { drivingParityChart: "current" } }
+            : null,
+        },
+      });
+    } finally {
+      globalThis.window = previousWindow;
+    }
+    return (root.innerHTML.match(/<path d="[^"]+" fill="none" stroke="#61d394" stroke-width="1\.25" stroke-dasharray="5 4"/gu) || []).length;
+  };
+
+  assert.equal(renderReferencePathCount(Array(1_000).fill(1)), 1);
+  assert.equal(renderReferencePathCount([1, 0, 0, 1, 0, 0, 1]), 3);
+});
+
+test("default field ordering does not rescan the payload inside a sort comparator", () => {
+  const payload = buildPayload(...populatedCaptures());
+  payload.fields.indexOf = () => { throw new Error("quadratic field-order lookup"); };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const controls = { value: "", focus() {}, setSelectionRange() {} };
+  const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
+  const previousWindow = globalThis.window;
+  globalThis.window = { devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+  try {
+    assert.doesNotThrow(() => mountDifferentialTestingDashboard(root, oven, payload));
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
 
 test("scenario selector requests another published scenario and shows Loading", () => {
@@ -1185,6 +1276,38 @@ test("first-row tick cadence and label clearance match the shared hybrid referen
   }
   assert.equal((root.innerHTML.match(/class="frame-tick-label"/gu) || []).length, 3);
   assert.equal((root.innerHTML.match(/class="frame-tick"[^>]+y1="13"/gu) || []).length, 3);
+});
+
+test("live Differential Testing dashboard paints the canonical skeleton before its first payload arrives", async () => {
+  let releaseFetch;
+  const fetchGate = new Promise((resolveFetch) => { releaseFetch = resolveFetch; });
+  const root = { innerHTML: "" };
+  const payload = buildPayload(...populatedCaptures());
+  const controller = startDifferentialTestingLiveUpdates(root, {
+    fetchImpl: async (url) => {
+      await fetchGate;
+      if (url === "/api/ovens/differential-testing") {
+        return { ok: true, async json() { return { oven: {} }; } };
+      }
+      return {
+        ok: true,
+        headers: { get: () => null },
+        async json() { return { payload }; },
+      };
+    },
+    setIntervalImpl: () => 17,
+    clearIntervalImpl() {},
+    mount: (mountRoot) => {
+      mountRoot.innerHTML = '<main id="loaded-dashboard"></main>';
+      return { update() {} };
+    },
+  });
+
+  assert.match(root.innerHTML, /class="differential-testing-loading" aria-busy="true"/u);
+  releaseFetch();
+  await controller.ready;
+  assert.equal(root.innerHTML, '<main id="loaded-dashboard"></main>');
+  controller.stop();
 });
 
 test("live Differential Testing dashboard polls and updates only when the payload revision changes", async () => {
@@ -1422,11 +1545,19 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
   });
 
   const indexHtml = await (await fetch(baseUrl)).text();
-  assert.match(indexHtml, /<h1>Burnlists<\/h1>/u);
-  assert.doesNotMatch(indexHtml, /← All Burnlists/u);
+  assert.match(indexHtml, /<div id="root"><\/div>/u);
+  assert.match(indexHtml, /<script type="module" crossorigin src="\/assets\/index-[A-Za-z0-9_-]+\.js"><\/script>/u);
+  assert.doesNotMatch(indexHtml, /burnlist-fallback/u);
   const detailHtml = await (await fetch(`${baseUrl}fixture-repo/fixture`)).text();
-  assert.match(detailHtml, /← All Burnlists/u);
-  assert.match(detailHtml, /Fixture Burnlist/u);
+  assert.equal(detailHtml, indexHtml);
+  const loadingHtml = await (await fetch(`${baseUrl}ovens/differential-testing/view`)).text();
+  assert.equal(loadingHtml, indexHtml);
+  const newOvenHtml = await (await fetch(`${baseUrl}ovens/new`)).text();
+  assert.equal(newOvenHtml, indexHtml);
+  const runBurnHtml = await (await fetch(`${baseUrl}runs/new`)).text();
+  assert.equal(runBurnHtml, indexHtml);
+  assert.equal((await fetch(`${baseUrl}assets/fallback-burn-ovens.js`)).status, 404);
+  assert.equal((await fetch(`${baseUrl}assets/differential-testing-renderer.js`)).status, 404);
 
   const currentResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
   assert.equal(currentResponse.status, 200);

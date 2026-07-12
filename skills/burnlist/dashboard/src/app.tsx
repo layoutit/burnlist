@@ -1,27 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowLeft,
-  CheckCircle2,
   CircleDotDashed,
   Clock3,
-  FileText,
-  Flame,
   ListChecks,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { BurnActions, NewOvenPage, RunBurnPage } from "@/burn-ovens";
+import { NewOvenPage, RunBurnPage } from "@/burn-ovens";
+import { ChecklistDashboard, type ChecklistProgressData } from "@/checklist-dashboard";
 import { DifferentialTestingPage } from "@/differential-testing";
 
 type Filter = "active" | "draft" | "ready" | "complete" | "all";
@@ -34,33 +23,19 @@ type Burnlist = {
   status: Exclude<Filter, "all">;
   statusLabel: string;
   total: number;
-  done: number;
-  remaining: number;
-  percent: number;
+  done: number | null;
+  remaining: number | null;
+  percent: number | null;
   errors: number;
   warnings: number;
   updatedAt: string | null;
+  ovenId: "checklist" | "differential-testing";
+  ovenName: string;
+  href: string;
+  progressLabel: string;
 };
 
-type ChecklistItem = { id: string; title: string; fields: Record<string, string> };
-type CompletedItem = { id: string; title: string; completedAt: string; detail: string };
-type Warning = { severity: "error" | "warning"; message: string };
-type DocumentSection = { title: string; body: string };
-type BurnlistDocument = { available: boolean; label: string; path: string; sections: DocumentSection[] };
-
-type ProgressData = {
-  title: string;
-  repo: string;
-  planLabel: string;
-  total: number;
-  done: number;
-  remaining: number;
-  percent: number;
-  warnings: Warning[];
-  goal: BurnlistDocument;
-  active: ChecklistItem[];
-  completed: CompletedItem[];
-};
+type ProgressData = ChecklistProgressData;
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: "active", label: "Active" },
@@ -71,6 +46,10 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 ];
 
 const PAGE_SIZE = 20;
+
+const HEADER_LINKS = [
+  { href: "/ovens/new", label: "New Oven", section: "new-oven" },
+] as const;
 
 function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
@@ -85,9 +64,39 @@ function selectedBurnlist() {
   return parts.length === 2 ? { repo: parts[0], id: parts[1] } : null;
 }
 
+function AppHeader({ section }: { section: string }) {
+  return (
+    <header className="sticky top-0 z-50 h-[50px] border-b border-[#262626] bg-[#050505]">
+      <div className="flex h-full w-full items-center justify-between gap-3 px-4">
+        <a aria-label="Burnlist home" className="flex min-w-0 items-center gap-2" href="/">
+          <img alt="" className="size-7 shrink-0" src="/favicon.svg" />
+          <span className="hidden font-[var(--dashboard-title-font)] text-sm font-medium text-foreground sm:inline">Burnlist</span>
+        </a>
+        <nav aria-label="Primary navigation" className="flex h-full items-center gap-2 font-[var(--dashboard-title-font)] text-sm">
+          {HEADER_LINKS.map((link, index) => (
+            <span className="contents" key={link.href}>
+              {index > 0 && <span aria-hidden="true" className="text-white/25">·</span>}
+              <a
+                aria-current={section === link.section ? "page" : undefined}
+                className={cn(
+                  "text-muted-foreground opacity-55 transition-colors hover:text-foreground hover:opacity-100",
+                  section === link.section && "text-foreground opacity-100",
+                )}
+                href={link.href}
+              >
+                {link.label}
+              </a>
+            </span>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
 function filterFromUrl(): Filter {
   const value = new URLSearchParams(window.location.search).get("filter") as Filter | null;
-  return FILTERS.some((filter) => filter.value === value) ? value! : "all";
+  return FILTERS.some((filter) => filter.value === value) ? value! : "active";
 }
 
 function pageFromUrl() {
@@ -120,28 +129,6 @@ function formatTime(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
-}
-
-function badgeVariant(status: Burnlist["status"]) {
-  if (status === "active") return "default" as const;
-  if (status === "complete") return "secondary" as const;
-  return "outline" as const;
-}
-
-function Metric({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof ListChecks }) {
-  return (
-    <Card className="gap-3 border-white/7 bg-black/15 py-4 shadow-none backdrop-blur-sm">
-      <CardContent className="flex items-center justify-between px-4">
-        <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
-        </div>
-        <span className="rounded-lg border border-primary/15 bg-primary/10 p-2 text-primary">
-          <Icon className="size-4" aria-hidden="true" />
-        </span>
-      </CardContent>
-    </Card>
-  );
 }
 
 function EmptyState({ title, detail, icon: Icon = CircleDotDashed }: { title: string; detail: string; icon?: typeof CircleDotDashed }) {
@@ -188,25 +175,26 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
   if (!rows.length) return <EmptyState title="Nothing here yet" detail="No Burnlists match this lifecycle view." />;
 
   return (
-    <Card className="gap-0 overflow-hidden border-white/8 bg-card/80 py-0 shadow-xl shadow-black/10 backdrop-blur-sm">
+    <div className="overflow-hidden rounded-lg bg-[#111111]">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="border-b border-white/8 bg-white/3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <table className="w-full min-w-[860px] text-left text-sm">
+          <thead className="border-b border-white/15 bg-transparent font-[var(--dashboard-title-font)] text-xs font-normal text-muted-foreground">
             <tr>
               <th className="px-5 py-3">Burnlist</th>
+              <th className="px-5 py-3">Oven</th>
               <th className="px-5 py-3">Lifecycle</th>
               <th className="px-5 py-3">Progress</th>
               <th className="px-5 py-3">Updated</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/8">
+          <tbody className="divide-y divide-white/10">
             {pageRows.map((entry) => {
-              const href = burnlistHref(entry, filter, currentPage);
+              const href = entry.ovenId === "checklist" ? burnlistHref(entry, filter, currentPage) : entry.href;
               const open = () => { window.location.href = href; };
               return (
                 <tr
                   aria-label={`Open ${entry.repo}/${entry.id}`}
-                  className="cursor-pointer transition-colors hover:bg-primary/8 focus-visible:bg-primary/10 focus-visible:outline-none"
+                  className="cursor-pointer transition-colors hover:bg-white/3 focus-visible:bg-white/3 focus-visible:outline-none"
                   key={`${entry.repo}/${entry.id}`}
                   onClick={open}
                   onKeyDown={(event) => {
@@ -222,10 +210,11 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
                     <p className="font-medium text-foreground">{entry.repo}/{entry.id}</p>
                     <p className="mt-1 truncate text-sm text-muted-foreground">{entry.title}</p>
                   </td>
-                  <td className="px-5 py-4"><Badge variant={badgeVariant(entry.status)}>{entry.statusLabel}</Badge></td>
+                  <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{entry.ovenName}</td>
+                  <td className={cn("px-5 py-4 font-[var(--dashboard-title-font)] text-sm", entry.status === "active" ? "text-[#61d394]" : entry.status === "complete" ? "text-muted-foreground" : "text-foreground")}>{entry.statusLabel}</td>
                   <td className="w-52 px-5 py-4">
-                    <div className="flex justify-between gap-3 text-xs text-muted-foreground"><span>{entry.done}/{entry.total} done</span><span>{entry.percent}%</span></div>
-                    <Progress className="mt-2 h-1.5" value={entry.percent} />
+                    <div className="flex justify-between gap-3 text-xs text-muted-foreground"><span>{entry.progressLabel}</span>{entry.percent != null && <span>{entry.percent}%</span>}</div>
+                    {entry.percent != null && <Progress className="mt-2 h-1.5" value={entry.percent} />}
                   </td>
                   <td className="timestamp whitespace-nowrap px-5 py-4 text-muted-foreground">{formatTime(entry.updatedAt)}</td>
                 </tr>
@@ -235,130 +224,6 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
         </table>
       </div>
       <Pagination onPageChange={onPageChange} page={currentPage} totalItems={rows.length} totalPages={totalPages} />
-    </Card>
-  );
-}
-
-function ChecklistCard({ title, icon: Icon, children }: { title: string; icon: typeof ListChecks; children: React.ReactNode }) {
-  return (
-    <Card className="gap-0 overflow-hidden border-white/8 bg-black/15 py-0 shadow-none backdrop-blur-sm">
-      <CardHeader className="flex-row items-center gap-2 border-b border-white/8 px-5 py-4">
-        <span className="grid size-7 place-items-center rounded-md bg-white/5 text-muted-foreground"><Icon className="size-4" /></span>
-        <CardTitle className="text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="px-5 py-3">{children}</CardContent>
-    </Card>
-  );
-}
-
-function GoalDocument({ document }: { document: BurnlistDocument }) {
-  if (!document.available || !document.sections.length) return null;
-  return (
-    <ChecklistCard icon={FileText} title="Goal and guardrails">
-      <p className="mb-4 text-xs text-muted-foreground">{document.path}</p>
-      <div className="divide-y divide-white/8">
-        {document.sections.map((section) => (
-          <section className="py-4 first:pt-0 last:pb-0" key={section.title}>
-            <h3 className="text-sm font-medium text-foreground">{section.title}</h3>
-            {section.body && <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">{section.body}</p>}
-          </section>
-        ))}
-      </div>
-    </ChecklistCard>
-  );
-}
-
-function Detail({ data, filter, loading, page }: { data: ProgressData | null; filter: Filter; loading: boolean; page: number }) {
-  if (loading && !data) return <EmptyState title="Loading progress" detail="Reading the selected Burnlist." />;
-  if (!data) return <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress and checklist." icon={ListChecks} />;
-  const backHref = listHref(filter, page);
-
-  return (
-    <div className="space-y-5">
-      <Button asChild size="sm" variant="ghost"><a href={backHref}><ArrowLeft />All Burnlists</a></Button>
-      <Card className="gap-5 border-primary/15 bg-gradient-to-br from-primary/12 via-card to-card py-5 shadow-xl shadow-black/10 backdrop-blur-sm">
-        <CardHeader className="gap-4 px-5 sm:px-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <CardTitle className="truncate text-xl tracking-tight sm:text-2xl">{data.title}</CardTitle>
-              <CardDescription className="mt-2 flex items-center gap-1.5 break-all"><FileText className="size-3.5" />{data.repo}/{data.planLabel}</CardDescription>
-            </div>
-            <Badge className="px-2.5 py-1 text-sm" variant="outline">{data.percent}% complete</Badge>
-          </div>
-          <Progress className="h-2.5 bg-primary/15" value={data.percent} />
-        </CardHeader>
-      </Card>
-
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={CheckCircle2} label="Completed" value={`${data.done}/${data.total}`} />
-        <Metric icon={ListChecks} label="Remaining" value={data.remaining} />
-        <Metric icon={Flame} label="Progress" value={`${data.percent}%`} />
-        <Metric icon={AlertTriangle} label="Signals" value={data.warnings.length} />
-      </div>
-
-      {data.warnings.length > 0 && (
-        <Card className="gap-0 border-amber-400/20 bg-amber-300/5 py-0 shadow-none">
-          <CardHeader className="flex-row items-center gap-2 px-5 py-4 text-amber-200">
-            <AlertTriangle className="size-4" />
-            <CardTitle className="text-sm">Protocol signals</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 px-5 pb-4">
-            {data.warnings.map((warning, index) => (
-              <p className={cn("text-sm", warning.severity === "error" ? "text-red-300" : "text-amber-100/80")} key={`${warning.message}-${index}`}>
-                <span className="mr-2 font-medium uppercase">{warning.severity}</span>{warning.message}
-              </p>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      <GoalDocument document={data.goal} />
-
-      {data.active.length > 0 && (
-        <ChecklistCard icon={ListChecks} title="Active checklist">
-          <div className="divide-y divide-white/8">
-            {data.active.map((item) => (
-              <article className="py-4 first:pt-1 last:pb-1" key={`${item.id}/${item.title}`}>
-                <div className="flex gap-3">
-                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">{item.id}</span>
-                  <div className="min-w-0">
-                    <h3 className="font-medium text-foreground">{item.title}</h3>
-                    {Object.entries(item.fields).length > 0 && (
-                      <dl className="mt-3 space-y-2 text-sm">
-                        {Object.entries(item.fields).map(([label, value]) => (
-                          <div key={label}>
-                            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
-                            <dd className="mt-0.5 whitespace-pre-wrap break-words text-muted-foreground">{value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </ChecklistCard>
-      )}
-
-      <ChecklistCard icon={Clock3} title="Completed detail">
-        {data.completed.length ? (
-          <div className="divide-y divide-white/8">
-            {data.completed.map((item) => (
-              <article className="py-5 first:pt-1 last:pb-1" key={`${item.id}/${item.completedAt}`}>
-                <div className="flex gap-3">
-                  <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-emerald-400/12 text-emerald-300"><CheckCircle2 className="size-3.5" /></span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-medium text-foreground"><span className="mr-1 text-muted-foreground">{item.id}</span>{item.title}</h3>
-                    <p className="timestamp mt-1 text-muted-foreground">{formatTime(item.completedAt)}</p>
-                    {item.detail ? <p className="mt-4 whitespace-pre-wrap break-words rounded-lg border border-white/7 bg-black/15 p-4 font-mono text-xs leading-6 text-muted-foreground">{item.detail}</p> : <p className="mt-3 text-sm text-muted-foreground">No detailed completion record.</p>}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : <EmptyState title="No completions yet" detail="Completed ledger items will appear here." icon={Clock3} />}
-      </ChecklistCard>
     </div>
   );
 }
@@ -424,7 +289,8 @@ export function App() {
 
   return (
     <div className="min-h-screen">
-      <main className={cn("mx-auto", section === "differential-testing" ? "max-w-none" : "px-4 py-8 sm:px-6 lg:px-8", section === "new-oven" ? "max-w-none" : section === "differential-testing" ? "" : "max-w-7xl")}>
+      <AppHeader section={section} />
+      <main className={cn("mx-auto", section === "differential-testing" || selected ? "max-w-none" : "w-full max-w-[1200px] px-4 py-5")}>
         {section === "differential-testing" ? (
           <DifferentialTestingPage />
         ) : section === "new-oven" ? (
@@ -434,23 +300,33 @@ export function App() {
         ) : selected ? (
           error ? (
             <Card className="border-destructive/35 bg-destructive/10 py-5 text-destructive-foreground"><CardContent className="flex gap-3 px-5"><AlertTriangle className="size-5 shrink-0" /><p className="text-sm">{error}</p></CardContent></Card>
-          ) : <Detail data={progress} filter={filter} loading={loading} page={page} />
+          ) : loading && !progress ? (
+            <EmptyState title="Loading progress" detail="Reading the selected Burnlist." />
+          ) : progress ? (
+            <ChecklistDashboard backHref={listHref(filter, page)} data={progress} />
+          ) : (
+            <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
+          )
         ) : (
-          <section className="space-y-5">
-              <div className="flex items-center gap-3">
-                <img className="size-10 shrink-0" src="/favicon.svg" alt="" />
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">Burnlists</h1>
-                  <p className="mt-1 text-sm text-muted-foreground">Let it cook</p>
+          <section className="space-y-3">
+              <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+                <h1 className="font-[var(--dashboard-title-font)] text-[18px] font-normal">Ovens</h1>
+                <div aria-label="Oven lifecycle" className="flex items-center gap-2 font-[var(--dashboard-title-font)] text-xs" role="tablist">
+                  {FILTERS.map((entry, index) => (
+                    <span className="flex items-center gap-2" key={entry.value}>
+                      {index > 0 ? <span aria-hidden="true" className="text-muted-foreground/55">·</span> : null}
+                      <button
+                        aria-selected={filter === entry.value}
+                        className={cn("transition-colors hover:text-foreground", filter === entry.value ? "text-foreground" : "text-muted-foreground")}
+                        onClick={() => updateFilter(entry.value)}
+                        role="tab"
+                        type="button"
+                      >
+                        {entry.label}
+                      </button>
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Tabs onValueChange={updateFilter} value={filter}>
-                  <TabsList className="grid w-full max-w-md grid-cols-5" variant="default">
-                    {FILTERS.map((entry) => <TabsTrigger className="px-1 text-xs" key={entry.value} value={entry.value}>{entry.label}</TabsTrigger>)}
-                  </TabsList>
-                </Tabs>
-                <BurnActions />
               </div>
               {error ? (
                 <Card className="border-destructive/35 bg-destructive/10 py-5 text-destructive-foreground"><CardContent className="flex gap-3 px-5"><AlertTriangle className="size-5 shrink-0" /><p className="text-sm">{error}</p></CardContent></Card>

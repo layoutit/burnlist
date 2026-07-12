@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "description": "An agent skill and local dashboard for Burnlist planning, execution, and progress tracking.",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "publishConfig": {
     "access": "public"
   },

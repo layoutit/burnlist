@@ -12,6 +12,30 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+export function differentialTestingLoadingMarkup() {
+  const title = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item">
+      <span class="driving-parity-kpi-title">Differential Testing</span>
+      <span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select aria-label="Differential Testing scenario" disabled><option selected>Loading scenario…</option></select></span></span>
+    </div>`;
+  const template = differentialTestingDashboardTemplateMarkup()
+    .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
+    .replace('<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>', `<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${title}</section>`)
+    .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
+    .replace('<button type="button" data-progress-chart-mode="failed">', '<button type="button" data-progress-chart-mode="failed" aria-pressed="false">')
+    .replace('<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta">', '<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed="true">')
+    .replace('<main id="driving-parity-page" class="driving-parity-page" hidden>', '<main id="driving-parity-page" class="driving-parity-page">')
+    .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', '<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List</h2>')
+    .replace('<div id="driving-parity-controls" class="driving-parity-controls" hidden>', '<div id="driving-parity-controls" class="driving-parity-controls">');
+  return `<div class="differential-testing-loading" aria-busy="true">
+    <span class="differential-loading-sr" role="status">Loading Differential Testing</span>
+    <div class="differential-testing-loading-visual" aria-hidden="true" inert>${template}</div>
+  </div>`;
+}
+
+function differentialTestingDashboardTemplateMarkup() {
+  return mountDifferentialTestingDashboard(null, null, null, { templateOnly: true });
+}
+
 export function differentialSampleStateIsNonPass(sampleState) {
   return sampleState !== 0;
 }
@@ -144,7 +168,8 @@ export function differentialExactTarget(payload) {
   return { mode: "exact", status: "ready", fieldId: decision.targetFieldId, label: decision.targetLabel, reason: decision.nextAction };
 }
 
-export function mountDifferentialTestingDashboard(root, oven, payload, { onScenarioChange = () => {} } = {}) {
+export function mountDifferentialTestingDashboard(root, oven, payload, { onScenarioChange = () => {}, templateOnly = false } = {}) {
+  if (templateOnly) return templateHtml();
   const WIDTH = 900;
   const HEIGHT = 58;
   const GREEN = "#61d394";
@@ -152,7 +177,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
   const telemetryAvailability = differentialTelemetryAvailability(payload);
   const state = {
     chart: "delta",
-    progressChart: "failed",
+    progressChart: "delta",
     sort: telemetryAvailability.status === "comparable" ? "changed" : "default",
     filter: "all",
     search: "",
@@ -167,6 +192,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     payload,
   };
   let inputRenderTimer = 0;
+  let fieldOrder = new Map(payload.fields.map((field, index) => [field, index]));
 
   root.className = "shell driving-parity-view";
 
@@ -425,6 +451,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     }
     const candidatePassing = [], candidateFailing = [], referenceFailing = [];
     let referenceLength = 0;
+    let previousReferenceFailingIndex = -2;
     for (let index = 0; index < rows.length - 1; index += 1) {
       const failed = intervalFails(index);
       const trimStart = !failed && index > 0 && intervalFails(index - 1) ? 1.2 : 0;
@@ -432,8 +459,15 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       if (candidate[index] && candidate[index + 1]) (failed ? candidateFailing : candidatePassing).push(segment(candidate[index], candidate[index + 1], trimStart, trimEnd).path);
       if (failed && reference[index] && reference[index + 1]) {
         const line = segment(reference[index], reference[index + 1], trimStart, trimEnd);
-        referenceFailing.push({ path: line.path, offset: -(referenceLength % 9) });
+        if (previousReferenceFailingIndex === index - 1) {
+          referenceFailing.at(-1).path += `L${line.x2.toFixed(1)},${line.y2.toFixed(1)}`;
+        } else {
+          referenceFailing.push({ path: line.path, offset: -(referenceLength % 9) });
+        }
         referenceLength += line.length;
+        previousReferenceFailingIndex = index;
+      } else {
+        previousReferenceFailingIndex = -2;
       }
     }
     return `<div class="plot"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none">${bands(false, candidate)}${bands(true, candidate)}${tickMarks}${candidatePassing.length ? `<path d="${candidatePassing.join(" ")}" fill="none" stroke="${GREEN}" stroke-width="1.5" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}${candidateFailing.length ? `<path d="${candidateFailing.join(" ")}" fill="none" stroke="${RED}" stroke-width="1.6" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}${referenceFailing.map((line) => `<path d="${line.path}" fill="none" stroke="${GREEN}" stroke-width="1.25" stroke-dasharray="5 4" stroke-dashoffset="${line.offset.toFixed(2)}" opacity=".8" vector-effect="non-scaling-stroke"/>`).join("")}</svg>${tickLabels}</div>`;
@@ -475,16 +509,14 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     if (state.sort === "changed") {
       filtered = filtered.filter((field) => telemetryChange(field) > 0);
     }
+    if (state.sort !== "changed") return filtered;
     return filtered.sort((left, right) => {
-      if (state.sort === "changed") {
-        const leftTelemetry = telemetryFor(left), rightTelemetry = telemetryFor(right);
-        const leftImprovement = Number(leftTelemetry?.failToPassCount || 0) - Number(leftTelemetry?.passToFailCount || 0);
-        const rightImprovement = Number(rightTelemetry?.failToPassCount || 0) - Number(rightTelemetry?.passToFailCount || 0);
-        return telemetryChange(right) - telemetryChange(left)
-          || rightImprovement - leftImprovement
-          || state.payload.fields.indexOf(left) - state.payload.fields.indexOf(right);
-      }
-      return state.payload.fields.indexOf(left) - state.payload.fields.indexOf(right);
+      const leftTelemetry = telemetryFor(left), rightTelemetry = telemetryFor(right);
+      const leftImprovement = Number(leftTelemetry?.failToPassCount || 0) - Number(leftTelemetry?.passToFailCount || 0);
+      const rightImprovement = Number(rightTelemetry?.failToPassCount || 0) - Number(rightTelemetry?.passToFailCount || 0);
+      return telemetryChange(right) - telemetryChange(left)
+        || rightImprovement - leftImprovement
+        || (fieldOrder.get(left) ?? Number.MAX_SAFE_INTEGER) - (fieldOrder.get(right) ?? Number.MAX_SAFE_INTEGER);
     });
   }
   function fieldRows(fields) {
@@ -534,7 +566,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
                 <span id="driving-parity-progress-summary" class="driving-parity-summary driving-parity-progress-summary" hidden></span>
               </div>
               <div class="chart-tools">
-                <div class="label-toggle progress-chart-toggle" aria-label="Burnlist progress chart view">
+                <div class="label-toggle progress-chart-toggle differential-tabs" aria-label="Burnlist progress chart view">
                   <button type="button" class="standard-progress-mode" data-progress-chart-mode="progress">Progress</button>
                   <span class="sep progress-chart-mode-sep standard-progress-sep" aria-hidden="true">|</span>
                   <button type="button" data-progress-chart-mode="failed"><span class="standard-failed-label">Failed</span><span class="driving-parity-progress-label">Value</span></button>
@@ -674,17 +706,17 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       <div id="driving-parity-controls" class="driving-parity-controls" hidden>
 	        <input id="driving-parity-field-search" type="search" placeholder="Search Fields..." aria-label="Differential Testing search fields">
 	        <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-chart-toggle" class="chart-toggle" role="group" aria-label="Differential Testing chart mode">
+	        <div id="driving-parity-chart-toggle" class="chart-toggle differential-tabs" role="group" aria-label="Differential Testing chart mode">
 	          <button type="button" data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false">Value</button>
 	          <span class="sep" aria-hidden="true">·</span>
 	          <button type="button" data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true">Delta</button>
 	        </div>
 	        <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle" role="group" aria-label="Differential Testing sort">
+	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle differential-tabs" role="group" aria-label="Differential Testing sort">
 	          <button type="button" data-driving-parity-sort="improved" aria-pressed="true">Changed</button>
         </div>
         <span class="control-sep" aria-hidden="true">|</span>
-	        <div id="driving-parity-filter-toggle" class="chart-toggle filter-toggle" role="group" aria-label="Differential Testing field filter">
+	        <div id="driving-parity-filter-toggle" class="chart-toggle filter-toggle differential-tabs" role="group" aria-label="Differential Testing field filter">
 	          <button type="button" data-driving-parity-filter="failing" aria-pressed="true">Failed</button>
 	        </div>
       </div>
@@ -713,18 +745,6 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       background: transparent;
       color: var(--text);
       font: 14px/1.45 var(--dashboard-font);
-    }
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 10px;
-      align-items: start;
-      padding: 14px 18px;
-      background: rgba(5, 5, 5, 0.96);
-      border-bottom: 1px solid var(--line);
     }
     h1 {
       margin: 0;
@@ -1509,7 +1529,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
     const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
     if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
-    const titleText = String(state.payload.title || title.title || "Differential Testing");
+    const titleText = String(title.title || state.oven.name || "Differential Testing");
     if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
       root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
       return;
@@ -1625,6 +1645,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     update(nextOven, nextPayload) {
       state.oven = nextOven;
       state.payload = nextPayload;
+      fieldOrder = new Map(nextPayload.fields.map((field, index) => [field, index]));
       state.clientRefreshStatus = null;
       state.pendingScenarioId = null;
       state.telemetryByField = differentialTelemetryFieldMap(nextPayload);
@@ -1660,6 +1681,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     else console.error("Could not refresh Differential Testing data.", error);
   },
 } = {}) {
+  root.innerHTML = differentialTestingLoadingMarkup();
   let oven = null;
   let dashboard = null;
   let payloadRevision = "";

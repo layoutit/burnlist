@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 // @ts-expect-error The canonical renderer is plain ESM so React and the direct Oven route share one implementation.
-import { DIFFERENTIAL_TESTING_REFRESH_MS, differentialPayloadRevision, mountDifferentialTestingDashboard } from "../differential-testing-renderer.js";
+import { DIFFERENTIAL_TESTING_REFRESH_MS, differentialPayloadRevision, differentialTestingLoadingMarkup, mountDifferentialTestingDashboard } from "../differential-testing-renderer.js";
 
 type DifferentialTestingPayload = {
   publishedAt: string;
@@ -103,7 +103,7 @@ export function DifferentialTestingPage() {
   };
 
   if (error && (!oven || !payload)) return <div className="shell driving-parity-view"><div className="empty">{error}</div></div>;
-  if (!oven || !payload) return <div className="shell driving-parity-view"><div className="empty">Loading Differential Testing Oven.</div></div>;
+  if (!oven || !payload) return <div className="shell driving-parity-view" dangerouslySetInnerHTML={{ __html: differentialTestingLoadingMarkup() }} />;
   return <SharedDifferentialTestingDashboard oven={oven} payload={payload} onScenarioChange={selectScenario} clientRefreshStatus={clientRefreshStatus} />;
 }
 

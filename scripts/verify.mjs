@@ -247,7 +247,6 @@ const jsFiles = [
   ...walkFiles(resolve(repoRoot, "bin"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
-  resolve(repoRoot, "skills/burnlist/dashboard/fallback-burn-ovens.js"),
   resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-progress-chart.js"),
   resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-renderer.js"),
 ].sort();
@@ -256,8 +255,14 @@ for (const file of jsFiles) {
   run(process.execPath, ["--check", relative(repoRoot, file)]);
 }
 
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Let it cook", "Dashboard page is missing.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "New Oven", "Oven controls are missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", "Let it cook", "Dashboard page is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", "<ChecklistDashboard", "Checklist Oven is not using the canonical React dashboard.");
+for (const surface of ["ProgressPanel", "Timeline", "Target", "Log", "RepoGraph", "Changes"]) {
+  assertSourceIncludes("skills/burnlist/dashboard/src/checklist-dashboard.tsx", `function ${surface}`, `Checklist dashboard is missing ${surface}.`);
+}
+assertSourceIncludes("skills/burnlist/dashboard/src/checklist-dashboard.tsx", "ResizeObserver", "Checklist progress chart does not follow its rendered width.");
+assertSourceExcludes("skills/burnlist/dashboard/src/app.tsx", "function Detail(", "Dashboard still carries the superseded simplified Checklist detail path.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
@@ -266,10 +271,18 @@ assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'a
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'href="/ovens/differential-testing/view">Differential Testing</a>', "Configured Differential Testing Oven is not linked from the dashboard index.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", '<th className="px-5 py-3">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Oven detail page skeleton", "Oven detail skeleton is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "Oven detail page skeleton", "Oven detail skeleton is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'className="sticky top-0 z-50 h-[50px]', "Dashboard header is not fixed at 50px.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'aria-label="Burnlist home"', "Dashboard header logo does not link home.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'aria-label="Primary navigation"', "Dashboard header navigation is missing.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "dashboardFallback", "Dashboard server still contains a fallback renderer.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "burnlist-fallback", "Dashboard server still contains fallback dashboard markup.");
+assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "fallback-burn-ovens", "Dashboard server still exposes the fallback Oven bundle.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "legacy-detail-origin", "Burnlist still accepts the retired detail proxy.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/types"', "Burnlist still exposes the retired type API.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/types/new"', "Burnlist still redirects the retired type UI.");
@@ -281,15 +294,14 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'record.typeId', "Burn run reads still accept retired typeId records.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/assets/fallback-burn-types.js", "Burnlist still exposes the retired type asset alias.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '["api", "ovens", "types", "runs"]', "Burnlist still reserves the retired types route.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "Draft detail section", "Oven inline detail-section editor is missing.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "grid-chart-type", "Oven chart-type icon picker is missing.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "Describe the metric", "Oven metric-description textarea is missing.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "const NEW_OVEN_ROW_HEIGHT = 50", "New Oven row height is not defined as a fixed implementation constant.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "oven-fields-row", "New Oven metadata fields are not arranged in columns.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'aria-label="New detail section"', "Oven inline detail-section editor is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "DetailTypePicker", "Oven chart-type icon picker is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "Describe the metric", "Oven metric-description textarea is missing.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "const NEW_OVEN_ROW_HEIGHT = 50", "New Oven row height is not defined as a fixed implementation constant.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "md:grid-cols-4", "React New Oven metadata fields are not arranged in columns.");
-assertSourceExcludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "grid-area-title", "Oven detail sections still expose a separate title field.");
-assertSourceExcludes("skills/burnlist/dashboard/fallback-burn-ovens.js", "grid-area-source", "Oven detail sections still expose a source-path field.");
+assertSourceExcludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "grid-area-title", "Oven detail sections still expose a separate title field.");
+assertSourceExcludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "grid-area-source", "Oven detail sections still expose a source-path field.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "grid-row-height", "New Oven still exposes a row-height control.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", ">Row height<", "New Oven still renders a Row height label.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Instructions are stored as Markdown", "New Oven still renders the removed Markdown helper text.");
@@ -300,7 +312,6 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "g
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'option.value === "checklist"', "Fallback Run Burn does not default to Checklist.");
 assertSourceIncludes("skills/burnlist/ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
 assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "null remains distinguishable from numeric zero", "Differential Testing is missing null-preservation discipline.");
@@ -317,7 +328,6 @@ assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "co
 assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "/api/oven-data/differential-testing?scenario=", "Differential Testing React view is not bound to read-only scenario selection.");
 assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "mountDifferentialTestingDashboard", "Differential Testing is not using the shared dashboard.");
 assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "differentialPayloadRevision", "React Differential Testing polling does not observe complete payload revisions.");
-assertSourceIncludes("skills/burnlist/dashboard/fallback-burn-ovens.js", 'id: "comparison"', "Fallback New Oven is missing the controlled Comparison widget.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "/api/oven-data/differential-testing?scenario=", "Differential Testing is not bound to read-only scenario selection.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
@@ -346,9 +356,10 @@ assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "height: 390px", "Differential Testing top panels do not preserve the canonical height.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "inset: 28px 0 0", "Differential Testing top panels do not preserve the shared-card template.");
-assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", ".driving-parity-controls .chart-toggle", "Differential Testing toolbar groups do not preserve the shared type scale.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", ".driving-parity-view .differential-tabs", "Differential Testing tab groups do not share one component style.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", '--dashboard-title-font: "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', "Differential Testing does not preserve the canonical title font stack.");
-assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", ".driving-parity-view .driving-parity-controls input,\n.driving-parity-view .driving-parity-overall-toggle {\n  font: 14px/1.2 var(--dashboard-font);\n}", "Differential Testing controls do not preserve the canonical dashboard typography.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", ".driving-parity-view .driving-parity-controls button,\n.driving-parity-view .driving-parity-controls select,\n.driving-parity-view .driving-parity-controls input,\n.driving-parity-view .driving-parity-overall-toggle {\n  font: 14px/1.2 var(--dashboard-title-font);\n}", "Differential Testing controls do not preserve the canonical sans-serif typography.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", '.driving-parity-view .driving-parity-controls input[type="search"],\n.driving-parity-view .driving-parity-controls input[type="search"]:focus {\n  background: transparent;\n}', "Differential Testing search input does not preserve its transparent background.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing.css", "h2 { margin: 0 0 12px; font-size: 16px; font-weight: 400; letter-spacing: 0; }", "Differential Testing panel headings do not preserve the canonical type scale.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'return minutes === 0 ? "now" : minutes + "m";', "Differential Testing Age values do not preserve the canonical minute display.");
 assertSourceExcludes("skills/burnlist/dashboard/differential-testing-renderer.js", '`${hours}h`', "Differential Testing Age values still collapse minutes into hours.");

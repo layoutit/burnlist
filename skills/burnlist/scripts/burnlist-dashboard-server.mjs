@@ -82,10 +82,8 @@ const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/ch
 const runtimePath = resolve(stateDir, "index.server.json");
 const historyPath = resolve(stateDir, "index.history.jsonl");
 const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const fallbackBurnOvensScriptPath = resolve(skillDir, "dashboard", "fallback-burn-ovens.js");
-const differentialTestingScriptPath = resolve(skillDir, "dashboard", "differential-testing-renderer.js");
-const differentialTestingProgressChartPath = resolve(skillDir, "dashboard", "differential-testing-progress-chart.js");
-const differentialTestingStylePath = resolve(skillDir, "dashboard", "differential-testing.css");
+const dashboardDistDir = resolve(skillDir, "dashboard", "dist");
+const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 const runsDir = resolve(launchCwd, args.get("runs-dir") ?? ".local/burnlist/runs");
@@ -665,9 +663,51 @@ function discoverBurnlists() {
   return burnlistPaths().map(summaryForPlan);
 }
 
-function instructionsName(instructions, fallback) {
+function checklistDashboardEntries() {
+  return discoverBurnlists().map((entry) => ({
+    ...entry,
+    ovenId: "checklist",
+    ovenName: "Checklist",
+    href: `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`,
+    progressLabel: `${entry.done}/${entry.total} done`,
+  }));
+}
+
+function differentialTestingDashboardEntries() {
+  const path = ovenDataBindings.get("differential-testing");
+  if (!path) return [];
+  const index = differentialTestingIndexCache(path);
+  const repo = discoveredRepos()
+    .filter((entry) => index.readPath === entry.root || index.readPath.startsWith(`${entry.root}/`))
+    .sort((left, right) => right.root.length - left.root.length)[0]?.name ?? "differential-testing";
+  return index.scenarios.map((scenario) => ({
+    id: scenario.id,
+    repo,
+    title: scenario.label,
+    status: "active",
+    statusLabel: "Active",
+    total: scenario.frameCount,
+    done: null,
+    remaining: null,
+    percent: null,
+    errors: 0,
+    warnings: 0,
+    updatedAt: scenario.updatedAt,
+    ovenId: "differential-testing",
+    ovenName: "Differential Testing",
+    href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}`,
+    progressLabel: `${scenario.frameCount} frames`,
+  }));
+}
+
+function dashboardEntries() {
+  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries()]
+    .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
+}
+
+function instructionsName(instructions, defaultName) {
   const heading = instructions.split(/\r?\n/u).find((line) => /^#\s+\S/u.test(line.trim()));
-  return heading ? heading.trim().replace(/^#\s+/u, "").trim() : fallback;
+  return heading ? heading.trim().replace(/^#\s+/u, "").trim() : defaultName;
 }
 
 function instructionsDescription(instructions) {
@@ -1091,171 +1131,40 @@ function json(res, status, body) {
   res.end(serialized);
 }
 
-function html(res, status, body) {
-  res.writeHead(status, {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store",
-  });
-  res.end(body);
+function dashboardAssetPath(pathname) {
+  if (pathname === "/favicon.svg") return resolve(dashboardDistDir, "favicon.svg");
+  const match = pathname.match(/^\/assets\/([A-Za-z0-9._-]+)$/u);
+  return match ? resolve(dashboardDistDir, "assets", match[1]) : null;
 }
 
-function javascript(res, status, body) {
-  res.writeHead(status, {
-    "content-type": "text/javascript; charset=utf-8",
-    "cache-control": "no-store",
-    "x-content-type-options": "nosniff",
-  });
-  res.end(body);
+function dashboardContentType(path) {
+  if (path.endsWith(".html")) return "text/html; charset=utf-8";
+  if (path.endsWith(".js")) return "text/javascript; charset=utf-8";
+  if (path.endsWith(".css")) return "text/css; charset=utf-8";
+  if (path.endsWith(".svg")) return "image/svg+xml; charset=utf-8";
+  return "application/octet-stream";
 }
 
-function stylesheet(res, status, body) {
-  res.writeHead(status, {
-    "content-type": "text/css; charset=utf-8",
-    "cache-control": "no-store",
-    "x-content-type-options": "nosniff",
-  });
-  res.end(body);
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/gu, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[character]);
-}
-
-function fallbackTimestamp(value) {
-  const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toLocaleString() : String(value || "—");
-}
-
-const fallbackPageSize = 20;
-
-function fallbackPage(value) {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
-}
-
-function fallbackListHref(filter, page = 1) {
-  const params = new URLSearchParams();
-  if (filter !== "all") params.set("filter", filter);
-  if (page > 1) params.set("page", String(page));
-  const search = params.toString();
-  return search ? `/?${search}` : "/";
-}
-
-function detailHref(repo, id, filter, page = 1) {
-  const params = new URLSearchParams({ filter });
-  if (page > 1) params.set("page", String(page));
-  const search = params.toString();
-  return `/${encodeURIComponent(repo)}/${encodeURIComponent(id)}?${search}`;
-}
-
-const FALLBACK_STYLE = `<style>
-.burnlist-fallback{--panel:#111;--text:#e8e8e8;--muted:#a8a8a8;--line:#262626;--done:#43c46b;--active:#5aa2ff;width:min(1180px,calc(100% - 64px));margin:0 auto;padding:20px 0 28px;color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}.burnlist-fallback h1{margin:0;font:400 26px/1.08 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}.burnlist-fallback h2{font-size:17px}.burnlist-fallback p{color:var(--muted)}.burnlist-fallback a{color:inherit;text-decoration:none}.burnlist-fallback .timestamp{font-size:13px}.burnlist-fallback .page-header{border-bottom:1px solid var(--line);padding-bottom:14px}.burnlist-fallback .brand-lockup{display:flex;align-items:center;gap:12px}.burnlist-fallback .brand-mark{width:40px;height:40px;flex:0 0 auto;border-radius:9px}.burnlist-fallback .page-header p{margin:8px 0 0}.burnlist-fallback .filters{display:flex;gap:4px;margin:16px 0}.burnlist-fallback .filters a{height:28px;display:inline-flex;align-items:center;padding:0 8px;border:1px solid transparent;border-radius:4px;color:var(--muted)}.burnlist-fallback .filters a.selected{border-color:rgba(67,196,107,.26);color:var(--text);background:rgba(67,196,107,.055)}.burnlist-fallback .filters a:hover{color:var(--text);background:rgba(163,172,183,.06);border-color:rgba(163,172,183,.16)}.burnlist-fallback .table-wrap,.burnlist-fallback .card{border:1px solid var(--line);border-radius:8px;background:var(--panel);overflow:hidden}.burnlist-fallback .table-wrap{padding:16px}.burnlist-fallback table{width:100%;border-collapse:collapse;color:rgba(210,216,224,.72);font-size:14px}.burnlist-fallback th{padding:0 18px 10px 0;color:var(--muted);font-weight:400;text-align:left;white-space:nowrap}.burnlist-fallback td{padding:10px 18px 10px 0;border-bottom:1px solid rgba(163,172,183,.09);text-align:left;vertical-align:middle}.burnlist-fallback th:last-child,.burnlist-fallback td:last-child{padding-right:0}.burnlist-fallback tbody tr:last-child td{border-bottom:0}.burnlist-fallback tbody tr:hover td{background:rgba(90,162,255,.08)}.burnlist-fallback .row-title{display:block;color:rgba(242,245,248,.92);overflow-wrap:anywhere}.burnlist-fallback .row-title:hover{color:var(--active);text-decoration:underline;text-underline-offset:3px}.burnlist-fallback .row-subtitle{display:block;margin-top:3px;color:var(--muted);overflow-wrap:anywhere}.burnlist-fallback .pill{display:inline-block;border:1px solid rgba(163,172,183,.22);border-radius:4px;padding:1px 6px;color:var(--muted);font-size:12px}.burnlist-fallback .pill.complete{border-color:rgba(67,196,107,.32);color:var(--done)}.burnlist-fallback .pill.active{border-color:rgba(90,162,255,.32);color:var(--active)}.burnlist-fallback .bar{height:6px;margin-top:6px;border:1px solid #2a2a2a;border-radius:4px;background:#202020;overflow:hidden}.burnlist-fallback .bar>span{display:block;height:100%;background:var(--done)}.burnlist-fallback .pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}.burnlist-fallback .page-controls{display:flex;align-items:center;gap:8px}.burnlist-fallback .page-controls a,.burnlist-fallback .page-controls .disabled{display:inline-flex;min-height:28px;align-items:center;justify-content:center;padding:0 8px;border:1px solid var(--line);border-radius:4px}.burnlist-fallback .page-controls a{color:var(--text)}.burnlist-fallback .page-controls a:hover{border-color:rgba(163,172,183,.32);background:rgba(163,172,183,.06)}.burnlist-fallback .page-controls .disabled{opacity:.45}.burnlist-fallback .back{display:inline-block;margin-bottom:20px;color:var(--active)}.burnlist-fallback .hero{padding:22px;margin-bottom:18px}.burnlist-fallback .hero h1{font-size:24px}.burnlist-fallback .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.burnlist-fallback .metric{padding:14px}.burnlist-fallback .metric strong{display:block;font-size:24px}.burnlist-fallback .section{padding:20px;margin-bottom:18px}.burnlist-fallback .document-section,.burnlist-fallback .completion{padding:16px 0;border-top:1px solid var(--line)}.burnlist-fallback .document-section:first-of-type,.burnlist-fallback .completion:first-of-type{border-top:0}.burnlist-fallback pre{margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:#c4c4cc;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:700px){.burnlist-fallback{width:calc(100% - 40px);padding:20px 0}.burnlist-fallback .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.burnlist-fallback table{min-width:650px}.burnlist-fallback .table-wrap{overflow:auto}.burnlist-fallback .pagination{align-items:flex-start;flex-direction:column}}
-</style>`;
-
-const OVEN_STYLE = `<style>
-.burnlist-fallback.oven-page,.burnlist-fallback.oven-page *{box-sizing:border-box}
-.burnlist-fallback .table-toolbar,.burnlist-fallback .burn-actions,.burnlist-fallback .form-actions{display:flex;align-items:center;gap:8px}
-.burnlist-fallback .table-toolbar{justify-content:space-between;flex-wrap:wrap;margin:16px 0}.burnlist-fallback .table-toolbar .filters{margin:0}
-.burnlist-fallback .action-button,.burnlist-fallback button.action-button{display:inline-flex;min-height:32px;align-items:center;justify-content:center;padding:0 11px;border:1px solid rgba(163,172,183,.28);border-radius:5px;background:#181b1f;color:var(--text);font:600 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}.burnlist-fallback .action-button.primary,.burnlist-fallback button.action-button.primary{border-color:rgba(90,162,255,.48);background:rgba(90,162,255,.13);color:#dcecff}.burnlist-fallback .action-button:hover,.burnlist-fallback button.action-button:hover{border-color:rgba(163,172,183,.5);background:#20242a}.burnlist-fallback button.action-button:disabled{cursor:not-allowed;opacity:.5}
-.burnlist-fallback.oven-page{width:calc(100% - 40px);max-width:none}.burnlist-fallback .form-shell{display:grid;gap:16px}.burnlist-fallback .form-card{padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}.burnlist-fallback .form-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}.burnlist-fallback .oven-definition-card{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}.burnlist-fallback .oven-fields-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.burnlist-fallback .oven-definition-card .field{margin-bottom:0}.burnlist-fallback .oven-definition-card .hint{margin:0}.burnlist-fallback .field{display:grid;gap:6px;margin-bottom:14px}.burnlist-fallback .field>span{color:var(--muted);font-size:12px}.burnlist-fallback input,.burnlist-fallback textarea,.burnlist-fallback select{width:100%;border:1px solid var(--line);border-radius:5px;background:#0e1012;color:var(--text);padding:8px 9px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}.burnlist-fallback textarea{min-height:160px;resize:vertical}
-.burnlist-fallback .hint{color:var(--muted);font-size:12px}
-.burnlist-fallback .oven-builder{overflow-x:auto}.burnlist-fallback .oven-grid{display:grid;position:relative;width:100%;border-top:1px solid #30363d;border-left:1px solid #30363d;background:#0d0f11;touch-action:none;user-select:none;cursor:crosshair}.burnlist-fallback .base-grid-cell{min-width:0;border-right:1px solid #30363d;border-bottom:1px solid #30363d;background:transparent}
-.burnlist-fallback .grid-selector,.burnlist-fallback .saved-grid-area{position:absolute;inset:1px;min-width:0;box-sizing:border-box;overflow:auto}.burnlist-fallback .grid-selector.is-selecting{border:1px solid rgba(253,216,53,.95);background:rgba(253,216,53,.28);pointer-events:none}.burnlist-fallback .grid-selector.is-draft{border:2px solid rgba(253,216,53,.95);background:#151515;box-shadow:0 8px 28px rgba(0,0,0,.35)}
-.burnlist-fallback .saved-grid-area{border:1px solid #32363b;background:#151719;color:var(--text);transition:border-color .12s,box-shadow .12s}.burnlist-fallback .saved-grid-area:hover,.burnlist-fallback .saved-grid-area:focus-within{z-index:5!important;border-color:rgba(253,216,53,.95);box-shadow:inset 0 0 0 2px rgba(253,216,53,.35)}
-.burnlist-fallback .grid-area-editor{display:grid;min-height:100%;align-content:center;gap:4px;padding:6px}.burnlist-fallback .saved-area-editor{padding-top:30px}.burnlist-fallback .grid-chart-picker{display:flex;flex-wrap:wrap;gap:4px}.burnlist-fallback .grid-chart-type{display:grid;width:28px;height:28px;place-items:center;padding:0;border:1px solid #383d43;border-radius:4px;background:#0e1012;color:var(--muted);cursor:pointer}.burnlist-fallback .grid-chart-type:hover{border-color:rgba(253,216,53,.65);color:var(--text)}.burnlist-fallback .grid-chart-type.is-selected{border-color:rgba(253,216,53,.95);background:rgba(253,216,53,.95);color:#171717}.burnlist-fallback .grid-chart-icon{display:block;width:16px;height:16px}.burnlist-fallback .grid-metric-description{display:grid;gap:2px}.burnlist-fallback .grid-metric-label{color:var(--muted);font-size:10px}.burnlist-fallback textarea.grid-area-description{min-height:48px;height:48px;padding:4px 6px;border-color:#383d43;font-size:11px;line-height:1.35;resize:none}.burnlist-fallback .grid-area-actions{display:flex;justify-content:flex-end;gap:4px}.burnlist-fallback .grid-area-toolbar{position:absolute;top:0;right:0;z-index:4;display:flex;opacity:0;transition:opacity .12s}.burnlist-fallback .saved-grid-area:hover .grid-area-toolbar,.burnlist-fallback .saved-grid-area:focus-within .grid-area-toolbar{opacity:1}.burnlist-fallback .saved-grid-area.is-edit .grid-area-action.edit,.burnlist-fallback .saved-grid-area.is-preview .grid-area-action.preview{display:none}
-.burnlist-fallback .grid-area-action{min-height:22px;border:0;border-left:1px solid rgba(0,0,0,.22);border-radius:0;background:rgba(253,216,53,.96);color:#171717;padding:0 6px;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}.burnlist-fallback .grid-area-action:hover{background:#e1b802}.burnlist-fallback .grid-area-action.delete:hover{background:#c83b42;color:#fff}.burnlist-fallback .grid-area-action.add{background:#6db6ff}.burnlist-fallback .grid-area-action.cancel{background:#d7d7d7}.burnlist-fallback .grid-area-preview{display:grid;min-height:100%;place-content:center;gap:7px;padding:10px;text-align:center}.burnlist-fallback .grid-area-preview-icon{display:grid;place-items:center;color:rgba(253,216,53,.95)}.burnlist-fallback .grid-area-preview-icon .grid-chart-icon{width:24px;height:24px}.burnlist-fallback .grid-area-preview-description{margin:0;color:var(--text);font-size:12px;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}
-.burnlist-fallback .form-actions{justify-content:flex-end;margin-top:16px}.burnlist-fallback .form-status{display:block;min-height:20px;margin-top:10px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}.burnlist-fallback .form-status.error{color:var(--bad)}.burnlist-fallback .run-summary{margin-top:12px;padding:12px;border:1px solid rgba(67,196,107,.26);border-radius:6px;background:rgba(67,196,107,.055);color:var(--done)}
-@media(max-width:900px){.burnlist-fallback .table-toolbar{align-items:flex-start;flex-direction:column}.burnlist-fallback .oven-fields-row{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.burnlist-fallback .oven-fields-row{grid-template-columns:1fr}}
-</style>`;
-
-function fallbackIndex(url) {
-  const filter = ["draft", "ready", "active", "complete", "all"].includes(url.searchParams.get("filter"))
-    ? url.searchParams.get("filter")
-    : "all";
-  const labels = { draft: "Draft", ready: "Ready", active: "Active", complete: "Done", all: "All" };
-  const filters = Object.keys(labels).map((value) => {
-    return `<a class="${filter === value ? "selected" : ""}" href="${fallbackListHref(value)}">${labels[value]}</a>`;
-  }).join("");
-  const filteredRows = discoverBurnlists().filter((entry) => filter === "all" || entry.status === filter);
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / fallbackPageSize));
-  const page = Math.min(fallbackPage(url.searchParams.get("page")), totalPages);
-  const firstIndex = (page - 1) * fallbackPageSize;
-  const visibleRows = filteredRows.slice(firstIndex, firstIndex + fallbackPageSize);
-  const rows = visibleRows.map((entry) => {
-    const href = detailHref(entry.repo, entry.id, filter, page);
-    return `<tr><td><a href="${href}"><span class="row-title">${escapeHtml(entry.repo)}/${escapeHtml(entry.id)}</span><span class="row-subtitle">${escapeHtml(entry.title)}</span></a></td><td><span class="pill ${escapeHtml(entry.status)}">${escapeHtml(entry.statusLabel)}</span></td><td>${entry.done}/${entry.total} done · ${entry.percent}%<div class="bar"><span style="width:${entry.percent}%"></span></div></td><td class="timestamp">${escapeHtml(fallbackTimestamp(entry.updatedAt))}</td></tr>`;
-  }).join("") || `<tr><td colspan="4">No Burnlists in this lifecycle view.</td></tr>`;
-  const previous = page > 1
-    ? `<a rel="prev" href="${fallbackListHref(filter, page - 1)}">Previous</a>`
-    : `<span class="disabled" aria-disabled="true">Previous</span>`;
-  const next = page < totalPages
-    ? `<a rel="next" href="${fallbackListHref(filter, page + 1)}">Next</a>`
-    : `<span class="disabled" aria-disabled="true">Next</span>`;
-  const pagination = totalPages > 1
-    ? `<nav class="pagination" aria-label="Burnlist table pages"><span>Showing ${firstIndex + 1}–${Math.min(firstIndex + fallbackPageSize, filteredRows.length)} of ${filteredRows.length}</span><span class="page-controls">${previous}<span>Page ${page} of ${totalPages}</span>${next}</span></nav>`
-    : "";
-  const boundOvenActions = ovenDataBindings.has("differential-testing") ? `<a class="action-button" href="/ovens/differential-testing/view">Differential Testing</a>` : "";
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<header class="page-header"><div class="brand-lockup"><svg class="brand-mark" aria-hidden="true" viewBox="0 0 512 512"><path fill="#d4d4d8" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/></svg><div><h1>Burnlists</h1><p>Let it cook</p></div></div></header><div class="table-toolbar"><nav class="filters" aria-label="Burnlist lifecycle">${filters}</nav><nav class="burn-actions" aria-label="Burn actions">${boundOvenActions}<a class="action-button" href="/ovens/new">New Oven</a><a class="action-button primary" href="/runs/new">Run Burn</a></nav></div><div class="table-wrap"><table><thead><tr><th>Burnlist</th><th>Lifecycle</th><th>Progress</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table>${pagination}</div></main>`;
-}
-
-function fallbackDetail(data, filter, page) {
-  const goal = data.goal?.sections?.map((section) => `<section class="document-section"><h2>${escapeHtml(section.title)}</h2>${section.body ? `<pre>${escapeHtml(section.body)}</pre>` : ""}</section>`).join("") ?? "";
-  const active = data.active?.map((item) => `<article class="completion"><h2>${escapeHtml(item.id)} ${escapeHtml(item.title)}</h2><pre>${escapeHtml(Object.entries(item.fields || {}).map(([key, value]) => `${key}: ${value}`).join("\n"))}</pre></article>`).join("") ?? "";
-  const completed = data.completed?.map((item) => `<article class="completion"><h2>${escapeHtml(item.id)} ${escapeHtml(item.title)}</h2><p class="timestamp">${escapeHtml(fallbackTimestamp(item.completedAt))}</p>${item.detail ? `<pre>${escapeHtml(item.detail)}</pre>` : ""}</article>`).join("") ?? "";
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}<a class="back" href="${fallbackListHref(filter, page)}">← All Burnlists</a><section class="card hero"><h1>${escapeHtml(data.title)}</h1><p>${escapeHtml(data.repo)}/${escapeHtml(data.planLabel)}</p><div class="bar"><span style="width:${data.percent}%"></span></div></section><div class="grid"><section class="card metric">Completed<strong>${data.done}/${data.total}</strong></section><section class="card metric">Remaining<strong>${data.remaining}</strong></section><section class="card metric">Progress<strong>${data.percent}%</strong></section><section class="card metric">Signals<strong>${data.warnings.length}</strong></section></div>${goal ? `<section class="card section"><h2>Goal and guardrails</h2>${goal}</section>` : ""}${active ? `<section class="card section"><h2>Active checklist</h2>${active}</section>` : ""}<section class="card section"><h2>Completed detail</h2>${completed || "<p>No completion records.</p>"}</section></main>`;
-}
-
-function fallbackNewOven() {
-  return `<main class="burnlist-fallback oven-page">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>New Oven</h1><p>A declarative Burn recipe: Markdown instructions plus a non-executable detail skeleton.</p></header><form class="form-shell" id="oven-form"><div class="form-grid"><section class="form-card oven-definition-card"><div class="oven-fields-row"><label class="field"><span>Oven name</span><input id="oven-name" maxlength="80" placeholder="Release Readiness" required></label><label class="field"><span>Oven id</span><input id="oven-id" maxlength="48" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="release-readiness" required></label><label class="field"><span>Columns</span><input id="grid-columns" type="number" min="2" max="24" value="12"></label><label class="field"><span>Rows</span><input id="grid-rows" type="number" min="2" max="32" value="16"></label></div><label class="field"><span>Markdown instructions</span><textarea id="oven-definition" maxlength="65536" required>## Purpose&#10;&#10;Describe what this Oven measures or completes.&#10;&#10;## State Contract&#10;&#10;Describe the canonical Markdown or report state.&#10;&#10;## Run Inputs&#10;&#10;Describe the inputs a Burn needs.&#10;&#10;## Evidence&#10;&#10;Describe what proves the outcome.</textarea></label></section><section class="oven-builder"><div class="oven-grid" id="oven-grid" aria-label="Oven detail page skeleton"></div></section></div><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="save-oven" type="submit">Save Oven</button></div><output class="form-status" id="oven-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
-}
-
-function fallbackRunBurn() {
-  return `<main class="burnlist-fallback">${FALLBACK_STYLE}${OVEN_STYLE}<a class="back" href="/">← Burnlists</a><header class="page-header"><h1>Run Burn</h1><p>Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions.</p></header><form class="form-shell form-card" id="run-form"><label class="field"><span>Oven</span><select id="run-oven" required></select></label><label class="field"><span>Repository</span><select id="run-repo" required></select></label><label class="field"><span>Run title</span><input id="run-title" maxlength="120" placeholder="Release readiness pass" required></label><label class="field"><span>Objective</span><textarea id="run-objective" maxlength="12000" placeholder="Describe the outcome and any Oven-required inputs. For Differential Testing, include the trusted reference, scenario/replay/profile, alignment and exact contract, and retained session location." required></textarea></label><p class="hint">The Run snapshots the selected Oven instructions and detail skeleton under ignored local state. It does not execute commands from the instructions.</p><div class="form-actions"><a class="action-button" href="/">Cancel</a><button class="action-button primary" id="create-run" type="submit">Run Burn</button></div><output class="form-status" id="run-status" aria-live="polite"></output></form><script src="/assets/fallback-burn-ovens.js" defer></script></main>`;
-}
-
-function dashboardFallback(url) {
-  if (url.pathname === "/ovens/differential-testing/view") return `<div class="shell driving-parity-view"><div class="empty">Loading Differential Testing Oven.</div></div><link rel="stylesheet" href="/assets/differential-testing.css"><script src="/assets/differential-testing-renderer.js" type="module"></script>`;
-  if (url.pathname === "/ovens/new") return fallbackNewOven();
-  if (url.pathname === "/runs/new") return fallbackRunBurn();
-  const route = routeSelection(url);
-  const explicitlySelected = Boolean(
-    route
-    || url.searchParams.get("plan")
-    || (url.searchParams.get("repo") && url.searchParams.get("id")),
-  );
-  if (explicitlySelected) {
-    const selection = selectedBurnlist(url);
-    if (!selection.burnlist) {
-      return `<main class="burnlist-fallback">${FALLBACK_STYLE}<h1>Burnlist unavailable</h1><p>${escapeHtml(selection.error)}</p></main>`;
-    }
-    try {
-      return fallbackDetail(payloadForPlan(selection.burnlist), url.searchParams.get("filter") || "all", fallbackPage(url.searchParams.get("page")));
-    } catch (err) {
-      return `<main class="burnlist-fallback">${FALLBACK_STYLE}<h1>Burnlist unavailable</h1><p>${escapeHtml(err.message)}</p></main>`;
-    }
+function serveDashboardFile(res, path, { cache = false, missingStatus = 500 } = {}) {
+  const stat = safeStat(path);
+  if (!stat?.isFile()) {
+    const error = new Error(`Dashboard build file is missing: ${relative(skillDir, path)}`);
+    error.status = missingStatus;
+    throw error;
   }
-  return fallbackIndex(url);
+  const body = readFileSync(path);
+  res.writeHead(200, {
+    "content-type": dashboardContentType(path),
+    "cache-control": cache ? "public, max-age=31536000, immutable" : "no-store",
+    "content-length": body.length,
+    "x-content-type-options": "nosniff",
+  });
+  res.end(body);
 }
 
-function serveDashboardShell(res, url) {
-  html(res, 200, `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Burnlists</title>
-<style>html{background:#050507;color-scheme:dark}body{margin:0;background:#050507;color:#e5e7eb}</style>
-</head>
-<body>${dashboardFallback(url)}</body>
-</html>`);
+function serveDashboardShell(res) {
+  serveDashboardFile(res, dashboardIndexPath);
 }
-
 if (!reportMode) mkdirSync(stateDir, { recursive: true });
 
 function stopExistingIfRequested() {
@@ -1279,29 +1188,18 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
-    if (url.pathname === "/assets/fallback-burn-ovens.js") {
+    const dashboardAsset = dashboardAssetPath(url.pathname);
+    if (dashboardAsset) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      javascript(res, 200, readTextFileWithLimit(fallbackBurnOvensScriptPath, 262144, "Fallback Oven script"));
-      return;
-    }
-    if (url.pathname === "/assets/differential-testing-renderer.js") {
-      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      javascript(res, 200, readTextFileWithLimit(differentialTestingScriptPath, 262144, "Differential Testing renderer"));
-      return;
-    }
-    if (url.pathname === "/assets/differential-testing-progress-chart.js") {
-      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      javascript(res, 200, readTextFileWithLimit(differentialTestingProgressChartPath, 131072, "Differential Testing progress chart"));
-      return;
-    }
-    if (url.pathname === "/assets/differential-testing.css") {
-      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      stylesheet(res, 200, readTextFileWithLimit(differentialTestingStylePath, 131072, "Differential Testing style"));
+      serveDashboardFile(res, dashboardAsset, {
+        cache: url.pathname.startsWith("/assets/"),
+        missingStatus: 404,
+      });
       return;
     }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: discoverBurnlists() });
+      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries() });
       return;
     }
     if (url.pathname === "/api/progress") {
@@ -1405,7 +1303,7 @@ const server = createServer(async (req, res) => {
     }
     if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      serveDashboardShell(res, url);
+      serveDashboardShell(res);
       return;
     }
     json(res, 404, { error: "not found" });
