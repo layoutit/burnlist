@@ -210,6 +210,13 @@ function assertDifferentialTestingContractAssets() {
     console.error("Differential Testing refresh state must expose queued, running, complete, and failed.");
     process.exit(1);
   }
+  const executionClosure = schema.$defs?.executionClosureBinding;
+  if (!schema.$defs?.refreshReport?.properties?.executionClosure?.$ref
+    || !["schema", "id", "sha256", "size"].every((key) => executionClosure?.required?.includes(key))
+    || executionClosure?.additionalProperties !== false) {
+    console.error("Differential Testing refresh reports are missing the compact execution-closure binding.");
+    process.exit(1);
+  }
   if (!schema.$defs?.scenarioCatalog?.properties?.selectedScenarioId?.anyOf?.some((entry) => entry.type === "null") || !schema.$defs?.refresh?.anyOf?.some((entry) => entry.type === "null")) {
     console.error("Differential Testing does not expose the explicit empty scenario bundle.");
     process.exit(1);
@@ -233,12 +240,22 @@ function assertPublishablePackage() {
     console.error("package.json does not expose the Burnlist CLI.");
     process.exit(1);
   }
+  if (packageJson.exports?.["./differential-testing"] !== "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs"
+    || packageJson.exports?.["./differential-testing/contract"] !== "./skills/burnlist/scripts/differential-testing-contract.mjs"
+    || packageJson.exports?.["./differential-testing/transport"] !== "./skills/burnlist/scripts/differential-testing-transport.mjs") {
+    console.error("package.json does not expose the stable Differential Testing worker, contract, and transport subpaths.");
+    process.exit(1);
+  }
   if (packageJson.scripts?.postinstall !== "node scripts/register-skills.mjs") {
     console.error("Global npm installation does not register agent skills automatically.");
     process.exit(1);
   }
   if (packageJson.dependencies && Object.keys(packageJson.dependencies).length) {
     console.error("The published Burnlist CLI should not install build-only runtime dependencies.");
+    process.exit(1);
+  }
+  if (["tailwindcss", "@tailwindcss/vite", "tailwind-merge"].some((name) => packageJson.devDependencies?.[name])) {
+    console.error("The dashboard should remain vanilla CSS and must not install Tailwind tooling.");
     process.exit(1);
   }
 }
@@ -273,11 +290,13 @@ assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "o
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
 assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
-assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", '<th className="px-5 py-3">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", '<th className="burnlist-table-heading">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
+assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate-bundle <bundle/current.json>", "Burnlist CLI is missing Differential Testing bundle validation help.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "Oven detail page skeleton", "Oven detail skeleton is missing.");
-assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'className="sticky top-0 z-50 h-[50px]', "Dashboard header is not fixed at 50px.");
+assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'className="dashboard-header"', "Dashboard header is missing its semantic style hook.");
+assertSourceIncludes("skills/burnlist/dashboard/src/index.css", "height: 50px;", "Dashboard header is not fixed at 50px.");
 assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'aria-label="Burnlist home"', "Dashboard header logo does not link home.");
 assertSourceIncludes("skills/burnlist/dashboard/src/app.tsx", 'aria-label="Primary navigation"', "Dashboard header navigation is missing.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "dashboardFallback", "Dashboard server still contains a fallback renderer.");
@@ -299,7 +318,9 @@ assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'aria-label
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "DetailTypePicker", "Oven chart-type icon picker is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "Describe the metric", "Oven metric-description textarea is missing.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "const NEW_OVEN_ROW_HEIGHT = 50", "New Oven row height is not defined as a fixed implementation constant.");
-assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "md:grid-cols-4", "React New Oven metadata fields are not arranged in columns.");
+assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'className="oven-fields-row"', "React New Oven metadata fields are missing their semantic layout hook.");
+assertSourceIncludes("skills/burnlist/dashboard/src/index.css", "grid-template-columns: repeat(4, minmax(0, 1fr));", "React New Oven metadata fields are not arranged in columns.");
+assertSourceExcludes("skills/burnlist/dashboard/src/index.css", "tailwindcss", "Dashboard stylesheet still imports Tailwind.");
 assertSourceExcludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "grid-area-title", "Oven detail sections still expose a separate title field.");
 assertSourceExcludes("skills/burnlist/dashboard/src/burn-ovens.tsx", "grid-area-source", "Oven detail sections still expose a source-path field.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "grid-row-height", "New Oven still exposes a row-height control.");
@@ -325,10 +346,12 @@ assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md
 assertSourceExcludes("skills/burnlist/ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("skills/burnlist/scripts/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("skills/burnlist/dashboard/src/burn-ovens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "/api/oven-data/differential-testing?scenario=", "Differential Testing React view is not bound to read-only scenario selection.");
-assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "mountDifferentialTestingDashboard", "Differential Testing is not using the shared dashboard.");
-assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "differentialPayloadRevision", "React Differential Testing polling does not observe complete payload revisions.");
-assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "/api/oven-data/differential-testing?scenario=", "Differential Testing is not bound to read-only scenario selection.");
+assertSourceIncludes("skills/burnlist/dashboard/src/differential-testing.tsx", "startDifferentialTestingLiveUpdates", "Differential Testing React view is not using the shared live updater.");
+assertSourceExcludes("skills/burnlist/dashboard/src/differential-testing.tsx", "fetch(", "Differential Testing React view duplicates the shared live updater.");
+assertSourceExcludes("skills/burnlist/dashboard/src/differential-testing.tsx", "setInterval", "Differential Testing React view duplicates the shared polling timer.");
+assertSourceExcludes("skills/burnlist/dashboard/src/differential-testing.tsx", "differentialPayloadRevision", "Differential Testing React view duplicates shared revision tracking.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
+assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
@@ -338,6 +361,7 @@ assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
+assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
 assertSourceIncludes("skills/burnlist/dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
@@ -390,6 +414,7 @@ assertPublishablePackage();
 run(process.execPath, [
   "--test",
   "skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs",
+  "skills/burnlist/scripts/differential-testing-contract.test.mjs",
   "skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
   "skills/burnlist/scripts/repo-map.test.mjs",
 ]);

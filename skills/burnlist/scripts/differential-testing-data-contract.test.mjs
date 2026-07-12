@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { buildPayload } from "../examples/differential-testing/adapter.mjs";
 import {
   DIFFERENTIAL_TESTING_REFRESH_MS,
-  differentialFrameDeltaMetrics,
+  differentialExactPrefixFrameDeltaMetrics,
   differentialExactTarget,
   differentialTelemetryFieldMap,
   differentialPayloadRevision,
@@ -568,6 +568,7 @@ test("keeps a globally worse telemetry candidate failed while exposing its local
   candidate.progress[0].result = "worsened";
   candidate.log[0].result = "worsened";
   candidate.refresh.report.result = "worsened";
+  candidate.trust.reportStatus = "worsened";
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(candidate.summary.frames.failed, 1);
   assert.equal(candidate.summary.fields.failed, 1);
@@ -778,7 +779,27 @@ test("accepts exact completion without a producer", () => {
   const payload = attachCompleteExactSession(buildPayload(...populatedCaptures()));
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
   assert.equal(payload.exactSession.producer, undefined);
-  assert.equal(differentialExactTarget(payload).status, "complete");
+  assert.deepEqual(differentialExactTarget(payload), {
+    mode: "exact",
+    status: "complete",
+    fieldId: null,
+    label: null,
+    reason: "Exact contract is complete; scenario PASS or FAIL is reported separately.",
+  });
+});
+
+test("exact completion cannot turn blocked primary evidence into a scenario pass", () => {
+  const [reference, candidate] = populatedCaptures();
+  delete candidate.samples[2].values.active;
+  const payload = attachCompleteExactSession(buildPayload(reference, candidate));
+  payload.refresh.report.result = "pass";
+  payload.log[0].result = "pass";
+  payload.progress.at(-1).result = "pass";
+  payload.summary.runs = { label: "Runs", total: 1, passed: 1, failed: 0, blocked: 0 };
+
+  const messages = validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n");
+  assert.match(messages, /reportStatus.*completed refresh report result|must be blocked when primary trust is blocked/u);
+  assert.match(messages, /pass only when every primary field and sample passes/u);
 });
 
 test("blocked exact authority fails closed without an aggregate target", () => {
@@ -881,10 +902,68 @@ test("direct retained-session bindings reconcile contract, frontier, and selecte
     assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must equal the selected scenario id/u);
   });
 
-  await t.test("refresh event lags the retained prefix", () => {
+  await t.test("completed refresh may honestly lag the retained prefix", () => {
     const payload = validPayload();
     payload.refresh.event.revision = "11";
-    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must equal retained clearedPrefixFrames/u);
+    assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+  });
+
+  await t.test("running refresh may honestly lag the retained prefix", () => {
+    const payload = validPayload();
+    payload.refresh.status = "running";
+    payload.refresh.event.revision = "11";
+    payload.refresh.completedAt = null;
+    delete payload.refresh.report;
+    assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+  });
+
+  await t.test("refresh event cannot be ahead of the retained prefix", () => {
+    const payload = validPayload();
+    payload.refresh.event.revision = "13";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /must not be ahead of retained clearedPrefixFrames/u);
+  });
+
+  for (const revision of ["01", "11.0", "+11", "-1", "not-a-revision"]) {
+    await t.test(`exact-prefix revision ${JSON.stringify(revision)} is not canonical decimal`, () => {
+      const payload = validPayload();
+      payload.refresh.event.revision = revision;
+      assert.match(validateDifferentialTestingData(payload).issues.map((entry) => entry.message).join("\n"), /canonical non-negative decimal integer/u);
+    });
+  }
+});
+
+test("refresh reports may bind one compact adapter-attested execution closure", async (t) => {
+  const validPayload = () => {
+    const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
+    payload.refresh.report.executionClosure = {
+      schema: "fixture-execution-closure@1",
+      id: "execution-closure-fixture",
+      sha256: "d".repeat(64),
+      size: 2048,
+    };
+    return payload;
+  };
+
+  await t.test("accepts schema, id, digest, and size without project paths or bytes", () => {
+    assert.doesNotThrow(() => assertDifferentialTestingData(validPayload()));
+  });
+
+  await t.test("rejects project-owned path leakage", () => {
+    const payload = validPayload();
+    payload.refresh.report.executionClosure.path = "/project/.local/execution-closure.json";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /executionClosure\.path.*not supported by the execution-closure contract/u);
+  });
+
+  await t.test("rejects an invalid digest", () => {
+    const payload = validPayload();
+    payload.refresh.report.executionClosure.sha256 = "not-a-digest";
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /executionClosure\.sha256.*lowercase .*SHA-256/u);
+  });
+
+  await t.test("rejects an empty artifact", () => {
+    const payload = validPayload();
+    payload.refresh.report.executionClosure.size = 0;
+    assert.match(validateDifferentialTestingData(payload).issues.map((entry) => `${entry.path}: ${entry.message}`).join("\n"), /executionClosure\.size.*greater than zero/u);
   });
 });
 
@@ -982,6 +1061,7 @@ test("telemetry remains observational and cannot veto exact retention", () => {
   payload.refresh.report.result = "worsened";
   payload.log[0].result = "worsened";
   payload.progress.at(-1).result = "worsened";
+  payload.trust.reportStatus = "worsened";
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
   assert.equal(payload.exactSession.result, "advanced");
   assert.equal(payload.telemetry?.authority ?? DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY, "telemetry-only");
@@ -1006,19 +1086,26 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
   assert.deepEqual(preserved, points);
   assert.notEqual(preserved, points);
 
-  const chartHistory = differentialProgressChartHistory({
-    progress: points.map((point, index) => ({ ...point, fieldCount: 2, failedFieldCount: point.value ? 1 : 0, frames: 50 })),
-    summary: { fields: { total: 2 }, frames: { total: 100, uniqueTicks: 50 } },
-  });
-  assert.deepEqual(chartHistory.map((point) => point.drivingParityStateFailures), [100, 500, 100]);
-  assert.deepEqual(chartHistory.map((point) => point.drivingParityEventMarker), ["", "worsened", "improved"]);
-  assert.equal(chartHistory[0].drivingParityActiveComparablePoints, 100);
+  const framePayload = {
+    progress: [
+      { timestamp: points[0].timestamp, frames: 1_000, frame: 197, frameDelta: null },
+      { timestamp: points[1].timestamp, frames: 1_000, frame: 238, frameDelta: 41 },
+    ],
+  };
+  const valueHistory = differentialProgressChartHistory(framePayload, { mode: "value" });
+  assert.deepEqual(valueHistory.map((point) => Number(point.percent.toFixed(1))), [19.7, 23.8]);
+  assert.deepEqual(valueHistory.map((point) => point.done), [197, 238]);
+  const deltaHistory = differentialProgressChartHistory(framePayload, { mode: "delta" });
+  assert.deepEqual(deltaHistory.map((point) => Number(point.percent.toFixed(1))), [0, 4.1]);
+  assert.deepEqual(deltaHistory.map((point) => point.done), [0, 41]);
 
-  const frameMetrics = differentialFrameDeltaMetrics({ fields: [{ samples: [[0, 0, 0, 0], [1, 0, 1, 1], [2, null, null, 4]] }, { samples: [[0, 0, 0, 0], [1, 0, 0, 0], [2, 0, 0, 0]] }] });
-  assert.deepEqual(frameMetrics.frameDeviationRatios, [0, 0.5, 0]);
-  assert.equal(frameMetrics.firstFailingFrame, 1);
-  const frameZeroMetrics = differentialFrameDeltaMetrics({ fields: [{ samples: [[0, 0, 1, 1], [1, 0, 0, 0]] }] });
-  assert.equal(frameZeroMetrics.firstFailingFrame, 0);
+  const exactMetrics = differentialExactPrefixFrameDeltaMetrics(framePayload, {
+    frameDeviationRatios: Array(1_000).fill(0.2),
+    firstFailingFrame: 0,
+  });
+  assert.deepEqual(exactMetrics.frameDeviationRatios.slice(236, 240), [0, 0, 0.2, 0.2]);
+  assert.equal(exactMetrics.firstFailingFrame, 238);
+  assert.equal(differentialExactPrefixFrameDeltaMetrics(framePayload, null), null);
 
   const payload = { publishedAt: points[2].timestamp, adapter: { id: "fixture" }, summary: {}, progress: points.slice(), log: [], fields: [{ id: "field-a", label: "Field A", samples: [] }], telemetry: {
     status: "comparable",
@@ -1054,6 +1141,8 @@ test("refresh states map to the compact selector status", () => {
   assert.equal(differentialRefreshStatusLabel({ status: "complete" }), "");
   assert.equal(differentialRefreshStatusLabel({ status: "failed" }), "Update failed");
   assert.equal(differentialRefreshStatusLabel({ status: "complete" }, "loading"), "Loading");
+  assert.equal(differentialRefreshStatusLabel({ status: "complete" }, "queued"), "Queued");
+  assert.equal(differentialRefreshStatusLabel({ status: "complete" }, "running"), "Updating");
 });
 
 test("Changed renders telemetry transitions while primary field status stays failing", () => {
@@ -1061,6 +1150,7 @@ test("Changed renders telemetry transitions while primary field status stays fai
   candidate.progress[0].result = "worsened";
   candidate.log[0].result = "worsened";
   candidate.refresh.report.result = "worsened";
+  candidate.trust.reportStatus = "worsened";
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(differentialTelemetryFieldMap(candidate).size, candidate.fields.length);
 
@@ -1127,8 +1217,14 @@ test("evidence work never appears as a runtime Target", () => {
   });
 });
 
-test("dashboard charts default to Delta and label frames only on the first row", () => {
+test("dashboard Delta chart stays source-backed while the log reports frame advances", () => {
   const payload = buildPayload(...populatedCaptures());
+  const baselineLog = payload.log[0];
+  payload.log = [
+    { ...baselineLog, timestamp: "2026-01-01T12:00:02.000Z", result: "improved", value: 845_738, delta: -801, frames: 1_000, frame: 238, frameDelta: 41 },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 846_539, delta: null, frames: 1_000, frame: 197, frameDelta: null },
+  ];
+  payload.progress = [...payload.log].reverse();
   const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1145,7 +1241,7 @@ test("dashboard charts default to Delta and label frames only on the first row",
   assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Results</u);
   assert.match(root.innerHTML, /id="differential-scenario-selector"/u);
   assert.match(root.innerHTML, /id="progress-panel-title">Parity Progress<\/h2>/u);
-  assert.match(root.innerHTML, /class="work-panel-title">Parity Progress</u);
+  assert.match(root.innerHTML, /class="work-panel-title">Parity Progress<span class="field-list-count">\(\d{2}:\d{2}:\d{2}\)<\/span><\/div>/u);
   assert.match(root.innerHTML, /class="label-toggle progress-chart-toggle differential-tabs"/u);
   assert.match(root.innerHTML, /id="progress-headline">0\/0</u);
   assert.match(root.innerHTML, /data-work-tab-pane="timeline" hidden/u);
@@ -1161,6 +1257,13 @@ test("dashboard charts default to Delta and label frames only on the first row",
   assert.match(root.innerHTML, /class="hybrid-value-delta">0\.1000<\/span>/u);
   assert.match(root.innerHTML, /class="hybrid-value-delta">0<\/span>/u);
   assert.match(root.innerHTML, /class="checklist-log-table-header"><span>Age<\/span><span>Frame<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed improved">238<\/span>/u);
+  assert.match(root.innerHTML, /class="log-delta-indicator">▲<\/span><span>41<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell delta improved">4\.1%<\/span><span class="log-table-cell done">24%<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed unchanged">197<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell result unchanged">—<\/span><span class="log-table-cell delta unchanged">—<\/span><span class="log-table-cell done">20%<\/span>/u);
+  assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 8);
+  assert.match(root.innerHTML, /log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">\.<\/span>(?:<span class="log-table-cell">\.<\/span>){4}/u);
   assert.match(root.innerHTML, /class="log-table-cell age">(?:now|\d+m)<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="log-table-cell age">\d+[hd]<\/span>/u);
   assert.match(root.innerHTML, /id="driving-parity-controls" class="driving-parity-controls"/u);
@@ -1170,6 +1273,28 @@ test("dashboard charts default to Delta and label frames only on the first row",
   assert.match(root.innerHTML, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
   assert.doesNotMatch(root.innerHTML, /differential-(?:page|workspace|toolbar|controls|kpi-strip)/u);
   assert.equal((renderedHtml.match(/class="frame-tick-label"/gu) || []).length, 1);
+});
+
+test("KPI failed totals use the same million compaction as total samples", () => {
+  const payload = buildPayload(...populatedCaptures());
+  payload.summary.frames = {
+    total: 11_692_000,
+    passed: 10_331_585,
+    failed: 896_810,
+    blocked: 463_605,
+    uniqueTicks: 1_000,
+  };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const controls = { value: "", focus() {}, setSelectionRange() {} };
+  const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
+  const previousWindow = globalThis.window;
+  globalThis.window = { devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
+  try {
+    mountDifferentialTestingDashboard(root, oven, payload);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+  assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Frames<\/span><span class="driving-parity-kpi-ratio"><span class="total">11,692k<\/span><span class="separator">·<\/span><span class="fail">1,360k \(11\.6%\)<\/span>/u);
 });
 
 test("project payloads cannot rename the generic Differential Testing Oven", () => {
@@ -1361,6 +1486,79 @@ test("live Differential Testing dashboard polls and updates only when the payloa
 
   controller.stop();
   assert.equal(clearedTimer, 17);
+});
+
+test("live Differential Testing dashboard keeps the completed report visible while its replacement is running", async () => {
+  const oven = { detail: { cells: [] } };
+  const completed = { publishedAt: "2026-01-01T12:00:00.000Z", refresh: { status: "complete", report: {} }, fields: [{ id: "completed-field" }] };
+  const running = { publishedAt: "2026-01-01T12:00:02.000Z", refresh: { status: "running" }, fields: [], progress: [] };
+  const replacement = { publishedAt: "2026-01-01T12:00:04.000Z", refresh: { status: "complete" }, fields: [{ id: "replacement-field" }] };
+  let payload = completed;
+  let intervalCallback = null;
+  const updates = [];
+  const statuses = [];
+  const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
+    fetchImpl: async (url) => ({
+      ok: true,
+      headers: { get: () => null },
+      async json() { return url === "/api/ovens/differential-testing" ? { oven } : { payload }; },
+    }),
+    setIntervalImpl: (callback) => {
+      intervalCallback = callback;
+      return 17;
+    },
+    clearIntervalImpl() {},
+    mount: (_root, _oven, initialPayload) => {
+      assert.equal(initialPayload, completed);
+      return {
+        update: (_nextOven, nextPayload) => updates.push(nextPayload),
+        setClientRefreshStatus: (status) => statuses.push(status),
+      };
+    },
+  });
+
+  await controller.ready;
+  payload = running;
+  await intervalCallback();
+  await intervalCallback();
+  assert.deepEqual(updates, []);
+  assert.deepEqual(statuses, ["running", "running"]);
+
+  payload = replacement;
+  await intervalCallback();
+  assert.deepEqual(updates, [replacement]);
+  controller.stop();
+});
+
+test("live Differential Testing dashboard does not retain an empty catalog when its first scenario is queued", async () => {
+  const oven = { detail: { cells: [] } };
+  const empty = { publishedAt: "2026-01-01T12:00:00.000Z", refresh: null, fields: [] };
+  const queued = { publishedAt: "2026-01-01T12:00:02.000Z", refresh: { status: "queued" }, fields: [] };
+  let payload = empty;
+  let intervalCallback = null;
+  const updates = [];
+  const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
+    fetchImpl: async (url) => ({
+      ok: true,
+      headers: { get: () => null },
+      async json() { return url === "/api/ovens/differential-testing" ? { oven } : { payload }; },
+    }),
+    setIntervalImpl: (callback) => {
+      intervalCallback = callback;
+      return 17;
+    },
+    clearIntervalImpl() {},
+    mount: () => ({
+      update: (_nextOven, nextPayload) => updates.push(nextPayload),
+      setClientRefreshStatus() {},
+    }),
+  });
+
+  await controller.ready;
+  payload = queued;
+  await intervalCallback();
+  assert.deepEqual(updates, [queued]);
+  controller.stop();
 });
 
 test("live Differential Testing dashboard reuses per-scenario ETags and skips unchanged payload JSON", async () => {

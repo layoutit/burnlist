@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 import { NewOvenPage, RunBurnPage } from "@/burn-ovens";
 import { ChecklistDashboard, type ChecklistProgressData } from "@/checklist-dashboard";
 import { DifferentialTestingPage } from "@/differential-testing";
@@ -66,22 +65,19 @@ function selectedBurnlist() {
 
 function AppHeader({ section }: { section: string }) {
   return (
-    <header className="sticky top-0 z-50 h-[50px] border-b border-[#262626] bg-[#050505]">
-      <div className="flex h-full w-full items-center justify-between gap-3 px-4">
-        <a aria-label="Burnlist home" className="flex min-w-0 items-center gap-2" href="/">
-          <img alt="" className="size-7 shrink-0" src="/favicon.svg" />
-          <span className="hidden font-[var(--dashboard-title-font)] text-sm font-medium text-foreground sm:inline">Burnlist</span>
+    <header className="dashboard-header">
+      <div className="dashboard-header-inner">
+        <a aria-label="Burnlist home" className="dashboard-brand" href="/">
+          <img alt="" className="dashboard-brand-logo" src="/favicon.svg" />
+          <span className="dashboard-brand-name">Burnlist</span>
         </a>
-        <nav aria-label="Primary navigation" className="flex h-full items-center gap-2 font-[var(--dashboard-title-font)] text-sm">
+        <nav aria-label="Primary navigation" className="dashboard-primary-nav">
           {HEADER_LINKS.map((link, index) => (
-            <span className="contents" key={link.href}>
-              {index > 0 && <span aria-hidden="true" className="text-white/25">·</span>}
+            <span className="dashboard-primary-nav-item" key={link.href}>
+              {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a
                 aria-current={section === link.section ? "page" : undefined}
-                className={cn(
-                  "text-muted-foreground opacity-55 transition-colors hover:text-foreground hover:opacity-100",
-                  section === link.section && "text-foreground opacity-100",
-                )}
+                className="dashboard-primary-nav-link"
                 href={link.href}
               >
                 {link.label}
@@ -133,13 +129,13 @@ function formatTime(value: string | null) {
 
 function EmptyState({ title, detail, icon: Icon = CircleDotDashed }: { title: string; detail: string; icon?: typeof CircleDotDashed }) {
   return (
-    <div className="grid min-h-72 place-items-center px-6 text-center">
-      <div className="max-w-sm">
-        <span className="mx-auto mb-4 grid size-11 place-items-center rounded-xl border border-white/10 bg-white/4 text-muted-foreground">
-          <Icon className="size-5" aria-hidden="true" />
+    <div className="dashboard-empty-state">
+      <div className="dashboard-empty-state-content">
+        <span className="dashboard-empty-state-icon">
+          <Icon className="dashboard-empty-state-icon-svg" aria-hidden="true" />
         </span>
-        <h2 className="font-medium">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+        <h2 className="dashboard-empty-state-title">{title}</h2>
+        <p className="dashboard-empty-state-detail">{detail}</p>
       </div>
     </div>
   );
@@ -150,12 +146,12 @@ function Pagination({ page, totalItems, totalPages, onPageChange }: { page: numb
   const firstItem = (page - 1) * PAGE_SIZE + 1;
   const lastItem = Math.min(page * PAGE_SIZE, totalItems);
   return (
-    <nav aria-label="Burnlist table pages" className="flex flex-col gap-3 border-t border-white/8 px-5 py-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <p>Showing {firstItem}–{lastItem} of {totalItems}</p>
-      <div className="flex items-center gap-2">
-        <Button aria-label="Previous page" disabled={page === 1} onClick={() => onPageChange(page - 1)} size="sm" variant="outline">Previous</Button>
-        <span aria-live="polite" className="min-w-24 text-center">Page {page} of {totalPages}</span>
-        <Button aria-label="Next page" disabled={page === totalPages} onClick={() => onPageChange(page + 1)} size="sm" variant="outline">Next</Button>
+    <nav aria-label="Burnlist table pages" className="dashboard-pagination">
+      <p className="dashboard-pagination-summary">Showing {firstItem}–{lastItem} of {totalItems}</p>
+      <div className="dashboard-pagination-controls">
+        <Button aria-label="Previous page" className="dashboard-pagination-button" disabled={page === 1} onClick={() => onPageChange(page - 1)} size="sm" variant="outline">Previous</Button>
+        <span aria-live="polite" className="dashboard-pagination-status">Page {page} of {totalPages}</span>
+        <Button aria-label="Next page" className="dashboard-pagination-button" disabled={page === totalPages} onClick={() => onPageChange(page + 1)} size="sm" variant="outline">Next</Button>
       </div>
     </nav>
   );
@@ -175,26 +171,34 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
   if (!rows.length) return <EmptyState title="Nothing here yet" detail="No Burnlists match this lifecycle view." />;
 
   return (
-    <div className="overflow-hidden rounded-lg bg-[#111111]">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-left text-sm">
-          <thead className="border-b border-white/15 bg-transparent font-[var(--dashboard-title-font)] text-xs font-normal text-muted-foreground">
+    <div className="burnlist-table-card">
+      <div className="burnlist-table-scroll">
+        <table className="burnlist-table">
+          <colgroup>
+            <col className="burnlist-table-column-primary" />
+            <col className="burnlist-table-column-oven" />
+            <col className="burnlist-table-column-status" />
+            <col className="burnlist-table-column-progress" />
+            <col className="burnlist-table-column-updated" />
+          </colgroup>
+          <thead className="burnlist-table-head">
             <tr>
-              <th className="px-5 py-3">Burnlist</th>
-              <th className="px-5 py-3">Oven</th>
-              <th className="px-5 py-3">Lifecycle</th>
-              <th className="px-5 py-3">Progress</th>
-              <th className="px-5 py-3">Updated</th>
+              <th className="burnlist-table-heading">Burnlist</th>
+              <th className="burnlist-table-heading">Oven</th>
+              <th className="burnlist-table-heading">Lifecycle</th>
+              <th className="burnlist-table-heading">Progress</th>
+              <th className="burnlist-table-heading">Updated</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="burnlist-table-body">
             {pageRows.map((entry) => {
               const href = entry.ovenId === "checklist" ? burnlistHref(entry, filter, currentPage) : entry.href;
               const open = () => { window.location.href = href; };
               return (
                 <tr
                   aria-label={`Open ${entry.repo}/${entry.id}`}
-                  className="cursor-pointer transition-colors hover:bg-white/3 focus-visible:bg-white/3 focus-visible:outline-none"
+                  className="burnlist-table-row"
+                  data-status={entry.status}
                   key={`${entry.repo}/${entry.id}`}
                   onClick={open}
                   onKeyDown={(event) => {
@@ -206,17 +210,17 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
                   role="link"
                   tabIndex={0}
                 >
-                  <td className="max-w-md px-5 py-4">
-                    <p className="font-medium text-foreground">{entry.repo}/{entry.id}</p>
-                    <p className="mt-1 truncate text-sm text-muted-foreground">{entry.title}</p>
+                  <td className="burnlist-table-cell burnlist-table-cell-primary">
+                    <p className="burnlist-table-repo">{entry.repo}/{entry.id}</p>
+                    <p className="burnlist-table-title">{entry.title}</p>
                   </td>
-                  <td className="whitespace-nowrap px-5 py-4 text-muted-foreground">{entry.ovenName}</td>
-                  <td className={cn("px-5 py-4 font-[var(--dashboard-title-font)] text-sm", entry.status === "active" ? "text-[#61d394]" : entry.status === "complete" ? "text-muted-foreground" : "text-foreground")}>{entry.statusLabel}</td>
-                  <td className="w-52 px-5 py-4">
-                    <div className="flex justify-between gap-3 text-xs text-muted-foreground"><span>{entry.progressLabel}</span>{entry.percent != null && <span>{entry.percent}%</span>}</div>
-                    {entry.percent != null && <Progress className="mt-2 h-1.5" value={entry.percent} />}
+                  <td className="burnlist-table-cell burnlist-table-cell-oven">{entry.ovenName}</td>
+                  <td className="burnlist-table-cell burnlist-table-cell-status" data-status={entry.status}>{entry.statusLabel}</td>
+                  <td className="burnlist-table-cell burnlist-table-cell-progress">
+                    <div className="burnlist-table-progress-meta"><span>{entry.progressLabel}</span>{entry.percent != null && <span>{entry.percent}%</span>}</div>
+                    {entry.percent != null && <Progress className="burnlist-table-progress" value={entry.percent} />}
                   </td>
-                  <td className="timestamp whitespace-nowrap px-5 py-4 text-muted-foreground">{formatTime(entry.updatedAt)}</td>
+                  <td className="burnlist-table-cell burnlist-table-cell-updated timestamp">{formatTime(entry.updatedAt)}</td>
                 </tr>
               );
             })}
@@ -225,6 +229,17 @@ function BurnlistTable({ burnlists, filter, page, onPageChange }: { burnlists: B
       </div>
       <Pagination onPageChange={onPageChange} page={currentPage} totalItems={rows.length} totalPages={totalPages} />
     </div>
+  );
+}
+
+function DashboardError({ message }: { message: string }) {
+  return (
+    <Card className="dashboard-error">
+      <CardContent className="dashboard-error-content">
+        <AlertTriangle className="dashboard-error-icon" />
+        <p className="dashboard-error-message">{message}</p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -288,9 +303,13 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="dashboard-app">
       <AppHeader section={section} />
-      <main className={cn("mx-auto", section === "differential-testing" || selected ? "max-w-none" : "w-full max-w-[1200px] px-4 py-5")}>
+      <main
+        className="dashboard-main"
+        data-layout={section === "differential-testing" || selected ? "full" : "index"}
+        data-section={section}
+      >
         {section === "differential-testing" ? (
           <DifferentialTestingPage />
         ) : section === "new-oven" ? (
@@ -299,7 +318,7 @@ export function App() {
           <RunBurnPage />
         ) : selected ? (
           error ? (
-            <Card className="border-destructive/35 bg-destructive/10 py-5 text-destructive-foreground"><CardContent className="flex gap-3 px-5"><AlertTriangle className="size-5 shrink-0" /><p className="text-sm">{error}</p></CardContent></Card>
+            <DashboardError message={error} />
           ) : loading && !progress ? (
             <EmptyState title="Loading progress" detail="Reading the selected Burnlist." />
           ) : progress ? (
@@ -308,16 +327,16 @@ export function App() {
             <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
           )
         ) : (
-          <section className="space-y-3">
-              <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-                <h1 className="font-[var(--dashboard-title-font)] text-[18px] font-normal">Ovens</h1>
-                <div aria-label="Oven lifecycle" className="flex items-center gap-2 font-[var(--dashboard-title-font)] text-xs" role="tablist">
+          <section className="dashboard-index">
+              <div className="dashboard-index-header">
+                <h1 className="dashboard-index-title">Ovens</h1>
+                <div aria-label="Oven lifecycle" className="dashboard-filters" role="tablist">
                   {FILTERS.map((entry, index) => (
-                    <span className="flex items-center gap-2" key={entry.value}>
-                      {index > 0 ? <span aria-hidden="true" className="text-muted-foreground/55">·</span> : null}
+                    <span className="dashboard-filter-item" key={entry.value}>
+                      {index > 0 ? <span aria-hidden="true" className="dashboard-filter-separator">·</span> : null}
                       <button
                         aria-selected={filter === entry.value}
-                        className={cn("transition-colors hover:text-foreground", filter === entry.value ? "text-foreground" : "text-muted-foreground")}
+                        className="dashboard-filter-button"
                         onClick={() => updateFilter(entry.value)}
                         role="tab"
                         type="button"
@@ -329,9 +348,9 @@ export function App() {
                 </div>
               </div>
               {error ? (
-                <Card className="border-destructive/35 bg-destructive/10 py-5 text-destructive-foreground"><CardContent className="flex gap-3 px-5"><AlertTriangle className="size-5 shrink-0" /><p className="text-sm">{error}</p></CardContent></Card>
+                <DashboardError message={error} />
               ) : <BurnlistTable burnlists={burnlists} filter={filter} onPageChange={updatePage} page={page} />}
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className="size-3.5" />Refreshes every five seconds.</p>
+              <p className="dashboard-refresh-note"><Clock3 className="dashboard-refresh-icon" />Refreshes every five seconds.</p>
           </section>
         )}
       </main>

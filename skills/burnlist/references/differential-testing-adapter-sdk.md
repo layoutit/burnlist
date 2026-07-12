@@ -11,6 +11,27 @@ import {
 } from "burnlist/differential-testing";
 ```
 
+Payload validators and deterministic contract helpers use the separate stable subpath:
+
+```js
+import {
+  assertDifferentialTestingData,
+  buildDifferentialTelemetry,
+  differentialStateVectorSha256,
+} from "burnlist/differential-testing/contract";
+```
+
+Projects publishing very large field sets can validate the canonical indexed bundle without reconstructing one monolithic payload:
+
+```js
+import {
+  assertDifferentialTestingBundle,
+  queryDifferentialTestingFieldPage,
+} from "burnlist/differential-testing/transport";
+```
+
+The project still owns atomic bundle publication. The transport helper validates contained bindings and normalized records, then range-reads only the requested page; it never runs project evidence generation.
+
 V3 has one durable inbox supplied by the project, one `state.json`, one worker lock, and one runtime. There is no staged/pending/acked/rejected tree, separate dispatcher state, separate projection state, legacy reader, migration, or fallback.
 
 ## Project contract

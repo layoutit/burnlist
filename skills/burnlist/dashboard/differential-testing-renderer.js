@@ -46,6 +46,8 @@ export function differentialPayloadRevision(payload) {
 
 export function differentialRefreshStatusLabel(refresh, clientStatus = null) {
   if (clientStatus === "loading") return "Loading";
+  if (clientStatus === "queued") return "Queued";
+  if (clientStatus === "running") return "Updating";
   if (clientStatus === "failed") return "Update failed";
   if (refresh?.status === "queued") return "Queued";
   if (refresh?.status === "running") return "Updating";
@@ -57,74 +59,53 @@ export function differentialHistoryPoints(points) {
   return Array.isArray(points) ? points.slice() : [];
 }
 
-export function differentialProgressChartHistory(payload) {
+export function differentialProgressChartHistory(payload, { mode = "value" } = {}) {
   const points = differentialHistoryPoints(payload?.progress);
-  const summaryFieldCount = Number(payload?.summary?.fields?.total) || 0;
-  const summaryTickCount = Number(payload?.summary?.frames?.uniqueTicks) || 0;
-  const lastValueByFrameCount = new Map();
   return points.map((point) => {
-    const value = Math.max(0, Number(point.value) || 0);
-    const fieldCount = Math.max(0, Number.isFinite(Number(point.fieldCount)) ? Number(point.fieldCount) : summaryFieldCount);
-    const frames = Math.max(0, Number.isFinite(Number(point.frames)) ? Number(point.frames) : summaryTickCount);
-    const previousValue = lastValueByFrameCount.get(frames);
-    const activeComparablePoints = fieldCount * frames || Math.max(0, Number(payload?.summary?.frames?.total) || 0);
-    const failedFields = Math.max(0, Number(point.failedFieldCount) || 0);
-    const marker = previousValue === undefined
-      ? ""
-      : previousValue === 0 && value > 0
-        ? "baseline"
-        : point.result === "worsened" || value > previousValue
-        ? "worsened"
-        : point.result === "improved" || value < previousValue
-          ? "improved"
-          : point.result === "blocked"
-            ? "reverted"
-            : "unchanged";
-    lastValueByFrameCount.set(frames, value);
+    const total = Math.max(0, Number(point.frames) || 0);
+    const rawValue = mode === "delta" ? point.frameDelta : point.frame;
+    const value = rawValue === null || rawValue === undefined ? 0 : Math.max(0, Number(rawValue) || 0);
     return {
       time: point.timestamp,
-      percent: 0,
-      done: 0,
-      remaining: 0,
-      total: 0,
-      drivingParityGeneratedAt: point.timestamp,
-      drivingParityFailedFieldPercent: fieldCount ? failedFields / fieldCount * 100 : 0,
-      drivingParityFailedFields: failedFields,
-      drivingParityAllFields: fieldCount,
-      drivingParityFrames: frames,
-      drivingParityFailedStatePointPercent: activeComparablePoints ? value / activeComparablePoints * 100 : 0,
-      drivingParityStateFailures: value,
-      drivingParityActiveComparablePoints: activeComparablePoints,
-      drivingParityEventMarker: marker,
-      drivingParityEventTitle: point.firstFailingLabel || String(point.result || ""),
+      percent: total ? value / total * 100 : 0,
+      done: value,
+      remaining: Math.max(0, total - value),
+      total,
     };
   });
 }
 
-export function differentialFrameDeltaMetrics(payload) {
-  const fields = Array.isArray(payload?.fields) ? payload.fields : [];
-  const frameCount = fields.reduce((largest, field) => Math.max(largest, Array.isArray(field?.samples) ? field.samples.length : 0), 0);
-  const failedByFrame = Array(frameCount).fill(0);
-  const activeByFrame = Array(frameCount).fill(0);
-  for (const field of fields) {
-    const samples = Array.isArray(field?.samples) ? field.samples : [];
-    for (let index = 0; index < samples.length; index += 1) {
-      const state = Number(samples[index]?.[3]);
-      if (!Number.isInteger(state) || state === 4) continue;
-      activeByFrame[index] += 1;
-      if (state !== 0) failedByFrame[index] += 1;
-    }
-  }
-  const frameDeviationRatios = failedByFrame.map((failed, index) => activeByFrame[index] ? failed / activeByFrame[index] : 0);
+export function differentialExactPrefixFrameDeltaMetrics(payload, metrics) {
+  const ratios = metrics?.frameDeviationRatios;
+  const latest = Array.isArray(payload?.progress) ? payload.progress.at(-1) : null;
+  const clearedFrame = Number(latest?.frame);
+  const frameCount = Number(latest?.frames);
+  if (!Array.isArray(ratios) || !Number.isSafeInteger(clearedFrame) || !Number.isSafeInteger(frameCount)
+    || frameCount !== ratios.length || clearedFrame < 0 || clearedFrame > frameCount
+    || ratios.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) return null;
   return {
-    frameDeviationRatios,
-    firstFailingFrame: failedByFrame.findIndex((failed) => failed > 0),
+    ...metrics,
+    frameDeviationRatios: ratios.map((value, frame) => frame < clearedFrame ? 0 : Number(value)),
+    firstFailingFrame: clearedFrame < frameCount ? clearedFrame : -1,
   };
 }
 
 export function differentialTelemetryFieldMap(payload) {
   if (payload?.telemetry?.status !== "comparable" || !Array.isArray(payload.telemetry.fields)) return new Map();
   return new Map(payload.telemetry.fields.map((field) => [field.id, field]));
+}
+
+export function differentialPagedPayload(payload, fieldPage) {
+  if (!fieldPage) return payload;
+  const fields = Array.isArray(fieldPage.fields) ? fieldPage.fields : [];
+  const next = { ...payload, fields };
+  if (payload?.telemetry?.status === "comparable") {
+    next.telemetry = {
+      ...payload.telemetry,
+      fields: Array.isArray(fieldPage.telemetryFields) ? fieldPage.telemetryFields : [],
+    };
+  }
+  return next;
 }
 
 export function differentialTelemetryAvailability(payload) {
@@ -158,7 +139,9 @@ export function differentialExactTarget(payload) {
       status: exact.status === "complete" ? "complete" : "blocked",
       fieldId: null,
       label: null,
-      reason: exact.status === "complete" ? "Exact comparison is complete." : exact.blockers?.[0] || "Exact target authority is blocked.",
+      reason: exact.status === "complete"
+        ? "Exact contract is complete; scenario PASS or FAIL is reported separately."
+        : exact.blockers?.[0] || "Exact target authority is blocked.",
     };
   }
   const decision = exact.decision;
@@ -168,7 +151,13 @@ export function differentialExactTarget(payload) {
   return { mode: "exact", status: "ready", fieldId: decision.targetFieldId, label: decision.targetLabel, reason: decision.nextAction };
 }
 
-export function mountDifferentialTestingDashboard(root, oven, payload, { onScenarioChange = () => {}, templateOnly = false } = {}) {
+export function mountDifferentialTestingDashboard(root, oven, payload, {
+  onScenarioChange = () => {},
+  onFieldViewChange = () => {},
+  fieldPage = null,
+  frameDeltaMetrics = null,
+  templateOnly = false,
+} = {}) {
   if (templateOnly) return templateHtml();
   const WIDTH = 900;
   const HEIGHT = 58;
@@ -178,11 +167,11 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
   const state = {
     chart: "delta",
     progressChart: "delta",
-    sort: telemetryAvailability.status === "comparable" ? "changed" : "default",
-    filter: "all",
-    search: "",
-    pageIndex: 0,
-    pageSize: 25,
+    sort: fieldPage?.sort ?? (telemetryAvailability.status === "comparable" ? "changed" : "default"),
+    filter: fieldPage?.filter ?? "all",
+    search: fieldPage?.search ?? "",
+    pageIndex: fieldPage?.page ?? 0,
+    pageSize: fieldPage?.pageSize ?? 25,
     expanded: new Set(),
     telemetryByField: differentialTelemetryFieldMap(payload),
     telemetryAvailability,
@@ -190,6 +179,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     pendingScenarioId: null,
     oven,
     payload,
+    fieldPage,
+    frameDeltaMetrics,
   };
   let inputRenderTimer = 0;
   let fieldOrder = new Map(payload.fields.map((field, index) => [field, index]));
@@ -291,7 +282,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     const failed = Number(metric.failed || 0) + Number(metric.blocked || 0);
     const ratio = metric.total ? failed / metric.total : 0;
     const failedCells = Math.min(80, Math.round(ratio * 96));
-    return `<div class="driving-parity-kpi-item driving-parity-kpi-section" title="${percent(ratio * 100)} failed ${escapeHtml(label.toLowerCase())}"><canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="${failedCells}" data-empty="${metric.total ? "false" : "true"}"></canvas><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">${escapeHtml(label)}</span><span class="driving-parity-kpi-ratio"><span class="total">${kpiTotal(metric.total)}</span><span class="separator">·</span><span class="fail">${count(failed)} (${percent(ratio * 100)})</span></span></div></div>`;
+    return `<div class="driving-parity-kpi-item driving-parity-kpi-section" title="${percent(ratio * 100)} failed ${escapeHtml(label.toLowerCase())}"><canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="${failedCells}" data-empty="${metric.total ? "false" : "true"}"></canvas><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">${escapeHtml(label)}</span><span class="driving-parity-kpi-ratio"><span class="total">${kpiTotal(metric.total)}</span><span class="separator">·</span><span class="fail">${kpiTotal(failed)} (${percent(ratio * 100)})</span></span></div></div>`;
   }
   function paintWaffles() {
     const scale = window.devicePixelRatio || 1;
@@ -338,27 +329,27 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     return String(Math.round(number));
   }
   function log(entries, now = Date.now()) {
-    const deltaMode = state.progressChart === "delta";
-    const rows = entries.slice(0, 10).map((entry) => {
-      const delta = entry.delta === null || !Number.isFinite(Number(entry.delta)) ? null : Number(entry.delta);
-      const stateClass = entry.result === "improved" || delta < 0 ? "improved" : entry.result === "worsened" || delta > 0 ? "worsened" : entry.result === "reverted" || entry.result === "blocked" ? "reverted" : "unchanged";
-      const prior = delta === null ? null : Number(entry.value || 0) - delta;
-      const deltaPercent = delta === null || !prior ? null : Math.abs(delta) / Math.abs(prior) * 100;
-      const marker = stateClass === "improved" ? deltaMode ? "▲" : "▼" : stateClass === "worsened" ? deltaMode ? "▼" : "▲" : "⦁";
+    const visibleEntries = entries.slice(0, 10);
+    const rows = visibleEntries.map((entry) => {
+      const frameDelta = entry.frameDelta === null || !Number.isFinite(Number(entry.frameDelta)) ? null : Number(entry.frameDelta);
+      const stateClass = frameDelta > 0 ? "improved" : "unchanged";
+      const deltaPercent = frameDelta === null || !Number(entry.frames) ? null : frameDelta / Number(entry.frames) * 100;
+      const marker = stateClass === "improved" ? "▲" : "⦁";
       const deltaText = deltaPercent === null ? "—" : percent(deltaPercent);
-      const resultText = delta === null ? "—" : count(Math.abs(delta));
-      const result = deltaMode && marker !== "⦁"
+      const resultText = frameDelta === null ? "—" : count(frameDelta);
+      const result = marker !== "⦁"
         ? `<span class="log-delta-content"><span class="log-delta-indicator">${marker}</span><span>${resultText}</span></span>`
         : resultText;
-      const deltaCell = !deltaMode && marker
-        ? `<span class="log-delta-content"><span>${deltaText}</span><span class="log-delta-indicator${marker === "⦁" ? " log-delta-dot" : ""}">${marker}</span></span>`
-        : deltaText;
-      const frame = entry.firstFailingTick === null || !Number.isFinite(Number(entry.firstFailingTick)) ? "—" : count(entry.firstFailingTick);
-      const done = frame === "—" || !Number(entry.frames) ? "—" : `${Math.round(Math.max(0, Math.min(1, Number(entry.firstFailingTick) / Number(entry.frames))) * 100)}%`;
-      return `<article class="log-row ${escapeHtml(stateClass)} no-detail log-table-row" title="${escapeHtml(entry.firstFailingLabel || "")}"><span class="log-table-cell age">${escapeHtml(formatLogRelativeMinutes(entry.timestamp, now))}</span><span class="log-table-cell failed ${escapeHtml(stateClass)}">${deltaMode ? frame : count(entry.value)}</span><span class="log-table-cell result ${escapeHtml(stateClass)}">${result}</span><span class="log-table-cell delta ${escapeHtml(stateClass)}">${deltaCell}</span>${deltaMode ? `<span class="log-table-cell done">${done}</span>` : ""}</article>`;
+      const frame = !Number.isSafeInteger(Number(entry.frame)) ? "—" : count(entry.frame);
+      const done = !Number.isSafeInteger(Number(entry.frame)) || !Number(entry.frames) ? "—" : `${Math.round(Math.max(0, Math.min(1, Number(entry.frame) / Number(entry.frames))) * 100)}%`;
+      return `<article class="log-row ${escapeHtml(stateClass)} no-detail log-table-row"><span class="log-table-cell age">${escapeHtml(formatLogRelativeMinutes(entry.timestamp, now))}</span><span class="log-table-cell failed ${escapeHtml(stateClass)}">${frame}</span><span class="log-table-cell result ${escapeHtml(stateClass)}">${result}</span><span class="log-table-cell delta ${escapeHtml(stateClass)}">${deltaText}</span><span class="log-table-cell done">${done}</span></article>`;
     }).join("");
-    const columns = deltaMode ? ["Age", "Frame", "Result", "Delta", "Done"] : ["Age", "Value", "Result", "Delta"];
-    return `<div class="checklist-log-list"><div class="checklist-log-table-header">${columns.map((column) => `<span>${column}</span>`).join("")}</div>${rows}</div>`;
+    const placeholders = Array.from(
+      { length: Math.max(0, 10 - visibleEntries.length) },
+      () => '<article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article>',
+    ).join("");
+    const columns = ["Age", "Frame", "Result", "Delta", "Done"];
+    return `<div class="checklist-log-list"><div class="checklist-log-table-header">${columns.map((column) => `<span>${column}</span>`).join("")}</div>${rows}${placeholders}</div>`;
   }
   function plotValue(raw, categories) {
     if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -500,6 +491,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     return `<span class="hybrid-cell hybrid-metric"><span class="hybrid-count">${count(countValue)}</span><span class="hybrid-delta ${deltaClass}"${transitionTitle ? ` title="${escapeHtml(transitionTitle)}"` : ""}><span class="hybrid-delta-symbol">${deltaSymbol}</span><span class="hybrid-delta-value">${deltaValue}</span></span><span class="hybrid-value-delta">${escapeHtml(valueDelta)}</span></span>`;
   }
   function visibleFields() {
+    if (state.fieldPage) return state.payload.fields;
     if (state.sort === "changed" && state.telemetryAvailability.status !== "comparable") return [];
     const query = state.search.trim().toLowerCase();
     let filtered = state.payload.fields.filter((field) => {
@@ -544,14 +536,21 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     const progressChart = root.querySelector("#progress-chart");
     if (!progressChart) return;
     if (state.progressChart === "delta") {
-      renderDifferentialTestingFrameDeltaChart(progressChart, differentialFrameDeltaMetrics(state.payload));
+      const exactMetrics = differentialExactPrefixFrameDeltaMetrics(state.payload, state.frameDeltaMetrics);
+      if (!exactMetrics) {
+        progressChart.replaceChildren?.();
+        progressChart.setAttribute?.("aria-label", "Exact-prefix frame delta metrics unavailable");
+        return;
+      }
+      renderDifferentialTestingFrameDeltaChart(progressChart, exactMetrics);
       return;
     }
     renderDifferentialTestingProgressChart(
       progressChart,
-      differentialProgressChartHistory(state.payload),
-      { mode: "failed", timeScale: "compact" },
+      differentialProgressChartHistory(state.payload, { mode: "value" }),
+      { mode: "progress", timeScale: "compact" },
     );
+    progressChart.setAttribute?.("aria-label", "Cumulative cleared frames per report");
   }
   function templateHtml() {
     return `  <main id="burnlist-detail" class="detail-view" hidden>
@@ -1535,17 +1534,29 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       return;
     }
     const visible = visibleFields();
-    state.pageIndex = Math.max(0, Math.min(state.pageIndex, Math.max(0, Math.ceil(visible.length / state.pageSize) - 1)));
+    const serverPage = state.fieldPage;
+    if (!serverPage) {
+      state.pageIndex = Math.max(0, Math.min(state.pageIndex, Math.max(0, Math.ceil(visible.length / state.pageSize) - 1)));
+    }
     const start = state.pageIndex * state.pageSize;
-    const page = visible.slice(start, start + state.pageSize);
+    const page = serverPage ? visible : visible.slice(start, start + state.pageSize);
     const telemetrySummary = state.payload.telemetry?.status === "comparable"
       ? `${count(state.payload.telemetry.summary.failToPassCount)} F→P · ${count(state.payload.telemetry.summary.passToFailCount)} P→F · reconciled telemetry only`
       : "";
     const subtitleParts = [state.payload.subtitle, dateTime(state.payload.publishedAt), telemetrySummary, ...trustBlockerSummaries(state.payload)].filter(Boolean);
     const changedUnavailable = state.telemetryAvailability.status !== "comparable";
-    const pageState = paginationState(visible.length);
+    const latestTimestamp = Array.isArray(state.payload.progress) ? state.payload.progress.at(-1)?.timestamp : null;
+    const parityProgressTitle = `Parity Progress${latestTimestamp ? `<span class="field-list-count">(${escapeHtml(timeOnly(latestTimestamp))})</span>` : ""}`;
+    const pageState = serverPage
+      ? {
+          pageCount: serverPage.pageCount,
+          start: serverPage.total ? serverPage.page * serverPage.pageSize + 1 : 0,
+          end: Math.min(serverPage.total, serverPage.page * serverPage.pageSize + visible.length),
+        }
+      : paginationState(visible.length);
+    const visibleTotal = serverPage?.total ?? visible.length;
     const pageOptions = [25, 50, 100, 200].map((size) => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("");
-    const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visible.length <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visible.length}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
+    const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visibleTotal <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visibleTotal}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
     const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle">${scenarioSelector()}</span></div>${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
     let html = templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
@@ -1553,8 +1564,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
       .replace('<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>', progress(state.payload.progress))
       .replace('<div class="checklist-log" id="checklist-log"></div>', `<div class="checklist-log" id="checklist-log">${log(state.payload.log)}</div>`)
+      .replace('<div class="work-panel-title">Parity Progress</div>', `<div class="work-panel-title">${parityProgressTitle}</div>`)
       .replace('<main id="driving-parity-page" class="driving-parity-page" hidden>', '<main id="driving-parity-page" class="driving-parity-page">')
-      .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', `<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(${count(state.payload.fields.length)})</span></h2>`)
+      .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', `<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(${count(state.payload.summary?.fields?.total ?? state.payload.fields.length)})</span></h2>`)
       .replace('<div id="driving-parity-controls" class="driving-parity-controls" hidden>', '<div id="driving-parity-controls" class="driving-parity-controls">')
       .replace('data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false"', `data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="${state.chart === "current"}"`)
       .replace('data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true"', `data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="${state.chart === "delta"}"`)
@@ -1571,6 +1583,31 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     search.value = state.search;
     if (pageSize) pageSize.value = String(state.pageSize);
   }
+  function requestFieldView({ refocusSearch = false } = {}) {
+    if (!state.fieldPage) {
+      render();
+      if (refocusSearch) {
+        const input = root.querySelector("#driving-parity-field-search");
+        input?.focus?.();
+        input?.setSelectionRange?.(state.search.length, state.search.length);
+      }
+      return;
+    }
+    state.clientRefreshStatus = "loading";
+    render();
+    if (refocusSearch) {
+      const input = root.querySelector("#driving-parity-field-search");
+      input?.focus?.();
+      input?.setSelectionRange?.(state.search.length, state.search.length);
+    }
+    void onFieldViewChange({
+      search: state.search,
+      filter: state.filter,
+      sort: state.sort,
+      page: state.pageIndex,
+      pageSize: state.pageSize,
+    });
+  }
   root.addEventListener("click", (event) => {
     const progressControl = event.target.closest("[data-progress-chart-mode]");
     const chartControl = event.target.closest("[data-driving-parity-chart]");
@@ -1585,7 +1622,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       if (pageControl?.id === "driving-parity-page-prev") state.pageIndex = Math.max(0, state.pageIndex - 1);
       if (pageControl?.id === "driving-parity-page-next") state.pageIndex += 1;
       if (sortControl || filterControl) state.pageIndex = 0;
-      render();
+      if (sortControl || filterControl || pageControl) requestFieldView();
+      else render();
       return;
     }
     const row = event.target.closest("[data-row-expand-key]");
@@ -1606,7 +1644,12 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
       }
       return;
     }
-    if (event.target.matches("#driving-parity-page-size")) { state.pageSize = Number(event.target.value) || 25; state.pageIndex = 0; }
+    if (event.target.matches("#driving-parity-page-size")) {
+      state.pageSize = Number(event.target.value) || 25;
+      state.pageIndex = 0;
+      requestFieldView();
+      return;
+    }
     render();
   });
   root.addEventListener("keydown", (event) => {
@@ -1622,11 +1665,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     state.pageIndex = 0;
     window.clearTimeout(inputRenderTimer);
     inputRenderTimer = window.setTimeout(() => {
-      render();
-      const input = root.querySelector("#driving-parity-field-search");
-      input.focus();
-      input.setSelectionRange(state.search.length, state.search.length);
-    }, 0);
+      requestFieldView({ refocusSearch: true });
+    }, state.fieldPage ? 150 : 0);
   });
   render();
   let chartResizeFrame = 0;
@@ -1642,9 +1682,18 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
   chartResizeObserver?.observe(root);
   window.addEventListener?.("resize", scheduleProgressChartRender);
   return {
-    update(nextOven, nextPayload) {
+    update(nextOven, nextPayload, { fieldPage: nextFieldPage = null, frameDeltaMetrics: nextFrameDeltaMetrics = null } = {}) {
       state.oven = nextOven;
       state.payload = nextPayload;
+      state.fieldPage = nextFieldPage;
+      state.frameDeltaMetrics = nextFrameDeltaMetrics;
+      if (nextFieldPage) {
+        state.search = nextFieldPage.search;
+        state.filter = nextFieldPage.filter;
+        state.sort = nextFieldPage.sort;
+        state.pageIndex = nextFieldPage.page;
+        state.pageSize = nextFieldPage.pageSize;
+      }
       fieldOrder = new Map(nextPayload.fields.map((field, index) => [field, index]));
       state.clientRefreshStatus = null;
       state.pendingScenarioId = null;
@@ -1690,15 +1739,27 @@ export function startDifferentialTestingLiveUpdates(root, {
   let scenarioGeneration = 0;
   let stopped = false;
   let activePayloadUrl = "";
+  let renderedPayloadHasReport = false;
   const payloadCache = new Map();
+  let fieldViewQuery = null;
   let selectedScenarioId = (() => {
     try { return new URLSearchParams(locationImpl?.search || "").get("scenario") || ""; }
     catch { return ""; }
   })();
 
-  const payloadUrl = (scenarioId) => scenarioId
-    ? `/api/oven-data/differential-testing?scenario=${encodeURIComponent(scenarioId)}`
-    : "/api/oven-data/differential-testing";
+  const payloadUrl = (scenarioId) => {
+    const searchParams = new URLSearchParams();
+    if (scenarioId) searchParams.set("scenario", scenarioId);
+    if (fieldViewQuery) {
+      searchParams.set("search", fieldViewQuery.search);
+      searchParams.set("filter", fieldViewQuery.filter);
+      searchParams.set("sort", fieldViewQuery.sort);
+      searchParams.set("page", String(fieldViewQuery.page));
+      searchParams.set("pageSize", String(fieldViewQuery.pageSize));
+    }
+    const query = searchParams.toString();
+    return `/api/oven-data/differential-testing${query ? `?${query}` : ""}`;
+  };
 
   const read = async (url, key, fallbackMessage) => {
     const response = await fetchImpl(url, { cache: "no-store" });
@@ -1720,13 +1781,20 @@ export function startDifferentialTestingLiveUpdates(root, {
     const json = await response.json();
     if (!response.ok) throw new Error(json.error || "Could not load Differential Testing data.");
     const result = {
-      payload: json.payload,
+      payload: differentialPagedPayload(json.payload, json.fieldPage),
+      transport: json.transport ?? null,
+      fieldPage: json.fieldPage ?? null,
+      frameDeltaMetrics: json.frameDeltaMetrics ?? null,
       etag: response.headers?.get?.("etag") || "",
       notModified: false,
     };
     payloadCache.set(url, result);
     return result;
   };
+
+  const pendingRefreshStatus = (payload) => ["queued", "running"].includes(payload?.refresh?.status)
+    ? payload.refresh.status
+    : null;
 
   const refresh = async () => {
     if (stopped) return;
@@ -1746,14 +1814,28 @@ export function startDifferentialTestingLiveUpdates(root, {
       if (stopped || requestGeneration !== scenarioGeneration) return;
       const payload = payloadResult.payload;
       if (payloadResult.notModified && dashboard && activePayloadUrl === requestPayloadUrl) {
-        dashboard.setClientRefreshStatus?.(null);
+        dashboard.setClientRefreshStatus?.(renderedPayloadHasReport ? pendingRefreshStatus(payload) : null);
         return;
       }
       const nextRevision = payloadResult.etag || differentialPayloadRevision(payload);
       oven = nextOven;
-      if (!dashboard) dashboard = mount(root, oven, payload, { onScenarioChange: selectScenario });
-      else if (nextRevision !== payloadRevision || activePayloadUrl !== requestPayloadUrl) dashboard.update(oven, payload);
-      else dashboard.setClientRefreshStatus?.(null);
+      if (!dashboard) {
+        dashboard = mount(root, oven, payload, {
+          onScenarioChange: selectScenario,
+          onFieldViewChange: selectFieldView,
+          fieldPage: payloadResult.fieldPage,
+          frameDeltaMetrics: payloadResult.frameDeltaMetrics,
+        });
+        renderedPayloadHasReport = Boolean(payload?.refresh?.report);
+      } else if (renderedPayloadHasReport && activePayloadUrl === requestPayloadUrl && pendingRefreshStatus(payload)) {
+        dashboard.setClientRefreshStatus?.(pendingRefreshStatus(payload));
+      } else if (nextRevision !== payloadRevision || activePayloadUrl !== requestPayloadUrl) {
+        dashboard.update(oven, payload, {
+          fieldPage: payloadResult.fieldPage,
+          frameDeltaMetrics: payloadResult.frameDeltaMetrics,
+        });
+        renderedPayloadHasReport = Boolean(payload?.refresh?.report);
+      } else dashboard.setClientRefreshStatus?.(null);
       payloadRevision = nextRevision;
       activePayloadUrl = requestPayloadUrl;
     } catch (error) {
@@ -1773,11 +1855,26 @@ export function startDifferentialTestingLiveUpdates(root, {
   const selectScenario = (scenarioId) => {
     scenarioGeneration += 1;
     selectedScenarioId = scenarioId;
+    fieldViewQuery = null;
+    payloadCache.clear();
     try {
       const nextUrl = new URL(locationImpl?.href || "/ovens/differential-testing/view", "http://localhost");
       nextUrl.searchParams.set("scenario", scenarioId);
       historyImpl?.replaceState?.(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     } catch {}
+    return refresh();
+  };
+
+  const selectFieldView = (query) => {
+    scenarioGeneration += 1;
+    payloadCache.clear();
+    fieldViewQuery = {
+      search: String(query?.search ?? ""),
+      filter: query?.filter === "failing" ? "failing" : "all",
+      sort: query?.sort === "changed" ? "changed" : "default",
+      page: Math.max(0, Number.isSafeInteger(Number(query?.page)) ? Number(query.page) : 0),
+      pageSize: [25, 50, 100, 200].includes(Number(query?.pageSize)) ? Number(query.pageSize) : 25,
+    };
     return refresh();
   };
 
@@ -1787,6 +1884,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     ready,
     refresh,
     selectScenario,
+    selectFieldView,
     stop() {
       stopped = true;
       refreshQueued = false;

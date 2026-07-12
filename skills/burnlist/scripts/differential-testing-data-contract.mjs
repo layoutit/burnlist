@@ -32,6 +32,7 @@ const exactChangeScopeStates = new Set(["single-source-coherent", "atomic-source
 const scalarTypes = new Set(["string", "number", "boolean"]);
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const scenarioIdPattern = /^[a-f0-9]{16}$/u;
+const decimalRevisionPattern = /^(0|[1-9][0-9]*)$/u;
 
 export class DifferentialTestingDataValidationError extends Error {
   constructor(issues) {
@@ -295,7 +296,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         issue(rowPath, "must be an object");
         return;
       }
-      onlyKeys(row, rowPath, new Set(["timestamp", "result", "value", "delta", "fieldCount", "failedFieldCount", "frames", "firstFailingTick", "firstFailingLabel", "refreshId", "scenarioId", "reportSha256", "runtimeTreeSha256", "contractSha256"]), "result-row contract");
+      onlyKeys(row, rowPath, new Set(["timestamp", "result", "value", "delta", "fieldCount", "failedFieldCount", "frames", "frame", "frameDelta", "firstFailingTick", "firstFailingLabel", "refreshId", "scenarioId", "reportSha256", "runtimeTreeSha256", "contractSha256"]), "result-row contract");
       if (!validTimestamp(row.timestamp)) {
         issue(`${rowPath}.timestamp`, "must be a parseable timestamp");
       } else {
@@ -311,6 +312,13 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       if (Object.hasOwn(row, "failedFieldCount")) count(row.failedFieldCount, `${rowPath}.failedFieldCount`);
       if (Object.hasOwn(row, "fieldCount")) count(row.fieldCount, `${rowPath}.fieldCount`);
       if (Object.hasOwn(row, "frames")) count(row.frames, `${rowPath}.frames`);
+      if (Object.hasOwn(row, "frame")) {
+        count(row.frame, `${rowPath}.frame`);
+        if (Number.isSafeInteger(row.frames) && Number.isSafeInteger(row.frame) && row.frame > row.frames) {
+          issue(`${rowPath}.frame`, "must not exceed the scenario frame count");
+        }
+      }
+      if (Object.hasOwn(row, "frameDelta") && row.frameDelta !== null) count(row.frameDelta, `${rowPath}.frameDelta`);
       if (Object.hasOwn(row, "firstFailingTick")) finite(row.firstFailingTick, `${rowPath}.firstFailingTick`, { nullable: true });
       if (Object.hasOwn(row, "firstFailingLabel") && row.firstFailingLabel !== null) text(row.firstFailingLabel, `${rowPath}.firstFailingLabel`, { max: 160 });
       if (Object.hasOwn(row, "refreshId")) text(row.refreshId, `${rowPath}.refreshId`, { max: 160 });
@@ -763,6 +771,9 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       onlyKeys(event, `${refreshPath}.event`, new Set(["kind", "revision", "occurredAt"]), "refresh-event contract");
       text(event.kind, `${refreshPath}.event.kind`, { max: 160 });
       text(event.revision, `${refreshPath}.event.revision`, { max: 160 });
+      if (event.kind === "exact-prefix-advanced" && (typeof event.revision !== "string" || !decimalRevisionPattern.test(event.revision))) {
+        issue(`${refreshPath}.event.revision`, "must be a canonical non-negative decimal integer for an exact-prefix-advanced event");
+      }
       if (!validTimestamp(event.occurredAt)) issue(`${refreshPath}.event.occurredAt`, "must be a parseable timestamp");
       if (validTimestamp(event.occurredAt) && validTimestamp(refresh.requestedAt) && Date.parse(event.occurredAt) > Date.parse(refresh.requestedAt)) issue(`${refreshPath}.event.occurredAt`, "cannot be later than requestedAt");
     }
@@ -776,7 +787,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         issue(`${refreshPath}.report`, "must be a checked full-scenario report");
       } else {
         refreshReport = refresh.report;
-        onlyKeys(refreshReport, `${refreshPath}.report`, new Set(["id", "generatedAt", "artifactSha256", "runtimeTreeSha256", "contractSha256", "scenarioId", "frameCount", "replaySha256", "profileSha256", "result", "check"]), "refresh-report contract");
+        onlyKeys(refreshReport, `${refreshPath}.report`, new Set(["id", "generatedAt", "artifactSha256", "runtimeTreeSha256", "contractSha256", "scenarioId", "frameCount", "replaySha256", "profileSha256", "result", "check", "executionClosure"]), "refresh-report contract");
         text(refreshReport.id, `${refreshPath}.report.id`, { max: 160 });
         if (!validTimestamp(refreshReport.generatedAt)) issue(`${refreshPath}.report.generatedAt`, "must be a parseable timestamp");
         sha256(refreshReport.artifactSha256, `${refreshPath}.report.artifactSha256`);
@@ -789,6 +800,20 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         if (!resultValues.has(refreshReport.result)) issue(`${refreshPath}.report.result`, "uses an unsupported result");
         checkerAttestation(refreshReport.check, `${refreshPath}.report.check`);
         if (refreshReport.check?.subjectSha256 !== refreshReport.artifactSha256) issue(`${refreshPath}.report.check.subjectSha256`, "must equal the report SHA-256");
+        if (refreshReport.executionClosure !== undefined) {
+          const closure = refreshReport.executionClosure;
+          const closurePath = `${refreshPath}.report.executionClosure`;
+          if (!plainObject(closure)) {
+            issue(closurePath, "must be a compact adapter-attested execution closure binding");
+          } else {
+            onlyKeys(closure, closurePath, new Set(["schema", "id", "sha256", "size"]), "execution-closure contract");
+            text(closure.schema, `${closurePath}.schema`, { max: 160 });
+            text(closure.id, `${closurePath}.id`, { max: 160 });
+            sha256(closure.sha256, `${closurePath}.sha256`);
+            count(closure.size, `${closurePath}.size`);
+            if (closure.size === 0) issue(`${closurePath}.size`, "must be greater than zero");
+          }
+        }
         if (refreshReport.scenarioId !== refresh.scenarioId) issue(`${refreshPath}.report.scenarioId`, "must equal the refresh scenario id");
         if (selectedScenario) {
           if (refreshReport.frameCount !== selectedScenario.frameCount) issue(`${refreshPath}.report.frameCount`, "must cover the full selected scenario");
@@ -810,6 +835,16 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
       if (refresh.error !== null) issue(`${refreshPath}.error`, "must be null for a complete refresh");
       if (!refreshReport) issue(`${refreshPath}.report`, "is required for a complete refresh");
       if (refreshReport?.check?.status !== "pass") issue(`${refreshPath}.report.check.status`, "must pass for a complete refresh");
+      if (refreshReport && trust?.reportStatus !== refreshReport.result) {
+        issue("$.trust.reportStatus", "must equal the completed refresh report result");
+      }
+      if (refreshReport && trust?.status === "blocked" && refreshReport.result !== "blocked") {
+        issue(`${refreshPath}.report.result`, "must be blocked when primary trust is blocked");
+      }
+      if (refreshReport?.result === "pass"
+        && (trust?.status !== "pass" || failedFields > 0 || blockedFields > 0 || failedSamples > 0 || blockedSamples > 0)) {
+        issue(`${refreshPath}.report.result`, "may be pass only when every primary field and sample passes");
+      }
       const validateRefreshRow = (row, path) => {
         if (!plainObject(row)) {
           issue(path, "must contain the completed refresh result");
@@ -1070,8 +1105,15 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
         if (selectedScenario.profileSha256 !== session.profileSha256) issue("$.scenarioCatalog.scenarios", "selected scenario profile SHA-256 must equal the retained exact-session profile SHA-256");
         if (selectedScenario.contractSha256 !== session.contractSha256) issue("$.scenarioCatalog.scenarios", "selected scenario contract SHA-256 must equal the retained exact-session contract SHA-256");
       }
-      if (session && plainObject(refresh?.event) && refresh.event.kind === "exact-prefix-advanced" && refresh.event.revision !== String(session.clearedPrefixFrames)) {
-        issue("$.refresh.event.revision", "must equal retained clearedPrefixFrames for an exact-prefix-advanced event");
+      if (session
+        && plainObject(refresh?.event)
+        && refresh.event.kind === "exact-prefix-advanced"
+        && typeof refresh.event.revision === "string"
+        && decimalRevisionPattern.test(refresh.event.revision)
+        && Number.isSafeInteger(session.clearedPrefixFrames)
+        && session.clearedPrefixFrames >= 0
+        && BigInt(refresh.event.revision) > BigInt(session.clearedPrefixFrames)) {
+        issue("$.refresh.event.revision", "must not be ahead of retained clearedPrefixFrames for an exact-prefix-advanced event");
       }
     }
   }

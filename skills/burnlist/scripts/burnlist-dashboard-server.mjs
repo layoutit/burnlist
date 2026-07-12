@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import {
   appendFileSync,
@@ -23,6 +23,13 @@ import {
   ovenId,
 } from "./oven-contract.mjs";
 import { assertDifferentialTestingData } from "./differential-testing-data-contract.mjs";
+import {
+  DIFFERENTIAL_TESTING_PAGE_SCHEMA,
+  isDifferentialTestingBundle,
+  queryDifferentialTestingFieldPage,
+  readDifferentialTestingBundleManifest,
+  readDifferentialTestingBundleScenario,
+} from "./differential-testing-transport.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 
 const args = new Map();
@@ -114,19 +121,120 @@ function differentialTestingIndexCache(path) {
   const signature = `${readPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
   if (differentialTestingDataCache?.signature === signature) return differentialTestingDataCache;
   const source = readTextFileWithLimit(readPath, maxOvenDataBytes, "Oven differential-testing data");
-  const payload = JSON.parse(source);
-  assertDifferentialTestingData(payload);
+  const document = JSON.parse(source);
+  if (isDifferentialTestingBundle(document)) {
+    const bundle = readDifferentialTestingBundleManifest(readPath, { maxDocumentBytes: maxOvenDataBytes });
+    const emptyPayload = bundle.selectedScenarioId === null ? bundle.manifest.emptyData : null;
+    const emptySource = emptyPayload ? JSON.stringify(emptyPayload) : "";
+    differentialTestingDataCache = {
+      kind: "bundle",
+      signature,
+      readPath: bundle.readPath,
+      source: emptySource,
+      sourceBytes: Buffer.byteLength(emptySource),
+      etag: `W/\"dtb-${bundle.sha256}\"`,
+      selectedScenarioId: bundle.selectedScenarioId,
+      scenarios: structuredClone(bundle.scenarios),
+      bundle,
+      scenarioDocuments: new Map(),
+      scenarioResponses: new Map(),
+      responseExtras: emptyPayload ? {
+        transport: {
+          schema: DIFFERENTIAL_TESTING_PAGE_SCHEMA,
+          bundleSha256: bundle.sha256,
+          scenarioSha256: null,
+        },
+        fieldPage: null,
+        frameDeltaMetrics: null,
+      } : null,
+    };
+    return differentialTestingDataCache;
+  }
+  assertDifferentialTestingData(document);
   differentialTestingDataCache = {
+    kind: "legacy",
     signature,
     readPath,
     source,
     sourceBytes: stat.size,
     etag: `W/\"dt-${stat.ino}-${stat.size}-${Math.trunc(stat.mtimeMs)}\"`,
-    selectedScenarioId: payload.scenarioCatalog.selectedScenarioId,
-    scenarios: structuredClone(payload.scenarioCatalog.scenarios),
+    selectedScenarioId: document.scenarioCatalog.selectedScenarioId,
+    scenarios: structuredClone(document.scenarioCatalog.scenarios),
     scenarioResponses: new Map(),
   };
   return differentialTestingDataCache;
+}
+
+function differentialTestingQueryValue(searchParams, name) {
+  const values = searchParams.getAll(name);
+  if (values.length > 1) throw Object.assign(new Error(`${name} must be supplied at most once`), { status: 400 });
+  return values[0] ?? null;
+}
+
+function differentialTestingIntegerQuery(searchParams, name, fallback) {
+  const value = differentialTestingQueryValue(searchParams, name);
+  if (value === null) return fallback;
+  if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
+    throw Object.assign(new Error(`${name} must be a non-negative integer`), { status: 400 });
+  }
+  const number = Number(value);
+  if (!Number.isSafeInteger(number)) throw Object.assign(new Error(`${name} must be a safe integer`), { status: 400 });
+  return number;
+}
+
+function differentialTestingBundleScenario(index, scenarioId) {
+  const cached = index.scenarioDocuments.get(scenarioId);
+  if (cached) return cached;
+  const scenario = readDifferentialTestingBundleScenario(index.bundle, scenarioId, {
+    maxDocumentBytes: maxOvenDataBytes,
+  });
+  scenario.source = JSON.stringify(scenario.data);
+  scenario.sourceBytes = Buffer.byteLength(scenario.source);
+  index.scenarioDocuments.set(scenarioId, scenario);
+  return scenario;
+}
+
+function differentialTestingBundleResponse(index, scenarioId, searchParams) {
+  const search = differentialTestingQueryValue(searchParams, "search") ?? "";
+  const filter = differentialTestingQueryValue(searchParams, "filter") ?? "all";
+  const scenario = differentialTestingBundleScenario(index, scenarioId);
+  const sort = differentialTestingQueryValue(searchParams, "sort")
+    ?? (scenario.data.telemetry?.status === "comparable" ? "changed" : "default");
+  const page = differentialTestingIntegerQuery(searchParams, "page", 0);
+  const pageSize = differentialTestingIntegerQuery(searchParams, "pageSize", 25);
+  const fieldPage = queryDifferentialTestingFieldPage(scenario, { search, filter, sort, page, pageSize });
+  const queryKey = new URLSearchParams({
+    search: fieldPage.search,
+    filter: fieldPage.filter,
+    sort: fieldPage.sort,
+    page: String(fieldPage.page),
+    pageSize: String(fieldPage.pageSize),
+  }).toString();
+  const etagDigest = createHash("sha256")
+    .update(index.bundle.sha256)
+    .update("\0")
+    .update(scenario.scenarioSha256)
+    .update("\0")
+    .update(queryKey)
+    .digest("hex");
+  const result = {
+    signature: `${index.signature}\0${scenario.scenarioSha256}\0${queryKey}`,
+    readPath: index.readPath,
+    source: scenario.source,
+    sourceBytes: scenario.sourceBytes,
+    etag: `W/\"dtb-${etagDigest}\"`,
+    selectedScenarioId: scenarioId,
+    responseExtras: {
+      transport: {
+        schema: DIFFERENTIAL_TESTING_PAGE_SCHEMA,
+        bundleSha256: index.bundle.sha256,
+        scenarioSha256: scenario.scenarioSha256,
+      },
+      fieldPage,
+      frameDeltaMetrics: scenario.frameDeltaMetrics,
+    },
+  };
+  return result;
 }
 
 function differentialTestingScenarioCache(index, scenarioId) {
@@ -183,6 +291,7 @@ function sendDifferentialTestingData(req, res, cached) {
     ovenId: "differential-testing",
     path: cached.readPath,
     scenarioId: cached.selectedScenarioId,
+    ...(cached.responseExtras || {}),
   }).slice(0, -1)},\"payload\":`;
   const suffix = "}";
   res.writeHead(200, {
@@ -1250,12 +1359,18 @@ const server = createServer(async (req, res) => {
           if (requestedScenarioIds.length > 1) return json(res, 400, { error: "scenario must be supplied at most once" });
           const requestedScenarioId = requestedScenarioIds[0] ?? "";
           if (!requestedScenarioId || requestedScenarioId === index.selectedScenarioId) {
-            sendDifferentialTestingData(req, res, index);
+            const selected = index.kind === "bundle" && index.selectedScenarioId
+              ? differentialTestingBundleResponse(index, index.selectedScenarioId, url.searchParams)
+              : index;
+            sendDifferentialTestingData(req, res, selected);
             return;
           }
           if (!/^[a-f0-9]{16}$/u.test(requestedScenarioId)) return json(res, 400, { error: "scenario must be a lowercase 16-character hexadecimal id" });
           if (!index.scenarios.some((scenario) => scenario.id === requestedScenarioId)) return json(res, 404, { error: `scenario ${requestedScenarioId} is not in the published catalog` });
-          sendDifferentialTestingData(req, res, differentialTestingScenarioCache(index, requestedScenarioId));
+          const selected = index.kind === "bundle"
+            ? differentialTestingBundleResponse(index, requestedScenarioId, url.searchParams)
+            : differentialTestingScenarioCache(index, requestedScenarioId);
+          sendDifferentialTestingData(req, res, selected);
           return;
         }
         const readPath = path;

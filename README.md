@@ -55,17 +55,18 @@ Custom Ovens use the same two-file package. An Oven cannot run commands, collect
 
 ## Differential Testing
 
-Projects publish a read-only JSON bundle using `burnlist-differential-testing-data@1`. Burnlist validates and renders it without importing project code or running comparisons. The project owns capture, exact-first execution, normalization, and atomic publication.
+Projects publish a read-only comparison using `burnlist-differential-testing-data@1`. Small comparisons may bind that document directly. Large comparisons use the canonical `burnlist-differential-testing-bundle@1` transport so Burnlist validates field records sequentially and range-reads only the visible page. The project owns capture, exact-first execution, normalization, and atomic publication.
 
 ```sh
 burnlist differential-testing schema
 burnlist differential-testing validate /absolute/path/to/bundle/current.json
+burnlist differential-testing validate-bundle /absolute/path/to/bundle/current.json
 burnlist --oven-data differential-testing=/absolute/path/to/bundle/current.json
 ```
 
 Aggregate refresh results remain telemetry. In exact-first mode, retained exact-prefix verification is the only retention authority.
 
-Projects that need worker orchestration can import `createDifferentialTestingWorker` from `burnlist/differential-testing`. The SDK owns generic queueing and recovery, not project evidence authority. Run `burnlist differential-testing sdk` to print the packaged module path.
+Projects that need worker orchestration can import `createDifferentialTestingWorker` from `burnlist/differential-testing`. Public payload validation, digest, and telemetry helpers are available from `burnlist/differential-testing/contract`; scalable bundle validation and page queries are available from `burnlist/differential-testing/transport`. The SDK owns generic queueing and recovery, not project evidence authority. Run `burnlist differential-testing sdk` to print the packaged worker module path.
 
 See the [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) and [adapter SDK reference](skills/burnlist/references/differential-testing-adapter-sdk.md) for scenario bundles, exact sessions, telemetry, and worker interfaces.
 

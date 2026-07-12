@@ -110,7 +110,8 @@ body.driving-parity-view {
 	  font-family: var(--dashboard-title-font);
 	  font-weight: 400;
 	}
-	.driving-parity-summary .field-list-count {
+	.driving-parity-summary .field-list-count,
+	.work-panel-title .field-list-count {
 	  margin-left: .5ch;
 	  color: rgba(168,168,168,.58);
 	  font-size: 13px;
@@ -466,6 +467,26 @@ body.driving-parity-view {
 .differential-refresh-status.failed {
   color: var(--red-muted);
 }
+.differential-refresh-status.running {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.differential-refresh-status.running::before {
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: differential-refresh-spin .7s linear infinite;
+  content: "";
+}
+@keyframes differential-refresh-spin {
+  to { transform: rotate(1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .differential-refresh-status.running::before { animation: none; }
+}
 .differential-testing-empty-state {
   display: grid;
   gap: 14px;
@@ -812,7 +833,7 @@ body.driving-parity-view {
 .progress-time-scale-toggle { display: none; }
 .chart-reset { appearance: none; border: 0; border-bottom: 1px solid var(--done); border-radius: 0; background: transparent; color: var(--text); cursor: pointer; font: inherit; font-size: 12px; padding: 0 0 2px; }
 .chart-reset[hidden] { display: none; }
-.chart-reset:hover { color: #fff; }
+.chart-reset:hover { color: var(--text); }
 .score { display: grid; gap: 12px; }
 .warnings { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid #8b5e22; border-radius: 6px; background: #2a1f10; color: #ffe3af; }
 .warnings[hidden] { display: none; }
@@ -914,7 +935,7 @@ body.driving-parity-view {
 .repo-map .repo-node-file.connected { stroke: rgba(216,230,248,.88); stroke-width: 1.6; }
 .repo-map .repo-node-file.active { stroke: rgba(128,177,255,.72); stroke-width: 1.7; }
 .repo-map .repo-node-file.selected { fill: #e8e8e8; stroke: #5aa2ff; stroke-width: 2.4; }
-.repo-map .repo-node-file-recent-symbol { fill: rgba(255,255,255,.96); stroke: rgba(12,13,16,.92); stroke-width: 1.2; stroke-linejoin: round; pointer-events: none; }
+.repo-map .repo-node-file-recent-symbol { fill: var(--text); fill-opacity: .96; stroke: rgba(12,13,16,.92); stroke-width: 1.2; stroke-linejoin: round; pointer-events: none; }
 .repo-map .repo-node-folder { fill: #222a35; stroke: rgba(163,172,183,.35); stroke-width: 1.2; }
 .repo-map .repo-node-folder.dirty { stroke: rgba(163,172,183,.46); }
 .repo-map .repo-node-root { fill: #171717; stroke: rgba(218,225,234,.45); stroke-width: 1.4; }
@@ -1134,6 +1155,7 @@ body.driving-parity-view {
 .driving-parity-view .checklist-log-list > article.log-row:nth-of-type(8) { opacity: .44; }
 .driving-parity-view .checklist-log-list > article.log-row:nth-of-type(9) { opacity: .36; }
 .driving-parity-view .checklist-log-list > article.log-row:nth-of-type(10) { opacity: .28; }
+.driving-parity-view .checklist-log-list > article.log-row.log-placeholder-row { opacity: .2; }
 .driving-parity-view .log-collapsible-summary-text { display: none; }
 .driving-parity-view .log-collapsible-summary { min-height: 0; }
 .driving-parity-view .log-collapsible-summary::after { margin-left: auto; }

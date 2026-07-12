@@ -88,17 +88,8 @@ const DETAIL_TYPES = [
 type DetailType = (typeof DETAIL_TYPES)[number]["value"];
 const NEW_OVEN_ROW_HEIGHT = 50;
 
-const fieldClass = [
-  "w-full rounded-md border border-white/10 bg-black/25 px-3 py-2",
-  "text-sm text-foreground outline-none transition",
-  "focus:border-primary/60 focus:ring-2 focus:ring-primary/15",
-].join(" ");
-
-const compactFieldClass = [
-  "min-w-0 rounded border border-white/15 bg-black/45 px-2 py-1.5",
-  "text-xs text-foreground outline-none",
-  "focus:border-amber-300/70 focus:ring-2 focus:ring-amber-300/15",
-].join(" ");
+const fieldClass = "form-control";
+const compactFieldClass = "form-control form-control-compact";
 
 function slug(value: string) {
   return value
@@ -157,7 +148,7 @@ function DetailTypePicker({
   return (
     <div
       aria-label="Metric chart type"
-      className="flex flex-wrap gap-1"
+      className="detail-type-picker"
       role="group"
     >
       {DETAIL_TYPES.map(({ value: option, label, Icon }) => {
@@ -166,18 +157,13 @@ function DetailTypePicker({
           <button
             aria-label={label}
             aria-pressed={selected}
-            className={[
-              "grid size-8 place-items-center rounded border transition",
-              selected
-                ? "border-amber-300 bg-amber-300 text-black"
-                : "border-white/15 bg-black/35 text-muted-foreground hover:border-amber-300/60 hover:text-foreground",
-            ].join(" ")}
+            className={`detail-type-button${selected ? " is-selected" : ""}`}
             key={option}
             onClick={() => onChange(option)}
             title={label}
             type="button"
           >
-            <Icon aria-hidden="true" className="size-4" />
+            <Icon aria-hidden="true" />
           </button>
         );
       })}
@@ -193,7 +179,7 @@ function PageHeader({
   description: string;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="page-heading">
       <Button asChild size="sm" variant="ghost">
         <a href="/">
           <ArrowLeft />
@@ -201,8 +187,8 @@ function PageHeader({
         </a>
       </Button>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+        <h1 className="page-title">{title}</h1>
+        <p className="page-description">
           {description}
         </p>
       </div>
@@ -387,23 +373,20 @@ function DetailSkeletonBuilder({
   };
 
   return (
-    <Card className="gap-0 border-0 bg-transparent py-0 shadow-none">
-      <CardHeader className="px-0 pt-0 pb-4">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <LayoutGrid className="size-4" />
+    <Card className="detail-builder-card">
+      <CardHeader className="detail-builder-header">
+        <CardTitle className="detail-builder-title">
+          <LayoutGrid />
           Detail skeleton
         </CardTitle>
         <CardDescription>
           Build the Oven's detail page template by placing sections directly on the skeleton.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4 px-0 py-0">
+      <CardContent className="detail-builder-content">
           <div
             aria-label="Oven detail page skeleton"
-            className={[
-              "relative grid select-none overflow-hidden border-t border-l border-white/12",
-              "bg-black/25 touch-none",
-            ].join(" ")}
+            className="detail-skeleton"
             onPointerCancel={cancelDrag}
             onPointerDown={startDrag}
             onPointerMove={moveDrag}
@@ -423,10 +406,7 @@ function DetailSkeletonBuilder({
             {trackCells.map((point) => (
               <span
                 aria-hidden="true"
-                className={[
-                  "min-w-0 cursor-crosshair border-r border-b border-white/12",
-                  "bg-transparent hover:bg-amber-300/15",
-                ].join(" ")}
+                className="detail-grid-cell"
                 data-oven-grid-cell=""
                 key={String(point.row) + ":" + String(point.column)}
               />
@@ -435,10 +415,7 @@ function DetailSkeletonBuilder({
             {dragArea && (
               <div
                 aria-hidden="true"
-                className={[
-                  "pointer-events-none absolute inset-px z-10",
-                  "border border-amber-300/80 bg-amber-300/25",
-                ].join(" ")}
+                className="detail-drag-area"
                 style={gridAreaStyle(dragArea)}
               />
             )}
@@ -446,25 +423,19 @@ function DetailSkeletonBuilder({
             {draft && (
               <section
                 aria-label="New detail section"
-                className={[
-                  "absolute inset-px z-30 overflow-auto border-2 border-amber-300",
-                  "bg-card p-2 shadow-xl shadow-black/35",
-                ].join(" ")}
+                className="detail-draft"
                 style={gridAreaStyle(draft)}
               >
-                <div className="grid min-h-full content-center gap-2">
+                <div className="detail-editor">
                   <DetailTypePicker
                     onChange={(widget) => setDraft({ ...draft, widget })}
                     value={draft.widget}
                   />
                   <label>
-                    <span className="sr-only">Describe the metric</span>
+                    <span className="visually-hidden">Describe the metric</span>
                     <textarea
                       aria-label="Describe the metric"
-                      className={[
-                        compactFieldClass,
-                        "min-h-20 w-full resize-none",
-                      ].join(" ")}
+                      className={`${compactFieldClass} detail-description-input`}
                       maxLength={2000}
                       onChange={(event) => setDraft({
                         ...draft,
@@ -482,7 +453,7 @@ function DetailSkeletonBuilder({
                       value={draft.description}
                     />
                   </label>
-                  <div className="flex justify-end gap-1">
+                  <div className="form-actions form-actions-compact">
                     <Button
                       onClick={() => setDraft(null)}
                       size="sm"
@@ -508,41 +479,33 @@ function DetailSkeletonBuilder({
               return (
                 <section
                   aria-label={cell.title + " detail section"}
-                  className={[
-                    "group absolute inset-px z-20 overflow-auto border border-white/18",
-                    "bg-card/95 outline outline-0 outline-amber-300 transition",
-                    "hover:z-40 hover:outline-2 focus-within:z-40 focus-within:outline-2",
-                  ].join(" ")}
+                  className="detail-cell"
                   key={cell.id}
                   style={gridAreaStyle(cell)}
                 >
                   <div
-                    className={[
-                      "absolute top-0 right-0 z-10 flex bg-amber-300 text-black",
-                      "opacity-0 transition-opacity",
-                      "group-hover:opacity-100 group-focus-within:opacity-100",
-                    ].join(" ")}
+                    className="detail-cell-actions"
                   >
                     <button
                       aria-label={editing ? "Preview " + cell.title : "Edit " + cell.title}
-                      className="grid size-8 place-items-center hover:bg-amber-400"
+                      className="detail-cell-action"
                       onClick={() => setEditingId(editing ? null : cell.id)}
                       type="button"
                     >
-                      {editing ? <Eye className="size-4" /> : <Pencil className="size-4" />}
+                      {editing ? <Eye /> : <Pencil />}
                     </button>
                     <button
                       aria-label={"Delete " + cell.title}
-                      className="grid size-8 place-items-center hover:bg-destructive hover:text-white"
+                      className="detail-cell-action is-destructive"
                       onClick={() => deleteCell(cell.id)}
                       type="button"
                     >
-                      <Trash2 className="size-4" />
+                      <Trash2 />
                     </button>
                   </div>
 
                   {editing ? (
-                    <div className="grid min-h-full content-center gap-2 p-2 pt-9">
+                    <div className="detail-editor is-cell">
                       <DetailTypePicker
                         onChange={(widget) => updateCell(cell.id, {
                           widget,
@@ -551,13 +514,10 @@ function DetailSkeletonBuilder({
                         value={cell.widget}
                       />
                       <label>
-                        <span className="sr-only">Describe the metric</span>
+                        <span className="visually-hidden">Describe the metric</span>
                         <textarea
                           aria-label="Describe the metric"
-                          className={[
-                            compactFieldClass,
-                            "min-h-20 w-full resize-none",
-                          ].join(" ")}
+                          className={`${compactFieldClass} detail-description-input`}
                           maxLength={2000}
                           onChange={(event) => {
                             const description = event.target.value;
@@ -573,15 +533,15 @@ function DetailSkeletonBuilder({
                     </div>
                   ) : (
                     <button
-                      className="grid min-h-full w-full place-content-center gap-3 p-3 text-center"
+                      className="detail-preview"
                       onDoubleClick={() => setEditingId(cell.id)}
                       type="button"
                     >
                       <SelectedIcon
                         aria-hidden="true"
-                        className="mx-auto size-6 text-amber-300"
+                        className="detail-preview-icon"
                       />
-                      <span className="whitespace-pre-wrap text-sm leading-5 text-foreground">
+                      <span className="detail-preview-copy">
                         {cell.description}
                       </span>
                     </button>
@@ -682,22 +642,22 @@ export function NewOvenPage() {
   };
 
   return (
-    <form className="space-y-5" onSubmit={saveOven}>
+    <form className="oven-form" onSubmit={saveOven}>
       <PageHeader
         description="A declarative Burn recipe: Markdown instructions plus a non-executable detail skeleton."
         title="New Oven"
       />
-      <div className="grid gap-5">
-        <Card className="border-white/8 bg-card/80 shadow-xl shadow-black/10">
+      <div className="oven-form-stack">
+        <Card className="oven-form-card">
           <CardHeader>
-            <CardTitle className="text-base">Oven instructions</CardTitle>
+            <CardTitle className="card-title-compact">Oven instructions</CardTitle>
             <CardDescription>
               Define the outcome, canonical state, run inputs, and evidence rules in Markdown.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-4 md:grid-cols-4">
-              <label className="grid gap-1.5 text-xs text-muted-foreground">
+          <CardContent className="oven-form-content">
+            <div className="oven-fields-row">
+              <label className="form-field">
                 Oven name
                 <input
                   className={fieldClass}
@@ -711,7 +671,7 @@ export function NewOvenPage() {
                   value={name}
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-muted-foreground">
+              <label className="form-field">
                 Oven id
                 <input
                   className={fieldClass}
@@ -726,7 +686,7 @@ export function NewOvenPage() {
                   value={id}
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-muted-foreground">
+              <label className="form-field">
                 Columns
                 <input
                   className={fieldClass}
@@ -740,7 +700,7 @@ export function NewOvenPage() {
                   value={detail.columns}
                 />
               </label>
-              <label className="grid gap-1.5 text-xs text-muted-foreground">
+              <label className="form-field">
                 Rows
                 <input
                   className={fieldClass}
@@ -755,10 +715,10 @@ export function NewOvenPage() {
                 />
               </label>
             </div>
-            <label className="grid gap-1.5 text-xs text-muted-foreground">
+            <label className="form-field">
               Markdown instructions
               <textarea
-                className={[fieldClass, "min-h-44 resize-y font-mono"].join(" ")}
+                className={`${fieldClass} form-control-tall form-control-mono`}
                 maxLength={65536}
                 onChange={(event) => setInstructions(event.target.value)}
                 required
@@ -777,17 +737,12 @@ export function NewOvenPage() {
       {(error || status) && (
         <p
           aria-live="polite"
-          className={[
-            "rounded-md border px-4 py-3 text-sm",
-            error
-              ? "border-destructive/35 bg-destructive/10 text-destructive-foreground"
-              : "border-emerald-400/25 bg-emerald-400/8 text-emerald-300",
-          ].join(" ")}
+          className={`form-notice ${error ? "is-error" : "is-success"}`}
         >
           {error || status}
         </p>
       )}
-      <div className="flex justify-end gap-2">
+      <div className="form-actions">
         <Button asChild variant="outline">
           <a href="/">Cancel</a>
         </Button>
@@ -860,21 +815,21 @@ export function RunBurnPage() {
   };
 
   return (
-    <form className="space-y-5" onSubmit={createRun}>
+    <form className="oven-form" onSubmit={createRun}>
       <PageHeader
         description="Choose an Oven and create an immutable local Run snapshot. The app never executes Oven instructions."
         title="Run Burn"
       />
-      <Card className="mx-auto max-w-3xl border-white/8 bg-card/80 shadow-xl shadow-black/10">
+      <Card className="run-form-card">
         <CardHeader>
-          <CardTitle className="text-base">Run request</CardTitle>
+          <CardTitle className="card-title-compact">Run request</CardTitle>
           <CardDescription>
             The selected Oven instructions and detail skeleton are snapshotted into
             ignored local state.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <label className="grid gap-1.5 text-xs text-muted-foreground">
+        <CardContent className="run-form-content">
+          <label className="form-field">
             Oven
             <select
               className={fieldClass}
@@ -889,7 +844,7 @@ export function RunBurnPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1.5 text-xs text-muted-foreground">
+          <label className="form-field">
             Repository
             <select
               className={fieldClass}
@@ -904,7 +859,7 @@ export function RunBurnPage() {
               ))}
             </select>
           </label>
-          <label className="grid gap-1.5 text-xs text-muted-foreground">
+          <label className="form-field">
             Run title
             <input
               className={fieldClass}
@@ -915,10 +870,10 @@ export function RunBurnPage() {
               value={title}
             />
           </label>
-          <label className="grid gap-1.5 text-xs text-muted-foreground">
+          <label className="form-field">
             Objective
             <textarea
-              className={[fieldClass, "min-h-44 resize-y"].join(" ")}
+              className={`${fieldClass} form-control-tall`}
               maxLength={12000}
               onChange={(event) => setObjective(event.target.value)}
               placeholder="Describe the outcome and any Oven-required inputs. For Differential Testing, include the trusted reference, scenario/replay/profile, alignment and exact contract, and retained session location."
@@ -926,7 +881,7 @@ export function RunBurnPage() {
               value={objective}
             />
           </label>
-          <p className="text-xs leading-5 text-muted-foreground">
+          <p className="form-help">
             This creates the run manifest; it does not start Codex or execute
             commands from the Oven instructions.
           </p>
@@ -935,17 +890,12 @@ export function RunBurnPage() {
       {(error || status) && (
         <p
           aria-live="polite"
-          className={[
-            "mx-auto max-w-3xl rounded-md border px-4 py-3 text-sm",
-            error
-              ? "border-destructive/35 bg-destructive/10 text-destructive-foreground"
-              : "border-emerald-400/25 bg-emerald-400/8 text-emerald-300",
-          ].join(" ")}
+          className={`form-notice run-form-notice ${error ? "is-error" : "is-success"}`}
         >
           {error || status}
         </p>
       )}
-      <div className="mx-auto flex max-w-3xl justify-end gap-2">
+      <div className="form-actions run-form-actions">
         <Button asChild variant="outline">
           <a href="/">Cancel</a>
         </Button>

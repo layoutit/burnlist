@@ -4,6 +4,7 @@ Projects feed Differential Testing with a read-only bundle of JSON documents usi
 
 ```sh
 burnlist differential-testing validate /absolute/path/to/differential-testing.json
+burnlist differential-testing validate-bundle /absolute/path/to/bundle/current.json
 burnlist --oven-data differential-testing=/absolute/path/to/current.json
 ```
 
@@ -46,7 +47,7 @@ A blocked payload names at least one blocker. It may retain valid partial rows o
 
 ## Scenario Bundle
 
-The bound document is the currently selected payload and catalog index. Other scenarios are contained siblings:
+Small integrations may bind one full `burnlist-differential-testing-data@1` document as the current payload and keep other full scenario documents as contained siblings:
 
 ```text
 bundle/
@@ -62,6 +63,27 @@ The dashboard loads `?scenario=<id>` only when the id is in the bound catalog, t
 
 A clean bundle with no reports uses exactly `scenarioCatalog: { "selectedScenarioId": null, "scenarios": [] }` and `refresh: null`, with zero summary metrics and empty `progress`, `log`, and `fields`. It carries no telemetry or exact session. Burnlist renders `No Differential Testing scenarios` and does not scan the sibling directory.
 
+### Scalable transport
+
+Large comparisons should publish `burnlist-differential-testing-bundle@1`. This keeps the catalog and bindings compact while storing each scenario's field records once:
+
+```text
+bundle/
+  current.json
+  scenarios/
+    0123456789abcdef/
+      scenario.json
+      fields.ndjson
+```
+
+`current.json` binds every `burnlist-differential-testing-scenario@1` document by contained path, exact byte size, and SHA-256. An empty manifest carries the complete valid empty data document in `emptyData`; a non-empty manifest sets `emptyData` to null. The generation is published with the same atomic directory or symlink swap as the project evidence it describes.
+
+`scenario.json` contains the normalized data envelope without primary sample arrays or comparable telemetry state arrays. Its `fieldIndex` keeps compact field and telemetry metadata plus an exact byte offset, size, and digest for one corresponding `burnlist-differential-testing-field-record@1` line in `fields.ndjson`. Record ids are lexicographically ordered, ordinals preserve project field order, byte ranges are contiguous and LF-terminated, and primary and telemetry records share the same field id.
+
+Burnlist validates the manifest, scenario envelope, whole records digest, every record binding, sample arithmetic, telemetry transitions, state-vector seals, and frame aggregates sequentially. It does not reconstruct the multi-million-sample payload in memory. The dashboard range-reads only the selected 25, 50, 100, or 200 field records and serves them with global summary and frame-delta metrics. Search, Failed, Changed, sorting, and pagination therefore operate before samples cross the HTTP boundary.
+
+The read-only page query accepts `scenario`, `search`, `filter=all|failing`, `sort=default|changed`, zero-based `page`, and `pageSize=25|50|100|200`. Legacy full `burnlist-differential-testing-data@1` bundles remain supported without translation.
+
 ## Refresh State
 
 `refresh` is the project-owned event-driven update record. It contains a stable request id, the selected scenario id, the triggering event kind/revision/time, and request lifecycle timestamps. Its states are:
@@ -71,7 +93,22 @@ A clean bundle with no reports uses exactly `scenarioCatalog: { "selectedScenari
 - `complete`: atomically published with a checked full-scenario report
 - `failed`: finished without a report and names the error
 
-Every exact-prefix advancement should automatically request a refresh. For `event.kind: "exact-prefix-advanced"`, the event revision is the decimal retained `clearedPrefixFrames`; the validator rejects a stale revision. The project service may coalesce several events into its newest queued revision. Burnlist only reads the published state; it does not signal a runtime, start a comparison, invoke an adapter, or execute commands. Refresh success, failure, or lag is telemetry and never changes exact-prefix retention authority.
+Every exact-prefix advancement should automatically request a refresh. For `event.kind: "exact-prefix-advanced"`, the event revision is the canonical non-negative decimal `clearedPrefixFrames` that requested that refresh. It may lag the current retained prefix while the refresh is running or after its report completes, because exact work can advance independently. It must never be ahead of the current retained prefix. The project service may coalesce several pending events into its newest queued revision. Burnlist only reads the published state; it does not signal a runtime, start a comparison, invoke an adapter, or execute commands. Refresh success, failure, or lag is telemetry and never changes exact-prefix retention authority.
+
+An adapter may bind a completed refresh report to the immutable project-owned inputs and tooling that produced it:
+
+```json
+{
+  "executionClosure": {
+    "schema": "project-execution-closure@1",
+    "id": "execution-closure-42",
+    "sha256": "...",
+    "size": 2048
+  }
+}
+```
+
+This optional adapter-attested identity is limited to `schema`, `id`, lowercase SHA-256, and positive byte size. Paths, manifest bytes, commands, and execution stay project-owned. The binding identifies a content-addressed closure; it does not claim that Burnlist stored or executed it.
 
 ## History Identity
 
@@ -139,7 +176,17 @@ residual = 0
 
 The aggregate summary must equal the sum of its field summaries. Both candidates use the same declared reference, scenario, alignment, and contract. Each artifact seal includes a checker-attested canonical tick/state-vector digest; this prevents a baseline-state vector and its sparse transitions from being relocated together without invalidating the seal. `buildDifferentialTelemetry()` additionally checks field ids, semantics, tolerances, ticks, and reference values before constructing telemetry.
 
-Adapters use `differentialStateVectorSha256(payload)` from the packaged contract module to compute the canonical digest. The corresponding `stateVectorCheck` attests that digest and names the artifact SHA-256 from which the vector was normalized.
+Adapters import public validation and construction helpers from `burnlist/differential-testing/contract`:
+
+```js
+import {
+  assertDifferentialTestingData,
+  buildDifferentialTelemetry,
+  differentialStateVectorSha256,
+} from "burnlist/differential-testing/contract";
+```
+
+`differentialStateVectorSha256(payload)` computes the canonical digest. The corresponding `stateVectorCheck` attests that digest and names the artifact SHA-256 from which the vector was normalized.
 
 A blocked telemetry names a blocker and carries no transition summary or field claims. It does not block or rewrite the primary comparison. Changed uses only these tolerance-state transitions; it never grants source, experiment, retention, application, or repository authority.
 
@@ -165,6 +212,8 @@ It is one compact retained session, not a candidate-cycle history. A ready or co
 - one surfaced source-owned producer for a ready divergence
 
 A blocked session may omit evidence that is unavailable, but it names at least one concrete blocker and exposes no fallback aggregate target. A complete session has a terminal frontier and no producer. The adapter must not assemble the session by mixing independently selected latest artifacts.
+
+`exactSession.status: complete` is scoped to the published exact contract. It is never a scenario PASS claim; the primary current candidate-versus-reference report remains the sole PASS/FAIL result.
 
 The compact decision kind is `runtime-change`, `evidence-change`, `complete`, or `blocked`. A ready session uses `runtime-change` or `evidence-change`; a terminal session uses `complete`; and a blocked session uses `blocked`. The decision records `targetFieldId` and `targetLabel` only when applicable, plus `nextAction`, blockers, `retainedSessionId`, and `candidateSessionId`. The decision kind describes the next authorized kind of work, while `result` describes the composed transaction that produced the retained session.
 

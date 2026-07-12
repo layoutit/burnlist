@@ -62,18 +62,24 @@ if (args[0] === "differential-testing" && args[1] === "sdk") {
   process.exit(0);
 }
 
-if (args[0] === "differential-testing" && args[1] === "validate") {
+if (args[0] === "differential-testing" && ["validate", "validate-bundle"].includes(args[1])) {
   if (!args[2]) {
-    console.error("Usage: burnlist differential-testing validate <differential-testing.json>");
+    console.error(`Usage: burnlist differential-testing ${args[1]} <differential-testing.json>`);
     process.exit(2);
   }
   try {
     const path = resolve(process.cwd(), args[2]);
-    const payload = JSON.parse(readFileSync(path, "utf8"));
-    const { assertDifferentialTestingData } = await import("../skills/burnlist/scripts/differential-testing-data-contract.mjs");
-    assertDifferentialTestingData(payload);
-    const sampleCount = payload.fields.reduce((total, field) => total + field.sampleCount, 0);
-    console.log(`Valid Differential Testing data: ${payload.fields.length} fields, ${sampleCount} samples, ${payload.summary.frames.uniqueTicks} aligned ticks.`);
+    const document = JSON.parse(readFileSync(path, "utf8"));
+    if (document?.schema === "burnlist-differential-testing-bundle@1") {
+      const { assertDifferentialTestingBundle } = await import("../skills/burnlist/scripts/differential-testing-transport.mjs");
+      const bundle = assertDifferentialTestingBundle(path);
+      console.log(`Valid Differential Testing bundle: ${bundle.scenarios.length} scenarios; selected ${bundle.selectedScenarioId ?? "none"}.`);
+    } else {
+      const { assertDifferentialTestingData } = await import("../skills/burnlist/scripts/differential-testing-data-contract.mjs");
+      assertDifferentialTestingData(document);
+      const sampleCount = document.fields.reduce((total, field) => total + field.sampleCount, 0);
+      console.log(`Valid Differential Testing data: ${document.fields.length} fields, ${sampleCount} samples, ${document.summary.frames.uniqueTicks} aligned ticks.`);
+    }
     process.exit(0);
   } catch (error) {
     console.error(error.message);
@@ -91,6 +97,7 @@ Usage:
   burnlist --close-completed [--scan-root <repo[,repo...]>]
   burnlist --stamp
   burnlist differential-testing validate <differential-testing.json>
+  burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
   burnlist uninstall

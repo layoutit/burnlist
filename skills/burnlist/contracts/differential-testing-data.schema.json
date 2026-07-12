@@ -78,6 +78,8 @@
         "fieldCount": { "$ref": "#/$defs/count" },
         "failedFieldCount": { "$ref": "#/$defs/count" },
         "frames": { "$ref": "#/$defs/count" },
+        "frame": { "$ref": "#/$defs/count" },
+        "frameDelta": { "type": ["integer", "null"], "minimum": 0 },
         "firstFailingTick": { "type": ["number", "null"] },
         "firstFailingLabel": { "type": ["string", "null"], "maxLength": 160 },
         "refreshId": { "type": "string", "minLength": 1, "maxLength": 160 },
@@ -245,6 +247,23 @@
         "revision": { "type": "string", "minLength": 1, "maxLength": 160 },
         "occurredAt": { "type": "string", "format": "date-time" }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "exact-prefix-advanced" } }, "required": ["kind"] },
+          "then": { "properties": { "revision": { "pattern": "^(0|[1-9][0-9]*)$" } } }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "executionClosureBinding": {
+      "type": "object",
+      "required": ["schema", "id", "sha256", "size"],
+      "properties": {
+        "schema": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "id": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      },
       "additionalProperties": false
     },
     "refreshReport": {
@@ -261,7 +280,8 @@
         "replaySha256": { "$ref": "#/$defs/sha256" },
         "profileSha256": { "$ref": "#/$defs/sha256" },
         "result": { "$ref": "#/$defs/result" },
-        "check": { "$ref": "#/$defs/exactCheck" }
+        "check": { "$ref": "#/$defs/exactCheck" },
+        "executionClosure": { "$ref": "#/$defs/executionClosureBinding" }
       },
       "additionalProperties": false
     },

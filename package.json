@@ -11,7 +11,9 @@
     "burnlist": "bin/burnlist.mjs"
   },
   "exports": {
-    "./differential-testing": "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs"
+    "./differential-testing": "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs",
+    "./differential-testing/contract": "./skills/burnlist/scripts/differential-testing-contract.mjs",
+    "./differential-testing/transport": "./skills/burnlist/scripts/differential-testing-transport.mjs"
   },
   "files": [
     "bin/",
@@ -22,7 +24,7 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config skills/burnlist/dashboard/vite.config.mjs",
-    "test:differential-testing": "node --test skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
+    "test:differential-testing": "node --test skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs skills/burnlist/scripts/differential-testing-contract.test.mjs skills/burnlist/scripts/differential-testing-data-contract.test.mjs skills/burnlist/scripts/differential-testing-transport-renderer.test.mjs skills/burnlist/scripts/differential-testing-transport-server.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
@@ -36,16 +38,11 @@
   "devDependencies": {
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "radix-ui": "^1.6.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^4.1.0",
-    "tailwind-merge": "^3.0.2",
     "vite": "^6.1.0"
   }
 }
