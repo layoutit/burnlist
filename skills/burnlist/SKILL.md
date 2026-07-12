@@ -23,6 +23,7 @@ Read references only when their trigger applies:
 - `references/burnlist-splitting-lanes.md`: split/reorder decisions, recursive gates, parent/lane Burnlists, parallel lane handoff.
 - `references/burnlist-visible-output.md`: detailed silence rules, forbidden narration examples, checkpoint policy.
 - `references/burnlist-dashboard.md`: dashboard/chart/log/timeline/repo-graph behavior or dashboard repair only.
+- `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -114,6 +115,8 @@ The live dashboard is mandatory as an observer, but agents do not own its server
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
 `New Oven` and `Run Burn` are explicit user-controlled local controller surfaces. For Oven contract, UI, validation, or Run-snapshot work, read `references/oven-contract.md`. Preserve its two-file declarative package and ownership boundary: custom Ovens may be created under ignored `.local/burnlist/ovens/` state and snapshotted under `.local/burnlist/runs/`, but neither surface may execute instructions, produce project data, own canonical project state, mutate Burnlists, import arbitrary UI code, or start an agent.
+
+Ovens can also be authored and inspected from the CLI: `burnlist oven <list|view|create|update>`. It writes only custom Ovens, keeps built-in Ovens read-only, reuses the same contract validation, and never executes instructions. `burnlist oven view <id>` renders the detail skeleton as a box-drawing grid for quick inspection. Read `references/oven-authoring.md` for the widget/format vocabulary and source-binding conventions.
 
 Do not embed repo/domain dashboards inside the Burnlist dashboard. Domain-specific viewers must live in their repo-local tools and may be linked or launched separately. Share state only through Burnlist lifecycle files, explicit URLs, or a narrow message contract; do not share CSS, layout code, routes, or polling loops.
 

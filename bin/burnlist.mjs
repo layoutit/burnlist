@@ -87,7 +87,7 @@ if (args[0] === "differential-testing" && ["validate", "validate-bundle"].includ
   }
 }
 
-if (args.includes("--help") || args.includes("-h")) {
+if (args[0] !== "oven" && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
 Usage:
@@ -100,6 +100,7 @@ Usage:
   burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
+  burnlist oven <list|view|create|update> ...
   burnlist uninstall
 
 Options:
@@ -114,10 +115,14 @@ Options:
   process.exit(0);
 }
 
-if (args.includes("--version") || args.includes("-v")) {
+if (args[0] !== "oven" && (args.includes("--version") || args.includes("-v"))) {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   console.log(packageJson.version);
   process.exit(0);
 }
 
-await import("../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+if (args[0] === "oven") {
+  await import("../skills/burnlist/scripts/oven-cli.mjs");
+} else {
+  await import("../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+}
