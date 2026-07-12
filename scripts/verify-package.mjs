@@ -39,6 +39,8 @@ const required = [
   "skills/burnlist/ovens/differential-testing/detail.json",
   "skills/burnlist/contracts/differential-testing-data.schema.json",
   "skills/burnlist/references/differential-testing-data.md",
+  "skills/burnlist/references/differential-testing-adapter-sdk.md",
+  "skills/burnlist/scripts/differential-testing-adapter-sdk.mjs",
   "skills/burnlist/scripts/differential-testing-data-contract.mjs",
   "skills/burnlist/examples/differential-testing/adapter.mjs",
   "skills/burnlist/examples/differential-testing/reference.json",

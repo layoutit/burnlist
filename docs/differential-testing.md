@@ -49,6 +49,12 @@ The project adapter owns artifact discovery, file hashing, project checks, fresh
 
 Target selection remains source-owned and exact-first. Carrier, render, lifetime, diagnostic, derived, and uncovered rows must be traced upstream. Unknown inputs, substitute configuration, missing provenance, noisy or diagnostic oracles, and unproven edit scope fail closed to evidence work. A smaller error at the same exact coordinate is not progress.
 
+## Adapter SDK
+
+Burnlist packages a project-neutral adapter SDK for the mechanical lifecycle around that authority boundary. It serializes refresh work, deduplicates request ids, coalesces one causal successor per scenario, discards superseded output, persists restart-safe state, submits signals, validates normalized scenario documents, and atomically switches the read-only Oven bundle.
+
+The SDK requires project callbacks for request validation, causal succession, scenario identity, telemetry execution, and optional publication on state changes. Those callbacks are the only place raw project evidence may be interpreted. See [Differential Testing Adapter SDK](../skills/burnlist/references/differential-testing-adapter-sdk.md).
+
 ## Shared Design
 
 Differential Testing has one canonical renderer and stylesheet. The field surface uses the same hybrid row for every project:

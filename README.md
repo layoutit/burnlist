@@ -25,6 +25,8 @@ burnlist --oven-data differential-testing=/absolute/path/to/bundle/current.json
 
 Run `burnlist differential-testing schema` to locate the packaged JSON Schema. The [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) defines sample states, reconciliation, scenario selection, event-driven refresh state, history identity, the adapter boundary, aggregate telemetry, and adapter-attested exact sessions with fail-closed Target selection. Exact-prefix verification is the only retention authority; refresh state remains telemetry.
 
+Projects that need the complete automatic refresh lifecycle can import the packaged [adapter SDK](skills/burnlist/references/differential-testing-adapter-sdk.md). It supplies a serialized, deduplicating refresh queue, superseded-result suppression, a generic signal client, and atomic normalized Oven-bundle publication. Projects still own artifact checking, exact retention, telemetry execution, causal-successor rules, and projection into the normalized contract.
+
 A project with no canonical scenarios publishes the explicit empty bundle state; Burnlist shows `No Differential Testing scenarios` and does not discover legacy files.
 
 ## Install

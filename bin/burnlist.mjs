@@ -57,6 +57,11 @@ if (args[0] === "differential-testing" && args[1] === "schema") {
   process.exit(0);
 }
 
+if (args[0] === "differential-testing" && args[1] === "sdk") {
+  console.log(resolve(packageRoot, "skills", "burnlist", "scripts", "differential-testing-adapter-sdk.mjs"));
+  process.exit(0);
+}
+
 if (args[0] === "differential-testing" && args[1] === "validate") {
   if (!args[2]) {
     console.error("Usage: burnlist differential-testing validate <differential-testing.json>");
@@ -87,6 +92,7 @@ Usage:
   burnlist --stamp
   burnlist differential-testing validate <differential-testing.json>
   burnlist differential-testing schema
+  burnlist differential-testing sdk
   burnlist uninstall
 
 Options:

@@ -378,6 +378,7 @@ assertPublishablePackage();
 
 run(process.execPath, [
   "--test",
+  "skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs",
   "skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
   "skills/burnlist/scripts/repo-map.test.mjs",
 ]);
@@ -388,6 +389,7 @@ run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-r
 run(process.execPath, ["bin/burnlist.mjs", "--version"]);
 run(process.execPath, ["bin/burnlist.mjs", "--stamp"]);
 run(process.execPath, ["bin/burnlist.mjs", "differential-testing", "schema"]);
+run(process.execPath, ["bin/burnlist.mjs", "differential-testing", "sdk"]);
 
 scanSourceLeaks();
 
