@@ -92,6 +92,7 @@ const runsDir = resolve(launchCwd, args.get("runs-dir") ?? ".local/burnlist/runs
 const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
+let differentialTestingDataCache = null;
 const REPO_MAP_CACHE_MS = 2_000;
 
 function cachedRepoMap(repo) {
@@ -106,6 +107,105 @@ function cachedRepoMap(repo) {
     });
   repoMapCache.set(key, { expiresAt: now + REPO_MAP_CACHE_MS, promise });
   return promise;
+}
+
+function differentialTestingIndexCache(path) {
+  const readPath = resolve(realpathSync(dirname(path)), basename(path));
+  const stat = safeStat(readPath);
+  if (!stat?.isFile()) throw new Error("configured Differential Testing data is missing");
+  const signature = `${readPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
+  if (differentialTestingDataCache?.signature === signature) return differentialTestingDataCache;
+  const source = readTextFileWithLimit(readPath, maxOvenDataBytes, "Oven differential-testing data");
+  const payload = JSON.parse(source);
+  assertDifferentialTestingData(payload);
+  differentialTestingDataCache = {
+    signature,
+    readPath,
+    source,
+    sourceBytes: stat.size,
+    etag: `W/\"dt-${stat.ino}-${stat.size}-${Math.trunc(stat.mtimeMs)}\"`,
+    selectedScenarioId: payload.scenarioCatalog.selectedScenarioId,
+    scenarios: structuredClone(payload.scenarioCatalog.scenarios),
+    scenarioResponses: new Map(),
+  };
+  return differentialTestingDataCache;
+}
+
+function differentialTestingScenarioCache(index, scenarioId) {
+  const cached = index.scenarioResponses.get(scenarioId);
+  const scenariosDir = resolve(dirname(index.readPath), "scenarios");
+  const scenarioPath = resolve(scenariosDir, `${scenarioId}.json`);
+  const scenarioRelativePath = relative(scenariosDir, scenarioPath);
+  if (!scenarioRelativePath || scenarioRelativePath.startsWith("..") || resolve(scenariosDir, scenarioRelativePath) !== scenarioPath) {
+    throw Object.assign(new Error("scenario path escapes the published bundle"), { status: 400 });
+  }
+  const stat = safeStat(scenarioPath);
+  if (!stat?.isFile()) throw Object.assign(new Error(`published data for scenario ${scenarioId} is missing`), { status: 404 });
+  const signature = `${index.signature}\0${scenarioPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
+  if (cached?.signature === signature) return cached;
+  const sourcePayload = JSON.parse(readTextFileWithLimit(
+    scenarioPath,
+    maxOvenDataBytes,
+    `Differential Testing scenario ${scenarioId}`,
+  ));
+  assertDifferentialTestingData(sourcePayload);
+  if (sourcePayload.scenarioCatalog.selectedScenarioId !== scenarioId) {
+    throw Object.assign(new Error(`scenario file ${scenarioId} selects ${sourcePayload.scenarioCatalog.selectedScenarioId}`), { status: 422 });
+  }
+  const indexScenario = index.scenarios.find((scenario) => scenario.id === scenarioId);
+  const payloadScenario = sourcePayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === scenarioId);
+  if (JSON.stringify(payloadScenario) !== JSON.stringify(indexScenario)) {
+    throw Object.assign(new Error(`scenario file ${scenarioId} does not match its published catalog entry`), { status: 422 });
+  }
+  const payload = {
+    ...sourcePayload,
+    scenarioCatalog: { selectedScenarioId: scenarioId, scenarios: index.scenarios },
+  };
+  assertDifferentialTestingData(payload);
+  const source = JSON.stringify(payload);
+  const result = {
+    signature,
+    readPath: scenarioPath,
+    source,
+    sourceBytes: Buffer.byteLength(source),
+    etag: `W/\"dt-${stat.ino}-${stat.size}-${Math.trunc(stat.mtimeMs)}-${index.etag.slice(3, -1)}\"`,
+    selectedScenarioId: scenarioId,
+  };
+  index.scenarioResponses.set(scenarioId, result);
+  return result;
+}
+
+function sendDifferentialTestingData(req, res, cached) {
+  if (req.headers["if-none-match"] === cached.etag) {
+    res.writeHead(304, { etag: cached.etag, "cache-control": "no-store" });
+    res.end();
+    return;
+  }
+  const prefix = `${JSON.stringify({
+    ovenId: "differential-testing",
+    path: cached.readPath,
+    scenarioId: cached.selectedScenarioId,
+  }).slice(0, -1)},\"payload\":`;
+  const suffix = "}";
+  res.writeHead(200, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    etag: cached.etag,
+    "content-length": Buffer.byteLength(prefix) + cached.sourceBytes + Buffer.byteLength(suffix),
+  });
+  res.write(prefix);
+  res.write(cached.source);
+  res.end(suffix);
+}
+
+function warmDifferentialTestingData() {
+  const path = ovenDataBindings.get("differential-testing");
+  if (!path) return;
+  try {
+    differentialTestingIndexCache(path);
+  } catch {
+    // The request path reports validation errors; background warming remains silent.
+  }
 }
 
 function positiveInteger(value, name) {
@@ -982,11 +1082,13 @@ function runCloseCompleted() {
 if (closeCompletedMode) runCloseCompleted();
 
 function json(res, status, body) {
+  const serialized = JSON.stringify(body);
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
+    "content-length": Buffer.byteLength(serialized),
   });
-  res.end(JSON.stringify(body, null, 2));
+  res.end(serialized);
 }
 
 function html(res, status, body) {
@@ -1235,36 +1337,26 @@ const server = createServer(async (req, res) => {
       const path = ovenDataBindings.get(id);
       if (!path) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
-        const readPath = id === "differential-testing"
-          ? resolve(realpathSync(dirname(path)), basename(path))
-          : path;
+        if (id === "differential-testing") {
+          const index = differentialTestingIndexCache(path);
+          const requestedScenarioIds = url.searchParams.getAll("scenario");
+          if (requestedScenarioIds.length > 1) return json(res, 400, { error: "scenario must be supplied at most once" });
+          const requestedScenarioId = requestedScenarioIds[0] ?? "";
+          if (!requestedScenarioId || requestedScenarioId === index.selectedScenarioId) {
+            sendDifferentialTestingData(req, res, index);
+            return;
+          }
+          if (!/^[a-f0-9]{16}$/u.test(requestedScenarioId)) return json(res, 400, { error: "scenario must be a lowercase 16-character hexadecimal id" });
+          if (!index.scenarios.some((scenario) => scenario.id === requestedScenarioId)) return json(res, 404, { error: `scenario ${requestedScenarioId} is not in the published catalog` });
+          sendDifferentialTestingData(req, res, differentialTestingScenarioCache(index, requestedScenarioId));
+          return;
+        }
+        const readPath = path;
         if (!safeStat(readPath)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
         const indexPayload = JSON.parse(readTextFileWithLimit(readPath, maxOvenDataBytes, `Oven ${id} data`));
-        if (id !== "differential-testing") return json(res, 200, { ovenId: id, path: readPath, payload: indexPayload });
-        assertDifferentialTestingData(indexPayload);
-        const requestedScenarioIds = url.searchParams.getAll("scenario");
-        if (requestedScenarioIds.length > 1) return json(res, 400, { error: "scenario must be supplied at most once" });
-        const requestedScenarioId = requestedScenarioIds[0] ?? "";
-        if (!requestedScenarioId) return json(res, 200, { ovenId: id, path: readPath, scenarioId: indexPayload.scenarioCatalog.selectedScenarioId, payload: indexPayload });
-        if (!/^[a-f0-9]{16}$/u.test(requestedScenarioId)) return json(res, 400, { error: "scenario must be a lowercase 16-character hexadecimal id" });
-        if (!indexPayload.scenarioCatalog.scenarios.some((scenario) => scenario.id === requestedScenarioId)) return json(res, 404, { error: `scenario ${requestedScenarioId} is not in the published catalog` });
-        if (requestedScenarioId === indexPayload.scenarioCatalog.selectedScenarioId) return json(res, 200, { ovenId: id, path: readPath, scenarioId: requestedScenarioId, payload: indexPayload });
-        const scenariosDir = resolve(dirname(readPath), "scenarios");
-        const scenarioPath = resolve(scenariosDir, `${requestedScenarioId}.json`);
-        const scenarioRelativePath = relative(scenariosDir, scenarioPath);
-        if (!scenarioRelativePath || scenarioRelativePath.startsWith("..") || resolve(scenariosDir, scenarioRelativePath) !== scenarioPath) return json(res, 400, { error: "scenario path escapes the published bundle" });
-        if (!safeStat(scenarioPath)?.isFile()) return json(res, 404, { error: `published data for scenario ${requestedScenarioId} is missing` });
-        const scenarioPayload = JSON.parse(readTextFileWithLimit(scenarioPath, maxOvenDataBytes, `Differential Testing scenario ${requestedScenarioId}`));
-        assertDifferentialTestingData(scenarioPayload);
-        if (scenarioPayload.scenarioCatalog.selectedScenarioId !== requestedScenarioId) return json(res, 422, { error: `scenario file ${requestedScenarioId} selects ${scenarioPayload.scenarioCatalog.selectedScenarioId}` });
-        const indexScenario = indexPayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === requestedScenarioId);
-        const payloadScenario = scenarioPayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === requestedScenarioId);
-        if (JSON.stringify(payloadScenario) !== JSON.stringify(indexScenario)) return json(res, 422, { error: `scenario file ${requestedScenarioId} does not match its published catalog entry` });
-        const payload = { ...scenarioPayload, scenarioCatalog: { selectedScenarioId: requestedScenarioId, scenarios: indexPayload.scenarioCatalog.scenarios } };
-        assertDifferentialTestingData(payload);
-        json(res, 200, { ovenId: id, path: scenarioPath, scenarioId: requestedScenarioId, payload });
+        json(res, 200, { ovenId: id, path: readPath, payload: indexPayload });
       } catch (error) {
-        json(res, 422, {
+        json(res, Number.isInteger(error.status) ? error.status : 422, {
           error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
           issues: Array.isArray(error.issues) ? error.issues : undefined,
         });
@@ -1309,6 +1401,10 @@ const server = createServer(async (req, res) => {
     }
     json(res, 404, { error: "not found" });
   } catch (error) {
+    if (res.headersSent) {
+      res.destroy(error);
+      return;
+    }
     json(res, Number.isInteger(error.status) ? error.status : 400, { error: error.message || "request failed" });
   }
 });
@@ -1334,6 +1430,12 @@ function listen(port) {
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);
   });
+}
+
+if (!reportMode && ovenDataBindings.has("differential-testing")) {
+  warmDifferentialTestingData();
+  const differentialTestingWarmTimer = setInterval(warmDifferentialTestingData, 1_000);
+  differentialTestingWarmTimer.unref();
 }
 
 listen(initialPort);

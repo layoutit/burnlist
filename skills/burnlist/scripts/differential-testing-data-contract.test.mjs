@@ -418,6 +418,33 @@ test("chart failure bands honor normalized sample state instead of strict raw eq
   assert.equal(differentialSampleStateIsNonPass(4), true);
 });
 
+test("serialized decimal values at the declared tolerance boundary remain a match", () => {
+  const payload = buildPayload(...populatedCaptures());
+  const boundarySample = payload.fields[0].samples[1];
+  boundarySample[2] = 1.01;
+  assert.ok(Math.abs(boundarySample[1] - boundarySample[2]) > payload.fields[0].tolerance);
+  assert.equal(boundarySample[3], 0);
+  assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+});
+
+test("zero tolerance remains exact for numeric samples", () => {
+  const payload = buildPayload(...populatedCaptures());
+  const field = payload.fields[0];
+  field.tolerance = 0;
+  field.samples[1] = [1, 1, 1 + 5e-13, 0];
+  field.maxDelta = Math.max(...field.samples.map((sample) => Math.abs(sample[1] - sample[2])));
+  const result = validateDifferentialTestingData(payload);
+  assert.equal(result.ok, false);
+  assert.match(result.issues.map((entry) => entry.message).join("\n"), /disagrees with the values and tolerance/u);
+});
+
+test("dashboard JSON responses serialize compactly before sending headers", () => {
+  const source = readFileSync(resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs"), "utf8");
+  const helper = source.match(/function json\(res, status, body\) \{[\s\S]+?\n\}/u)?.[0] ?? "";
+  assert.match(helper, /const serialized = JSON\.stringify\(body\);[\s\S]+res\.writeHead[\s\S]+res\.end\(serialized\);/u);
+  assert.doesNotMatch(helper, /JSON\.stringify\(body, null, 2\)/u);
+});
+
 test("rejects a sample state that disagrees with values and tolerance", () => {
   const payload = buildPayload(...populatedCaptures());
   payload.fields[0].samples[2][3] = 0;
@@ -976,10 +1003,15 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
     candidate: { artifactSha256: "b".repeat(64) },
     summary: { failToPassCount: 1, passToFailCount: 2, netFailedSampleDelta: 1 },
   } };
+  payload.fields[0].samples = Array.from({ length: 2_000 }, (_, index) => [index, index, index, 0]);
   const before = differentialPayloadRevision(payload);
+  payload.fields[0].samples[0][2] = 1;
+  payload.fields[0].samples[0][3] = 1;
+  const afterSamples = differentialPayloadRevision(payload);
+  assert.notEqual(afterSamples, before);
   payload.telemetry.candidate.artifactSha256 = "c".repeat(64);
   const afterTelemetry = differentialPayloadRevision(payload);
-  assert.notEqual(afterTelemetry, before);
+  assert.notEqual(afterTelemetry, afterSamples);
   payload.exactSession = { strategy: "exact-first", status: "blocked", blockers: ["Missing checked frontier."] };
   const afterExact = differentialPayloadRevision(payload);
   assert.notEqual(afterExact, afterTelemetry);
@@ -1207,6 +1239,82 @@ test("live Differential Testing dashboard polls and updates only when the payloa
   assert.equal(clearedTimer, 17);
 });
 
+test("live Differential Testing dashboard reuses per-scenario ETags and skips unchanged payload JSON", async () => {
+  const oven = { detail: { cells: [] } };
+  const initialPayload = { publishedAt: "2026-01-01T12:00:00.000Z" };
+  const scenarioPayload = { publishedAt: "2026-01-01T12:00:02.000Z", scenario: "0123456789abcdef" };
+  const initialEtag = 'W/"initial"';
+  const requests = [];
+  const updatedPayloads = [];
+  let intervalCallback = null;
+  let initialPayloadRequests = 0;
+  let payloadJsonCalls = 0;
+  const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
+    fetchImpl: async (url, options) => {
+      requests.push([url, options]);
+      if (url === "/api/ovens/differential-testing") {
+        return { ok: true, async json() { return { oven }; } };
+      }
+      if (url === "/api/oven-data/differential-testing") {
+        initialPayloadRequests += 1;
+        if (initialPayloadRequests === 1) {
+          return {
+            ok: true,
+            status: 200,
+            headers: { get: (name) => name.toLowerCase() === "etag" ? initialEtag : null },
+            async json() {
+              payloadJsonCalls += 1;
+              return { payload: initialPayload };
+            },
+          };
+        }
+        return {
+          ok: false,
+          status: 304,
+          headers: { get: (name) => name.toLowerCase() === "etag" ? initialEtag : null },
+          async json() { assert.fail("304 response body must not be parsed"); },
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (name) => name.toLowerCase() === "etag" ? 'W/"scenario"' : null },
+        async json() {
+          payloadJsonCalls += 1;
+          return { payload: scenarioPayload };
+        },
+      };
+    },
+    setIntervalImpl: (callback) => {
+      intervalCallback = callback;
+      return 17;
+    },
+    clearIntervalImpl() {},
+    mount: (_root, _oven, payload) => {
+      assert.equal(payload, initialPayload);
+      return {
+        update: (_nextOven, nextPayload) => updatedPayloads.push(nextPayload),
+        setClientRefreshStatus() {},
+      };
+    },
+  });
+
+  await controller.ready;
+  await intervalCallback();
+  const unchangedRequest = requests.filter(([url]) => url === "/api/oven-data/differential-testing").at(-1);
+  assert.equal(new Headers(unchangedRequest[1].headers).get("if-none-match"), initialEtag);
+  assert.equal(payloadJsonCalls, 1);
+  assert.deepEqual(updatedPayloads, []);
+
+  await controller.selectScenario("0123456789abcdef");
+  const scenarioRequest = requests.at(-1);
+  assert.equal(scenarioRequest[0], "/api/oven-data/differential-testing?scenario=0123456789abcdef");
+  assert.equal(new Headers(scenarioRequest[1].headers).get("if-none-match"), null);
+  assert.equal(payloadJsonCalls, 2);
+  assert.deepEqual(updatedPayloads, [scenarioPayload]);
+  controller.stop();
+});
+
 test("live Differential Testing dashboard escapes an initial server error", async () => {
   const root = { innerHTML: "" };
   const controller = startDifferentialTestingLiveUpdates(root, {
@@ -1299,7 +1407,12 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
 
   const currentResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
   assert.equal(currentResponse.status, 200);
+  const currentEtag = currentResponse.headers.get("etag");
+  assert.match(currentEtag, /^W\/"dt-/u);
   assert.equal((await currentResponse.json()).scenarioId, current.scenarioCatalog.selectedScenarioId);
+  const unchangedCurrentResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`, { headers: { "If-None-Match": currentEtag } });
+  assert.equal(unchangedCurrentResponse.status, 304);
+  assert.equal(await unchangedCurrentResponse.text(), "");
   assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${current.scenarioCatalog.selectedScenarioId}`)).status, 200);
   const secondResponse = await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${secondId}`);
   assert.equal(secondResponse.status, 200);
@@ -1314,8 +1427,9 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
   const empty = buildPayload(...emptyCaptures());
   writeFileSync(resolve(bundleDir, "current.json"), `${JSON.stringify(empty)}\n`);
   rmSync(scenariosDir, { recursive: true, force: true });
-  const emptyResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
+  const emptyResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`, { headers: { "If-None-Match": currentEtag } });
   assert.equal(emptyResponse.status, 200);
+  assert.notEqual(emptyResponse.headers.get("etag"), currentEtag);
   assert.deepEqual((await emptyResponse.json()).payload.scenarioCatalog, { selectedScenarioId: null, scenarios: [] });
   assert.equal((await fetch(`${baseUrl}api/oven-data/differential-testing?scenario=${secondId}`)).status, 404);
 });

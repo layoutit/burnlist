@@ -1667,6 +1667,8 @@ export function startDifferentialTestingLiveUpdates(root, {
   let refreshQueued = false;
   let scenarioGeneration = 0;
   let stopped = false;
+  let activePayloadUrl = "";
+  const payloadCache = new Map();
   let selectedScenarioId = (() => {
     try { return new URLSearchParams(locationImpl?.search || "").get("scenario") || ""; }
     catch { return ""; }
@@ -1683,6 +1685,27 @@ export function startDifferentialTestingLiveUpdates(root, {
     return json[key];
   };
 
+  const readPayload = async (url) => {
+    const cached = payloadCache.get(url);
+    const response = await fetchImpl(url, {
+      cache: "no-store",
+      ...(cached?.etag ? { headers: { "If-None-Match": cached.etag } } : {}),
+    });
+    if (response.status === 304) {
+      if (!cached) throw new Error("Differential Testing data returned 304 before an initial payload was loaded.");
+      return { ...cached, notModified: true };
+    }
+    const json = await response.json();
+    if (!response.ok) throw new Error(json.error || "Could not load Differential Testing data.");
+    const result = {
+      payload: json.payload,
+      etag: response.headers?.get?.("etag") || "",
+      notModified: false,
+    };
+    payloadCache.set(url, result);
+    return result;
+  };
+
   const refresh = async () => {
     if (stopped) return;
     if (refreshInFlight) {
@@ -1692,18 +1715,25 @@ export function startDifferentialTestingLiveUpdates(root, {
     refreshInFlight = true;
     const requestGeneration = scenarioGeneration;
     const requestScenarioId = selectedScenarioId;
+    const requestPayloadUrl = payloadUrl(requestScenarioId);
     try {
-      const [nextOven, payload] = await Promise.all([
+      const [nextOven, payloadResult] = await Promise.all([
         oven ?? read("/api/ovens/differential-testing", "oven", "Could not load Differential Testing Oven."),
-        read(payloadUrl(requestScenarioId), "payload", "Could not load Differential Testing data."),
+        readPayload(requestPayloadUrl),
       ]);
       if (stopped || requestGeneration !== scenarioGeneration) return;
-      const nextRevision = differentialPayloadRevision(payload);
+      const payload = payloadResult.payload;
+      if (payloadResult.notModified && dashboard && activePayloadUrl === requestPayloadUrl) {
+        dashboard.setClientRefreshStatus?.(null);
+        return;
+      }
+      const nextRevision = payloadResult.etag || differentialPayloadRevision(payload);
       oven = nextOven;
       if (!dashboard) dashboard = mount(root, oven, payload, { onScenarioChange: selectScenario });
-      else if (nextRevision !== payloadRevision) dashboard.update(oven, payload);
+      else if (nextRevision !== payloadRevision || activePayloadUrl !== requestPayloadUrl) dashboard.update(oven, payload);
       else dashboard.setClientRefreshStatus?.(null);
       payloadRevision = nextRevision;
+      activePayloadUrl = requestPayloadUrl;
     } catch (error) {
       if (!stopped) {
         dashboard?.setClientRefreshStatus?.("failed");

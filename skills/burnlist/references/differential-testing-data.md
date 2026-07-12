@@ -40,6 +40,8 @@ The validator recomputes:
 
 `failedSampleCount` counts state `1`. `missingSampleCount` counts states `2` through `4`. Every summary `total` equals `passed + failed + blocked`.
 
+Numeric matches include a scale-aware floating-point boundary allowance when the serialized delta is equal to a positive declared tolerance. This prevents decimal JSON round-trips from turning an exact tolerance boundary into a mismatch; zero tolerance remains exact and values materially above tolerance still fail.
+
 A blocked payload names at least one blocker. It may retain valid partial rows or publish no rows when normalization is unsafe. It cannot manufacture passed or failed fields from unavailable data.
 
 ## Scenario Bundle
@@ -229,3 +231,4 @@ Only after `result: "complete"` should a project run its full tool suite once, o
 - Exact authority remains contract data and does not add a non-template dashboard panel.
 - Refresh state is telemetry only and never changes the exact retention result.
 - Polling observes primary results, telemetry seals, refresh state, scenario selection, and the complete compact retained session so evidence-only changes refresh without a page reload.
+- The server validates and caches each atomic payload generation, emits a distinct `ETag` per scenario response, and returns `304 Not Modified` for an unchanged scenario so polling never reparses or retransmits the full payload.

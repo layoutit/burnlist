@@ -57,7 +57,18 @@ function scalar(value) {
 }
 
 function valuesMatch(left, right, tolerance) {
-  if (typeof left === "number" && typeof right === "number") return Math.abs(left - right) <= tolerance;
+  if (typeof left === "number" && typeof right === "number") {
+    const delta = Math.abs(left - right);
+    if (delta <= tolerance) return true;
+    if (tolerance === 0) return false;
+    const roundingAllowance = Number.EPSILON * Math.max(
+      Math.abs(left),
+      Math.abs(right),
+      Math.abs(tolerance),
+      Number.MIN_VALUE,
+    ) * 4;
+    return delta - tolerance <= roundingAllowance;
+  }
   return Object.is(left, right);
 }
 

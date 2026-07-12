@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,10 +9,15 @@ import test from "node:test";
 
 import { buildPayload } from "../examples/differential-testing/adapter.mjs";
 import {
+  DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION,
+  createDifferentialTestingOutboxDispatcher,
+  createDifferentialTestingProjectionWorker,
   createDifferentialTestingRefreshQueue,
   createDifferentialTestingWorkerHandler,
+  enqueueDifferentialTestingOutboxEvent,
   publishDifferentialTestingOvenBundle,
-  submitDifferentialTestingRequest,
+  stageDifferentialTestingOutboxEvent,
+  promoteDifferentialTestingOutboxEvent,
 } from "./differential-testing-adapter-sdk.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,12 +34,12 @@ test("generic refresh queue serializes scenarios and discards superseded work", 
   try {
     const queue = createDifferentialTestingRefreshQueue({
       root,
-      stateSchema: "fixture-refresh-state@1",
+      stateSchema: "fixture-refresh-state@2",
       validateRequest: async ({ request }) => structuredClone(request.job),
       validateStoredJob() {},
       scenarioIdentity: (job) => ({ scenarioId: job.scenarioId, replay: job.replay }),
       assertCausalSuccessor({ current, candidate: next }) {
-        if (next.parentRevision !== current.revision) {
+        if (current && next.parentRevision !== current.revision) {
           const error = new Error("not a causal successor");
           error.status = 409;
           throw error;
@@ -84,7 +89,7 @@ test("generic refresh queue automatically restores interrupted work and rejects 
     let runs = 0;
     const options = {
       root,
-      stateSchema: "fixture-refresh-state@1",
+      stateSchema: "fixture-refresh-state@2",
       validateRequest: async ({ request }) => structuredClone(request.job),
       validateStoredJob() {},
       scenarioIdentity: (entry) => ({ scenarioId: entry.scenarioId }),
@@ -112,9 +117,55 @@ test("generic refresh queue automatically restores interrupted work and rejects 
     await resumed.idle();
     resumed.close();
 
+    state.schema = "fixture-refresh-state@1";
+    await writeFile(first.statePath, `${JSON.stringify(state)}\n`);
+    assert.throws(() => createDifferentialTestingRefreshQueue(options), /Invalid Differential Testing refresh state: shape mismatch/u);
+    state.schema = "fixture-refresh-state@2";
     state.cadenceFrames = 10;
     await writeFile(first.statePath, `${JSON.stringify(state)}\n`);
     assert.throws(() => createDifferentialTestingRefreshQueue(options), /Invalid Differential Testing refresh state: shape mismatch/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("refresh queue selects an existing scenario and invalidates projection without scheduling telemetry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-selection-"));
+  const invalidations = [];
+  let runs = 0;
+  try {
+    const queue = createDifferentialTestingRefreshQueue({
+      root,
+      stateSchema: "fixture-refresh-state@2",
+      validateRequest: async ({ request }) => structuredClone(request.job),
+      validateStoredJob() {},
+      scenarioIdentity: (entry) => ({ scenarioId: entry.scenarioId }),
+      runTelemetry: async ({ request }) => {
+        runs += 1;
+        return { exitCode: 0, staged: { requestId: request.requestId } };
+      },
+      publishTelemetry: ({ request }) => ({ requestId: request.requestId }),
+      invalidateProjection: (entry) => invalidations.push(entry),
+    });
+    await queue.accept({ job: job("1111111111111111", "a", "1", "0") });
+    await queue.accept({ job: job("2222222222222222", "b", "1", "0") });
+    await queue.idle();
+    const runsBeforeSelection = runs;
+    const revisionBeforeSelection = queue.snapshot().revision;
+
+    const selected = queue.selectScenario("1111111111111111");
+    assert.equal(selected.selectedScenarioId, "1111111111111111");
+    assert.equal(selected.revision, revisionBeforeSelection + 1);
+    const selectedAgain = queue.selectScenario("1111111111111111");
+    assert.equal(selectedAgain.revision, selected.revision + 1);
+    assert.equal(queue.snapshot().selectedScenarioId, "1111111111111111");
+    assert.equal(runs, runsBeforeSelection);
+    assert.deepEqual(invalidations.slice(-2).map((entry) => entry.reason), ["scenario-selected", "scenario-selected"]);
+    assert.throws(
+      () => queue.selectScenario("3333333333333333"),
+      (error) => error?.status === 404,
+    );
+    queue.close();
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -124,12 +175,13 @@ test("generic refresh queue locks one store and fails closed on malformed callba
   const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-hardening-"));
   const base = {
     root,
-    stateSchema: "fixture-refresh-state@1",
+    stateSchema: "fixture-refresh-state@2",
     validateRequest: async ({ request }) => structuredClone(request.job),
     validateStoredJob() {},
     scenarioIdentity: (entry) => ({ scenarioId: entry.scenarioId }),
     runTelemetry: async () => undefined,
     publishTelemetry: ({ request }) => ({ requestId: request.requestId }),
+    classifyTelemetryError: () => "permanent",
   };
   try {
     const queue = createDifferentialTestingRefreshQueue(base);
@@ -140,14 +192,11 @@ test("generic refresh queue locks one store and fails closed on malformed callba
     assert.match(queue.scenarioStatus("1111111111111111").error, /runTelemetry must return/u);
     queue.close();
 
-    const asyncPublisher = createDifferentialTestingRefreshQueue({
+    assert.throws(() => createDifferentialTestingRefreshQueue({
       ...base,
       runTelemetry: async ({ request }) => ({ exitCode: 0, staged: { requestId: request.requestId } }),
-      onStateChange: async () => { throw new Error("async publication failed"); },
-    });
-    assert.equal(asyncPublisher.snapshot().ovenPublication.status, "failed");
-    assert.match(asyncPublisher.snapshot().ovenPublication.error, /must be synchronous/u);
-    asyncPublisher.close();
+      invalidateProjection: async () => {},
+    }), /invalidateProjection must be synchronous/u);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -169,6 +218,283 @@ test("generic refresh queue rejects symlinked stores", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(outside, { recursive: true, force: true });
+  }
+});
+
+test("SDK v2 refresh queue times out telemetry, retries transient failures, and invalidates projection durably", async () => {
+  assert.equal(DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION, 2);
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-retry-"));
+  const invalidations = [];
+  let runs = 0;
+  let activeTimedOutRuns = 0;
+  try {
+    const queue = createDifferentialTestingRefreshQueue({
+      root,
+      stateSchema: "fixture-refresh-state@2",
+      validateRequest: async ({ request }) => structuredClone(request.job),
+      validateStoredJob() {},
+      scenarioIdentity: (entry) => ({ scenarioId: entry.scenarioId }),
+      assertCausalSuccessor({ current, candidate }) {
+        if (current === null && candidate.revision !== "1") throw new Error("initial request required");
+      },
+      runTelemetry: async ({ request, signal }) => {
+        runs += 1;
+        if (runs === 1) {
+          activeTimedOutRuns += 1;
+          await new Promise((resolveWait, rejectWait) => {
+            signal.addEventListener("abort", () => {
+              setTimeout(() => {
+                activeTimedOutRuns -= 1;
+                rejectWait(new Error("aborted"));
+              }, 5);
+            }, { once: true });
+          });
+        }
+        return { exitCode: 0, staged: { requestId: request.requestId } };
+      },
+      publishTelemetry: ({ request }) => ({ requestId: request.requestId }),
+      invalidateProjection: (value) => invalidations.push(value),
+      telemetryTimeoutMs: 5,
+      telemetryAbortGraceMs: 50,
+      telemetryRetryBaseMs: 1,
+      telemetryRetryMaxMs: 2,
+    });
+    await queue.accept({ job: job("1111111111111111", "a", "1", "0") });
+    await queue.idle();
+    assert.equal(runs, 2);
+    assert.equal(queue.scenarioStatus("1111111111111111").status, "complete");
+    assert.equal(queue.scenarioStatus("1111111111111111").attempts, 2);
+    assert.equal(activeTimedOutRuns, 0);
+    assert.ok(invalidations.some((entry) => entry.reason === "request-accepted"));
+    assert.ok(invalidations.some((entry) => entry.reason === "telemetry-transition"));
+    queue.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("refresh queue terminates transient telemetry after the configured attempt budget", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-retry-exhaustion-"));
+  let runs = 0;
+  try {
+    const queue = createDifferentialTestingRefreshQueue({
+      root,
+      stateSchema: "fixture-refresh-state@2",
+      validateRequest: async ({ request }) => structuredClone(request.job),
+      validateStoredJob() {},
+      scenarioIdentity: (entry) => ({ scenarioId: entry.scenarioId }),
+      async runTelemetry() {
+        runs += 1;
+        throw new Error("runner unavailable");
+      },
+      publishTelemetry: ({ request }) => ({ requestId: request.requestId }),
+      telemetryMaxAttempts: 2,
+      telemetryRetryBaseMs: 1,
+      telemetryRetryMaxMs: 1,
+    });
+    await queue.accept({ job: job("1111111111111111", "a", "1", "0") });
+    await queue.idle();
+    const scenario = queue.scenarioStatus("1111111111111111");
+    assert.equal(runs, 2);
+    assert.equal(scenario.status, "failed");
+    assert.equal(scenario.attempts, 2);
+    assert.match(scenario.error, /runner unavailable.*retry exhausted after 2 attempts/u);
+    queue.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("filesystem outbox stages raw events and dispatcher sorts, retries, acknowledges, and rejects", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-outbox-"));
+  const firstId = "1".repeat(64);
+  const secondId = "2".repeat(64);
+  const rejectedId = "3".repeat(64);
+  const calls = [];
+  let firstAttempts = 0;
+  let dispatcher = null;
+  let resumed = null;
+  try {
+    const first = outboxEvent(firstId, "2026-01-01T00:00:00.000Z");
+    const second = outboxEvent(secondId, "2026-01-01T00:00:01.000Z");
+    const rejected = outboxEvent(rejectedId, "2026-01-01T00:00:02.000Z");
+    assert.equal(stageDifferentialTestingOutboxEvent({ root, event: second }).status, "staged");
+    assert.equal(promoteDifferentialTestingOutboxEvent({ root, requestId: secondId }).status, "queued");
+    assert.equal(enqueueDifferentialTestingOutboxEvent({ root, event: first }).status, "queued");
+    assert.equal(enqueueDifferentialTestingOutboxEvent({ root, event: first }).status, "already-queued");
+    assert.equal(enqueueDifferentialTestingOutboxEvent({ root, event: rejected }).status, "queued");
+
+    dispatcher = createDifferentialTestingOutboxDispatcher({
+      root,
+      retryBaseMs: 20,
+      retryMaxMs: 20,
+      pollIntervalMs: 1,
+      maxAcknowledgedEvents: 1,
+      maxRejectedEvents: 1,
+      async deliver(event, context) {
+        calls.push(event.requestId);
+        assert.match(context.eventSha256, /^[a-f0-9]{64}$/u);
+        assert.ok(context.eventPath.endsWith(`${event.requestId}.json`));
+        if (event.requestId === firstId && firstAttempts++ === 0) throw new Error("temporary delivery failure");
+        if (event.requestId === rejectedId) {
+          const error = new Error("invalid event");
+          error.permanent = true;
+          throw error;
+        }
+      },
+    });
+    dispatcher.start();
+    await dispatcher.idle();
+    assert.equal(calls[0], firstId);
+    assert.ok(calls.indexOf(secondId) < calls.indexOf(rejectedId));
+    assert.equal(calls.filter((id) => id === firstId).length, 2);
+    assert.equal(dispatcher.snapshot().entries[firstId], undefined);
+    const acknowledged = await readdir(join(root, ".local", "differential-testing", "outbox", "acked"));
+    assert.equal(acknowledged.length, 1);
+    const acknowledgedId = acknowledged[0].replace(/\.json$/u, "");
+    assert.equal(enqueueDifferentialTestingOutboxEvent({ root, event: acknowledgedId === firstId ? first : second }).status, "already-acked");
+    assert.equal(enqueueDifferentialTestingOutboxEvent({ root, event: rejected }).status, "already-rejected");
+    dispatcher.close();
+    dispatcher = null;
+
+    resumed = createDifferentialTestingOutboxDispatcher({ root, async deliver() {} });
+    assert.deepEqual(resumed.snapshot().entries, {});
+    resumed.close();
+    resumed = null;
+  } finally {
+    try { dispatcher?.close(); } catch {}
+    try { resumed?.close(); } catch {}
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("outbox persists in-flight delivery as immediately retryable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-outbox-in-flight-"));
+  const requestId = "9".repeat(64);
+  const attemptedAt = "2026-01-01T00:00:05.000Z";
+  let releaseDelivery;
+  const delivery = new Promise((resolveDelivery) => { releaseDelivery = resolveDelivery; });
+  let dispatcher = null;
+  try {
+    enqueueDifferentialTestingOutboxEvent({ root, event: outboxEvent(requestId, "2026-01-01T00:00:00.000Z") });
+    dispatcher = createDifferentialTestingOutboxDispatcher({
+      root,
+      now: () => attemptedAt,
+      async deliver() { await delivery; },
+    });
+    dispatcher.start();
+    await waitFor(() => dispatcher.snapshot().entries[requestId]?.attempts === 1);
+    const persisted = JSON.parse(await readFile(dispatcher.statePath, "utf8"));
+    assert.equal(persisted.entries[requestId].lastAttemptAt, attemptedAt);
+    assert.equal(persisted.entries[requestId].nextAttemptAt, attemptedAt);
+    assert.ok(Number.isFinite(Date.parse(persisted.entries[requestId].nextAttemptAt)));
+    releaseDelivery();
+    await dispatcher.idle();
+    dispatcher.close();
+    dispatcher = null;
+  } finally {
+    releaseDelivery?.();
+    try { dispatcher?.close(); } catch {}
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("outbox and projection retry state resume after worker restart", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-retry-restart-"));
+  const requestId = "4".repeat(64);
+  try {
+    enqueueDifferentialTestingOutboxEvent({ root, event: outboxEvent(requestId, "2026-01-01T00:00:00.000Z") });
+    const firstDispatcher = createDifferentialTestingOutboxDispatcher({
+      root,
+      retryBaseMs: 20,
+      retryMaxMs: 20,
+      pollIntervalMs: 1,
+      async deliver() { throw new Error("offline"); },
+    });
+    firstDispatcher.start();
+    await waitFor(() => firstDispatcher.snapshot().entries[requestId]?.lastError === "offline");
+    const persistedNextAttempt = firstDispatcher.snapshot().entries[requestId].nextAttemptAt;
+    firstDispatcher.close();
+
+    let delivered = 0;
+    const resumedDispatcher = createDifferentialTestingOutboxDispatcher({
+      root,
+      retryBaseMs: 20,
+      retryMaxMs: 20,
+      pollIntervalMs: 1,
+      async deliver() { delivered += 1; },
+    });
+    assert.equal(resumedDispatcher.snapshot().entries[requestId].nextAttemptAt, persistedNextAttempt);
+    resumedDispatcher.start();
+    await resumedDispatcher.idle();
+    assert.equal(delivered, 1);
+    resumedDispatcher.close();
+
+    const firstProjection = createDifferentialTestingProjectionWorker({
+      root,
+      retryBaseMs: 20,
+      retryMaxMs: 20,
+      async publish() { throw new Error("offline"); },
+    });
+    firstProjection.invalidate({ revision: "1", reason: "fixture" });
+    firstProjection.start();
+    await waitFor(() => firstProjection.snapshot().status === "retrying");
+    const projectionNextAttempt = firstProjection.snapshot().nextAttemptAt;
+    firstProjection.close();
+
+    let projected = 0;
+    const resumedProjection = createDifferentialTestingProjectionWorker({
+      root,
+      retryBaseMs: 20,
+      retryMaxMs: 20,
+      async publish() { projected += 1; },
+    });
+    assert.equal(resumedProjection.snapshot().status, "retrying");
+    assert.equal(resumedProjection.snapshot().nextAttemptAt, projectionNextAttempt);
+    resumedProjection.start();
+    await resumedProjection.idle();
+    assert.equal(projected, 1);
+    assert.equal(resumedProjection.snapshot().status, "complete");
+    resumedProjection.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("projection worker coalesces invalidations and retries publication without blocking invalidation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-adapter-projection-"));
+  const calls = [];
+  const releases = [];
+  let failures = 1;
+  try {
+    const projection = createDifferentialTestingProjectionWorker({
+      root,
+      retryBaseMs: 1,
+      retryMaxMs: 2,
+      async publish(request) {
+        calls.push(request);
+        if (failures-- > 0) throw new Error("temporary projection failure");
+        if (request.revision === "1") await new Promise((resolveRelease) => releases.push(resolveRelease));
+      },
+    });
+    projection.invalidate({ revision: "1", reason: "refresh-state", scenarioId: "1111111111111111" });
+    projection.start();
+    await waitFor(() => calls.length === 2);
+    projection.invalidate({ revision: "2", reason: "session-published", scenarioId: "1111111111111111" });
+    projection.invalidate({ revision: "2", reason: "telemetry-complete", scenarioId: "1111111111111111" });
+    releases.shift()();
+    await projection.idle();
+    assert.deepEqual(calls.map((entry) => entry.revision), ["1", "1", "2"]);
+    assert.deepEqual(calls[2].reasons, ["session-published", "telemetry-complete"]);
+    assert.equal(projection.snapshot().status, "complete");
+    assert.equal(projection.snapshot().published.revision, "2");
+    projection.close();
+
+    const resumed = createDifferentialTestingProjectionWorker({ root, async publish() {} });
+    assert.equal(resumed.snapshot().status, "complete");
+    resumed.close();
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 
@@ -225,27 +551,6 @@ test("generic Oven publisher validates and atomically switches a scenario bundle
   }
 });
 
-test("generic signal client preserves accepted, rejected, and unavailable outcomes", async () => {
-  const accepted = await submitDifferentialTestingRequest({
-    endpoint: "http://worker.invalid/api/improvements",
-    request: { id: "accepted" },
-    fetchImpl: async () => ({ ok: true, async json() { return { status: "queued" }; } }),
-  });
-  assert.equal(accepted.status, "queued");
-  const rejected = await submitDifferentialTestingRequest({
-    endpoint: "http://worker.invalid/api/improvements",
-    request: { id: "rejected" },
-    fetchImpl: async () => ({ ok: false, status: 409, async json() { return { error: "branched" }; } }),
-  });
-  assert.deepEqual({ status: rejected.status, httpStatus: rejected.httpStatus, error: rejected.error }, { status: "rejected", httpStatus: 409, error: "branched" });
-  const unavailable = await submitDifferentialTestingRequest({
-    endpoint: "http://worker.invalid/api/improvements",
-    request: { id: "offline" },
-    fetchImpl: async () => { throw new Error("offline"); },
-  });
-  assert.equal(unavailable.status, "unavailable");
-});
-
 test("generic worker handler exposes bounded health, status, and submission routes", async () => {
   const accepted = [];
   const queue = {
@@ -273,12 +578,14 @@ test("generic worker handler exposes bounded health, status, and submission rout
     assert.deepEqual(await health.json(), { status: "ok", service: "fixture-worker" });
     const status = await fetch(`${origin}/api/status?scenario=1111111111111111`);
     assert.deepEqual(await status.json(), { scenarioId: "1111111111111111", refresh: { scenarioId: "1111111111111111", status: "queued" } });
-    const submission = await fetch(`${origin}/api/improvements`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: "fixture" }) });
+    const submission = await fetch(`${origin}/api/events`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: "fixture" }) });
     assert.equal(submission.status, 202);
     assert.deepEqual(accepted, [{ id: "fixture" }]);
-    const falseSuccess = await fetch(`${origin}/api/improvements`, { method: "POST", body: JSON.stringify({ reject: true }) });
+    const retired = await fetch(`${origin}/api/improvements`, { method: "POST", body: JSON.stringify({ id: "retired" }) });
+    assert.equal(retired.status, 404);
+    const falseSuccess = await fetch(`${origin}/api/events`, { method: "POST", body: JSON.stringify({ reject: true }) });
     assert.equal(falseSuccess.status, 500);
-    const oversized = await fetch(`${origin}/api/improvements`, { method: "POST", body: JSON.stringify({ value: "x".repeat(100) }) });
+    const oversized = await fetch(`${origin}/api/events`, { method: "POST", body: JSON.stringify({ value: "x".repeat(100) }) });
     assert.equal(oversized.status, 413);
   } finally {
     await new Promise((resolveClose, rejectClose) => server.close((error) => error ? rejectClose(error) : resolveClose()));
@@ -293,6 +600,16 @@ function job(scenarioId, requestId, revision, parentRevision) {
     revision,
     parentRevision,
     replay: `${scenarioId}.json`,
+  };
+}
+
+function outboxEvent(requestId, requestedAt) {
+  return {
+    schema: "fixture-differential-testing-event@1",
+    requestId,
+    requestedAt,
+    scenarioId: requestId.slice(0, 16),
+    kind: "session-published",
   };
 }
 
