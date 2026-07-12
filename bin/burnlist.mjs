@@ -6,6 +6,15 @@ import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const knownSubcommands = new Set([
+  "uninstall",
+  "differential-testing",
+  "oven",
+  "register",
+  "unregister",
+  "roots",
+  "init",
+]);
 
 function npmGlobalPrefix() {
   let current = packageRoot;
@@ -87,6 +96,11 @@ if (args[0] === "differential-testing" && ["validate", "validate-bundle"].includ
   }
 }
 
+if (args[0] && !args[0].startsWith("--") && !["-h", "-v"].includes(args[0]) && !knownSubcommands.has(args[0])) {
+  console.error(`Unknown command: ${args[0]}`);
+  process.exit(2);
+}
+
 if (args[0] !== "oven" && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
@@ -101,6 +115,10 @@ Usage:
   burnlist differential-testing schema
   burnlist differential-testing sdk
   burnlist oven <list|view|create|update> ...
+  burnlist register [path]
+  burnlist unregister [path]
+  burnlist roots [--prune]
+  burnlist init [path] [--track]
   burnlist uninstall
 
 Options:
@@ -123,6 +141,8 @@ if (args[0] !== "oven" && (args.includes("--version") || args.includes("-v"))) {
 
 if (args[0] === "oven") {
   await import("../skills/burnlist/scripts/oven-cli.mjs");
+} else if (["register", "unregister", "roots", "init"].includes(args[0])) {
+  await import("../skills/burnlist/scripts/registry-cli.mjs");
 } else {
   await import("../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
 }

@@ -2,7 +2,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import {
-  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -15,6 +14,9 @@ import {
 } from "node:fs";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
+import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
+import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
 import {
   assertKnownKeys,
   boundedText,
@@ -40,7 +42,6 @@ const allowedArgs = new Set([
   "close-completed",
   "digest",
   "host",
-  "max-history-entries",
   "max-oven-data-bytes",
   "max-plan-bytes",
   "oven-data",
@@ -83,17 +84,15 @@ const host = args.get("host") ?? "127.0.0.1";
 const initialPort = positiveInteger(args.get("port") ?? process.env.PORT ?? "4510", "port");
 const autoPort = args.has("auto-port");
 const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "max-plan-bytes");
-const maxHistoryEntries = positiveInteger(args.get("max-history-entries") ?? "1000", "max-history-entries");
 const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
-const historyPath = resolve(stateDir, "index.history.jsonl");
 const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dashboardDistDir = resolve(skillDir, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
-const runsDir = resolve(launchCwd, args.get("runs-dir") ?? ".local/burnlist/runs");
+const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
@@ -667,37 +666,12 @@ function safeStat(path) {
 }
 
 function candidateRepoRoots() {
-  const roots = new Set();
-  const addIfRepo = (root) => {
-    const burnlistsRoot = join(root, "notes", "burnlists");
-    if (safeStat(burnlistsRoot)?.isDirectory()) roots.add(resolve(root));
-  };
-  const addRootAndChildren = (root) => {
-    const stat = safeStat(root);
-    if (!stat?.isDirectory()) return;
-    addIfRepo(root);
-    for (const name of readdirSync(root)) {
-      if (name.startsWith(".")) continue;
-      const child = join(root, name);
-      if (safeStat(child)?.isDirectory()) addIfRepo(child);
-    }
-  };
-  const explicit = String(args.get("scan-root") ?? "")
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-  if (explicit.length) {
-    for (const root of explicit) addRootAndChildren(resolve(launchCwd, root));
-  } else {
-    addRootAndChildren(launchCwd);
-    if (process.env.HOME) addRootAndChildren(resolve(process.env.HOME, "fed"));
-  }
-  return [...roots].sort((a, b) => a.localeCompare(b));
+  return observerRepoRoots({ cwd: launchCwd, home: os.homedir(), scanRoot: args.get("scan-root") });
 }
 
-function burnlistPaths() {
+function burnlistPathsFor(repoRoots) {
   const paths = [];
-  for (const repoRoot of candidateRepoRoots()) {
+  for (const repoRoot of repoRoots) {
     for (const lifecycle of LIFECYCLES) {
       const lifecycleRoot = join(repoRoot, "notes", "burnlists", lifecycle.folder);
       if (!safeStat(lifecycleRoot)?.isDirectory()) continue;
@@ -709,6 +683,10 @@ function burnlistPaths() {
     }
   }
   return paths.sort((a, b) => a.localeCompare(b));
+}
+
+function burnlistPaths() {
+  return burnlistPathsFor(candidateRepoRoots());
 }
 
 function lifecycleForPlan(path) {
@@ -974,10 +952,15 @@ function createBurnRun(value) {
     summary: {},
     sections: [],
   };
-  const path = atomicDirectory(runsDir, id, {
+  const files = {
     "run.json": `${JSON.stringify(record, null, 2)}\n`,
     "instructions.md": `${oven.instructions.trim()}\n`,
     "detail.json": `${JSON.stringify(oven.detail, null, 2)}\n`,
+  };
+  const path = withRepoStateLock(repo.root, () => {
+    if (legacyRunsDir) return atomicDirectory(legacyRunsDir, id, files);
+    const target = containedJoin(repo.root, "runs", id);
+    return atomicDirectory(dirname(target), basename(target), files);
   });
   return { ...record, ovenName: oven.name, path };
 }
@@ -985,25 +968,31 @@ function createBurnRun(value) {
 function readBurnRun(id) {
   const safeId = boundedText(id, "Run id", 48);
   if (!/^\d{8}-\d{6}-[a-f0-9]{6}$/u.test(safeId)) throw new Error("Invalid run id.");
-  const path = join(runsDir, safeId, "run.json");
-  if (!safeStat(path)?.isFile()) return null;
-  const record = JSON.parse(readTextFileWithLimit(path, 131072, "Burn run"));
-  assertKnownKeys(record, new Set([
-    "schemaVersion",
-    "id",
-    "ovenId",
-    "repoRoot",
-    "repo",
-    "title",
-    "status",
-    "createdAt",
-    "updatedAt",
-    "inputs",
-    "summary",
-    "sections",
-  ]), "Burn run");
-  ovenId(record.ovenId);
-  return record;
+  const roots = legacyRunsDir ? [legacyRunsDir] : candidateRepoRoots().map((root) => join(repoStateDir(root), "runs"));
+  for (const root of roots) {
+    const path = join(root, safeId, "run.json");
+    if (!safeStat(path)?.isFile()) continue;
+    // Run ids are unique, so the first existing run.json is authoritative: a corrupt record
+    // surfaces as an error (not a 404).
+    const record = JSON.parse(readTextFileWithLimit(path, 131072, "Burn run"));
+    assertKnownKeys(record, new Set([
+      "schemaVersion",
+      "id",
+      "ovenId",
+      "repoRoot",
+      "repo",
+      "title",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "inputs",
+      "summary",
+      "sections",
+    ]), "Burn run");
+    ovenId(record.ovenId);
+    return record;
+  }
+  return null;
 }
 
 async function readJsonRequest(req) {
@@ -1079,7 +1068,15 @@ function selectedBurnlist(url) {
   const burnlists = discoverBurnlists();
   const requestedPlan = url.searchParams.get("plan");
   if (requestedPlan) {
-    const match = burnlists.find((entry) => entry.planPath === requestedPlan);
+    // Discovered plan paths are canonical (roots are realpath'd); match a raw request path
+    // against both its literal and canonical forms.
+    const planCandidates = new Set([requestedPlan]);
+    try {
+      planCandidates.add(realpathSync(requestedPlan));
+    } catch {
+      // A plan path that cannot be realpath'd is matched verbatim.
+    }
+    const match = burnlists.find((entry) => planCandidates.has(entry.planPath));
     return match ? { burnlist: match, burnlists } : { error: `No Burnlist found for ${requestedPlan}`, burnlists };
   }
   const route = routeSelection(url);
@@ -1092,32 +1089,7 @@ function selectedBurnlist(url) {
     return { error: `No Burnlist found for ${repo}/${id}`, burnlists };
   }
   const active = burnlists.filter((entry) => entry.status === "active" && !entry.errors);
-  if (active.length === 1) return { burnlist: active[0], burnlists };
   return { error: active.length ? "Select a Burnlist." : "No active Burnlist found.", burnlists };
-}
-
-function appendHistory(snapshot) {
-  if (reportMode) return;
-  mkdirSync(stateDir, { recursive: true });
-  appendFileSync(historyPath, `${JSON.stringify(snapshot)}\n`);
-  const rows = readHistory();
-  writeFileSync(historyPath, rows.map((row) => JSON.stringify(row)).join("\n") + (rows.length ? "\n" : ""));
-}
-
-function readHistory() {
-  if (!existsSync(historyPath)) return [];
-  return readFileSync(historyPath, "utf8")
-    .split(/\r?\n/u)
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .slice(-maxHistoryEntries);
 }
 
 function payloadForPlan(selection) {
@@ -1132,7 +1104,6 @@ function payloadForPlan(selection) {
   const percent = total ? Math.round((done / total) * 100) : 0;
   const generatedAt = new Date().toISOString();
   const current = { time: generatedAt, planPath: selection.planPath, done, remaining, total, percent };
-  appendHistory(current);
   const ledgerHistory = plan.completed
     .map((entry, index) => {
       const itemDone = index + 1;
@@ -1181,7 +1152,7 @@ function runCloseCompleted() {
   const moved = [];
   const skipped = [];
   const errors = [];
-  for (const path of burnlistPaths()) {
+  for (const path of burnlistPathsFor(mutatorRepoRoots({ cwd: launchCwd, scanRoot: args.get("scan-root") }))) {
     const lifecycle = lifecycleForPlan(path);
     if (lifecycle.status !== "active") continue;
     try {
