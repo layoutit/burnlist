@@ -209,7 +209,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, { onScena
     const catalog = state.payload.scenarioCatalog;
     const scenarios = Array.isArray(catalog?.scenarios) ? catalog.scenarios : [];
     const selected = state.pendingScenarioId || catalog?.selectedScenarioId || "";
-    const options = scenarios.map((scenario) => `<option value="${escapeHtml(scenario.id)}"${scenario.id === selected ? " selected" : ""}>${escapeHtml(scenario.label)}</option>`).join("");
+    const options = scenarios.map((scenario) => `<option value="${escapeHtml(scenario.id)}"${scenario.id === selected ? " selected" : ""}>${escapeHtml(scenario.id)}</option>`).join("");
     const status = differentialRefreshStatusLabel(state.payload.refresh, state.clientRefreshStatus);
     const statusTitle = state.payload.refresh?.status === "failed" ? state.payload.refresh.error || status : status;
     return `<span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario"${scenarios.length < 2 ? " disabled" : ""}>${options}</select><span id="differential-refresh-status" class="differential-refresh-status ${escapeHtml(state.clientRefreshStatus || state.payload.refresh?.status || "")}" title="${escapeHtml(statusTitle)}"${status ? "" : " hidden"}>${escapeHtml(status)}</span></span>`;

@@ -1163,7 +1163,8 @@ test("scenario selector requests another published scenario and shows Loading", 
     globalThis.window = previousWindow;
   }
   assert.deepEqual(selected, [secondScenario.id]);
-  assert.match(root.innerHTML, new RegExp(`<option value="${secondScenario.id}" selected>`, "u"));
+  assert.match(root.innerHTML, new RegExp(`<option value="${secondScenario.id}" selected>${secondScenario.id}</option>`, "u"));
+  assert.doesNotMatch(root.innerHTML, />Second scenario<\/option>/u);
   assert.match(root.innerHTML, /id="differential-refresh-status"[^>]*>Loading</u);
 });
 
@@ -1362,6 +1363,21 @@ test("live Differential Testing dashboard discards an in-flight response after s
 
 test("Burnlist serves only catalog-listed contained scenario payloads", async (t) => {
   const directory = mkdtempSync(resolve(tmpdir(), "burnlist-differential-scenarios-"));
+  const fixtureRepo = resolve(directory, "fixture-repo");
+  const fixturePlanDirectory = resolve(fixtureRepo, "notes/burnlists/inprogress/fixture");
+  mkdirSync(fixturePlanDirectory, { recursive: true });
+  writeFileSync(resolve(fixturePlanDirectory, "burnlist.md"), `# Fixture Burnlist
+
+## Active Checklist
+
+- [ ] B1 | Verify root navigation
+  Files/search: fixture
+  Action: Keep the index distinct from detail routes.
+  Done/delete when: The root renders the Burnlist table.
+  Validate: Open the root and detail route.
+
+## Completed
+`);
   const bundleDir = resolve(directory, "bundle");
   const scenariosDir = resolve(bundleDir, "scenarios");
   mkdirSync(scenariosDir, { recursive: true });
@@ -1404,6 +1420,13 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
       reject(new Error(`Burnlist test server exited with ${code}: ${output}`));
     });
   });
+
+  const indexHtml = await (await fetch(baseUrl)).text();
+  assert.match(indexHtml, /<h1>Burnlists<\/h1>/u);
+  assert.doesNotMatch(indexHtml, /← All Burnlists/u);
+  const detailHtml = await (await fetch(`${baseUrl}fixture-repo/fixture`)).text();
+  assert.match(detailHtml, /← All Burnlists/u);
+  assert.match(detailHtml, /Fixture Burnlist/u);
 
   const currentResponse = await fetch(`${baseUrl}api/oven-data/differential-testing`);
   assert.equal(currentResponse.status, 200);

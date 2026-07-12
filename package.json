@@ -1,6 +1,6 @@
 {
   "name": "burnlist",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "An agent skill and local dashboard for Burnlist planning, execution, and progress tracking.",
   "license": "GPL-3.0-or-later",
@@ -9,6 +9,9 @@
   },
   "bin": {
     "burnlist": "bin/burnlist.mjs"
+  },
+  "exports": {
+    "./differential-testing": "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs"
   },
   "files": [
     "bin/",

@@ -81,7 +81,18 @@ try {
   const sdkPath = run(cli, ["differential-testing", "sdk"], { capture: true });
   const expectedSdkPath = resolve(packageRoot, "skills", "burnlist", "scripts", "differential-testing-adapter-sdk.mjs");
   if (realpathSync(sdkPath) !== realpathSync(expectedSdkPath)) throw new Error(`installed CLI reported unexpected SDK path: ${sdkPath}`);
-  run(process.execPath, ["--input-type=module", "--eval", `const sdk = await import(${JSON.stringify(pathToFileURL(sdkPath).href)}); if (typeof sdk.createDifferentialTestingRefreshQueue !== "function" || typeof sdk.publishDifferentialTestingOvenBundle !== "function") process.exit(1);`]);
+  run(process.execPath, ["--input-type=module", "--eval", `
+    const sdk = await import(${JSON.stringify(pathToFileURL(sdkPath).href)});
+    const expected = [
+      "DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION",
+      "DIFFERENTIAL_TESTING_WORKER_STATE_SCHEMA",
+      "assertDifferentialTestingWorkerState",
+      "createDifferentialTestingWorker",
+      "readDifferentialTestingWorkerState",
+    ];
+    if (sdk.DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION !== 3
+      || JSON.stringify(Object.keys(sdk).sort()) !== JSON.stringify(expected.sort())) process.exit(1);
+  `]);
 
   run(cli, ["uninstall"]);
   for (const name of ["burnlist"]) {

@@ -1223,8 +1223,17 @@ function dashboardFallback(url) {
   if (url.pathname === "/ovens/differential-testing/view") return `<div class="shell driving-parity-view"><div class="empty">Loading Differential Testing Oven.</div></div><link rel="stylesheet" href="/assets/differential-testing.css"><script src="/assets/differential-testing-renderer.js" type="module"></script>`;
   if (url.pathname === "/ovens/new") return fallbackNewOven();
   if (url.pathname === "/runs/new") return fallbackRunBurn();
-  const selection = selectedBurnlist(url);
-  if (selection.burnlist) {
+  const route = routeSelection(url);
+  const explicitlySelected = Boolean(
+    route
+    || url.searchParams.get("plan")
+    || (url.searchParams.get("repo") && url.searchParams.get("id")),
+  );
+  if (explicitlySelected) {
+    const selection = selectedBurnlist(url);
+    if (!selection.burnlist) {
+      return `<main class="burnlist-fallback">${FALLBACK_STYLE}<h1>Burnlist unavailable</h1><p>${escapeHtml(selection.error)}</p></main>`;
+    }
     try {
       return fallbackDetail(payloadForPlan(selection.burnlist), url.searchParams.get("filter") || "all", fallbackPage(url.searchParams.get("page")));
     } catch (err) {
