@@ -438,6 +438,7 @@ run(process.execPath, [
   "src/cli/oven-cli.test.mjs",
   "src/cli/umbrella.test.mjs",
   "src/server/oven-bindings.test.mjs",
+  "src/server/oven-warm.test.mjs",
   "src/server/registry.test.mjs",
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",

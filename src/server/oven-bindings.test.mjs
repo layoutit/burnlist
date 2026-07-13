@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -54,15 +54,22 @@ test("missing, corrupt, and obsolete binding stores fail closed", () => {
   } finally { cleanup(); }
 });
 
-test("effective bindings re-read a store after its mtime changes", () => {
+test("effective bindings re-read an atomically replaced store with an identical mtime", () => {
   const { root, cleanup } = fixture();
   try {
+    const unchangedMtime = new Date("2026-07-14T12:02:00.000Z");
     writeBinding(root, "sample-oven", "first.json", BOUND_AT);
+    utimesSync(bindingStorePath(root), unchangedMtime, unchangedMtime);
+    const first = statSync(bindingStorePath(root));
     assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven").path, resolve(root, "first.json"));
-    writeBinding(root, "sample-oven", "second.json", "2026-07-14T12:01:00.000Z");
-    const changed = new Date("2026-07-14T12:02:00.000Z");
-    utimesSync(bindingStorePath(root), changed, changed);
-    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven").path, resolve(root, "second.json"));
+    writeBinding(root, "sample-oven", "a-longer-second.json", "2026-07-14T12:01:00.000Z");
+    utimesSync(bindingStorePath(root), unchangedMtime, unchangedMtime);
+    const second = statSync(bindingStorePath(root));
+    assert.equal(second.mtimeMs, first.mtimeMs);
+    assert.notEqual(second.ino, first.ino);
+    assert.notEqual(second.size, first.size);
+    assert.notEqual(second.ctimeMs, first.ctimeMs);
+    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven").path, resolve(root, "a-longer-second.json"));
   } finally { cleanup(); }
 });
 

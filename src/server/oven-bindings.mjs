@@ -106,9 +106,10 @@ export function removeBinding(repoRoot, id) {
 
 const cachedStores = new Map();
 
-function mtimeFor(path, stat) {
+function statSignature(path, stat) {
   try {
-    return stat(path).mtimeMs;
+    const value = stat(path);
+    return [value.dev, value.ino, value.size, value.mtimeMs, value.ctimeMs].join(":");
   } catch (error) {
     if (error?.code === "ENOENT") return null;
     throw error;
@@ -117,11 +118,11 @@ function mtimeFor(path, stat) {
 
 function cachedStore(repoRoot, stat) {
   const path = bindingStorePath(repoRoot);
-  const mtimeMs = mtimeFor(path, stat);
+  const signature = statSignature(path, stat);
   const cached = cachedStores.get(path);
-  if (cached && cached.mtimeMs === mtimeMs) return cached.store;
+  if (cached && cached.signature === signature) return cached.store;
   const store = readBindingStore(repoRoot);
-  cachedStores.set(path, { mtimeMs, store });
+  cachedStores.set(path, { signature, store });
   return store;
 }
 

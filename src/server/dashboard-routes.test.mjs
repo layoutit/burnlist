@@ -78,13 +78,19 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
-test("Oven data uses registered and generic handlers while unknown ids are unvalidated", { timeout: 20_000 }, async () => {
+test("registered Oven routes and dashboard entries ignore malformed custom Oven packages", { timeout: 20_000 }, async () => {
+  const timestamp = "2026-01-01T12:00:00.000Z";
   const differentialTestingPayload = buildPayload(
-    { captureId: "reference-fixture", generatedAt: "2026-01-01T12:00:00.000Z", fields: [], samples: [] },
-    { captureId: "candidate-fixture", generatedAt: "2026-01-01T12:00:00.000Z", samples: [] },
+    {
+      captureId: "reference-fixture", generatedAt: timestamp,
+      fields: [{ id: "position", label: "Position", sourceOwner: "fixture", meaning: "Position", unit: "units", tolerance: 0 }],
+      samples: [{ tick: 0, values: { position: 1 } }],
+    },
+    { captureId: "candidate-fixture", generatedAt: timestamp, samples: [{ tick: 0, values: { position: 1 } }] },
   );
   await withServer({
     withBurnlist: true,
+    ovens: [{ id: "malformed-oven", ovenJson: "{" }],
     ovenData: [
       { id: "checklist", payload: { source: "generic" } },
       { id: "differential-testing", payload: differentialTestingPayload },
@@ -94,19 +100,25 @@ test("Oven data uses registered and generic handlers while unknown ids are unval
     assert.equal(checklist.status, 200);
     assert.deepEqual(JSON.parse(checklist.body).payload, { source: "generic" });
 
-    // The empty fixture has no scenarios, so the base document is served (selectedScenarioId null).
     const differentialTesting = await httpGet(baseUrl, "/api/oven-data/differential-testing");
     assert.equal(differentialTesting.status, 200);
-    assert.equal(JSON.parse(differentialTesting.body).scenarioId, null);
-
-    const unknown = await httpGet(baseUrl, "/api/oven-data/not-an-oven");
-    assert.equal(unknown.status, 404);
-    assert.equal(JSON.parse(unknown.body).validated, false);
+    assert.equal(JSON.parse(differentialTesting.body).scenarioId, differentialTestingPayload.scenarioCatalog.selectedScenarioId);
 
     const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
     assert.equal(entries.some((entry) => entry.ovenId === "checklist"), true);
-    // The empty DT payload publishes no scenarios, so its handler contributes no dashboard rows.
-    assert.equal(entries.some((entry) => entry.ovenId === "differential-testing"), false);
+    assert.equal(entries.some((entry) => entry.ovenId === "differential-testing"), true);
+
+    const ovens = await httpGet(baseUrl, "/api/ovens");
+    assert.equal(ovens.status, 400);
+    assert.match(JSON.parse(ovens.body).error, /lineage sidecar is invalid/u);
+  });
+});
+
+test("an unknown Oven with a data binding remains unvalidated", { timeout: 20_000 }, async () => {
+  await withServer({ ovenData: [{ id: "ghost", payload: { ignored: true } }] }, async ({ baseUrl }) => {
+    const unknown = await httpGet(baseUrl, "/api/oven-data/ghost");
+    assert.equal(unknown.status, 404);
+    assert.equal(JSON.parse(unknown.body).validated, false);
   });
 });
 
@@ -140,15 +152,25 @@ test("Burn runs read legacy v3 revisions and write/read v4 revisions", { timeout
   }));
   const legacyRunId = "20260714-120000-a1b2c3";
   const unsupportedRunId = "20260714-120001-a1b2c4";
+  const matchingV4RunId = "20260714-120002-a1b2c5";
+  const mismatchedV4RunId = "20260714-120003-a1b2c6";
   await withServer({
     runs: [
       { id: legacyRunId, schemaVersion: 3, ovenId: "legacy-oven", instructions: legacyInstructions, detail: legacyDetail },
       { id: unsupportedRunId, schemaVersion: 99, ovenId: "legacy-oven", instructions: legacyInstructions, detail: legacyDetail },
+      { id: matchingV4RunId, schemaVersion: 4, ovenId: "legacy-oven", instructions: legacyInstructions, detail: legacyDetail, ovenRevision: expectedLegacyRevision },
+      { id: mismatchedV4RunId, schemaVersion: 4, ovenId: "legacy-oven", instructions: legacyInstructions, detail: legacyDetail, ovenRevision: `o1-sha256:${"f".repeat(64)}` },
     ],
   }, async ({ baseUrl, repoRoot }) => {
     const legacy = JSON.parse((await httpGet(baseUrl, `/api/runs/${legacyRunId}`)).body).run;
     assert.equal(legacy.schemaVersion, 3);
     assert.equal(legacy.ovenRevision, expectedLegacyRevision);
+    const matchingV4 = await httpGet(baseUrl, `/api/runs/${matchingV4RunId}`);
+    assert.equal(matchingV4.status, 200);
+    assert.equal(JSON.parse(matchingV4.body).run.ovenRevision, expectedLegacyRevision);
+    const mismatchedV4 = await httpGet(baseUrl, `/api/runs/${mismatchedV4RunId}`);
+    assert.equal(mismatchedV4.status, 400);
+    assert.match(JSON.parse(mismatchedV4.body).error, /revision does not match its snapshot/u);
     const unsupported = await httpGet(baseUrl, `/api/runs/${unsupportedRunId}`);
     assert.equal(unsupported.status, 400);
     assert.match(JSON.parse(unsupported.body).error, /schemaVersion must be 3 or 4/u);

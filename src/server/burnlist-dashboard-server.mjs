@@ -33,6 +33,7 @@ import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { readTextFileWithLimit, safeStat } from "./fs-safe.mjs";
+import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
   burnlistIdForPlan,
@@ -252,9 +253,9 @@ function discoverBurnlists() {
 }
 
 function dashboardEntries(ovenDataBindings = resolvedOvenDataBindings()) {
-  return discoverOvens().flatMap((oven) => {
-    const handler = getOvenHandler(oven.id) ?? genericJsonHandler;
-    return handler.dashboardEntries?.(ovenHandlerContext({ oven, ovenDataBindings })) ?? [];
+  return listOvenHandlers().flatMap((handler) => {
+    const id = handler.id;
+    return handler.dashboardEntries?.(ovenHandlerContext({ id, oven: { id }, ovenDataBindings })) ?? [];
   })
     .map((entry) => {
       let key = null;
@@ -559,20 +560,24 @@ function readBurnRun(id) {
     if (![3, 4].includes(record.schemaVersion)) {
       throw new Error("Burn run schemaVersion must be 3 or 4.");
     }
-    if (record.schemaVersion === 4) {
-      const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
-      if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
-        throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
-      }
-      return record;
-    }
     const runRoot = dirname(path);
     const ovenPackage = normalizeOvenPackage({
       id: record.ovenId,
       instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), 65536, "Run Oven instructions"),
       detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), 131072, "Run Oven detail template")),
     });
-    return { ...record, ovenRevision: ovenRevision(ovenPackage) };
+    const snapshotRevision = ovenRevision(ovenPackage);
+    if (record.schemaVersion === 4) {
+      const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
+      if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
+        throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
+      }
+      if (ovenRevisionValue !== snapshotRevision) {
+        throw new Error(`Burn run ${safeId} revision does not match its snapshot.`);
+      }
+      return record;
+    }
+    return { ...record, ovenRevision: snapshotRevision };
   }
   return null;
 }
@@ -963,15 +968,17 @@ const server = createServer(async (req, res) => {
     if (ovenDataRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const id = ovenDataRoute[1];
-      const oven = discoverOvens().find((entry) => entry.id === id);
+      const handler = getOvenHandler(id);
       const bindingPath = ovenDataBindings.get(id);
-      if (!oven && !bindingPath) {
-        return json(res, 404, { validated: false, error: `no data binding configured for Oven ${id}` });
+      let oven = null;
+      if (!handler) {
+        oven = discoverOvens().find((entry) => entry.id === id) ?? null;
+        if (!oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
       }
       if (!bindingPath) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
-        const handler = getOvenHandler(id) ?? genericJsonHandler;
-        const response = handler.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings }));
+        const active = handler ?? genericJsonHandler;
+        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings }));
         if (response !== undefined) json(res, 200, response);
       } catch (error) {
         json(res, Number.isInteger(error.status) ? error.status : 422, {
@@ -1059,11 +1066,11 @@ if (!reportMode) {
   for (const handler of listOvenHandlers()) {
     if (typeof handler.warm !== "function" || !handler.warmIntervalMs) continue;
     if (!handler.id) continue;
-    const warm = () => {
-      const ovenDataBindings = resolvedOvenDataBindings();
-      if (!ovenDataBindings.has(handler.id)) return;
-      handler.warm(ovenHandlerContext({ id: handler.id, ovenDataBindings }));
-    };
+    const warm = () => warmOvenHandler(
+      handler,
+      resolvedOvenDataBindings,
+      (context) => ovenHandlerContext(context),
+    );
     warm();
     const warmTimer = setInterval(warm, handler.warmIntervalMs);
     warmTimer.unref();

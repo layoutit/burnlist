@@ -1,6 +1,8 @@
 import { readTextFileWithLimit, safeStat } from "../../server/fs-safe.mjs";
 
 export const genericJsonHandler = Object.freeze({
+  id: "checklist",
+
   serveData({ id, bindingPath, maxOvenDataBytes }) {
     if (!safeStat(bindingPath)?.isFile()) {
       throw Object.assign(new Error(`configured data for Oven ${id} is missing`), { status: 404 });
@@ -9,8 +11,8 @@ export const genericJsonHandler = Object.freeze({
     return { ovenId: id, path: bindingPath, payload };
   },
 
-  dashboardEntries({ oven, discoverBurnlists }) {
-    if (oven.id !== "checklist") return [];
+  dashboardEntries({ id, discoverBurnlists }) {
+    if (id !== "checklist") return [];
     return discoverBurnlists().map((entry) => ({
       ...entry,
       ovenId: "checklist",
