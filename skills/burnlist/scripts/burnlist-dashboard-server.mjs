@@ -16,6 +16,7 @@ import { basename, dirname, join, normalize, relative, resolve } from "node:path
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
+import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
 import {
   assertKnownKeys,
@@ -764,12 +765,14 @@ function differentialTestingDashboardEntries() {
   const path = ovenDataBindings.get("differential-testing");
   if (!path) return [];
   const index = differentialTestingIndexCache(path);
-  const repo = discoveredRepos()
+  const matchedRepo = discoveredRepos()
     .filter((entry) => index.readPath === entry.root || index.readPath.startsWith(`${entry.root}/`))
-    .sort((left, right) => right.root.length - left.root.length)[0]?.name ?? "differential-testing";
+    .sort((left, right) => right.root.length - left.root.length)[0] ?? null;
+  const repo = matchedRepo?.name ?? "differential-testing";
   return index.scenarios.map((scenario) => ({
     id: scenario.id,
     repo,
+    repoRoot: matchedRepo?.root ?? null,
     title: scenario.label,
     status: "active",
     statusLabel: "Active",
@@ -787,9 +790,92 @@ function differentialTestingDashboardEntries() {
   }));
 }
 
+function entryRepoKey(repoRoot) {
+  if (typeof repoRoot !== "string" || !repoRoot) return null;
+  try {
+    return repoKey(realpathSync(repoRoot));
+  } catch {
+    return null;
+  }
+}
+
 function dashboardEntries() {
   return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries()]
+    .map((entry) => ({ ...entry, repoKey: entryRepoKey(entry.repoRoot) }))
     .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
+}
+
+function observedProjectHealth(root) {
+  try {
+    return burnlistPathsFor([root]).length ? "healthy" : "empty";
+  } catch {
+    return "unreadable";
+  }
+}
+
+function latestEntryTime(entries) {
+  return entries.reduce((latest, entry) => {
+    const time = typeof entry.updatedAt === "string" ? Date.parse(entry.updatedAt) : Number.NaN;
+    return Number.isFinite(time) ? Math.max(latest, time) : latest;
+  }, Number.NEGATIVE_INFINITY);
+}
+
+function duplicateEntryIds(entries) {
+  const counts = new Map();
+  for (const entry of entries) counts.set(entry.id, (counts.get(entry.id) ?? 0) + 1);
+  return [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort((left, right) => left.localeCompare(right));
+}
+
+function projectsSnapshot() {
+  const home = os.homedir();
+  const registry = readRegistry({ home });
+  const registeredHealth = new Map(classifyRoots({ home }).map((entry) => [entry.root, entry.status]));
+  const projectsByRoot = new Map();
+  const addRoot = (root, registered = false) => {
+    let canonicalRoot = root;
+    try {
+      canonicalRoot = realpathSync(root);
+    } catch {
+      // Registered missing roots remain visible under their recorded canonical path.
+    }
+    const project = projectsByRoot.get(canonicalRoot) ?? {
+      canonicalRoot,
+      registered: false,
+      registryRoot: null,
+    };
+    if (registered) {
+      project.registered = true;
+      project.registryRoot = root;
+    }
+    projectsByRoot.set(canonicalRoot, project);
+  };
+  for (const root of candidateRepoRoots()) addRoot(root);
+  for (const entry of registry.roots) addRoot(entry.root, true);
+
+  const entries = dashboardEntries();
+  const projects = [...projectsByRoot.values()].map((project) => {
+    const projectEntries = entries.filter((entry) => entry.repoRoot === project.canonicalRoot);
+    const active = projectEntries.filter((entry) => entry.status === "active").length;
+    return {
+      repoKey: entryRepoKey(project.canonicalRoot),
+      displayName: basename(project.canonicalRoot),
+      canonicalRoot: project.canonicalRoot,
+      registered: project.registered,
+      health: project.registryRoot
+        ? registeredHealth.get(project.registryRoot) ?? observedProjectHealth(project.canonicalRoot)
+        : observedProjectHealth(project.canonicalRoot),
+      entries: projectEntries,
+      counts: { total: projectEntries.length, active },
+      ambiguousIds: duplicateEntryIds(projectEntries),
+      latestUpdatedAt: latestEntryTime(projectEntries),
+    };
+  }).sort((left, right) => (
+    Number(right.counts.active > 0) - Number(left.counts.active > 0)
+    || right.latestUpdatedAt - left.latestUpdatedAt
+    || left.displayName.localeCompare(right.displayName)
+    || left.canonicalRoot.localeCompare(right.canonicalRoot)
+  )).map(({ latestUpdatedAt, ...project }) => project);
+  return { generatedAt: new Date().toISOString(), projects };
 }
 
 function instructionsName(instructions, defaultName) {
@@ -1056,6 +1142,7 @@ function routeSelection(url) {
       return part;
     }
   });
+  if (parts.length === 3 && parts[0] === "r") return { repoKey: parts[1], id: parts[2] };
   if (
     parts.length === 2
     && !["api", "ovens", "runs"].includes(parts[0])
@@ -1080,8 +1167,15 @@ function selectedBurnlist(url) {
     return match ? { burnlist: match, burnlists } : { error: `No Burnlist found for ${requestedPlan}`, burnlists };
   }
   const route = routeSelection(url);
+  const requestedRepoKey = url.searchParams.get("repoKey") || route?.repoKey || "";
   const repo = url.searchParams.get("repo") || route?.repo || "";
   const id = url.searchParams.get("id") || route?.id || "";
+  if (requestedRepoKey && id) {
+    const matches = burnlists.filter((entry) => entryRepoKey(entry.repoRoot) === requestedRepoKey && entry.id === id);
+    if (matches.length === 1) return { burnlist: matches[0], burnlists };
+    if (matches.length > 1) return { error: `Burnlist ${requestedRepoKey}/${id} is ambiguous; select by plan path.`, burnlists };
+    return { error: `No Burnlist found for ${requestedRepoKey}/${id}`, burnlists };
+  }
   if (repo && id) {
     const matches = burnlists.filter((entry) => entry.repo === repo && entry.id === id);
     if (matches.length === 1) return { burnlist: matches[0], burnlists };
@@ -1275,6 +1369,11 @@ const server = createServer(async (req, res) => {
         cache: url.pathname.startsWith("/assets/"),
         missingStatus: 404,
       });
+      return;
+    }
+    if (url.pathname === "/api/projects") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      json(res, 200, projectsSnapshot());
       return;
     }
     if (url.pathname === "/api/burnlists") {

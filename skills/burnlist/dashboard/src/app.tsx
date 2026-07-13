@@ -18,6 +18,7 @@ type Filter = "active" | "draft" | "ready" | "complete" | "all";
 type Burnlist = {
   id: string;
   repo: string;
+  repoKey: string | null;
   title: string;
   planLabel: string;
   status: Exclude<Filter, "all">;
@@ -61,6 +62,7 @@ function currentSection() {
 function selectedBurnlist() {
   if (currentSection() !== "burnlists") return null;
   const parts = window.location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+  if (parts.length === 3 && parts[0] === "r") return { repoKey: parts[1], id: parts[2] };
   return parts.length === 2 ? { repo: parts[0], id: parts[1] } : null;
 }
 
@@ -120,7 +122,9 @@ function burnlistHref(entry: Burnlist, filter: Filter, page: number) {
   const params = new URLSearchParams({ filter });
   if (page > 1) params.set("page", String(page));
   const search = params.toString();
-  const path = `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`;
+  const path = entry.repoKey
+    ? `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}`
+    : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`;
   return `${path}?${search}`;
 }
 
