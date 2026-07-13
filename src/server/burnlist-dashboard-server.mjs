@@ -23,8 +23,10 @@ import {
   assertKnownKeys,
   boundedText,
   normalizeOvenDetail,
+  normalizeOvenForkedFrom,
   normalizeOvenPackage,
   ovenId,
+  ovenRevision,
 } from "../ovens/oven-contract.mjs";
 import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
@@ -358,6 +360,17 @@ function readOven(root, id, builtIn) {
     instructions: readTextFileWithLimit(instructionsPath, 65536, "Oven instructions"),
     detail: JSON.parse(readTextFileWithLimit(detailPath, 131072, "Oven detail template")),
   });
+  const lineagePath = join(ovenRoot, "oven.json");
+  let forkedFrom;
+  if (safeStat(lineagePath)?.isFile()) {
+    try {
+      forkedFrom = normalizeOvenForkedFrom(
+        JSON.parse(readTextFileWithLimit(lineagePath, 131072, "Oven lineage sidecar")),
+      ).forkedFrom;
+    } catch (error) {
+      throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+    }
+  }
   return {
     id: ovenPackage.id,
     name: instructionsName(ovenPackage.instructions, safeId),
@@ -365,6 +378,8 @@ function readOven(root, id, builtIn) {
     builtIn,
     instructions: ovenPackage.instructions,
     detail: ovenPackage.detail,
+    ovenRevision: ovenRevision(ovenPackage),
+    ...(forkedFrom ? { forkedFrom } : {}),
   };
 }
 
@@ -391,6 +406,8 @@ function ovenSummary(oven) {
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
+    ovenRevision: oven.ovenRevision,
+    ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
     detail: {
       columns: oven.detail.columns,
       rows: oven.detail.rows,
@@ -486,9 +503,10 @@ function createBurnRun(value) {
   const id = runId();
   const createdAt = new Date().toISOString();
   const record = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id,
     ovenId: selectedOvenId,
+    ovenRevision: oven.ovenRevision,
     repoRoot: repo.root,
     repo: repo.name,
     title,
@@ -526,6 +544,7 @@ function readBurnRun(id) {
       "schemaVersion",
       "id",
       "ovenId",
+      "ovenRevision",
       "repoRoot",
       "repo",
       "title",
@@ -537,7 +556,23 @@ function readBurnRun(id) {
       "sections",
     ]), "Burn run");
     ovenId(record.ovenId);
-    return record;
+    if (![3, 4].includes(record.schemaVersion)) {
+      throw new Error("Burn run schemaVersion must be 3 or 4.");
+    }
+    if (record.schemaVersion === 4) {
+      const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
+      if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
+        throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
+      }
+      return record;
+    }
+    const runRoot = dirname(path);
+    const ovenPackage = normalizeOvenPackage({
+      id: record.ovenId,
+      instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), 65536, "Run Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), 131072, "Run Oven detail template")),
+    });
+    return { ...record, ovenRevision: ovenRevision(ovenPackage) };
   }
   return null;
 }

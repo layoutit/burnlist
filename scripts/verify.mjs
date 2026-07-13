@@ -338,7 +338,8 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "builder-hint",
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Drag to place a detail section", "React New Oven still renders the removed skeleton helper text.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "grid-ruler", "Oven detail skeleton still renders grid ruler numbers.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
-assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "schemaVersion: 4", "Burn runs do not write manifest schema version 4.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision: oven.ovenRevision", "Burn runs do not pin the Oven revision.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
 assertSourceIncludes("ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
@@ -421,6 +422,7 @@ assertPublishablePackage();
 run(process.execPath, [
   "--test",
   "src/server/dashboard-routes.test.mjs",
+  "src/ovens/oven-contract.test.mjs",
   "src/ovens/oven-registry.test.mjs",
   "src/server/projects.test.mjs",
   "src/server/projects-api.test.mjs",

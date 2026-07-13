@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeOvenDetail, normalizeOvenPackage, ovenId } from "../ovens/oven-contract.mjs";
+import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
@@ -106,6 +106,17 @@ function readOvenDir(root, id, builtIn) {
     instructions: readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions"),
     detail: JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template")),
   });
+  const lineagePath = join(ovenRoot, "oven.json");
+  let forkedFrom;
+  if (safeStat(lineagePath)?.isFile()) {
+    try {
+      forkedFrom = normalizeOvenForkedFrom(
+        JSON.parse(readTextFileWithLimit(lineagePath, MAX_DETAIL_BYTES, "Oven lineage sidecar")),
+      ).forkedFrom;
+    } catch (error) {
+      throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+    }
+  }
   return {
     id: ovenPackage.id,
     name: instructionsName(ovenPackage.instructions, safeId),
@@ -114,6 +125,8 @@ function readOvenDir(root, id, builtIn) {
     path: ovenRoot,
     instructions: ovenPackage.instructions,
     detail: ovenPackage.detail,
+    ovenRevision: ovenRevision(ovenPackage),
+    ...(forkedFrom ? { forkedFrom } : {}),
   };
 }
 
@@ -124,7 +137,8 @@ function ovensIn(root, builtIn) {
     .map((id) => {
       try {
         return readOvenDir(root, id, builtIn);
-      } catch {
+      } catch (error) {
+        if (safeStat(join(root, id, "oven.json"))?.isFile()) throw error;
         return null;
       }
     })
@@ -156,6 +170,7 @@ function printOven(oven) {
   console.log(`${oven.name}  (${oven.id} · ${kind})`);
   if (oven.description) console.log(oven.description);
   console.log(`grid: ${oven.detail.columns} cols × ${oven.detail.rows} rows · ${oven.detail.cells.length} sections`);
+  console.log(`revision: ${oven.ovenRevision}`);
   console.log(`path: ${oven.path}`);
   console.log("");
   console.log(renderGrid(oven.detail, cellWidth, cellHeight));
@@ -298,8 +313,9 @@ try {
       oven.builtIn ? "built-in" : "custom",
       `${oven.detail.columns}×${oven.detail.rows}`,
       String(oven.detail.cells.length),
+      oven.ovenRevision,
     ]);
-    const header = ["id", "name", "kind", "grid", "sections"];
+    const header = ["id", "name", "kind", "grid", "sections", "revision"];
     const widths = header.map((label, index) => Math.max(label.length, ...rows.map((row) => row[index].length)));
     const line = (cols) => cols.map((value, index) => value.padEnd(widths[index])).join("  ").trimEnd();
     console.log(line(header));
@@ -314,7 +330,15 @@ try {
     const oven = findOven(id);
     if (!oven) fail(`Unknown Oven "${id}". Run \`burnlist oven list\`.`);
     if (flags.has("json")) {
-      console.log(JSON.stringify({ id: oven.id, name: oven.name, builtIn: oven.builtIn, instructions: oven.instructions, detail: oven.detail }, null, 2));
+      console.log(JSON.stringify({
+        id: oven.id,
+        name: oven.name,
+        builtIn: oven.builtIn,
+        instructions: oven.instructions,
+        detail: oven.detail,
+        ovenRevision: oven.ovenRevision,
+        ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
+      }, null, 2));
       process.exit(0);
     }
     printOven(oven);

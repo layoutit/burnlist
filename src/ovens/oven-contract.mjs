@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 const ovenWidgets = new Set([
   "metric",
   "progress",
@@ -116,4 +118,35 @@ export function normalizeOvenPackage(value) {
     instructions,
     detail: normalizeOvenDetail(value.detail),
   };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (plainObject(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+// Callers pass an Oven package whose instructions and detail have already been
+// normalized by normalizeOvenPackage. Only its portable content defines this id.
+export function ovenRevision(pkg) {
+  const instructions = String(pkg.instructions ?? "").replace(/\r\n?/gu, "\n");
+  const contents = canonicalJson({
+    format: "burnlist-oven-content@1",
+    instructions,
+    detail: pkg.detail,
+  });
+  return `o1-sha256:${createHash("sha256").update(contents).digest("hex")}`;
+}
+
+export function normalizeOvenForkedFrom(value) {
+  assertKnownKeys(value, new Set(["forkedFrom"]), "Oven lineage");
+  if (!plainObject(value.forkedFrom)) throw new Error("Oven lineage forkedFrom must be an object.");
+  assertKnownKeys(value.forkedFrom, new Set(["ovenId", "revision"]), "Oven lineage forkedFrom");
+  const revision = boundedText(value.forkedFrom.revision, "Oven lineage revision", 74);
+  if (!/^o1-sha256:[a-f0-9]{64}$/u.test(revision)) {
+    throw new Error("Oven lineage revision must be an o1-sha256 digest.");
+  }
+  return { forkedFrom: { ovenId: ovenId(value.forkedFrom.ovenId), revision } };
 }
