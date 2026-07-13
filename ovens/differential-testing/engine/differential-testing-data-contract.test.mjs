@@ -1243,10 +1243,15 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   const payload = buildPayload(...populatedCaptures());
   const baselineLog = payload.log[0];
   payload.log = [
-    { ...baselineLog, timestamp: "2026-01-01T12:00:02.000Z", result: "improved", value: 845_738, delta: -801, frames: 1_000, frame: 238, frameDelta: 41 },
-    { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 846_539, delta: null, frames: 1_000, frame: 197, frameDelta: null },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:04.000Z", result: "improved", value: 845_738, delta: -801, frames: 1_000, frame: 238, frameDelta: 41 },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:02.000Z", result: "worsened", value: 846_539, delta: 801, frames: 1_000, frame: 197, frameDelta: -41 },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 845_738, delta: null, frames: 1_000, frame: 238, frameDelta: null },
   ];
   payload.progress = [...payload.log].reverse();
+  assert.deepEqual(
+    validateDifferentialTestingData(payload).issues.filter((issue) => issue.path.endsWith(".frameDelta")),
+    [],
+  );
   const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1290,9 +1295,12 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.match(root.innerHTML, /class="log-table-cell failed improved">238<\/span>/u);
   assert.match(root.innerHTML, /class="log-delta-indicator">▲<\/span><span>41<\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell delta improved">4\.1%<\/span><span class="log-table-cell done">24%<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell failed unchanged">197<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell result unchanged">—<\/span><span class="log-table-cell delta unchanged">—<\/span><span class="log-table-cell done">20%<\/span>/u);
-  assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 6);
+  assert.match(root.innerHTML, /class="log-table-cell failed worsened">197<\/span>/u);
+  assert.match(root.innerHTML, /class="log-delta-indicator">▼<\/span><span>41<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell delta worsened">4\.1%<\/span><span class="log-table-cell done">20%<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed unchanged">238<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell result unchanged">—<\/span><span class="log-table-cell delta unchanged">—<\/span><span class="log-table-cell done">24%<\/span>/u);
+  assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 5);
   assert.match(root.innerHTML, /log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">\.<\/span>(?:<span class="log-table-cell">\.<\/span>){4}/u);
   assert.match(root.innerHTML, /class="log-table-cell age">(?:now|\d+m)<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="log-table-cell age">\d+[hd]<\/span>/u);

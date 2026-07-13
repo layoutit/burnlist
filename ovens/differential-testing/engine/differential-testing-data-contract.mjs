@@ -318,7 +318,7 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
           issue(`${rowPath}.frame`, "must not exceed the scenario frame count");
         }
       }
-      if (Object.hasOwn(row, "frameDelta") && row.frameDelta !== null) count(row.frameDelta, `${rowPath}.frameDelta`);
+      if (Object.hasOwn(row, "frameDelta") && row.frameDelta !== null) integer(row.frameDelta, `${rowPath}.frameDelta`);
       if (Object.hasOwn(row, "firstFailingTick")) finite(row.firstFailingTick, `${rowPath}.firstFailingTick`, { nullable: true });
       if (Object.hasOwn(row, "firstFailingLabel") && row.firstFailingLabel !== null) text(row.firstFailingLabel, `${rowPath}.firstFailingLabel`, { max: 160 });
       if (Object.hasOwn(row, "refreshId")) text(row.refreshId, `${rowPath}.refreshId`, { max: 160 });

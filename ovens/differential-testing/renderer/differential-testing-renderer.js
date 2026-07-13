@@ -378,11 +378,11 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const visibleEntries = entries.slice(0, 8);
     const rows = visibleEntries.map((entry) => {
       const frameDelta = entry.frameDelta === null || !Number.isFinite(Number(entry.frameDelta)) ? null : Number(entry.frameDelta);
-      const stateClass = frameDelta > 0 ? "improved" : "unchanged";
-      const deltaPercent = frameDelta === null || !Number(entry.frames) ? null : frameDelta / Number(entry.frames) * 100;
-      const marker = stateClass === "improved" ? "▲" : "⦁";
+      const stateClass = frameDelta > 0 ? "improved" : frameDelta < 0 ? "worsened" : "unchanged";
+      const deltaPercent = frameDelta === null || !Number(entry.frames) ? null : Math.abs(frameDelta) / Number(entry.frames) * 100;
+      const marker = stateClass === "improved" ? "▲" : stateClass === "worsened" ? "▼" : "⦁";
       const deltaText = deltaPercent === null ? "—" : percent(deltaPercent);
-      const resultText = frameDelta === null ? "—" : count(frameDelta);
+      const resultText = frameDelta === null ? "—" : count(Math.abs(frameDelta));
       const result = marker !== "⦁"
         ? `<span class="log-delta-content"><span class="log-delta-indicator">${marker}</span><span>${resultText}</span></span>`
         : resultText;
@@ -1574,7 +1574,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   }
   function render() {
     const existingHeaderTimestamp = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-overview-time");
+    const existingHeaderStatus = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-refresh-status");
     existingHeaderTimestamp?.remove();
+    existingHeaderStatus?.remove();
     if (!state.oven || !state.payload) return;
     const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
     const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
@@ -1637,8 +1639,12 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace(/<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>[\s\S]*?<\/div>\n  <\/main>/u, `${paginationHtml}\n  </main>`);
     root.innerHTML = html;
     const overviewTimestamp = root.querySelector("#differential-overview-time");
+    const refreshStatusElement = root.querySelector("#differential-refresh-status");
     const dashboardNav = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav");
-    if (overviewTimestamp && dashboardNav) dashboardNav.append(overviewTimestamp);
+    if (dashboardNav) {
+      if (refreshStatusElement) dashboardNav.append(refreshStatusElement);
+      if (overviewTimestamp) dashboardNav.append(overviewTimestamp);
+    }
     paintWaffles();
     renderProgressChart();
     const search = root.querySelector("#driving-parity-field-search"), pageSize = root.querySelector("#driving-parity-page-size");

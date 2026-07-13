@@ -79,7 +79,7 @@
         "failedFieldCount": { "$ref": "#/$defs/count" },
         "frames": { "$ref": "#/$defs/count" },
         "frame": { "$ref": "#/$defs/count" },
-        "frameDelta": { "type": ["integer", "null"], "minimum": 0 },
+        "frameDelta": { "type": ["integer", "null"] },
         "firstFailingTick": { "type": ["number", "null"] },
         "firstFailingLabel": { "type": ["string", "null"], "maxLength": 160 },
         "refreshId": { "type": "string", "minLength": 1, "maxLength": 160 },

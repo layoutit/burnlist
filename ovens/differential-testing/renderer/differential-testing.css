@@ -323,7 +323,7 @@ body.driving-parity-view .dashboard-header {
   min-height: 20px;
   margin-bottom: 8px;
 }
-.driving-parity-view #burnlist-detail .differential-overview-head:not(:has(#differential-overview-time)):has(.differential-refresh-status[hidden]) {
+.driving-parity-view #burnlist-detail .differential-overview-head:not(:has(#differential-overview-time)):not(:has(.differential-refresh-status)) {
   display: none;
 }
 #differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: rgba(163,172,183,.55); font: 14px/1.2 var(--dashboard-title-font); }
