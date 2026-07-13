@@ -329,7 +329,7 @@ body.driving-parity-view {
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip.has-burns {
   height: 68px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-template-rows: none;
   gap: 32px;
   justify-content: space-between;
@@ -426,8 +426,8 @@ body.driving-parity-view {
   gap: 5px;
 }
 .driving-parity-kpi-section {
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 10px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 8px;
   align-items: center;
 }
 .driving-parity-kpi-title {
@@ -553,7 +553,7 @@ body.driving-parity-view {
 .driving-parity-kpi-ratio {
   min-width: 0;
   color: rgba(168,168,168,.76);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
   line-height: 1.15;
 }
@@ -568,7 +568,7 @@ body.driving-parity-view {
 }
 .driving-parity-kpi-ratio .separator {
   color: rgba(168,168,168,.76);
-  margin: 0 4px;
+  margin: 0 2px;
 }
 .driving-parity-kpi-ratio .fail {
   color: var(--driving-parity-kpi-red-label);
@@ -597,9 +597,23 @@ body.driving-parity-view {
 .driving-parity-kpi-burns-donut-segment.worsened { stroke: var(--driving-parity-kpi-red); }
 .driving-parity-kpi-burns-donut-segment.neutral { stroke: #8d96a3; }
 .driving-parity-kpi-burns-donut-segment.reverted { stroke: rgba(203,157,74,.68); }
-.driving-parity-kpi-gauge {
+.driving-parity-kpi-progress-donut {
   width: 40px;
   height: 40px;
+  display: block;
+  overflow: visible;
+}
+.driving-parity-kpi-progress-donut-track,
+.driving-parity-kpi-progress-donut-segment {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: butt;
+}
+.driving-parity-kpi-progress-donut-track { stroke: var(--driving-parity-kpi-red-label); }
+.driving-parity-kpi-progress-donut-segment { stroke: var(--driving-parity-kpi-green); }
+.driving-parity-kpi-gauge {
+  width: 36px;
+  height: 36px;
   display: block;
   justify-self: center;
   overflow: visible;
@@ -766,8 +780,8 @@ body.driving-parity-view {
   .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
   .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip.has-burns {
     height: auto;
-    min-height: 116px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 164px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px 12px;
     padding-bottom: 12px;
   }

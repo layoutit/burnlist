@@ -1261,6 +1261,11 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.equal(root.className, "shell driving-parity-view");
   assert.doesNotMatch(root.innerHTML, /class="shell driving-parity-view/u);
   assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Results</u);
+  assert.match(root.innerHTML, /class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress"/u);
+  assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Progress<\/span>/u);
+  assert.match(root.innerHTML, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="23\.800 76\.200"/u);
+  assert.ok(root.innerHTML.indexOf('driving-parity-kpi-progress') < root.innerHTML.indexOf('driving-parity-kpi-burns'));
+  assert.match(root.innerHTML, /class="pass">238<\/span><span class="separator">\/<\/span><span class="total">1,000 \(23\.8%\)<\/span>/u);
   assert.match(root.innerHTML, /class="driving-parity-kpi-heading differential-scenario-heading">Scenario</u);
   assert.match(root.innerHTML, /id="differential-scenario-selector"/u);
   assert.match(root.innerHTML, /id="progress-panel-title">Parity Progress<\/h2>/u);
