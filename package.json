@@ -22,7 +22,9 @@
     "ovens/",
     "dashboard/dist/",
     "scripts/register-skills.mjs",
-    "scripts/unregister-skills.mjs"
+    "scripts/unregister-skills.mjs",
+    "!**/*.test.mjs",
+    "!**/*.test.js"
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",

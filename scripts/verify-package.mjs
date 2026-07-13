@@ -88,6 +88,7 @@ const forbidden = [
   /^skills\/burnlist\/references\/compare-data\.md$/u,
   /^skills\/burnlist\/scripts\/compare-data-contract(?:\.test)?\.mjs$/u,
   /^skills\/burnlist\/ovens\/target(?:\/|$)/u,
+  /\.test\.(?:mjs|js)$/u,
   /\.zip$/u,
 ];
 
