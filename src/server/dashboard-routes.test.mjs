@@ -74,7 +74,9 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
     assert.equal(response.status, 200);
     const payload = JSON.parse(response.body);
     assert.equal(Array.isArray(payload.burnlists), true);
-    assert.equal(payload.burnlists.some((entry) => entry.id === "fixture"), true);
+    const entry = payload.burnlists.find((candidate) => candidate.id === "fixture");
+    assert.ok(entry);
+    assert.equal(typeof entry.planPath, "string");
   });
 });
 

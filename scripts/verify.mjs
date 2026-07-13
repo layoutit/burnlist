@@ -442,6 +442,7 @@ run(process.execPath, [
   "src/server/registry.test.mjs",
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",
+  "dashboard/src/lib/project-open.test.mjs",
 ]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {

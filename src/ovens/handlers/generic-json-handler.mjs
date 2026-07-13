@@ -15,6 +15,7 @@ export const genericJsonHandler = Object.freeze({
     if (id !== "checklist") return [];
     return discoverBurnlists().map((entry) => ({
       ...entry,
+      planPath: entry.planPath,
       ovenId: "checklist",
       ovenName: "Checklist",
       href: `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`,

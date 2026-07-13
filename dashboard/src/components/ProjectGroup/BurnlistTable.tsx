@@ -1,7 +1,7 @@
 import { BurnlistRow } from "./BurnlistRow";
 import type { Filter, Project } from "@lib";
 
-export function BurnlistTable({ entries, filter, emptyLabel }: { entries: Project["entries"]; filter: Filter; emptyLabel: string }) {
+export function BurnlistTable({ entries, filter, emptyLabel, ambiguousIds }: { entries: Project["entries"]; filter: Filter; emptyLabel: string; ambiguousIds: string[] }) {
   return (
     <div className="burnlist-table-card">
       <div className="burnlist-table-scroll">
@@ -23,7 +23,7 @@ export function BurnlistTable({ entries, filter, emptyLabel }: { entries: Projec
             </tr>
           </thead>
           <tbody className="burnlist-table-body">
-            {entries.length ? entries.map((entry) => <BurnlistRow entry={entry} filter={filter} key={`${entry.repoKey ?? entry.repo}/${entry.status}/${entry.id}/${entry.planLabel}`} />) : (
+            {entries.length ? entries.map((entry) => <BurnlistRow ambiguous={ambiguousIds.includes(entry.id)} entry={entry} filter={filter} key={`${entry.repoKey ?? entry.repo}/${entry.status}/${entry.id}/${entry.planLabel}`} />) : (
               <tr className="burnlist-table-row">
                 <td className="burnlist-table-cell burnlist-table-cell-primary" colSpan={5}>
                   <p className="burnlist-table-title">{emptyLabel}</p>

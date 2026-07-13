@@ -26,6 +26,7 @@ export type Burnlist = {
   repo: string;
   repoKey: string | null;
   repoRoot: string | null;
+  planPath: string;
   title: string;
   planLabel: string;
   status: Exclude<Filter, "all">;
@@ -57,5 +58,5 @@ export type Project = {
   ambiguousIds: string[];
 };
 
-export type SelectedBurnlist = { repo?: string; repoKey?: string; id: string };
+export type SelectedBurnlist = { repo?: string; repoKey?: string; id?: string; plan?: string };
 export type ProgressData = ChecklistProgressData;
