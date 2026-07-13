@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import test from "node:test";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +76,39 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
-async function withServer({ withBurnlist, burnlists, scanRoots }, callback) {
+test("Oven data uses registered and generic handlers while unknown ids are unvalidated", { timeout: 20_000 }, async () => {
+  const differentialTestingPayload = buildPayload(
+    { captureId: "reference-fixture", generatedAt: "2026-01-01T12:00:00.000Z", fields: [], samples: [] },
+    { captureId: "candidate-fixture", generatedAt: "2026-01-01T12:00:00.000Z", samples: [] },
+  );
+  await withServer({
+    withBurnlist: true,
+    ovenData: [
+      { id: "checklist", payload: { source: "generic" } },
+      { id: "differential-testing", payload: differentialTestingPayload },
+    ],
+  }, async ({ baseUrl }) => {
+    const checklist = await httpGet(baseUrl, "/api/oven-data/checklist");
+    assert.equal(checklist.status, 200);
+    assert.deepEqual(JSON.parse(checklist.body).payload, { source: "generic" });
+
+    // The empty fixture has no scenarios, so the base document is served (selectedScenarioId null).
+    const differentialTesting = await httpGet(baseUrl, "/api/oven-data/differential-testing");
+    assert.equal(differentialTesting.status, 200);
+    assert.equal(JSON.parse(differentialTesting.body).scenarioId, null);
+
+    const unknown = await httpGet(baseUrl, "/api/oven-data/not-an-oven");
+    assert.equal(unknown.status, 404);
+    assert.equal(JSON.parse(unknown.body).validated, false);
+
+    const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
+    assert.equal(entries.some((entry) => entry.ovenId === "checklist"), true);
+    // The empty DT payload publishes no scenarios, so its handler contributes no dashboard rows.
+    assert.equal(entries.some((entry) => entry.ovenId === "differential-testing"), false);
+  });
+});
+
+async function withServer({ withBurnlist, burnlists, ovenData = [], scanRoots }, callback) {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-dashboard-routes-"));
   const homeRoot = join(fixtureRoot, "home");
   const fixtures = burnlists ?? (withBurnlist ? [{}] : []);
@@ -94,13 +127,19 @@ async function withServer({ withBurnlist, burnlists, scanRoots }, callback) {
         writeFile(join(dirname(planPath), "goal.md"), "# Fixture Goal\n\n## Goal\n\nRoute behavior fixture.\n"),
       ]);
     }));
+    await Promise.all(ovenData.map(({ id, payload }) => writeFile(
+      join(fixtureRoot, `${id}.json`),
+      JSON.stringify(payload),
+    )));
     const port = await availablePort();
+    const ovenDataBindings = ovenData.map(({ id }) => `${id}=${join(fixtureRoot, `${id}.json`)}`).join(",");
     child = spawn(process.execPath, [
       serverPath,
       "--port", String(port),
       "--auto-port",
       "--scan-root", rootPaths.map((path) => join(fixtureRoot, path)).join(","),
       "--state-dir", join(fixtureRoot, "state"),
+      ...(ovenDataBindings ? ["--oven-data", ovenDataBindings] : []),
     ], {
       cwd: fixtureRoot,
       env: { ...process.env, HOME: homeRoot },
