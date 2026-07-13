@@ -413,7 +413,7 @@ test("Differential Testing loading state mirrors the generic Oven layout", () =>
   const html = differentialTestingLoadingMarkup();
   assert.match(html, /class="differential-testing-loading" aria-busy="true"/u);
   assert.match(html, /class="differential-testing-loading-visual" aria-hidden="true" inert/u);
-  assert.match(html, /class="work-panel-title">Overview<\/div>/u);
+  assert.doesNotMatch(html, /class="work-panel-title">Overview<\/div>/u);
   assert.match(html, />Loading scenario…</u);
   assert.match(html, /id="burnlist-detail" class="detail-view"/u);
   assert.match(html, /class="driving-parity-kpi-strip"/u);
@@ -1292,7 +1292,7 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.match(root.innerHTML, /class="log-table-cell delta improved">4\.1%<\/span><span class="log-table-cell done">24%<\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell failed unchanged">197<\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell result unchanged">—<\/span><span class="log-table-cell delta unchanged">—<\/span><span class="log-table-cell done">20%<\/span>/u);
-  assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 8);
+  assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 6);
   assert.match(root.innerHTML, /log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">\.<\/span>(?:<span class="log-table-cell">\.<\/span>){4}/u);
   assert.match(root.innerHTML, /class="log-table-cell age">(?:now|\d+m)<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="log-table-cell age">\d+[hd]<\/span>/u);
@@ -1340,7 +1340,7 @@ test("project payloads cannot rename the generic Differential Testing Oven", () 
   } finally {
     globalThis.window = previousWindow;
   }
-  assert.match(root.innerHTML, /class="work-panel-head differential-overview-head"><div class="work-panel-title">Overview<\/div><div class="differential-overview-meta">[\s\S]*<time id="differential-overview-time"/u);
+  assert.match(root.innerHTML, /class="work-panel-head differential-overview-head"><div class="differential-overview-meta">[\s\S]*<time id="differential-overview-time"/u);
   assert.match(root.innerHTML, /class="sep" aria-hidden="true">·<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /class="driving-parity-kpi-title">Differential Testing<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /Project Alpha Differential Testing/u);

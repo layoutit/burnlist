@@ -74,7 +74,7 @@ function AppHeader({ section }: { section: string }) {
         </a>
         {section === "differential-testing" && <div className="dashboard-oven-title">Differential Testing</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
-          {HEADER_LINKS.map((link, index) => (
+          {section !== "differential-testing" && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a

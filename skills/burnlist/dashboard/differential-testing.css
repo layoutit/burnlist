@@ -30,6 +30,9 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 body.driving-parity-view {
   background: var(--bg);
 }
+body.driving-parity-view .dashboard-header {
+  border-bottom-color: rgba(163,172,183,.14);
+}
 .shell { width: min(550px, calc(100% - 32px)); margin: 0 0 0 16px; padding: 20px 0 28px; }
 .shell.index-view, .shell.repo-graph-view, .shell.browser-view, .shell.driving-parity-view { width: calc(100% - 32px); max-width: none; }
 .shell.driving-parity-view {
@@ -38,7 +41,7 @@ body.driving-parity-view {
   margin-inline: auto;
 }
 .shell.driving-parity-view { --text: var(--muted); color: var(--muted); padding-top: 0; }
-.dashboard-main[data-layout="full"] .shell.driving-parity-view { margin-top: 16px; }
+.dashboard-main[data-layout="full"] .shell.driving-parity-view { margin-top: 12px; }
 .shell.driving-parity-view.detail-view-shell { padding-top: 0; }
 .shell.detail-view-shell.driving-parity-view { height: auto; min-height: calc(100vh - 50px); overflow: visible; }
 .shell.detail-view-shell { width: calc(100% - 32px); max-width: none; height: calc(100vh - 50px); display: flex; flex-direction: column; padding-bottom: 16px; overflow: hidden; }
@@ -298,16 +301,13 @@ body.driving-parity-view {
 .driving-parity-view #burnlist-detail:not([hidden]) {
   --driving-parity-card: #111111;
   display: block;
-  height: 396px;
+  height: auto;
   min-height: 0;
   margin-top: 0;
   overflow: hidden;
 }
 .shell.driving-parity-view > header {
   display: none;
-}
-.shell.driving-parity-view #burnlist-detail:not([hidden]) {
-  height: 426px;
 }
 .driving-parity-view #burnlist-detail .differential-overview {
   margin: 0 0 12px;
@@ -318,12 +318,15 @@ body.driving-parity-view {
 .driving-parity-view #burnlist-detail .differential-overview-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   height: 20px;
   min-height: 20px;
   margin-bottom: 8px;
 }
-#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: rgba(163,172,183,.55); font-size: 12px; }
+.driving-parity-view #burnlist-detail .differential-overview-head:not(:has(#differential-overview-time)):has(.differential-refresh-status[hidden]) {
+  display: none;
+}
+#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: rgba(163,172,183,.55); font: 14px/1.2 var(--dashboard-title-font); }
 #differential-overview-time .sep { color: rgba(163,172,183,.55); }
 .differential-overview-meta { display: inline-flex; align-items: baseline; gap: 8px; }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
@@ -333,18 +336,13 @@ body.driving-parity-view {
   grid-template-rows: none;
   gap: 32px;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 0 15px;
   background: var(--driving-parity-card);
   border: 0;
   border-radius: 8px;
 }
-.shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip:not([hidden]) + .detail-workspace {
+.shell.driving-parity-view #burnlist-detail .differential-overview:not([hidden]) + .detail-workspace {
   height: auto;
-}
-@media (min-width: 641px) {
-  .shell.driving-parity-view #burnlist-detail .differential-overview:not([hidden]) + .detail-workspace {
-    height: calc(100% - 121px);
-  }
 }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-title-item {
   grid-column: auto;
@@ -377,6 +375,9 @@ body.driving-parity-view {
 }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip > :last-child {
   padding-right: 0;
+}
+.shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip > :first-child {
+  padding-left: 0;
 }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-scenario {
   padding-right: 0;
@@ -463,6 +464,7 @@ body.driving-parity-view {
 .differential-scenario-control select {
   width: auto;
   max-width: 100%;
+  margin-left: -4px;
   padding: 0 4px 0 0;
   border: 0;
   border-radius: 0;
@@ -547,7 +549,7 @@ body.driving-parity-view {
   overflow: hidden;
   color: rgba(232,232,232,.82);
   font-size: 14px;
-  font-family: var(--dashboard-title-font);
+  font-family: var(--dashboard-font);
   font-weight: 400;
   line-height: 1.15;
   text-overflow: ellipsis;
@@ -597,10 +599,10 @@ body.driving-parity-view {
   stroke-linecap: butt;
 }
 .driving-parity-kpi-burns-donut-track { stroke: rgba(168,168,168,.2); }
-.driving-parity-kpi-burns-donut-segment.improved { stroke: rgba(97,211,148,.34); }
-.driving-parity-kpi-burns-donut-segment.worsened { stroke: var(--driving-parity-kpi-red); }
-.driving-parity-kpi-burns-donut-segment.neutral { stroke: #8d96a3; }
-.driving-parity-kpi-burns-donut-segment.reverted { stroke: rgba(203,157,74,.68); }
+.driving-parity-kpi-burns-donut-segment.improved { stroke: var(--driving-parity-kpi-green); }
+.driving-parity-kpi-burns-donut-segment.worsened { stroke: rgba(239,68,68,.34); }
+.driving-parity-kpi-burns-donut-segment.neutral { stroke: rgba(141,150,163,.34); }
+.driving-parity-kpi-burns-donut-segment.reverted { stroke: rgba(203,157,74,.34); }
 .driving-parity-kpi-progress-donut {
   width: 40px;
   height: 40px;
@@ -613,7 +615,7 @@ body.driving-parity-view {
   stroke-width: 8;
   stroke-linecap: butt;
 }
-.driving-parity-kpi-progress-donut-track { stroke: var(--driving-parity-kpi-red-label); }
+.driving-parity-kpi-progress-donut-track { stroke: rgba(239,68,68,.34); }
 .driving-parity-kpi-progress-donut-segment { stroke: var(--driving-parity-kpi-green); }
 .driving-parity-kpi-scenario-icon {
   fill: none;
