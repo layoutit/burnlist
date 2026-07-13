@@ -1,0 +1,82 @@
+name: Publish
+
+# Manual-only. Bumps the package version (patch/minor/major), gates it, publishes to
+# npm, then commits the version bump and pushes a `v<X.Y.Z>` tag back to main.
+#
+# Trigger from the Actions tab ("Run workflow") or:
+#   gh workflow run publish.yml -f bump=patch
+# Requires an `NPM_TOKEN` repository secret with publish rights.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Gate — build, verify, package
+        run: |
+          npm run build:dashboard
+          npm run verify
+          npm run verify:package
+
+      - name: Bump version
+        id: bump
+        run: |
+          set -euo pipefail
+          next="$(npm version "${{ inputs.bump }}" --no-git-tag-version)"
+          echo "version=${next}" >> "$GITHUB_OUTPUT"
+          echo "Bumped to ${next}"
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit, tag, and push
+        env:
+          NEXT_VERSION: ${{ steps.bump.outputs.version }}
+          ACTOR: ${{ github.actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+        run: |
+          set -euo pipefail
+          git config user.name "$ACTOR"
+          git config user.email "${ACTOR_ID}+${ACTOR}@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): ${NEXT_VERSION}"
+          git tag "${NEXT_VERSION}"
+          git push origin HEAD:main "${NEXT_VERSION}"
