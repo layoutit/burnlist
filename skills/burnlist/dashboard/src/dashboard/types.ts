@@ -6,7 +6,7 @@ export type Burnlist = {
   id: string;
   repo: string;
   repoKey: string | null;
-  repoRoot: string;
+  repoRoot: string | null;
   title: string;
   planLabel: string;
   status: Exclude<Filter, "all">;
@@ -27,7 +27,7 @@ export type Burnlist = {
 export type Project = {
   repoKey: string | null;
   displayName: string;
-  canonicalRoot: string;
+  canonicalRoot: string | null;
   registered: boolean;
   health: string;
   entries: Burnlist[];

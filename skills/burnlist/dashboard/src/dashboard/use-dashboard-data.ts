@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ProgressData, Project, SelectedBurnlist } from "@/dashboard/types";
 
 type DashboardData = {
@@ -13,6 +13,8 @@ export function useDashboardData({ section, selected }: { section: string; selec
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const inFlight = useRef(false);
+  const refreshSequence = useRef(0);
 
   useEffect(() => {
     if (section !== "burnlists") {
@@ -21,30 +23,39 @@ export function useDashboardData({ section, selected }: { section: string; selec
     }
     let cancelled = false;
     const refresh = async () => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      const sequence = ++refreshSequence.current;
+      const current = () => !cancelled && sequence === refreshSequence.current;
       try {
         const projectsResponse = await fetch("/api/projects", { cache: "no-store" });
         if (!projectsResponse.ok) throw new Error("Could not load Burnlists.");
         const projectsData = await projectsResponse.json();
-        if (cancelled) return;
+        if (!current()) return;
         setProjects(projectsData.projects ?? []);
         if (selected) {
           const params = new URLSearchParams(selected);
           const progressResponse = await fetch(`/api/progress?${params}`, { cache: "no-store" });
           if (!progressResponse.ok) throw new Error((await progressResponse.json()).error ?? "Could not load progress.");
-          if (!cancelled) setProgress(await progressResponse.json());
-        } else if (!cancelled) {
+          if (current()) setProgress(await progressResponse.json());
+        } else if (current()) {
           setProgress(null);
         }
-        if (!cancelled) setError("");
+        if (current()) setError("");
       } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load dashboard data.");
+        if (current()) setError(cause instanceof Error ? cause.message : "Could not load dashboard data.");
       } finally {
-        if (!cancelled) setLoading(false);
+        inFlight.current = false;
+        if (current()) setLoading(false);
       }
     };
     void refresh();
     const timer = window.setInterval(refresh, 5000);
-    return () => { cancelled = true; window.clearInterval(timer); };
+    return () => {
+      cancelled = true;
+      refreshSequence.current += 1;
+      window.clearInterval(timer);
+    };
   }, [section, selected]);
 
   return { projects, progress, error, loading };

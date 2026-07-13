@@ -415,6 +415,7 @@ assertPublishablePackage();
 run(process.execPath, [
   "--test",
   "skills/burnlist/scripts/dashboard-routes.test.mjs",
+  "skills/burnlist/scripts/projects.test.mjs",
   "skills/burnlist/scripts/projects-api.test.mjs",
   "skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs",
   "skills/burnlist/scripts/differential-testing-contract.test.mjs",

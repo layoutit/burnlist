@@ -72,7 +72,16 @@ test("/api/projects reports ids duplicated across lifecycle folders", { timeout:
   });
 });
 
-async function withServer({ burnlists, scanRoots }, callback) {
+test("/api/projects tolerates a corrupt registry", { timeout: 20_000 }, async () => {
+  await withServer({ burnlists: [{ repoPath: ".", id: "active" }], scanRoots: ["."], corruptRegistry: true }, async (fixture) => {
+    const response = await httpGet(fixture.baseUrl, "/api/projects");
+    assert.equal(response.status, 200);
+    const projects = JSON.parse(response.body).projects;
+    assert.ok(projects.some((project) => project.canonicalRoot === fixture.root));
+  });
+});
+
+async function withServer({ burnlists, scanRoots, corruptRegistry = false }, callback) {
   const root = await mkdtemp(join(tmpdir(), "burnlist-projects-api-"));
   const home = join(root, "home");
   const fixtures = burnlists ?? [];
@@ -80,6 +89,10 @@ async function withServer({ burnlists, scanRoots }, callback) {
   let child = null;
   try {
     await mkdir(home, { recursive: true });
+    if (corruptRegistry) {
+      await mkdir(join(home, ".burnlist"), { recursive: true });
+      await writeFile(join(home, ".burnlist", "roots.json"), "not json");
+    }
     await Promise.all(fixtures.map(async (fixture, index) => {
       const planPath = planPaths[index];
       await mkdir(dirname(planPath), { recursive: true });

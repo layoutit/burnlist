@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
 import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
+import { buildProjectsSnapshot } from "./projects.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
 import {
   assertKnownKeys,
@@ -790,92 +791,64 @@ function differentialTestingDashboardEntries() {
   }));
 }
 
-function entryRepoKey(repoRoot) {
-  if (typeof repoRoot !== "string" || !repoRoot) return null;
-  try {
-    return repoKey(realpathSync(repoRoot));
-  } catch {
-    return null;
-  }
-}
-
 function dashboardEntries() {
   return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries()]
-    .map((entry) => ({ ...entry, repoKey: entryRepoKey(entry.repoRoot) }))
+    .map((entry) => {
+      let key = null;
+      try {
+        key = entry.repoRoot ? repoKey(realpathSync(entry.repoRoot)) : null;
+      } catch {
+        // Entries for unavailable roots remain visible without a route key.
+      }
+      return { ...entry, repoKey: key };
+    })
     .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
-}
-
-function observedProjectHealth(root) {
-  try {
-    return burnlistPathsFor([root]).length ? "healthy" : "empty";
-  } catch {
-    return "unreadable";
-  }
-}
-
-function latestEntryTime(entries) {
-  return entries.reduce((latest, entry) => {
-    const time = typeof entry.updatedAt === "string" ? Date.parse(entry.updatedAt) : Number.NaN;
-    return Number.isFinite(time) ? Math.max(latest, time) : latest;
-  }, Number.NEGATIVE_INFINITY);
-}
-
-function duplicateEntryIds(entries) {
-  const counts = new Map();
-  for (const entry of entries) counts.set(entry.id, (counts.get(entry.id) ?? 0) + 1);
-  return [...counts].filter(([, count]) => count > 1).map(([id]) => id).sort((left, right) => left.localeCompare(right));
 }
 
 function projectsSnapshot() {
   const home = os.homedir();
-  const registry = readRegistry({ home });
-  const registeredHealth = new Map(classifyRoots({ home }).map((entry) => [entry.root, entry.status]));
-  const projectsByRoot = new Map();
-  const addRoot = (root, registered = false) => {
+  let registeredRoots = [];
+  try {
+    registeredRoots = readRegistry({ home }).roots;
+  } catch {
+    // The dashboard remains useful when a manually edited registry is corrupt.
+  }
+  const observerRoots = candidateRepoRoots();
+  const health = new Map();
+  for (const root of observerRoots) {
     let canonicalRoot = root;
     try {
       canonicalRoot = realpathSync(root);
     } catch {
-      // Registered missing roots remain visible under their recorded canonical path.
+      // Discovery only returns readable roots, but preserve a useful status if it changes.
     }
-    const project = projectsByRoot.get(canonicalRoot) ?? {
-      canonicalRoot,
-      registered: false,
-      registryRoot: null,
-    };
-    if (registered) {
-      project.registered = true;
-      project.registryRoot = root;
+    try {
+      health.set(canonicalRoot, burnlistPathsFor([canonicalRoot]).length ? "healthy" : "empty");
+    } catch {
+      health.set(canonicalRoot, "unreadable");
     }
-    projectsByRoot.set(canonicalRoot, project);
-  };
-  for (const root of candidateRepoRoots()) addRoot(root);
-  for (const entry of registry.roots) addRoot(entry.root, true);
-
-  const entries = dashboardEntries();
-  const projects = [...projectsByRoot.values()].map((project) => {
-    const projectEntries = entries.filter((entry) => entry.repoRoot === project.canonicalRoot);
-    const active = projectEntries.filter((entry) => entry.status === "active").length;
-    return {
-      repoKey: entryRepoKey(project.canonicalRoot),
-      displayName: basename(project.canonicalRoot),
-      canonicalRoot: project.canonicalRoot,
-      registered: project.registered,
-      health: project.registryRoot
-        ? registeredHealth.get(project.registryRoot) ?? observedProjectHealth(project.canonicalRoot)
-        : observedProjectHealth(project.canonicalRoot),
-      entries: projectEntries,
-      counts: { total: projectEntries.length, active },
-      ambiguousIds: duplicateEntryIds(projectEntries),
-      latestUpdatedAt: latestEntryTime(projectEntries),
-    };
-  }).sort((left, right) => (
-    Number(right.counts.active > 0) - Number(left.counts.active > 0)
-    || right.latestUpdatedAt - left.latestUpdatedAt
-    || left.displayName.localeCompare(right.displayName)
-    || left.canonicalRoot.localeCompare(right.canonicalRoot)
-  )).map(({ latestUpdatedAt, ...project }) => project);
-  return { generatedAt: new Date().toISOString(), projects };
+  }
+  try {
+    for (const entry of classifyRoots({ home })) {
+      let canonicalRoot = entry.root;
+      try {
+        canonicalRoot = realpathSync(entry.root);
+      } catch {
+        // Missing registered roots are keyed by their recorded root.
+      }
+      health.set(canonicalRoot, entry.status);
+    }
+  } catch {
+    // A corrupt registry has already been downgraded to no registered roots.
+  }
+  return buildProjectsSnapshot({
+    observerRoots,
+    registeredRoots,
+    health,
+    entries: dashboardEntries(),
+    repoKey,
+    realpath: realpathSync,
+  });
 }
 
 function instructionsName(instructions, defaultName) {
@@ -1171,7 +1144,13 @@ function selectedBurnlist(url) {
   const repo = url.searchParams.get("repo") || route?.repo || "";
   const id = url.searchParams.get("id") || route?.id || "";
   if (requestedRepoKey && id) {
-    const matches = burnlists.filter((entry) => entryRepoKey(entry.repoRoot) === requestedRepoKey && entry.id === id);
+    const matches = burnlists.filter((entry) => {
+      try {
+        return repoKey(realpathSync(entry.repoRoot)) === requestedRepoKey && entry.id === id;
+      } catch {
+        return false;
+      }
+    });
     if (matches.length === 1) return { burnlist: matches[0], burnlists };
     if (matches.length > 1) return { error: `Burnlist ${requestedRepoKey}/${id} is ambiguous; select by plan path.`, burnlists };
     return { error: `No Burnlist found for ${requestedRepoKey}/${id}`, burnlists };

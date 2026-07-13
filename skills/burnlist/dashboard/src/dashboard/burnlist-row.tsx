@@ -18,9 +18,10 @@ export function BurnlistRow({ entry, filter }: { entry: Burnlist; filter: Filter
       aria-label={`Open ${entry.repo}/${entry.id}`}
       className="burnlist-table-row"
       data-status={entry.status}
-      key={`${entry.repo}/${entry.id}`}
+      key={`${entry.repoKey ?? entry.repo}/${entry.status}/${entry.id}/${entry.planLabel}`}
       onClick={open}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           open();

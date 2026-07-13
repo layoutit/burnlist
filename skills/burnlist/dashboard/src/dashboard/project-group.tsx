@@ -25,7 +25,7 @@ function BurnlistTable({ entries, filter, emptyLabel }: { entries: Project["entr
             </tr>
           </thead>
           <tbody className="burnlist-table-body">
-            {entries.length ? entries.map((entry) => <BurnlistRow entry={entry} filter={filter} key={`${entry.repo}/${entry.id}`} />) : (
+            {entries.length ? entries.map((entry) => <BurnlistRow entry={entry} filter={filter} key={`${entry.repoKey ?? entry.repo}/${entry.status}/${entry.id}/${entry.planLabel}`} />) : (
               <tr className="burnlist-table-row">
                 <td className="burnlist-table-cell burnlist-table-cell-primary" colSpan={5}>
                   <p className="burnlist-table-title">{emptyLabel}</p>
@@ -40,10 +40,10 @@ function BurnlistTable({ entries, filter, emptyLabel }: { entries: Project["entr
 }
 
 export function ProjectGroup({ project, filter }: { project: Project; filter: Filter }) {
-  // Uncontrolled-with-state: initial open when the project has active work, and the user's
+  // Uncontrolled-with-state: initial open when the current filter has rows, and the user's
   // toggle survives the 5s poll re-render (a bare `open` prop would fight the poll).
-  const [open, setOpen] = useState(project.counts.active > 0);
-  const entries = project.entries.filter((entry) => filter === "all" || entry.status === filter);
+  const filteredEntries = project.entries.filter((entry) => filter === "all" || entry.status === filter);
+  const [open, setOpen] = useState(() => filteredEntries.length > 0);
   const badge = `${project.registered ? "registered" : "observed"} · ${project.health}`;
   const emptyLabel = project.counts.total === 0
     ? "no burnlists yet — run `burnlist new` here"
@@ -56,7 +56,7 @@ export function ProjectGroup({ project, filter }: { project: Project; filter: Fi
         <span className="dashboard-project-counts">{project.counts.total} lists · {project.counts.active} active</span>
         <Badge className="dashboard-project-badge" variant="ghost">{badge}</Badge>
       </summary>
-      <BurnlistTable emptyLabel={emptyLabel} entries={entries} filter={filter} />
+      <BurnlistTable emptyLabel={emptyLabel} entries={filteredEntries} filter={filter} />
     </details>
   );
 }
