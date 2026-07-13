@@ -315,7 +315,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       title: `${count(done)} of ${count(total)} exact-prefix frames cleared`,
       visual: `<svg class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21"/><circle class="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" transform="rotate(-90 29 29)" stroke-dasharray="${donePercent.toFixed(3)} ${remainingPercent.toFixed(3)}"/></svg>`,
       heading: "Progress",
-      value: `<span class="fail">${count(total)}</span><span class="separator">/</span><span class="pass">${count(done)} (${percent(donePercent)})</span>`,
+      value: `<span class="fail">${count(total)}</span><span class="separator">·</span><span class="pass">${count(done)} (${percent(donePercent)})</span>`,
     });
   }
   function waffleMetric(metric, label) {
@@ -1605,8 +1605,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const pageOptions = [25, 50, 100, 200].map((size) => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("");
     const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visibleTotal <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visibleTotal}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
     const scenarioKpi = kpiItem({
-      className: "driving-parity-kpi-title-item",
+      className: "driving-parity-kpi-scenario",
       title: subtitleParts.join(" · "),
+      visual: '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
       heading: "Scenario",
       headingClass: "differential-scenario-heading",
       value: scenarioSelector(),

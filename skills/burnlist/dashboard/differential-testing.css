@@ -378,6 +378,9 @@ body.driving-parity-view {
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip > :last-child {
   padding-right: 0;
 }
+.shell.driving-parity-view #burnlist-detail .driving-parity-kpi-scenario {
+  padding-right: 0;
+}
 .driving-parity-view #burnlist-detail .driving-parity-kpi-strip {
   --driving-parity-kpi-red: #ef4444;
   --driving-parity-kpi-green: #61d394;
@@ -460,11 +463,11 @@ body.driving-parity-view {
 .differential-scenario-control select {
   width: auto;
   max-width: 100%;
-  padding: 0 16px 0 0;
+  padding: 0 4px 0 0;
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: inherit;
+  color: rgba(168,168,168,.76);
   font: inherit;
   field-sizing: content;
 }
@@ -612,6 +615,13 @@ body.driving-parity-view {
 }
 .driving-parity-kpi-progress-donut-track { stroke: var(--driving-parity-kpi-red-label); }
 .driving-parity-kpi-progress-donut-segment { stroke: var(--driving-parity-kpi-green); }
+.driving-parity-kpi-scenario-icon {
+  fill: none;
+  stroke: rgba(168,168,168,.76);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .driving-parity-kpi-gauge {
   width: 36px;
   height: 36px;
