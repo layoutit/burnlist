@@ -11,23 +11,21 @@
     "burnlist": "bin/burnlist.mjs"
   },
   "exports": {
-    "./differential-testing": "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs",
-    "./differential-testing/contract": "./skills/burnlist/scripts/differential-testing-contract.mjs",
-    "./differential-testing/transport": "./skills/burnlist/scripts/differential-testing-transport.mjs"
+    "./differential-testing": "./ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs",
+    "./differential-testing/contract": "./ovens/differential-testing/engine/differential-testing-contract.mjs",
+    "./differential-testing/transport": "./ovens/differential-testing/engine/differential-testing-transport.mjs"
   },
   "files": [
     "bin/",
     "skills/",
+    "ovens/",
     "dashboard/dist/",
-    "dashboard/differential-testing.css",
-    "dashboard/differential-testing-progress-chart.js",
-    "dashboard/differential-testing-renderer.js",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs"
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
-    "test:differential-testing": "node --test skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs skills/burnlist/scripts/differential-testing-contract.test.mjs skills/burnlist/scripts/differential-testing-data-contract.test.mjs skills/burnlist/scripts/differential-testing-transport-renderer.test.mjs skills/burnlist/scripts/differential-testing-transport-server.test.mjs",
+    "test:differential-testing": "node --test ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs ovens/differential-testing/engine/differential-testing-contract.test.mjs ovens/differential-testing/engine/differential-testing-data-contract.test.mjs ovens/differential-testing/engine/differential-testing-transport-renderer.test.mjs ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",

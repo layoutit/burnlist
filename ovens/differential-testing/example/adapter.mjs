@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { assertDifferentialTestingData, DIFFERENTIAL_TESTING_DATA_SCHEMA } from "../../scripts/differential-testing-data-contract.mjs";
+import { assertDifferentialTestingData, DIFFERENTIAL_TESTING_DATA_SCHEMA } from "../engine/differential-testing-data-contract.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 

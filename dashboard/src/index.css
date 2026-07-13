@@ -1,4 +1,4 @@
-@import "../differential-testing.css";
+@import "../../ovens/differential-testing/renderer/differential-testing.css";
 
 :root {
   color-scheme: dark;

@@ -26,14 +26,14 @@ import {
   normalizeOvenPackage,
   ovenId,
 } from "./oven-contract.mjs";
-import { assertDifferentialTestingData } from "./differential-testing-data-contract.mjs";
+import { assertDifferentialTestingData } from "../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
 import {
   DIFFERENTIAL_TESTING_PAGE_SCHEMA,
   isDifferentialTestingBundle,
   queryDifferentialTestingFieldPage,
   readDifferentialTestingBundleManifest,
   readDifferentialTestingBundleScenario,
-} from "./differential-testing-transport.mjs";
+} from "../../../ovens/differential-testing/engine/differential-testing-transport.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 
 const args = new Map();
@@ -93,7 +93,7 @@ const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageRoot = resolve(skillDir, "..", "..");
 const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
-const builtInOvensDir = resolve(skillDir, "ovens");
+const builtInOvensDir = resolve(packageRoot, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 // @ts-expect-error The canonical renderer is plain ESM so React and the direct Oven route share one implementation.
-import { startDifferentialTestingLiveUpdates } from "../../../differential-testing-renderer.js";
+import { startDifferentialTestingLiveUpdates } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
 
 export function DifferentialTestingPage() {
   const root = useRef<HTMLDivElement>(null);

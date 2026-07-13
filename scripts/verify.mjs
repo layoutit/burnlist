@@ -114,7 +114,7 @@ function assertSourceExcludes(path, needle, message) {
 }
 
 function assertBuiltInOvenSet(expected) {
-  const ovensRoot = resolve(repoRoot, "skills/burnlist/ovens");
+  const ovensRoot = resolve(repoRoot, "ovens");
   const actual = readdirSync(ovensRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
@@ -140,7 +140,7 @@ function assertSkillSet(expected) {
 }
 
 function assertBuiltInOven(id, expectedName) {
-  const root = resolve(repoRoot, "skills/burnlist/ovens", id);
+  const root = resolve(repoRoot, "ovens", id);
   const instructionsPath = resolve(root, "instructions.md");
   const detailPath = resolve(root, "detail.json");
   try {
@@ -162,7 +162,7 @@ function assertBuiltInOven(id, expectedName) {
 }
 
 function assertDifferentialTestingContractAssets() {
-  const schemaPath = resolve(repoRoot, "skills/burnlist/contracts/differential-testing-data.schema.json");
+  const schemaPath = resolve(repoRoot, "ovens/differential-testing/schema/differential-testing-data.schema.json");
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
   if (schema.$id !== "urn:burnlist:differential-testing-data:1" || schema.properties?.schema?.const !== "burnlist-differential-testing-data@1") {
     console.error("Differential Testing JSON Schema id and payload version must describe burnlist-differential-testing-data@1.");
@@ -240,9 +240,9 @@ function assertPublishablePackage() {
     console.error("package.json does not expose the Burnlist CLI.");
     process.exit(1);
   }
-  if (packageJson.exports?.["./differential-testing"] !== "./skills/burnlist/scripts/differential-testing-adapter-sdk.mjs"
-    || packageJson.exports?.["./differential-testing/contract"] !== "./skills/burnlist/scripts/differential-testing-contract.mjs"
-    || packageJson.exports?.["./differential-testing/transport"] !== "./skills/burnlist/scripts/differential-testing-transport.mjs") {
+  if (packageJson.exports?.["./differential-testing"] !== "./ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs"
+    || packageJson.exports?.["./differential-testing/contract"] !== "./ovens/differential-testing/engine/differential-testing-contract.mjs"
+    || packageJson.exports?.["./differential-testing/transport"] !== "./ovens/differential-testing/engine/differential-testing-transport.mjs") {
     console.error("package.json does not expose the stable Differential Testing worker, contract, and transport subpaths.");
     process.exit(1);
   }
@@ -264,8 +264,9 @@ const jsFiles = [
   ...walkFiles(resolve(repoRoot, "bin"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
-  resolve(repoRoot, "dashboard/differential-testing-progress-chart.js"),
-  resolve(repoRoot, "dashboard/differential-testing-renderer.js"),
+  ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
+  resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-progress-chart.js"),
+  resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-renderer.js"),
 ].sort();
 
 for (const file of jsFiles) {
@@ -333,68 +334,68 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "g
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
-assertSourceIncludes("skills/burnlist/ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "null remains distinguishable from numeric zero", "Differential Testing is missing null-preservation discipline.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", 'authority: "telemetry-only"', "Differential Testing is missing the telemetry authority boundary.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", 'authority: "adapter-attested"', "Differential Testing is missing the exact-session attestation boundary.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "one composed candidate transaction", "Differential Testing is missing the lean composed transaction.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "Keep the edit only for `advanced` or `complete`", "Differential Testing is missing the composed keep/reject rule.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "Every newly advanced exact prefix automatically requests", "Differential Testing is missing automatic event-driven refresh.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "No per-candidate ledger", "Differential Testing still requires per-candidate history ceremony.");
-assertSourceIncludes("skills/burnlist/ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
-assertSourceExcludes("skills/burnlist/ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
-assertSourceIncludes("skills/burnlist/scripts/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
+assertSourceIncludes("ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "null remains distinguishable from numeric zero", "Differential Testing is missing null-preservation discipline.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", 'authority: "telemetry-only"', "Differential Testing is missing the telemetry authority boundary.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", 'authority: "adapter-attested"', "Differential Testing is missing the exact-session attestation boundary.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "one composed candidate transaction", "Differential Testing is missing the lean composed transaction.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "Keep the edit only for `advanced` or `complete`", "Differential Testing is missing the composed keep/reject rule.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "Every newly advanced exact prefix automatically requests", "Differential Testing is missing automatic event-driven refresh.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "No per-candidate ledger", "Differential Testing still requires per-candidate history ceremony.");
+assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
+assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
+assertSourceIncludes("ovens/differential-testing/engine/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
 assertSourceIncludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "startDifferentialTestingLiveUpdates", "Differential Testing React view is not using the shared live updater.");
 assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "fetch(", "Differential Testing React view duplicates the shared live updater.");
 assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "setInterval", "Differential Testing React view duplicates the shared polling timer.");
 assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "differentialPayloadRevision", "Differential Testing React view duplicates shared revision tracking.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "exactSession?.exactComparison", "Differential Testing renderer still reads the removed exact-comparison surface.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "reconciled telemetry only", "Differential Testing does not visibly distinguish aggregate telemetry from exact authority.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "field.samples", "Differential Testing is missing paired sample charts.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "exactSession?.exactComparison", "Differential Testing renderer still reads the removed exact-comparison surface.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "reconciled telemetry only", "Differential Testing does not visibly distinguish aggregate telemetry from exact authority.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "field.samples", "Differential Testing is missing paired sample charts.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
 assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'class="hybrid-cell hybrid-metric"', "Differential Testing does not preserve the canonical hybrid metric cell.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'class="hybrid-chart"', "Differential Testing does not preserve the canonical hybrid chart cell.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", '`Δ ${value(field.maxDelta)}`', "Differential Testing still invents a Greek delta prefix that the canonical hybrid row never renders.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'value(field.maxDelta)', "Differential Testing drops the canonical plain numeric value line.");
-assertSourceIncludes("dashboard/differential-testing-progress-chart.js", "maxTime = Math.max(minTime + 1", "Differential Testing history does not handle one-run data without a floating label.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "spikeThreshold", "Differential Testing history still erases losing telemetry runs that later restore baseline.");
-assertSourceIncludes("dashboard/differential-testing-progress-chart.js", "withoutBacktrackedFailedSpikes", "Differential Testing is not using the canonical progress-chart history projection.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "Cards view", "Differential Testing still carries the removed legacy cards view.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "Table view", "Differential Testing still carries the removed legacy table view.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "grid-template-columns: 20% 10% minmax(0, 70%)", "Differential Testing rows do not use the canonical hybrid geometry.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "height: 90px", "Differential Testing collapsed rows do not use the canonical height.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", "height: 220px", "Differential Testing expanded rows do not use the canonical height.");
-assertSourceIncludes("dashboard/differential-testing.css", "height: 426px", "Differential Testing Overview and top panels do not preserve the canonical height.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'class="work-panel-title">Overview</div>', "Differential Testing does not preserve the canonical Overview section title.");
-assertSourceIncludes("dashboard/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
-assertSourceIncludes("dashboard/differential-testing.css", "inset: 28px 0 0", "Differential Testing top panels do not preserve the shared-card template.");
-assertSourceIncludes("dashboard/differential-testing.css", ".driving-parity-view .differential-tabs", "Differential Testing tab groups do not share one component style.");
-assertSourceIncludes("dashboard/differential-testing.css", '--dashboard-title-font: "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', "Differential Testing does not preserve the canonical title font stack.");
-assertSourceIncludes("dashboard/differential-testing.css", ".driving-parity-view .driving-parity-controls button,\n.driving-parity-view .driving-parity-controls select,\n.driving-parity-view .driving-parity-controls input,\n.driving-parity-view .driving-parity-overall-toggle {\n  font: 14px/1.2 var(--dashboard-title-font);\n}", "Differential Testing controls do not preserve the canonical sans-serif typography.");
-assertSourceIncludes("dashboard/differential-testing.css", '.driving-parity-view .driving-parity-controls input[type="search"],\n.driving-parity-view .driving-parity-controls input[type="search"]:focus {\n  background: transparent;\n}', "Differential Testing search input does not preserve its transparent background.");
-assertSourceIncludes("dashboard/differential-testing.css", "h2 { margin: 0 0 12px; font-size: 16px; font-weight: 400; letter-spacing: 0; }", "Differential Testing panel headings do not preserve the canonical type scale.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'return minutes === 0 ? "now" : minutes + "m";', "Differential Testing Age values do not preserve the canonical minute display.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", '`${hours}h`', "Differential Testing Age values still collapse minutes into hours.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", '<h2 id="progress-panel-title">Parity Progress</h2>', "Differential Testing does not render the canonical progress title.");
-assertSourceIncludes("dashboard/differential-testing-renderer.js", 'id="driving-parity-inline-renderer"', "Differential Testing does not preserve the canonical inline renderer boundary.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "isolateDrivingParityFrame", "Differential Testing still moves the canonical inline renderer into a non-reference frame.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "frame.srcdoc", "Differential Testing still publishes the canonical inline renderer through srcdoc.");
-assertSourceIncludes("dashboard/differential-testing.css", "flex: 0 0 auto;", "Differential Testing log rows can stretch to fill the panel.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "differential-exact-session", "Differential Testing adds a non-template exact-authority panel.");
-assertSourceExcludes("dashboard/differential-testing-renderer.js", "Targeted Burn", "Differential Testing renderer still hardcodes a project workflow title.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="hybrid-cell hybrid-metric"', "Differential Testing does not preserve the canonical hybrid metric cell.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="hybrid-chart"', "Differential Testing does not preserve the canonical hybrid chart cell.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", '`Δ ${value(field.maxDelta)}`', "Differential Testing still invents a Greek delta prefix that the canonical hybrid row never renders.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'value(field.maxDelta)', "Differential Testing drops the canonical plain numeric value line.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-progress-chart.js", "maxTime = Math.max(minTime + 1", "Differential Testing history does not handle one-run data without a floating label.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "spikeThreshold", "Differential Testing history still erases losing telemetry runs that later restore baseline.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-progress-chart.js", "withoutBacktrackedFailedSpikes", "Differential Testing is not using the canonical progress-chart history projection.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "Cards view", "Differential Testing still carries the removed legacy cards view.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "Table view", "Differential Testing still carries the removed legacy table view.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "grid-template-columns: 20% 10% minmax(0, 70%)", "Differential Testing rows do not use the canonical hybrid geometry.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "height: 90px", "Differential Testing collapsed rows do not use the canonical height.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "height: 220px", "Differential Testing expanded rows do not use the canonical height.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "height: 426px", "Differential Testing Overview and top panels do not preserve the canonical height.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="work-panel-title">Overview</div>', "Differential Testing does not preserve the canonical Overview section title.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "inset: 28px 0 0", "Differential Testing top panels do not preserve the shared-card template.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", ".driving-parity-view .differential-tabs", "Differential Testing tab groups do not share one component style.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", '--dashboard-title-font: "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;', "Differential Testing does not preserve the canonical title font stack.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", ".driving-parity-view .driving-parity-controls button,\n.driving-parity-view .driving-parity-controls select,\n.driving-parity-view .driving-parity-controls input,\n.driving-parity-view .driving-parity-overall-toggle {\n  font: 14px/1.2 var(--dashboard-title-font);\n}", "Differential Testing controls do not preserve the canonical sans-serif typography.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", '.driving-parity-view .driving-parity-controls input[type="search"],\n.driving-parity-view .driving-parity-controls input[type="search"]:focus {\n  background: transparent;\n}', "Differential Testing search input does not preserve its transparent background.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "h2 { margin: 0 0 12px; font-size: 16px; font-weight: 400; letter-spacing: 0; }", "Differential Testing panel headings do not preserve the canonical type scale.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'return minutes === 0 ? "now" : minutes + "m";', "Differential Testing Age values do not preserve the canonical minute display.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", '`${hours}h`', "Differential Testing Age values still collapse minutes into hours.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", '<h2 id="progress-panel-title">Parity Progress</h2>', "Differential Testing does not render the canonical progress title.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'id="driving-parity-inline-renderer"', "Differential Testing does not preserve the canonical inline renderer boundary.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "isolateDrivingParityFrame", "Differential Testing still moves the canonical inline renderer into a non-reference frame.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "frame.srcdoc", "Differential Testing still publishes the canonical inline renderer through srcdoc.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "flex: 0 0 auto;", "Differential Testing log rows can stretch to fill the panel.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "differential-exact-session", "Differential Testing adds a non-template exact-authority panel.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "Targeted Burn", "Differential Testing renderer still hardcodes a project workflow title.");
 assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "exact comparator when used", "React Run Burn still requests the superseded manual comparator workflow.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
@@ -417,9 +418,9 @@ run(process.execPath, [
   "skills/burnlist/scripts/dashboard-routes.test.mjs",
   "skills/burnlist/scripts/projects.test.mjs",
   "skills/burnlist/scripts/projects-api.test.mjs",
-  "skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs",
-  "skills/burnlist/scripts/differential-testing-contract.test.mjs",
-  "skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
+  "ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs",
+  "ovens/differential-testing/engine/differential-testing-contract.test.mjs",
+  "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
   "skills/burnlist/scripts/discovery.test.mjs",
   "skills/burnlist/scripts/registry-cli.test.mjs",
   "skills/burnlist/scripts/registry.test.mjs",

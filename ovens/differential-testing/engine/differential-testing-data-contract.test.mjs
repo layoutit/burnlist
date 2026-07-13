@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildPayload } from "../examples/differential-testing/adapter.mjs";
+import { buildPayload } from "../example/adapter.mjs";
 import {
   DIFFERENTIAL_TESTING_REFRESH_MS,
   differentialExactPrefixFrameDeltaMetrics,
@@ -20,8 +20,8 @@ import {
   differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
-} from "../../../dashboard/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../../../dashboard/differential-testing-progress-chart.js";
+} from "../renderer/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../renderer/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
@@ -31,7 +31,7 @@ import {
   validateDifferentialTestingData,
 } from "./differential-testing-data-contract.mjs";
 
-const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../examples/differential-testing");
+const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../example");
 
 test("frame delta residuals normalize against their rolling standard deviation", () => {
   const scores = rollingStandardDeviationScores(
@@ -395,7 +395,7 @@ test("empty scenario state rejects fake selection and retained data", async (t) 
 
 test("renderer shows the clean no-scenarios state without a fake id", () => {
   const payload = buildPayload(...emptyCaptures());
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => null, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
   globalThis.window = { addEventListener() {}, removeEventListener() {}, devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
@@ -484,7 +484,7 @@ test("zero tolerance remains exact for numeric samples", () => {
 });
 
 test("dashboard JSON responses serialize compactly before sending headers", () => {
-  const source = readFileSync(resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs"), "utf8");
+  const source = readFileSync(resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs"), "utf8");
   const helper = source.match(/function json\(res, status, body\) \{[\s\S]+?\n\}/u)?.[0] ?? "";
   assert.match(helper, /const serialized = JSON\.stringify\(body\);[\s\S]+res\.writeHead[\s\S]+res\.end\(serialized\);/u);
   assert.doesNotMatch(helper, /JSON\.stringify\(body, null, 2\)/u);
@@ -1045,7 +1045,7 @@ test("result and status consistency is strict", async (t) => {
 });
 
 test("removed ceremony keys are rejected with no compatibility path", async (t) => {
-  const schemaText = readFileSync(resolve(exampleDir, "../../contracts/differential-testing-data.schema.json"), "utf8");
+  const schemaText = readFileSync(resolve(exampleDir, "../schema/differential-testing-data.schema.json"), "utf8");
   for (const removedDefinition of ["exactCycles", "exactComparison", "exactBinding", "exactLifecycle", "telemetryGate", "cadenceFrames", "nextBoundary", "gateId"]) {
     assert.doesNotMatch(schemaText, new RegExp(`"${removedDefinition}"`, "u"));
   }
@@ -1176,7 +1176,7 @@ test("Changed renders telemetry transitions while primary field status stays fai
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(differentialTelemetryFieldMap(candidate).size, candidate.fields.length);
 
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = {
     innerHTML: "",
@@ -1202,7 +1202,7 @@ test("Changed renders telemetry transitions while primary field status stays fai
 
 test("exact authority stays in the data contract without adding a non-template panel", () => {
   const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = {
     innerHTML: "",
@@ -1247,7 +1247,7 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
     { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 846_539, delta: null, frames: 1_000, frame: 197, frameDelta: null },
   ];
   payload.progress = [...payload.log].reverse();
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1314,7 +1314,7 @@ test("KPI failed totals use the same million compaction as total samples", () =>
     blocked: 463_605,
     uniqueTicks: 1_000,
   };
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1330,7 +1330,7 @@ test("KPI failed totals use the same million compaction as total samples", () =>
 test("project payloads cannot rename the generic Differential Testing Oven", () => {
   const payload = buildPayload(...populatedCaptures());
   payload.title = "Project Alpha Differential Testing";
-  const oven = { name: "Differential Testing", detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { name: "Differential Testing", detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1353,7 +1353,7 @@ test("Value charts merge contiguous failing reference intervals into bounded SVG
     field.samples = states.map((state, tick) => [tick, tick, tick + 1, state]);
     field.failedSampleCount = states.filter((state) => state !== 0).length;
     payload.fields = [field];
-    const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
     const controls = { value: "", focus() {}, setSelectionRange() {} };
     const listeners = new Map();
     const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1381,7 +1381,7 @@ test("Value charts merge contiguous failing reference intervals into bounded SVG
 test("default field ordering does not rescan the payload inside a sort comparator", () => {
   const payload = buildPayload(...populatedCaptures());
   payload.fields.indexOf = () => { throw new Error("quadratic field-order lookup"); };
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1397,7 +1397,7 @@ test("scenario selector requests another published scenario and shows Loading", 
   const payload = buildPayload(...populatedCaptures());
   const secondScenario = { ...payload.scenarioCatalog.scenarios[0], id: "fedcba9876543210", label: "Second scenario" };
   payload.scenarioCatalog.scenarios.push(secondScenario);
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const listeners = new Map();
   const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1422,7 +1422,7 @@ test("first-row tick cadence and label clearance match the shared hybrid referen
   reference.samples = Array.from({ length: 21 }, (_, tick) => ({ tick, values: { position: tick, active: tick > 0 } }));
   candidate.samples = structuredClone(reference.samples);
   const payload = buildPayload(reference, candidate);
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../../ovens/differential-testing/detail.json"), "utf8")) };
+  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1751,7 +1751,7 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
   writeFileSync(resolve(bundleDir, "current.json"), `${JSON.stringify(current)}\n`);
   writeFileSync(resolve(scenariosDir, `${secondId}.json`), `${JSON.stringify(second)}\n`);
 
-  const serverPath = resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs");
+  const serverPath = resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
   const port = 48000 + Math.floor(Math.random() * 1000);
   const child = spawn(process.execPath, [serverPath, "--port", String(port), "--auto-port", "--state-dir", resolve(directory, "state"), "--oven-data", "differential-testing=bundle/current.json"], { cwd: directory, stdio: ["ignore", "pipe", "pipe"] });
   t.after(() => {
@@ -1820,7 +1820,7 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
 });
 
 test("Burnlist rejects retired pre-Oven options instead of adapting them", () => {
-  const serverPath = resolve(exampleDir, "../../scripts/burnlist-dashboard-server.mjs");
+  const serverPath = resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
   for (const option of ["--legacy-detail-origin", "--types-dir"]) {
     const result = spawnSync(process.execPath, [serverPath, option, "/tmp/retired"], { encoding: "utf8" });
     assert.equal(result.status, 2);
