@@ -423,6 +423,7 @@ run(process.execPath, [
   "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
   "src/server/discovery.test.mjs",
   "src/server/plan-model.test.mjs",
+  "src/cli/lifecycle-cli.test.mjs",
   "src/cli/registry-cli.test.mjs",
   "src/cli/umbrella.test.mjs",
   "src/server/registry.test.mjs",
