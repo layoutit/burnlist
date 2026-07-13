@@ -21,6 +21,7 @@ import {
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
 } from "../dashboard/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../dashboard/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
@@ -31,6 +32,27 @@ import {
 } from "./differential-testing-data-contract.mjs";
 
 const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../examples/differential-testing");
+
+test("frame delta residuals normalize against their rolling standard deviation", () => {
+  const scores = rollingStandardDeviationScores(
+    [0, 1, 1, 1, 1],
+    [0, -2, -1, 1, 2],
+    1,
+    1,
+  );
+  assert.equal(scores[0], 0);
+  assert.equal(scores[1], 0);
+  assert.equal(Number(scores[2].toFixed(6)), -0.801784);
+  assert.equal(Number(scores[3].toFixed(6)), 0.801784);
+  assert.equal(Number(scores[4].toFixed(6)), 4);
+});
+
+test("frame delta normalization stays finite for locally flat residuals", () => {
+  assert.deepEqual(
+    rollingStandardDeviationScores([0, 1, 1, 1], [0, 0, 0, 0], 1, 15),
+    [0, 0, 0, 0],
+  );
+});
 
 function emptyCaptures() {
   return ["reference.json", "candidate.json"].map((name) => JSON.parse(readFileSync(resolve(exampleDir, name), "utf8")));
@@ -391,7 +413,7 @@ test("Differential Testing loading state mirrors the generic Oven layout", () =>
   const html = differentialTestingLoadingMarkup();
   assert.match(html, /class="differential-testing-loading" aria-busy="true"/u);
   assert.match(html, /class="differential-testing-loading-visual" aria-hidden="true" inert/u);
-  assert.match(html, />Differential Testing</u);
+  assert.match(html, /class="work-panel-title">Overview<\/div>/u);
   assert.match(html, />Loading scenario…</u);
   assert.match(html, /id="burnlist-detail" class="detail-view"/u);
   assert.match(html, /class="driving-parity-kpi-strip"/u);
@@ -1239,9 +1261,11 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.equal(root.className, "shell driving-parity-view");
   assert.doesNotMatch(root.innerHTML, /class="shell driving-parity-view/u);
   assert.match(root.innerHTML, /class="driving-parity-kpi-heading">Results</u);
+  assert.match(root.innerHTML, /class="driving-parity-kpi-heading differential-scenario-heading">Scenario</u);
   assert.match(root.innerHTML, /id="differential-scenario-selector"/u);
   assert.match(root.innerHTML, /id="progress-panel-title">Parity Progress<\/h2>/u);
-  assert.match(root.innerHTML, /class="work-panel-title">Parity Progress<span class="field-list-count">\(\d{2}:\d{2}:\d{2}\)<\/span><\/div>/u);
+  assert.match(root.innerHTML, /class="work-panel-title">Parity Progress<\/div>/u);
+  assert.doesNotMatch(root.innerHTML, /class="work-panel-title">Parity Progress<span/u);
   assert.match(root.innerHTML, /class="label-toggle progress-chart-toggle differential-tabs"/u);
   assert.match(root.innerHTML, /id="progress-headline">0\/0</u);
   assert.match(root.innerHTML, /data-work-tab-pane="timeline" hidden/u);
@@ -1310,7 +1334,9 @@ test("project payloads cannot rename the generic Differential Testing Oven", () 
   } finally {
     globalThis.window = previousWindow;
   }
-  assert.match(root.innerHTML, /class="driving-parity-kpi-title">Differential Testing<\/span>/u);
+  assert.match(root.innerHTML, /class="work-panel-head differential-overview-head"><div class="work-panel-title">Overview<\/div><div class="differential-overview-meta">[\s\S]*<time id="differential-overview-time"/u);
+  assert.match(root.innerHTML, /class="sep" aria-hidden="true">·<\/span>/u);
+  assert.doesNotMatch(root.innerHTML, /class="driving-parity-kpi-title">Differential Testing<\/span>/u);
   assert.doesNotMatch(root.innerHTML, /Project Alpha Differential Testing/u);
 });
 
@@ -1382,6 +1408,7 @@ test("scenario selector requests another published scenario and shows Loading", 
   assert.match(root.innerHTML, new RegExp(`<option value="${secondScenario.id}" selected>${secondScenario.id}</option>`, "u"));
   assert.doesNotMatch(root.innerHTML, />Second scenario<\/option>/u);
   assert.match(root.innerHTML, /id="differential-refresh-status"[^>]*>Loading</u);
+  assert.match(root.innerHTML, /class="differential-overview-meta">[\s\S]*id="differential-refresh-status"[^>]*>Loading<[\s\S]*id="differential-overview-time"/u);
 });
 
 test("first-row tick cadence and label clearance match the shared hybrid reference", () => {

@@ -758,6 +758,22 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   }
 }
 
+export function rollingStandardDeviationScores(ratios, centeredRatios, activeStart, rollingRadius) {
+  return centeredRatios.map((residual, index) => {
+    if (!(ratios[index] > 0)) return 0;
+    const warmingUp = activeStart >= 0 && index < activeStart + rollingRadius;
+    const window = centeredRatios.slice(
+      warmingUp ? activeStart : Math.max(activeStart, index - rollingRadius),
+      warmingUp ? index + 1 : Math.min(centeredRatios.length, index + rollingRadius + 1),
+    );
+    if (window.length < 2) return 0;
+    const mean = window.reduce((sum, value) => sum + value, 0) / window.length;
+    const variance = window.reduce((sum, value) => sum + (value - mean) ** 2, 0) / window.length;
+    const standardDeviation = Math.sqrt(variance);
+    return standardDeviation > Number.EPSILON ? residual / standardDeviation : 0;
+  });
+}
+
 export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   if (!svg || typeof svg.replaceChildren !== "function") return;
   const ratios = Array.isArray(metrics?.frameDeviationRatios)
@@ -768,7 +784,7 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   const measuredHeight = Math.round(svg.getBoundingClientRect().height || svg.clientHeight || parseFloat(getComputedStyle(svg).height) || 200);
   const height = Math.max(160, measuredHeight);
   svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-  svg.setAttribute("aria-label", "Current-run overall frame deviation ratio centered on a 31-frame rolling median");
+  svg.setAttribute("aria-label", "Current-run overall frame deviation residual normalized by a 31-frame rolling standard deviation");
   svg.classList.remove("range-zoomable", "failed-chart", "goal-reached");
   svg.classList.add("delta-chart");
   delete svg.dataset.domainMin;
@@ -785,7 +801,7 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
     && metrics?.firstFailingFrame !== "";
   const metricFirstFailingFrame = Number(metrics?.firstFailingFrame);
   const firstFailingFrame = hasMetricFirstFailingFrame && Number.isFinite(metricFirstFailingFrame)
-    ? Math.max(0, Math.min(frameCount - 1, Math.round(metricFirstFailingFrame)))
+    ? Math.max(-1, Math.min(frameCount - 1, Math.round(metricFirstFailingFrame)))
     : activeStart;
   const centeredRatios = ratios.map((value, index) => {
     if (!(value > 0)) return 0;
@@ -804,7 +820,8 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
       : (window[middle - 1] + window[middle]) / 2;
     return value - rollingMedian;
   });
-  const maxResidual = Math.max(0.00001, ...centeredRatios.map((value) => Math.abs(value)));
+  const standardizedRatios = rollingStandardDeviationScores(ratios, centeredRatios, activeStart, rollingMedianRadius);
+  const maxResidual = Math.max(0.00001, ...standardizedRatios.map((value) => Math.abs(value)));
   const limit = maxResidual * 1.16;
   const zeroY = height / 2;
   const x = (index) => index / Math.max(1, frameCount - 1) * width;
@@ -922,8 +939,8 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   const passSegments = [];
   const failSegments = [];
   for (let index = 0; index < frameCount - 1; index += 1) {
-    const startValue = centeredRatios[index];
-    const endValue = centeredRatios[index + 1];
+    const startValue = standardizedRatios[index];
+    const endValue = standardizedRatios[index + 1];
     const startX = x(index);
     const endX = x(index + 1);
     const appendSegment = (segments, x1, value1, x2, value2) => {

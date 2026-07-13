@@ -14,12 +14,13 @@ function escapeHtml(value) {
 
 export function differentialTestingLoadingMarkup() {
   const title = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item">
-      <span class="driving-parity-kpi-title">Differential Testing</span>
+      <span class="driving-parity-kpi-heading differential-scenario-heading">Scenario</span>
       <span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select aria-label="Differential Testing scenario" disabled><option selected>Loading scenario…</option></select></span></span>
     </div>`;
   const template = differentialTestingDashboardTemplateMarkup()
     .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
-    .replace('<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>', `<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${title}</section>`)
+    .replace('<section class="differential-overview" id="differential-overview" hidden>', '<section class="differential-overview" id="differential-overview">')
+    .replace('<div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"></div>', `<div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${title}</div>`)
     .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
     .replace('<button type="button" data-progress-chart-mode="failed">', '<button type="button" data-progress-chart-mode="failed" aria-pressed="false">')
     .replace('<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta">', '<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed="true">')
@@ -227,9 +228,12 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const scenarios = Array.isArray(catalog?.scenarios) ? catalog.scenarios : [];
     const selected = state.pendingScenarioId || catalog?.selectedScenarioId || "";
     const options = scenarios.map((scenario) => `<option value="${escapeHtml(scenario.id)}"${scenario.id === selected ? " selected" : ""}>${escapeHtml(scenario.id)}</option>`).join("");
+    return `<span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario"${scenarios.length < 2 ? " disabled" : ""}>${options}</select></span>`;
+  }
+  function refreshStatus() {
     const status = differentialRefreshStatusLabel(state.payload.refresh, state.clientRefreshStatus);
     const statusTitle = state.payload.refresh?.status === "failed" ? state.payload.refresh.error || status : status;
-    return `<span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario"${scenarios.length < 2 ? " disabled" : ""}>${options}</select><span id="differential-refresh-status" class="differential-refresh-status ${escapeHtml(state.clientRefreshStatus || state.payload.refresh?.status || "")}" title="${escapeHtml(statusTitle)}"${status ? "" : " hidden"}>${escapeHtml(status)}</span></span>`;
+    return `<span id="differential-refresh-status" class="differential-refresh-status ${escapeHtml(state.clientRefreshStatus || state.payload.refresh?.status || "")}" title="${escapeHtml(statusTitle)}"${status ? "" : " hidden"}>${escapeHtml(status)}</span>`;
   }
   function nonPass(field) { return Number(field.failedSampleCount || 0) + Number(field.missingSampleCount || 0); }
   function fieldResult(field) { return field.trustStatus === "blocked" || field.missingSampleCount > 0 ? "BLOCKED" : field.failedSampleCount > 0 ? "FAIL" : "PASS"; }
@@ -247,6 +251,13 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     return Number.isNaN(date.getTime()) ? timestamp : new Intl.DateTimeFormat(undefined, {
       year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit",
     }).format(date);
+  }
+  function overviewTime(timestamp) {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return escapeHtml(timestamp);
+    const day = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+    const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" }).format(date);
+    return `<span>${escapeHtml(day)}</span><span class="sep" aria-hidden="true">·</span><span>${escapeHtml(time)}</span>`;
   }
   function formatLogRelativeMinutes(time, now = Date.now()) {
     const timestamp = new Date(time).getTime();
@@ -554,7 +565,10 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   }
   function templateHtml() {
     return `  <main id="burnlist-detail" class="detail-view" hidden>
-    <section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>
+    <section class="differential-overview" id="differential-overview" hidden>
+      <div class="work-panel-head differential-overview-head"><div class="work-panel-title">Overview</div><div class="differential-overview-meta"><span id="differential-refresh-status" class="differential-refresh-status" hidden></span><time id="differential-overview-time"></time></div></div>
+      <div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"></div>
+    </section>
     <div class="detail-workspace" id="detail-workspace" data-detail-tab="dashboard">
       <div class="detail-report-column">
         <section class="top" id="detail-top-stack">
@@ -1545,8 +1559,6 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       : "";
     const subtitleParts = [state.payload.subtitle, dateTime(state.payload.publishedAt), telemetrySummary, ...trustBlockerSummaries(state.payload)].filter(Boolean);
     const changedUnavailable = state.telemetryAvailability.status !== "comparable";
-    const latestTimestamp = Array.isArray(state.payload.progress) ? state.payload.progress.at(-1)?.timestamp : null;
-    const parityProgressTitle = `Parity Progress${latestTimestamp ? `<span class="field-list-count">(${escapeHtml(timeOnly(latestTimestamp))})</span>` : ""}`;
     const pageState = serverPage
       ? {
           pageCount: serverPage.pageCount,
@@ -1557,14 +1569,16 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const visibleTotal = serverPage?.total ?? visible.length;
     const pageOptions = [25, 50, 100, 200].map((size) => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("");
     const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visibleTotal <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visibleTotal}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
-    const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle">${scenarioSelector()}</span></div>${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
+    const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-heading differential-scenario-heading">Scenario</span><span class="driving-parity-kpi-title-subtitle">${scenarioSelector()}</span></div>${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
     let html = templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
-      .replace('<section class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs" hidden></section>', `<section class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${kpiHtml}</section>`)
+      .replace('<section class="differential-overview" id="differential-overview" hidden>', '<section class="differential-overview" id="differential-overview">')
+      .replace('<span id="differential-refresh-status" class="differential-refresh-status" hidden></span>', refreshStatus())
+      .replace('<time id="differential-overview-time"></time>', `<time id="differential-overview-time" class="label-toggle differential-tabs" datetime="${escapeHtml(state.payload.publishedAt)}">${overviewTime(state.payload.publishedAt)}</time>`)
+      .replace('<div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"></div>', `<div class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${kpiHtml}</div>`)
       .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
       .replace('<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>', progress(state.payload.progress))
       .replace('<div class="checklist-log" id="checklist-log"></div>', `<div class="checklist-log" id="checklist-log">${log(state.payload.log)}</div>`)
-      .replace('<div class="work-panel-title">Parity Progress</div>', `<div class="work-panel-title">${parityProgressTitle}</div>`)
       .replace('<main id="driving-parity-page" class="driving-parity-page" hidden>', '<main id="driving-parity-page" class="driving-parity-page">')
       .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', `<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(${count(state.payload.summary?.fields?.total ?? state.payload.fields.length)})</span></h2>`)
       .replace('<div id="driving-parity-controls" class="driving-parity-controls" hidden>', '<div id="driving-parity-controls" class="driving-parity-controls">')

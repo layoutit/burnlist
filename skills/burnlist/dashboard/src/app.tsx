@@ -4,6 +4,7 @@ import {
   CircleDotDashed,
   Clock3,
   ListChecks,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,16 +72,19 @@ function AppHeader({ section }: { section: string }) {
           <img alt="" className="dashboard-brand-logo" src="/favicon.svg" />
           <span className="dashboard-brand-name">Burnlist</span>
         </a>
+        {section === "differential-testing" && <div className="dashboard-oven-title">Differential Testing</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
           {HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a
+                aria-label={link.label}
                 aria-current={section === link.section ? "page" : undefined}
                 className="dashboard-primary-nav-link"
                 href={link.href}
+                title={link.label}
               >
-                {link.label}
+                <Settings aria-hidden="true" className="dashboard-primary-nav-icon" />
               </a>
             </span>
           ))}

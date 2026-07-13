@@ -156,7 +156,7 @@ function Timeline({ data }: { data: ChecklistProgressData }) {
       <div className="timeline">
         {shown.map((item, index) => (
           <details className={`tile focused ${item.state === "done" ? "done" : item.state === "current" ? "current active" : "active"}`} key={`${item.state}/${item.id}/${item.title}`} open={mode === "active" ? index === selected : index === allOpenIndex}>
-            <summary className="tile-summary" onClick={(event) => { event.preventDefault(); if (mode === "active") setActiveIndex(index); else setAllOpenIndex(index); }}><span className="tile-marker">{item.id}</span><strong className="tile-title">{item.title}</strong><em className="tile-status">{item.state === "current" ? "Active" : item.state === "done" ? "Done" : "Pending"}</em></summary>
+            <summary className="tile-summary" onClick={(event) => { event.preventDefault(); if (mode === "active") setActiveIndex(index); else setAllOpenIndex(index); }}><span className="tile-marker">{item.id}</span><span className="tile-title">{item.title}</span><em className="tile-status">{item.state === "current" ? "Active" : item.state === "done" ? "Done" : "Pending"}</em></summary>
             <div className="tile-description">
               {item.detail && <p>{item.detail}</p>}
               {Object.entries(item.fields).map(([label, value]) => <details className="tile-field" key={label} open={!/^(files|changed|proof)$/iu.test(label)}><summary className="tile-field-summary">{label}</summary><p>{value}</p></details>)}
@@ -176,7 +176,7 @@ function Target({ data }: { data: ChecklistProgressData }) {
 
 function Log({ data }: { data: ChecklistProgressData }) {
   const rows = [...data.completed].reverse();
-  return <div className="checklist-log"><div className="checklist-log-list">{rows.map((item) => <article className="log-row done" key={`${item.id}/${item.completedAt}`}><div className="log-meta"><time className="log-time">{new Date(item.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time><span className="log-age">{relativeAge(item.completedAt, data.generatedAt)}</span><strong className="log-title">Completed {item.id}</strong></div><div className="log-detail"><div className="log-detail-line lead">{item.title}</div>{item.detail && <div className="log-detail-line">{item.detail}</div>}</div></article>)}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></div>;
+  return <div className="checklist-log"><div className="checklist-log-list">{rows.map((item) => <article className="log-row done" key={`${item.id}/${item.completedAt}`}><div className="log-meta"><time className="log-time">{new Date(item.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time><span className="log-age">{relativeAge(item.completedAt, data.generatedAt)}</span><span className="log-title">Completed {item.id}</span></div><div className="log-detail"><div className="log-detail-line lead">{item.title}</div>{item.detail && <div className="log-detail-line">{item.detail}</div>}</div></article>)}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></div>;
 }
 
 function WorkPanel({ data }: { data: ChecklistProgressData }) {
@@ -212,7 +212,7 @@ function RepoGraph({ repo, data, onData }: { repo: string; data: RepoMapData | n
 
 function Changes({ data }: { data: RepoMapData | null }) {
   const changed = (data?.workingFiles ?? []).filter((file) => file.dirty || file.active);
-  return <section className="panel focused-functions-panel"><div className="focused-functions-head"><h2>Changes</h2><div className="focused-functions-meta">{changed.length} changed files</div></div><div className="focused-functions-list">{changed.length ? changed.map((file) => <article className="diff-file" key={file.path}><div className="diff-file-head"><span className="diff-file-icon">M</span><strong className="diff-file-path">{file.path}</strong><span className="diff-file-stats">{file.status || "modified"}</span></div></article>) : <p className="target-empty">No working tree changes.</p>}</div></section>;
+  return <section className="panel focused-functions-panel"><div className="focused-functions-head"><h2>Changes</h2><div className="focused-functions-meta">{changed.length} changed files</div></div><div className="focused-functions-list">{changed.length ? changed.map((file) => <article className="diff-file" key={file.path}><div className="diff-file-head"><span className="diff-file-icon">M</span><span className="diff-file-path">{file.path}</span><span className="diff-file-stats">{file.status || "modified"}</span></div></article>) : <p className="target-empty">No working tree changes.</p>}</div></section>;
 }
 
 export function ChecklistDashboard({ data, backHref }: { data: ChecklistProgressData; backHref: string }) {
