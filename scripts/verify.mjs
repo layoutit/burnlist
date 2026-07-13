@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeOvenPackage } from "../skills/burnlist/scripts/oven-contract.mjs";
+import { normalizeOvenPackage } from "../src/ovens/oven-contract.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
@@ -263,7 +263,7 @@ function assertPublishablePackage() {
 const jsFiles = [
   ...walkFiles(resolve(repoRoot, "bin"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
-  ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-progress-chart.js"),
   resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-renderer.js"),
@@ -281,15 +281,15 @@ for (const surface of ["ProgressPanel", "Timeline", "Target", "Log", "RepoGraph"
 assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashboard.tsx", "ResizeObserver", "Checklist progress chart does not follow its rendered width.");
 assertSourceExcludes("dashboard/src/App.tsx", "function Detail(", "Dashboard still carries the superseded simplified Checklist detail path.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "New Oven", "Oven controls are missing.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
-assertSourceIncludes("skills/burnlist/scripts/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
+assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
 assertSourceIncludes("dashboard/src/lib/hrefs.ts", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", '<th className="burnlist-table-heading">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
@@ -300,20 +300,20 @@ assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'classN
 assertSourceIncludes("dashboard/src/index.css", "height: 50px;", "Dashboard header is not fixed at 50px.");
 assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'aria-label="Burnlist home"', "Dashboard header logo does not link home.");
 assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'aria-label="Primary navigation"', "Dashboard header navigation is missing.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "dashboardFallback", "Dashboard server still contains a fallback renderer.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "burnlist-fallback", "Dashboard server still contains fallback dashboard markup.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "fallback-burn-ovens", "Dashboard server still exposes the fallback Oven bundle.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "legacy-detail-origin", "Burnlist still accepts the retired detail proxy.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/api/types"', "Burnlist still exposes the retired type API.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'url.pathname === "/types/new"', "Burnlist still redirects the retired type UI.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"definition.md"', "Burnlist still discovers retired Oven filenames.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"dashboard.json"', "Burnlist still discovers retired Oven detail filenames.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'value.instructions ?? value.definition', "Oven creation still accepts the retired definition field.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'value.detail ?? value.dashboard', "Oven creation still accepts the retired dashboard field.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"typeId"', "Burn runs still accept the retired typeId field.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'record.typeId', "Burn run reads still accept retired typeId records.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "/assets/fallback-burn-types.js", "Burnlist still exposes the retired type asset alias.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '["api", "ovens", "types", "runs"]', "Burnlist still reserves the retired types route.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "dashboardFallback", "Dashboard server still contains a fallback renderer.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "burnlist-fallback", "Dashboard server still contains fallback dashboard markup.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "fallback-burn-ovens", "Dashboard server still exposes the fallback Oven bundle.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "legacy-detail-origin", "Burnlist still accepts the retired detail proxy.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/types"', "Burnlist still exposes the retired type API.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/types/new"', "Burnlist still redirects the retired type UI.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"definition.md"', "Burnlist still discovers retired Oven filenames.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"dashboard.json"', "Burnlist still discovers retired Oven detail filenames.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'value.instructions ?? value.definition', "Oven creation still accepts the retired definition field.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'value.detail ?? value.dashboard', "Oven creation still accepts the retired dashboard field.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"typeId"', "Burn runs still accept the retired typeId field.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'record.typeId', "Burn run reads still accept retired typeId records.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "/assets/fallback-burn-types.js", "Burnlist still exposes the retired type asset alias.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '["api", "ovens", "types", "runs"]', "Burnlist still reserves the retired types route.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'aria-label="New detail section"', "Oven inline detail-section editor is missing.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "DetailTypePicker", "Oven chart-type icon picker is missing.");
@@ -324,15 +324,15 @@ assertSourceIncludes("dashboard/src/index.css", "grid-template-columns: repeat(4
 assertSourceExcludes("dashboard/src/index.css", "tailwindcss", "Dashboard stylesheet still imports Tailwind.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "grid-area-title", "Oven detail sections still expose a separate title field.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "grid-area-source", "Oven detail sections still expose a source-path field.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "grid-row-height", "New Oven still exposes a row-height control.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", ">Row height<", "New Oven still renders a Row height label.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "Instructions are stored as Markdown", "New Oven still renders the removed Markdown helper text.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "grid-row-height", "New Oven still exposes a row-height control.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", ">Row height<", "New Oven still renders a Row height label.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "Instructions are stored as Markdown", "New Oven still renders the removed Markdown helper text.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Instructions are stored as Markdown", "React New Oven still renders the removed Markdown helper text.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "builder-hint", "New Oven still renders the removed skeleton helper text.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "builder-hint", "New Oven still renders the removed skeleton helper text.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Drag to place a detail section", "React New Oven still renders the removed skeleton helper text.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "grid-ruler", "Oven detail skeleton still renders grid ruler numbers.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "grid-ruler", "Oven detail skeleton still renders grid ruler numbers.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
 assertSourceIncludes("ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
@@ -362,7 +362,7 @@ assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-r
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
-assertSourceIncludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
@@ -396,16 +396,16 @@ assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-r
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "flex: 0 0 auto;", "Differential Testing log rows can stretch to fill the panel.");
 assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "differential-exact-session", "Differential Testing adds a non-template exact-authority panel.");
 assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "Targeted Burn", "Differential Testing renderer still hardcodes a project workflow title.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "exact comparator when used", "React Run Burn still requests the superseded manual comparator workflow.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
 assertSourceIncludes("scripts/register-skills.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the agent skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
 assertSourceIncludes("bin/burnlist.mjs", 'args[0] === "uninstall"', "Burnlist CLI does not own safe uninstall cleanup.");
 assertSourceExcludes("README.md", "**Target**", "README still advertises the removed Target Oven.");
-assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
-assertSourceExcludes("skills/burnlist/scripts/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
+assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(["burnlist"]);
 assertBuiltInOvenSet(["checklist", "differential-testing"]);
 assertBuiltInOven("checklist", "Checklist");
@@ -415,17 +415,17 @@ assertPublishablePackage();
 
 run(process.execPath, [
   "--test",
-  "skills/burnlist/scripts/dashboard-routes.test.mjs",
-  "skills/burnlist/scripts/projects.test.mjs",
-  "skills/burnlist/scripts/projects-api.test.mjs",
+  "src/server/dashboard-routes.test.mjs",
+  "src/server/projects.test.mjs",
+  "src/server/projects-api.test.mjs",
   "ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs",
   "ovens/differential-testing/engine/differential-testing-contract.test.mjs",
   "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
-  "skills/burnlist/scripts/discovery.test.mjs",
-  "skills/burnlist/scripts/registry-cli.test.mjs",
-  "skills/burnlist/scripts/registry.test.mjs",
-  "skills/burnlist/scripts/repo-map.test.mjs",
-  "skills/burnlist/scripts/repo-state.test.mjs",
+  "src/server/discovery.test.mjs",
+  "src/cli/registry-cli.test.mjs",
+  "src/server/registry.test.mjs",
+  "src/server/repo-map.test.mjs",
+  "src/server/repo-state.test.mjs",
 ]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {

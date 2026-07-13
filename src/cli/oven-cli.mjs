@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeOvenDetail, normalizeOvenPackage, ovenId } from "./oven-contract.mjs";
+import { normalizeOvenDetail, normalizeOvenPackage, ovenId } from "../ovens/oven-contract.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 
 const MAX_INSTRUCTION_BYTES = 65536;
@@ -47,9 +47,9 @@ function fail(message) {
 }
 
 // ── storage locations (mirror the dashboard server) ──────────────────────────
-const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const builtInOvensDir = resolve(skillDir, "ovens");
-const legacyBuiltInTypesDir = resolve(skillDir, "types");
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const builtInOvensDir = resolve(packageRoot, "ovens");
+const legacyBuiltInTypesDir = resolve(packageRoot, "types");
 const launchCwd = process.cwd();
 const customOvensDir = resolve(launchCwd, flags.get("ovens-dir") ?? ".local/burnlist/ovens");
 const legacyCustomTypesDir = resolve(launchCwd, flags.get("types-dir") ?? ".local/burnlist/types");

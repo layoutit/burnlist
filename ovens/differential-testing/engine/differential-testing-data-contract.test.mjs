@@ -484,7 +484,7 @@ test("zero tolerance remains exact for numeric samples", () => {
 });
 
 test("dashboard JSON responses serialize compactly before sending headers", () => {
-  const source = readFileSync(resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs"), "utf8");
+  const source = readFileSync(resolve(exampleDir, "../../../src/server/burnlist-dashboard-server.mjs"), "utf8");
   const helper = source.match(/function json\(res, status, body\) \{[\s\S]+?\n\}/u)?.[0] ?? "";
   assert.match(helper, /const serialized = JSON\.stringify\(body\);[\s\S]+res\.writeHead[\s\S]+res\.end\(serialized\);/u);
   assert.doesNotMatch(helper, /JSON\.stringify\(body, null, 2\)/u);
@@ -1751,7 +1751,7 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
   writeFileSync(resolve(bundleDir, "current.json"), `${JSON.stringify(current)}\n`);
   writeFileSync(resolve(scenariosDir, `${secondId}.json`), `${JSON.stringify(second)}\n`);
 
-  const serverPath = resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+  const serverPath = resolve(exampleDir, "../../../src/server/burnlist-dashboard-server.mjs");
   const port = 48000 + Math.floor(Math.random() * 1000);
   const child = spawn(process.execPath, [serverPath, "--port", String(port), "--auto-port", "--state-dir", resolve(directory, "state"), "--oven-data", "differential-testing=bundle/current.json"], { cwd: directory, stdio: ["ignore", "pipe", "pipe"] });
   t.after(() => {
@@ -1820,7 +1820,7 @@ test("Burnlist serves only catalog-listed contained scenario payloads", async (t
 });
 
 test("Burnlist rejects retired pre-Oven options instead of adapting them", () => {
-  const serverPath = resolve(exampleDir, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+  const serverPath = resolve(exampleDir, "../../../src/server/burnlist-dashboard-server.mjs");
   for (const option of ["--legacy-detail-origin", "--types-dir"]) {
     const result = spawnSync(process.execPath, [serverPath, option, "/tmp/retired"], { encoding: "utf8" });
     assert.equal(result.status, 2);

@@ -17,7 +17,7 @@ import {
 } from "./differential-testing-transport.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const serverPath = resolve(scriptDirectory, "../../../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+const serverPath = resolve(scriptDirectory, "../../../src/server/burnlist-dashboard-server.mjs");
 
 test("the Differential Testing data route serves bounded bundle pages with stable ETags", { timeout: 20_000 }, async () => {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-differential-transport-server-"));

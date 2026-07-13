@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const repoRoot = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 function fixture() {
   const home = mkdtempSync(join(tmpdir(), "burnlist-cli-home-"));

@@ -87,7 +87,7 @@ test("close-completed only moves burnlists in the mutator root", () => {
     completedBurnlist(repoA, "a-complete");
     completedBurnlist(repoB, "b-complete");
     registerRoot(repoB, { home });
-    const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+    const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
     execFileSync(process.execPath, [join(packageRoot, "bin", "burnlist.mjs"), "--close-completed"], {
       cwd: repoA,
       env: { ...process.env, HOME: home },

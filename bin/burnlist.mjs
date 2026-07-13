@@ -140,9 +140,9 @@ if (args[0] !== "oven" && (args.includes("--version") || args.includes("-v"))) {
 }
 
 if (args[0] === "oven") {
-  await import("../skills/burnlist/scripts/oven-cli.mjs");
+  await import("../src/cli/oven-cli.mjs");
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
-  await import("../skills/burnlist/scripts/registry-cli.mjs");
+  await import("../src/cli/registry-cli.mjs");
 } else {
-  await import("../skills/burnlist/scripts/burnlist-dashboard-server.mjs");
+  await import("../src/server/burnlist-dashboard-server.mjs");
 }

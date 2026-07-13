@@ -25,15 +25,15 @@ import {
   normalizeOvenDetail,
   normalizeOvenPackage,
   ovenId,
-} from "./oven-contract.mjs";
-import { assertDifferentialTestingData } from "../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
+} from "../ovens/oven-contract.mjs";
+import { assertDifferentialTestingData } from "../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
 import {
   DIFFERENTIAL_TESTING_PAGE_SCHEMA,
   isDifferentialTestingBundle,
   queryDifferentialTestingFieldPage,
   readDifferentialTestingBundleManifest,
   readDifferentialTestingBundleScenario,
-} from "../../../ovens/differential-testing/engine/differential-testing-transport.mjs";
+} from "../../ovens/differential-testing/engine/differential-testing-transport.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 
 const args = new Map();
@@ -89,8 +89,7 @@ const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "m
 const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
-const skillDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageRoot = resolve(skillDir, "..", "..");
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(packageRoot, "ovens");
@@ -1302,7 +1301,7 @@ function dashboardContentType(path) {
 function serveDashboardFile(res, path, { cache = false, missingStatus = 500 } = {}) {
   const stat = safeStat(path);
   if (!stat?.isFile()) {
-    const error = new Error(`Dashboard build file is missing: ${relative(skillDir, path)}`);
+    const error = new Error(`Dashboard build file is missing: ${relative(packageRoot, path)}`);
     error.status = missingStatus;
     throw error;
   }

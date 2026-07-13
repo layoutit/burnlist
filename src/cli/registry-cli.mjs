@@ -15,7 +15,7 @@ import {
   pruneMissing,
   registerRoot,
   unregisterRoot,
-} from "./registry.mjs";
+} from "../server/registry.mjs";
 
 const LIFECYCLE_FOLDERS = ["draft", "ready", "inprogress", "completed"];
 const IGNORE_LINE = "/notes/burnlists/";
