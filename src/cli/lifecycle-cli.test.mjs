@@ -279,7 +279,7 @@ test("lifecycle verbs reject an existing per-id lock", () => {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
     mkdirSync(join(dirname(result.planPath), ".lock"));
-    writeFileSync(join(dirname(result.planPath), ".lock", "pid"), `${process.pid}\n`);
+    writeFileSync(join(dirname(result.planPath), ".lock", "owner.json"), JSON.stringify({ token: "foreign", pid: process.pid }));
     assert.match(runFailure(context, "ready", result.id), new RegExp(`${result.id} is busy \\(locked\\)`));
   } finally {
     context.cleanup();
@@ -299,15 +299,22 @@ test("lifecycle verbs reclaim a dead lock owner", () => {
   }
 });
 
-test("dashboard stop preserves a live global runtime owned by another launch", () => {
+test("dashboard stop leaves malformed and foreign live global runtime records alone", () => {
   const context = fixture();
   try {
     const stateDir = join(context.repo, "runtime");
     mkdirSync(stateDir, { recursive: true });
-    writeFileSync(join(stateDir, "index.server.json"), JSON.stringify({ pid: 999999999 }));
+    writeFileSync(join(stateDir, "index.server.json"), JSON.stringify({ pid: 999999999, startedAt: "ours" }));
     mkdirSync(join(context.home, ".burnlist"));
     const globalPath = join(context.home, ".burnlist", "server.json");
-    writeFileSync(globalPath, JSON.stringify({ pid: process.pid }));
+    writeFileSync(globalPath, JSON.stringify({ pid: process.pid, startedAt: "foreign" }));
+    execFileSync(process.execPath, [dashboardServerPath, "--stop", "--state-dir", stateDir], {
+      cwd: context.repo,
+      env: { ...process.env, HOME: context.home },
+    });
+    assert.equal(existsSync(globalPath), true);
+
+    writeFileSync(globalPath, JSON.stringify({ pid: -17, startedAt: "corrupt" }));
     execFileSync(process.execPath, [dashboardServerPath, "--stop", "--state-dir", stateDir], {
       cwd: context.repo,
       env: { ...process.env, HOME: context.home },

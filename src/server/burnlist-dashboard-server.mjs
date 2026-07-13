@@ -1047,32 +1047,36 @@ if (!reportMode) mkdirSync(stateDir, { recursive: true });
 
 function stopExistingIfRequested() {
   if (!args.has("stop") && !args.has("replace")) return;
-  let runtime = null;
-  try {
-    runtime = existsSync(runtimePath) ? JSON.parse(readFileSync(runtimePath, "utf8")) : null;
-    if (runtime?.pid && Number.isInteger(runtime.pid)) {
-      try {
-        process.kill(runtime.pid, "SIGTERM");
-      } catch {}
+  const validPid = (pid) => Number.isInteger(pid) && pid > 0;
+  const readRuntime = (path) => {
+    try {
+      return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
+    } catch {
+      return null;
     }
-  } catch {
-    // A stale runtime record must not block stop or replacement.
-  }
+  };
+  const pidIsDead = (pid) => {
+    if (!validPid(pid)) return false;
+    try {
+      process.kill(pid, 0);
+      return false;
+    } catch (error) {
+      return error?.code === "ESRCH";
+    }
+  };
+  const runtime = readRuntime(runtimePath);
+  try {
+    if (validPid(runtime?.pid)) process.kill(runtime.pid, "SIGTERM");
+  } catch {}
   rmSync(runtimePath, { force: true });
   if (args.has("stop")) {
-    try {
-      const globalRuntime = existsSync(globalRuntimePath) ? JSON.parse(readFileSync(globalRuntimePath, "utf8")) : null;
-      const sameRuntime = Number.isInteger(runtime?.pid) && runtime.pid === globalRuntime?.pid;
-      let staleGlobal = false;
-      if (Number.isInteger(globalRuntime?.pid)) {
-        try {
-          process.kill(globalRuntime.pid, 0);
-        } catch (error) {
-          staleGlobal = error?.code === "ESRCH";
-        }
-      }
-      if (sameRuntime || staleGlobal) rmSync(globalRuntimePath, { force: true });
-    } catch {}
+    const globalRuntime = readRuntime(globalRuntimePath);
+    const sameRuntime = validPid(runtime?.pid)
+      && runtime.pid === globalRuntime?.pid
+      && typeof runtime.startedAt === "string"
+      && runtime.startedAt.length > 0
+      && runtime.startedAt === globalRuntime.startedAt;
+    if (sameRuntime || pidIsDead(globalRuntime?.pid)) rmSync(globalRuntimePath, { force: true });
     console.log("Stopped Burnlist index server.");
     process.exit(0);
   }
@@ -1239,9 +1243,10 @@ function listen(port) {
     const address = server.address();
     const actualPort = typeof address === "object" && address ? address.port : port;
     const url = `http://${host}:${actualPort}/`;
-    writeFileSync(runtimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt: new Date().toISOString() }, null, 2)}\n`);
+    const startedAt = new Date().toISOString();
+    writeFileSync(runtimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt }, null, 2)}\n`);
     mkdirSync(dirname(globalRuntimePath), { recursive: true });
-    atomicWrite(globalRuntimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt: new Date().toISOString() }, null, 2)}\n`);
+    atomicWrite(globalRuntimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt }, null, 2)}\n`);
     console.log(url);
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);

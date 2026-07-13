@@ -26,11 +26,21 @@ function atomicWrite(path, contents) {
 }
 
 function validateOrThrow(plan) {
-  const errors = validatePlan(plan).filter((issue) => issue.severity === "error");
+  const issues = validatePlan(plan);
+  const errors = issues.filter((issue) => issue.severity === "error");
   if (errors.length) throw new Error(errors.map((issue) => issue.message).join(" "));
+  return issues;
+}
+
+export function assertValidBurnlistId(id) {
+  if (typeof id !== "string" || !/^\d{6}-\d{3}$/u.test(id) || id.includes("/") || id.includes("..")) {
+    throw new Error(`Invalid Burnlist id: ${id}`);
+  }
+  return id;
 }
 
 export function findBurnlistDir(repoRoot, id) {
+  assertValidBurnlistId(id);
   const matches = LIFECYCLES.flatMap((lifecycle) => {
     const dir = join(lifecycleRoot(repoRoot, lifecycle), id);
     return safeStat(dir)?.isDirectory() ? [{ dir, lifecycle }] : [];
@@ -42,48 +52,71 @@ export function findBurnlistDir(repoRoot, id) {
   return matches[0];
 }
 
-function lockOwnerIsDead(lock) {
-  let pid;
+function isPositivePid(pid) {
+  return Number.isInteger(pid) && pid > 0;
+}
+
+function lockOwner(lock) {
   try {
-    pid = Number.parseInt(readFileSync(join(lock, "pid"), "utf8").trim(), 10);
+    const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
+    return isPositivePid(owner?.pid) && typeof owner.token === "string" && owner.token ? owner : null;
   } catch {
-    return false;
+    return null;
   }
-  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+}
+
+function pidIsAlive(pid) {
+  if (!isPositivePid(pid)) return false;
   try {
     process.kill(pid, 0);
-    return false;
+    return true;
   } catch (error) {
-    return error?.code === "ESRCH";
+    return error?.code !== "ESRCH";
   }
 }
 
 export function withLock(dir, fn) {
   let lockedDir = dir;
-  for (;;) {
-    const lock = join(lockedDir, ".lock");
+  const token = randomBytes(12).toString("hex");
+  const lock = join(lockedDir, ".lock");
+  try {
+    mkdirSync(lock);
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+    const owner = lockOwner(lock);
+    if (owner && pidIsAlive(owner.pid)) throw new Error(`${basename(dir)} is busy (locked)`);
+    const currentOwner = lockOwner(lock);
+    if (currentOwner?.token !== owner?.token) throw new Error(`${basename(dir)} is busy (locked)`);
+    const retired = `${lock}.${token}.stale`;
+    try {
+      renameSync(lock, retired);
+    } catch (takeoverError) {
+      if (takeoverError?.code === "EEXIST" || takeoverError?.code === "ENOENT") {
+        throw new Error(`${basename(dir)} is busy (locked)`);
+      }
+      throw takeoverError;
+    }
+    rmSync(retired, { recursive: true, force: true });
     try {
       mkdirSync(lock);
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-      if (!lockOwnerIsDead(lock)) throw new Error(`${basename(dir)} is busy (locked)`);
-      rmSync(lock, { recursive: true, force: true });
-      continue;
+    } catch (takeoverError) {
+      if (takeoverError?.code === "EEXIST") throw new Error(`${basename(dir)} is busy (locked)`);
+      throw takeoverError;
     }
-    try {
-      writeFileSync(join(lock, "pid"), `${process.pid}\n`);
-    } catch (error) {
-      rmSync(lock, { recursive: true, force: true });
-      throw error;
-    }
-    break;
+  }
+  try {
+    atomicWrite(join(lock, "owner.json"), `${JSON.stringify({ token, pid: process.pid })}\n`);
+  } catch (error) {
+    if (lockOwner(lock)?.token === token) rmSync(lock, { recursive: true, force: true });
+    throw error;
   }
   try {
     const movedDir = fn();
     if (typeof movedDir === "string") lockedDir = movedDir;
     return movedDir;
   } finally {
-    rmSync(join(lockedDir, ".lock"), { recursive: true, force: true });
+    const finalLock = join(lockedDir, ".lock");
+    if (lockOwner(finalLock)?.token === token) rmSync(finalLock, { recursive: true, force: true });
   }
 }
 
@@ -94,6 +127,7 @@ function appendCompletionDigestIfMissing(plan) {
 }
 
 export function moveLifecycle({ repoRoot, id, from, to, gate, beforeMove }) {
+  assertValidBurnlistId(id);
   const sourceLifecycle = LIFECYCLES.find((lifecycle) => lifecycle.folder === from);
   const sourceDir = join(lifecycleRoot(repoRoot, sourceLifecycle), id);
   if (!safeStat(sourceDir)?.isDirectory()) {
@@ -200,14 +234,10 @@ function appendCompleted(lines, entry) {
 }
 
 export function burnItem(repoRoot, id, itemId, check = false) {
-  const inprogress = LIFECYCLES.find((lifecycle) => lifecycle.folder === "inprogress");
-  const inprogressDir = join(lifecycleRoot(repoRoot, inprogress), id);
-  const found = safeStat(inprogressDir)?.isDirectory()
-    ? { dir: inprogressDir, lifecycle: inprogress }
-    : null;
-  if (!found) {
-    const located = findBurnlistDir(repoRoot, id);
-    throw new Error(`burnlist ${id} is not in inprogress; it is in ${located.lifecycle.folder}`);
+  assertValidBurnlistId(id);
+  const found = findBurnlistDir(repoRoot, id);
+  if (found.lifecycle.folder !== "inprogress") {
+    throw new Error(`burnlist ${id} is not in inprogress; it is in ${found.lifecycle.folder}`);
   }
   const planPath = join(found.dir, "burnlist.md");
   return withLock(found.dir, () => {
@@ -217,16 +247,25 @@ export function burnItem(repoRoot, id, itemId, check = false) {
     if (!item) throw new Error(`Active item ${itemId} was not found.`);
     const lines = removeActiveItem(plan.markdown, itemId);
     appendCompleted(lines, `- ${item.id} | ${localIsoTimestamp()} | ${item.title}`);
-    atomicWrite(planPath, `${lines.join("\n").replace(/\s*$/u, "")}\n`);
+    const nextMarkdown = `${lines.join("\n").replace(/\s*$/u, "")}\n`;
+    const temporary = join(dirname(planPath), `.${basename(planPath)}.${randomBytes(8).toString("hex")}.tmp`);
+    let checked;
+    try {
+      writeFileSync(temporary, nextMarkdown);
+      checked = parsePlan(temporary);
+      const issues = validateOrThrow(checked);
+      renameSync(temporary, planPath);
+      checked = { plan: checked, issues };
+    } catch (error) {
+      rmSync(temporary, { force: true });
+      throw error;
+    }
     if (!check) return true;
-    const checked = parsePlan(planPath);
-    const issues = validatePlan(checked);
-    for (const issue of issues) {
+    for (const issue of checked.issues) {
       const stream = issue.severity === "error" ? console.error : console.warn;
       stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
     }
-    if (issues.some((issue) => issue.severity === "error")) return false;
-    console.log(`Burnlist check passed: ${checked.items.length} active, ${checked.completed.length} completed.`);
+    console.log(`Burnlist check passed: ${checked.plan.items.length} active, ${checked.plan.completed.length} completed.`);
     return true;
   });
 }

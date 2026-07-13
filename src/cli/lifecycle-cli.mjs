@@ -8,12 +8,11 @@ import {
   summaryForPlan,
   twoDigit,
 } from "../server/plan-model.mjs";
-import { burnItem, closeLifecycle, readyLifecycle, startLifecycle } from "./lifecycle-moves.mjs";
+import { assertValidBurnlistId, burnItem, closeLifecycle, readyLifecycle, startLifecycle } from "./lifecycle-moves.mjs";
 import { repoKey, readRegistry } from "../server/registry.mjs";
 import { atomicDirectory, safeStat } from "../server/fs-safe.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
-const ID_PATTERN = /^\d{6}-\d{3}$/u;
 const MAX_RESERVATION_ATTEMPTS = 1000;
 
 function fail(message, code = 1) {
@@ -127,11 +126,6 @@ function create(repoRoot) {
   throw new Error(`No available Burnlist ids remain for ${day}.`);
 }
 
-function validateId(id) {
-  if (!ID_PATTERN.test(id) || id.includes("..")) throw new Error(`Invalid Burnlist id: ${id}`);
-  return id;
-}
-
 function parseReference(value) {
   const [reference, item] = value.split("#", 2);
   if (!reference || value.split("#").length > 2) throw new Error(`Invalid Burnlist reference: ${value}`);
@@ -139,7 +133,7 @@ function parseReference(value) {
   if (parts.length > 2 || !parts.every(Boolean)) throw new Error(`Invalid Burnlist reference: ${value}`);
   const [key, id] = parts.length === 2 ? parts : [null, parts[0]];
   if (key && !/^[0-9a-f]{12}$/u.test(key)) throw new Error(`Invalid repository key: ${key}`);
-  validateId(id);
+  assertValidBurnlistId(id);
   if (item !== undefined && !item.trim()) throw new Error("Item id must not be empty.");
   return { key, id, item: item?.trim() ?? null };
 }
@@ -238,19 +232,19 @@ async function main() {
   if (verb === "new" && opts.positionals.length === 0) return create(resolveRepo(opts));
   if (verb === "show" && opts.positionals.length === 1) return show(opts.positionals[0], opts);
   if (verb === "ready" && opts.positionals.length === 1) {
-    const id = validateId(opts.positionals[0]);
+    const id = assertValidBurnlistId(opts.positionals[0]);
     return readyLifecycle(resolveRepo(opts), id);
   }
   if (verb === "start" && opts.positionals.length === 1) {
-    const id = validateId(opts.positionals[0]);
+    const id = assertValidBurnlistId(opts.positionals[0]);
     return startLifecycle(resolveRepo(opts), id);
   }
   if (verb === "close" && opts.positionals.length === 1) {
-    const id = validateId(opts.positionals[0]);
+    const id = assertValidBurnlistId(opts.positionals[0]);
     return closeLifecycle(resolveRepo(opts), id);
   }
   if (verb === "burn" && opts.positionals.length === 2) {
-    const id = validateId(opts.positionals[0]);
+    const id = assertValidBurnlistId(opts.positionals[0]);
     if (!burnItem(resolveRepo(opts), id, opts.positionals[1], opts.check)) process.exitCode = 1;
     return;
   }

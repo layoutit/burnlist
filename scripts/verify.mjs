@@ -424,6 +424,7 @@ run(process.execPath, [
   "src/server/discovery.test.mjs",
   "src/server/plan-model.test.mjs",
   "src/cli/lifecycle-cli.test.mjs",
+  "src/cli/lifecycle-moves.test.mjs",
   "src/cli/registry-cli.test.mjs",
   "src/cli/umbrella.test.mjs",
   "src/server/registry.test.mjs",
