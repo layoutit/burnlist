@@ -1,24 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
-
-type ChecklistItem = { id: string; title: string; fields: Record<string, string> };
-type CompletedItem = { id: string; title: string; completedAt: string; detail: string };
-type Warning = { severity: "error" | "warning"; message: string };
-type HistoryPoint = { time: string; done: number; remaining: number; total: number; percent: number };
-
-export type ChecklistProgressData = {
-  generatedAt: string;
-  title: string;
-  repo: string;
-  planLabel: string;
-  total: number;
-  done: number;
-  remaining: number;
-  percent: number;
-  warnings: Warning[];
-  active: ChecklistItem[];
-  completed: CompletedItem[];
-  history: HistoryPoint[];
-};
+import type { ChecklistProgressData, HistoryPoint } from "@lib";
 
 type RepoFile = {
   path: string;
@@ -194,13 +175,14 @@ function fileColor(path: string) {
   return "#657080";
 }
 
-function RepoGraph({ repo, data, onData }: { repo: string; data: RepoMapData | null; onData: (data: RepoMapData) => void }) {
+function RepoGraph({ repo, repoKey, data, onData }: { repo: string; repoKey: string | null; data: RepoMapData | null; onData: (data: RepoMapData) => void }) {
   const [scope, setScope] = useState("src");
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/repo-map?repo=${encodeURIComponent(repo)}`, { cache: "no-store" }).then((response) => response.json()).then((payload) => { if (!cancelled) onData(payload); });
+    const query = repoKey ? `repoKey=${encodeURIComponent(repoKey)}` : `repo=${encodeURIComponent(repo)}`;
+    fetch(`/api/repo-map?${query}`, { cache: "no-store" }).then((response) => response.json()).then((payload) => { if (!cancelled) onData(payload); });
     return () => { cancelled = true; };
-  }, [onData, repo]);
+  }, [onData, repo, repoKey]);
   const files = data?.workingFiles ?? [];
   const folders = useMemo(() => [...new Set(files.map((file) => file.path.split("/").slice(0, -1).join("/")).filter(Boolean))].sort((left, right) => left.localeCompare(right)).filter((folder) => folder === "src" || folder.startsWith("src/")), [files]);
   const visible = files.filter((file) => scope ? file.path.startsWith(`${scope}/`) : true);
@@ -218,5 +200,5 @@ function Changes({ data }: { data: RepoMapData | null }) {
 export function ChecklistDashboard({ data, backHref }: { data: ChecklistProgressData; backHref: string }) {
   const [view, setView] = useState<"dashboard" | "changes">("dashboard");
   const [repoData, setRepoData] = useState<RepoMapData | null>(null);
-  return <div className={`shell detail-view-shell ${view === "changes" ? "changes-tab-shell" : ""}`}><header><div className="title-row"><h1>{data.title}</h1><a aria-label="Back to Burnlists" className="back-link visible" href={backHref}>⌂</a></div><nav className="detail-tabs"><button className={view === "dashboard" ? "selected" : ""} onClick={() => setView("dashboard")}>Dashboard</button><span className="sep">·</span><button className={view === "changes" ? "selected" : ""} onClick={() => setView("changes")}>Changes</button></nav><div className="meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></div></header><main className="detail-view">{view === "changes" ? <div className="detail-workspace" data-detail-tab="changes"><Changes data={repoData} /></div> : <div className="detail-workspace" data-detail-tab="dashboard"><div className="detail-report-column"><section className="top"><ProgressPanel data={data} /><WorkPanel data={data} /></section></div><RepoGraph data={repoData} onData={setRepoData} repo={data.repo} /></div>}</main><footer className="detail-meta-footer meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></footer></div>;
+  return <div className={`shell detail-view-shell ${view === "changes" ? "changes-tab-shell" : ""}`}><header><div className="title-row"><h1>{data.title}</h1><a aria-label="Back to Burnlists" className="back-link visible" href={backHref}>⌂</a></div><nav className="detail-tabs"><button className={view === "dashboard" ? "selected" : ""} onClick={() => setView("dashboard")}>Dashboard</button><span className="sep">·</span><button className={view === "changes" ? "selected" : ""} onClick={() => setView("changes")}>Changes</button></nav><div className="meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></div></header><main className="detail-view">{view === "changes" ? <div className="detail-workspace" data-detail-tab="changes"><Changes data={repoData} /></div> : <div className="detail-workspace" data-detail-tab="dashboard"><div className="detail-report-column"><section className="top"><ProgressPanel data={data} /><WorkPanel data={data} /></section></div><RepoGraph data={repoData} onData={setRepoData} repo={data.repo} repoKey={data.repoKey} /></div>}</main><footer className="detail-meta-footer meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></footer></div>;
 }

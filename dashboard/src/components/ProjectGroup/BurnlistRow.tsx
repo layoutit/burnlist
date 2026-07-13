@@ -8,7 +8,9 @@ export function BurnlistRow({ entry, filter }: { entry: Burnlist; filter: Filter
   const open = () => { window.location.href = href; };
   const copy = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    const url = `${window.location.origin}${entry.repoKey ? `/r/${encodeURIComponent(entry.repoKey)}` : `/${encodeURIComponent(entry.repo)}`}/${encodeURIComponent(entry.id)}`;
+    const url = window.location.origin + (entry.ovenId === "checklist"
+      ? (entry.repoKey ? `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}` : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`)
+      : entry.href);
     void navigator.clipboard?.writeText(url);
   };
 

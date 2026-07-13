@@ -1,6 +1,25 @@
-import type { ChecklistProgressData } from "@components";
-
 export type Filter = "active" | "draft" | "ready" | "complete" | "all";
+
+export type ChecklistItem = { id: string; title: string; fields: Record<string, string> };
+export type CompletedItem = { id: string; title: string; completedAt: string; detail: string };
+export type Warning = { severity: "error" | "warning"; message: string };
+export type HistoryPoint = { time: string; done: number; remaining: number; total: number; percent: number };
+
+export type ChecklistProgressData = {
+  generatedAt: string;
+  repoKey: string | null;
+  title: string;
+  repo: string;
+  planLabel: string;
+  total: number;
+  done: number;
+  remaining: number;
+  percent: number;
+  warnings: Warning[];
+  active: ChecklistItem[];
+  completed: CompletedItem[];
+  history: HistoryPoint[];
+};
 
 export type Burnlist = {
   id: string;
@@ -18,6 +37,7 @@ export type Burnlist = {
   errors: number;
   warnings: number;
   updatedAt: string | null;
+  lastCompletedAt: string | null;
   ovenId: "checklist" | "differential-testing";
   ovenName: string;
   href: string;
@@ -29,7 +49,9 @@ export type Project = {
   displayName: string;
   canonicalRoot: string | null;
   registered: boolean;
+  sources: Array<"registered" | "observed">;
   health: string;
+  errors: string[];
   entries: Burnlist[];
   counts: { total: number; active: number };
   ambiguousIds: string[];

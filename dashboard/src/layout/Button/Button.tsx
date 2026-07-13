@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "radix-ui"
 
-import { joinClasses } from "@lib"
+import { joinClasses } from "@lib/utils"
 
 type ButtonVariant =
   | "default"

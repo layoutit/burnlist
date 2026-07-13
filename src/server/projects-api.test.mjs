@@ -12,7 +12,7 @@ import { registerRoot } from "./registry.mjs";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
 
-test("/api/projects includes registered empty and unregistered healthy projects", { timeout: 20_000 }, async () => {
+test("/api/projects treats --scan-root as a hard override", { timeout: 20_000 }, async () => {
   await withServer({ burnlists: [{ repoPath: ".", id: "active" }], scanRoots: ["."] }, async (fixture) => {
     const emptyRoot = join(fixture.root, "registered-empty");
     await mkdir(emptyRoot, { recursive: true });
@@ -20,16 +20,14 @@ test("/api/projects includes registered empty and unregistered healthy projects"
     const response = await httpGet(fixture.baseUrl, "/api/projects");
     assert.equal(response.status, 200);
     const projects = JSON.parse(response.body).projects;
-    const empty = projects.find((project) => project.canonicalRoot === emptyRoot);
     const healthy = projects.find((project) => project.canonicalRoot === fixture.root);
-    assert.deepEqual(empty.entries, []);
-    assert.equal(empty.registered, true);
-    assert.equal(empty.health, "empty");
+    assert.equal(projects.some((project) => project.canonicalRoot === emptyRoot), false);
     assert.equal(healthy.registered, false);
+    assert.deepEqual(healthy.sources, ["observed"]);
+    assert.deepEqual(healthy.errors, []);
     assert.equal(healthy.health, "healthy");
     assert.deepEqual(healthy.counts, { total: 1, active: 1 });
     assert.equal(healthy.entries[0].repoKey, healthy.repoKey);
-    assert.ok(projects.indexOf(healthy) < projects.indexOf(empty));
   });
 });
 
@@ -52,6 +50,7 @@ test("repo-key selection distinguishes same-name repositories", { timeout: 20_00
     const keyed = await httpGet(fixture.baseUrl, `/api/progress?repoKey=${second.repoKey}&id=shared`);
     assert.equal(keyed.status, 200);
     assert.equal(JSON.parse(keyed.body).planPath, fixture.planPaths[1]);
+    assert.equal(JSON.parse(keyed.body).repoKey, second.repoKey);
     const ambiguous = await httpGet(fixture.baseUrl, "/api/progress?repo=app&id=shared");
     assert.equal(ambiguous.status, 409);
   });

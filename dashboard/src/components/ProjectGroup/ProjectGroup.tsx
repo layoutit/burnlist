@@ -7,7 +7,7 @@ export function ProjectGroup({ project, filter }: { project: Project; filter: Fi
   // Uncontrolled-with-state: initial open when the current filter has rows, and the user's
   // toggle survives the 5s poll re-render (a bare `open` prop would fight the poll).
   const filteredEntries = project.entries.filter((entry) => filter === "all" || entry.status === filter);
-  const [open, setOpen] = useState(() => filteredEntries.length > 0);
+  const [open, setOpen] = useState(() => filteredEntries.length > 0 || project.counts.total === 0);
   const badge = `${project.registered ? "registered" : "observed"} · ${project.health}`;
   const emptyLabel = project.counts.total === 0
     ? "no burnlists yet — run `burnlist new` here"

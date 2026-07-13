@@ -723,6 +723,10 @@ function summaryForPlan(path) {
       percent: total ? Math.round((done / total) * 100) : 0,
       errors: issues.filter((issue) => issue.severity === "error").length,
       warnings: issues.filter((issue) => issue.severity === "warning").length,
+      lastCompletedAt: plan.completed.reduce((latest, entry) => {
+        const time = Date.parse(entry.completedAt);
+        return Number.isFinite(time) && (!latest || time > Date.parse(latest)) ? entry.completedAt : latest;
+      }, null),
       updatedAt: safeStat(path)?.mtime?.toISOString?.() ?? null,
     };
   } catch (err) {
@@ -742,6 +746,7 @@ function summaryForPlan(path) {
       percent: 0,
       errors: 1,
       warnings: 0,
+      lastCompletedAt: null,
       error: err.message,
       updatedAt: safeStat(path)?.mtime?.toISOString?.() ?? null,
     };
@@ -783,6 +788,7 @@ function differentialTestingDashboardEntries() {
     percent: null,
     errors: 0,
     warnings: 0,
+    lastCompletedAt: null,
     updatedAt: scenario.updatedAt,
     ovenId: "differential-testing",
     ovenName: "Differential Testing",
@@ -807,11 +813,14 @@ function dashboardEntries() {
 
 function projectsSnapshot() {
   const home = os.homedir();
+  const hasScanRootOverride = Boolean(args.get("scan-root"));
   let registeredRoots = [];
-  try {
-    registeredRoots = readRegistry({ home }).roots;
-  } catch {
-    // The dashboard remains useful when a manually edited registry is corrupt.
+  if (!hasScanRootOverride) {
+    try {
+      registeredRoots = readRegistry({ home }).roots;
+    } catch {
+      // The dashboard remains useful when a manually edited registry is corrupt.
+    }
   }
   const observerRoots = candidateRepoRoots();
   const health = new Map();
@@ -828,18 +837,20 @@ function projectsSnapshot() {
       health.set(canonicalRoot, "unreadable");
     }
   }
-  try {
-    for (const entry of classifyRoots({ home })) {
-      let canonicalRoot = entry.root;
-      try {
-        canonicalRoot = realpathSync(entry.root);
-      } catch {
-        // Missing registered roots are keyed by their recorded root.
+  if (!hasScanRootOverride) {
+    try {
+      for (const entry of classifyRoots({ home })) {
+        let canonicalRoot = entry.root;
+        try {
+          canonicalRoot = realpathSync(entry.root);
+        } catch {
+          // Missing registered roots are keyed by their recorded root.
+        }
+        health.set(canonicalRoot, entry.status);
       }
-      health.set(canonicalRoot, entry.status);
+    } catch {
+      // A corrupt registry has already been downgraded to no registered roots.
     }
-  } catch {
-    // A corrupt registry has already been downgraded to no registered roots.
   }
   return buildProjectsSnapshot({
     observerRoots,
@@ -952,22 +963,26 @@ function createOven(value) {
 }
 
 function discoveredRepos() {
-  return candidateRepoRoots().map((root) => ({ name: basename(root), root }));
+  return candidateRepoRoots().map((root) => ({ name: basename(root), root, repoKey: repoKey(realpathSync(root)) }));
 }
 
 function repoMapSelection(url) {
   const queryKeys = [...url.searchParams.keys()];
-  if (queryKeys.some((key) => key !== "repo")) {
-    return { status: 400, error: "repo is the only supported repo-map query parameter." };
+  if (queryKeys.some((key) => key !== "repo" && key !== "repoKey")) {
+    return { status: 400, error: "repo or repoKey is the only supported repo-map query parameter." };
   }
   const requestedRepos = url.searchParams.getAll("repo");
-  if (requestedRepos.length !== 1 || requestedRepos[0].trim() === "") {
-    return { status: 400, error: "repo must be supplied exactly once." };
+  const requestedRepoKeys = url.searchParams.getAll("repoKey");
+  if (requestedRepos.length + requestedRepoKeys.length !== 1) {
+    return { status: 400, error: "repo or repoKey must be supplied exactly once." };
   }
-  const requestedRepo = requestedRepos[0];
-  const matches = discoveredRepos().filter((repo) => repo.name === requestedRepo);
-  if (matches.length === 0) return { status: 404, error: `Unknown repository: ${requestedRepo}` };
-  if (matches.length > 1) return { status: 409, error: `Ambiguous repository: ${requestedRepo}` };
+  const requestedRepo = requestedRepos[0] ?? "";
+  const requestedRepoKey = requestedRepoKeys[0] ?? "";
+  if (!requestedRepo && !requestedRepoKey) return { status: 400, error: "repo or repoKey must not be empty." };
+  const matches = discoveredRepos().filter((repo) => requestedRepoKey ? repo.repoKey === requestedRepoKey : repo.name === requestedRepo);
+  const requested = requestedRepoKey || requestedRepo;
+  if (matches.length === 0) return { status: 404, error: `Unknown repository: ${requested}` };
+  if (matches.length > 1) return { status: 409, error: `Ambiguous repository: ${requested}` };
   return { status: 200, repo: matches[0] };
 }
 
@@ -1193,6 +1208,13 @@ function payloadForPlan(selection) {
   return {
     generatedAt,
     burnlists: discoverBurnlists(),
+    repoKey: (() => {
+      try {
+        return repoKey(realpathSync(selection.repoRoot));
+      } catch {
+        return null;
+      }
+    })(),
     burnlistId: burnlistIdForPlan(selection.planPath),
     repo: plan.repo,
     repoRoot: plan.repoRoot,

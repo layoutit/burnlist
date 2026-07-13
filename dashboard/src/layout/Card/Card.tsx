@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { joinClasses } from "@lib"
+import { joinClasses } from "@lib/utils"
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (

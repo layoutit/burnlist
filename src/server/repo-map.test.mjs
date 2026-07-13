@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:net";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { repoKey } from "./registry.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
@@ -89,6 +91,9 @@ test("repo-map endpoint is strict, bounded, and read-only", { timeout: 20_000 },
     assert.equal(payload.omittedFiles, payload.totalFiles - payload.shownFiles);
     assert.equal(payload.omittedFiles, 0);
     assert.equal(payload.dirtyFiles, 897);
+    const repoKeyResponse = await fetch(`http://127.0.0.1:${port}/api/repo-map?repoKey=${repoKey(realpathSync(repoRoot))}`, { cache: "no-store" });
+    assert.equal(repoKeyResponse.status, 200);
+    assert.equal((await repoKeyResponse.json()).repo, "fixture-repo");
     assert.ok(Array.isArray(payload.workingFiles));
     assert.ok(Array.isArray(payload.workingAllEdges));
     for (const retiredKey of ["files", "edges", "allEdges", "workingEdges"]) {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Tabs as TabsPrimitive } from "radix-ui"
 
-import { joinClasses } from "@lib"
+import { joinClasses } from "@lib/utils"
 
 function Tabs({
   className,

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Progress as ProgressPrimitive } from "radix-ui"
 
-import { joinClasses } from "@lib"
+import { joinClasses } from "@lib/utils"
 
 function Progress({
   className,

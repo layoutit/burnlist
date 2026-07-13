@@ -36,7 +36,7 @@ export function App() {
             </div>
             {error ? <DashboardError message={error} /> : projects.length ? (
               <div className="dashboard-project-groups">{projects.map((project) => <ProjectGroup filter={filter} key={project.canonicalRoot} project={project} />)}</div>
-            ) : <EmptyState title="Nothing here yet" detail="No Burnlists match this lifecycle view." />}
+            ) : <EmptyState title="Nothing here yet" detail="Run `burnlist init` to initialize this repository." />}
             <p className="dashboard-refresh-note"><Clock3 className="dashboard-refresh-icon" />Refreshes every five seconds.</p>
           </section>
         )}
