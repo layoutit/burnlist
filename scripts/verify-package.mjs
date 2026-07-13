@@ -32,25 +32,29 @@ const required = [
   "package.json",
   "scripts/register-skills.mjs",
   "scripts/unregister-skills.mjs",
+  "src/cli/oven-cli.mjs",
+  "src/cli/registry-cli.mjs",
+  "src/ovens/oven-contract.mjs",
+  "src/server/burnlist-dashboard-server.mjs",
   "skills/burnlist/SKILL.md",
   "skills/burnlist/references/burnlist-creation.md",
-  "skills/burnlist/ovens/checklist/instructions.md",
-  "skills/burnlist/ovens/differential-testing/instructions.md",
-  "skills/burnlist/ovens/differential-testing/detail.json",
-  "skills/burnlist/contracts/differential-testing-data.schema.json",
+  "ovens/checklist/instructions.md",
+  "ovens/differential-testing/instructions.md",
+  "ovens/differential-testing/detail.json",
+  "ovens/differential-testing/schema/differential-testing-data.schema.json",
   "skills/burnlist/references/differential-testing-data.md",
   "skills/burnlist/references/differential-testing-adapter-sdk.md",
-  "skills/burnlist/scripts/differential-testing-adapter-sdk.mjs",
-  "skills/burnlist/scripts/differential-testing-contract.mjs",
-  "skills/burnlist/scripts/differential-testing-data-contract.mjs",
-  "skills/burnlist/scripts/differential-testing-transport.mjs",
-  "skills/burnlist/examples/differential-testing/adapter.mjs",
-  "skills/burnlist/examples/differential-testing/reference.json",
-  "skills/burnlist/examples/differential-testing/candidate.json",
-  "skills/burnlist/dashboard/differential-testing.css",
-  "skills/burnlist/dashboard/differential-testing-progress-chart.js",
-  "skills/burnlist/dashboard/differential-testing-renderer.js",
-  "skills/burnlist/dashboard/dist/index.html",
+  "ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs",
+  "ovens/differential-testing/engine/differential-testing-contract.mjs",
+  "ovens/differential-testing/engine/differential-testing-data-contract.mjs",
+  "ovens/differential-testing/engine/differential-testing-transport.mjs",
+  "ovens/differential-testing/example/adapter.mjs",
+  "ovens/differential-testing/example/reference.json",
+  "ovens/differential-testing/example/candidate.json",
+  "ovens/differential-testing/renderer/differential-testing.css",
+  "ovens/differential-testing/renderer/differential-testing-progress-chart.js",
+  "ovens/differential-testing/renderer/differential-testing-renderer.js",
+  "dashboard/dist/index.html",
 ];
 
 for (const path of required) {
@@ -61,7 +65,7 @@ for (const path of required) {
 }
 
 for (const extension of [".css", ".js"]) {
-  if (![...files.keys()].some((path) => path.startsWith("skills/burnlist/dashboard/dist/assets/") && path.endsWith(extension))) {
+  if (![...files.keys()].some((path) => path.startsWith("dashboard/dist/assets/") && path.endsWith(extension))) {
     console.error(`npm package is missing the built dashboard ${extension} asset.`);
     process.exit(1);
   }
@@ -78,12 +82,13 @@ const forbidden = [
   /^scripts\/(?:build-release|install)\.mjs$/u,
   /^skills\/burnlist-create(?:\/|$)/u,
   /^skills\/burnlist\/contracts\/compare-data\.schema\.json$/u,
-  /^skills\/burnlist\/dashboard\/compare-oven(?:-renderer\.js|\.css)$/u,
+  /^dashboard\/compare-oven(?:-renderer\.js|\.css)$/u,
   /^skills\/burnlist\/examples\/compare(?:\/|$)/u,
   /^skills\/burnlist\/ovens\/compare(?:\/|$)/u,
   /^skills\/burnlist\/references\/compare-data\.md$/u,
   /^skills\/burnlist\/scripts\/compare-data-contract(?:\.test)?\.mjs$/u,
   /^skills\/burnlist\/ovens\/target(?:\/|$)/u,
+  /\.test\.(?:mjs|js)$/u,
   /\.zip$/u,
 ];
 

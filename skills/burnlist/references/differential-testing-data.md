@@ -8,7 +8,7 @@ burnlist differential-testing validate-bundle /absolute/path/to/bundle/current.j
 burnlist --oven-data differential-testing=/absolute/path/to/current.json
 ```
 
-The structural schema is `skills/burnlist/contracts/differential-testing-data.schema.json`. The packaged validator is authoritative because it also recomputes relationships that JSON Schema cannot express.
+The structural schema is `ovens/differential-testing/schema/differential-testing-data.schema.json`. The packaged validator is authoritative because it also recomputes relationships that JSON Schema cannot express.
 
 ## Primary Sample Tuple
 
@@ -142,7 +142,7 @@ An adapter must:
 
 Burnlist validates the reported identities, arithmetic, and session consistency. It does not receive project artifact bytes, so project hash and checker claims are `adapter-attested`, not independently verified by Burnlist.
 
-The neutral example under `skills/burnlist/examples/differential-testing/` demonstrates the base aggregate boundary. Projects may add the optional normalized surfaces described below.
+The neutral example under `ovens/differential-testing/example/` demonstrates the base aggregate boundary. Projects may add the optional normalized surfaces described below.
 
 ## Aggregate Telemetry
 

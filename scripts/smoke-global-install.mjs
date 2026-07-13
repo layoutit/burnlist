@@ -78,8 +78,9 @@ try {
     throw new Error(`installed CLI reported ${version}, expected ${packReport.version}`);
   }
   run(cli, ["--stamp"], { capture: true });
+  run(cli, ["oven", "list"], { capture: true });
   const sdkPath = run(cli, ["differential-testing", "sdk"], { capture: true });
-  const expectedSdkPath = resolve(packageRoot, "skills", "burnlist", "scripts", "differential-testing-adapter-sdk.mjs");
+  const expectedSdkPath = resolve(packageRoot, "ovens", "differential-testing", "engine", "differential-testing-adapter-sdk.mjs");
   if (realpathSync(sdkPath) !== realpathSync(expectedSdkPath)) throw new Error(`installed CLI reported unexpected SDK path: ${sdkPath}`);
   run(process.execPath, ["--input-type=module", "--eval", `
     const sdk = await import(${JSON.stringify(pathToFileURL(sdkPath).href)});

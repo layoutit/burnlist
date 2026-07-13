@@ -2,7 +2,15 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./skills/burnlist/dashboard/src/*"]
+      "@/*": ["./dashboard/src/*"],
+      "@layout": ["./dashboard/src/layout"],
+      "@layout/*": ["./dashboard/src/layout/*"],
+      "@components": ["./dashboard/src/components"],
+      "@components/*": ["./dashboard/src/components/*"],
+      "@hooks": ["./dashboard/src/hooks"],
+      "@hooks/*": ["./dashboard/src/hooks/*"],
+      "@lib": ["./dashboard/src/lib"],
+      "@lib/*": ["./dashboard/src/lib/*"]
     }
   }
 }
