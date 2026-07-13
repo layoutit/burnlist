@@ -23,6 +23,7 @@ Read references only when their trigger applies:
 - `references/burnlist-splitting-lanes.md`: split/reorder decisions, recursive gates, parent/lane Burnlists, parallel lane handoff.
 - `references/burnlist-visible-output.md`: detailed silence rules, forbidden narration examples, checkpoint policy.
 - `references/burnlist-dashboard.md`: dashboard/chart/log/timeline/repo-graph behavior or dashboard repair only.
+- `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -113,7 +114,20 @@ The live dashboard is mandatory as an observer, but agents do not own its server
 
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
+### Project registry
+
+The dashboard observes burnlists across a machine-local registry of repo roots (`~/.burnlist/roots.json`) unioned with the current repo, so one dashboard can cover every registered project. Registration is **always explicit** — the CLI is the only writer and nothing auto-registers:
+
+- `burnlist init [path]` — for a **new** repo: scaffold `notes/burnlists/{draft,ready,inprogress,completed}/`, git-ignore that state locally (via `.git/info/exclude`; `--track` commits it with `.gitkeep`s instead), and register the root.
+- `burnlist register [path]` — for an **existing** repo that already has burnlists: register only (no scaffolding, no ignore change).
+- `burnlist unregister [path]` — remove a repo root.
+- `burnlist roots [--prune]` — list registered roots with health (`healthy`/`empty`/`missing`/`unreadable`); `--prune` drops only missing ones.
+
+A burnlist in an unregistered repo is still visible when the dashboard is launched inside it, but not in the global landing until `init`/`register`. Hint the user to register; never auto-register. Observation spans all registered repos, but mutating verbs (`--close-completed`, lifecycle moves) act only on the current repo.
+
 `New Oven` and `Run Burn` are explicit user-controlled local controller surfaces. For Oven contract, UI, validation, or Run-snapshot work, read `references/oven-contract.md`. Preserve its two-file declarative package and ownership boundary: custom Ovens may be created under ignored `.local/burnlist/ovens/` state and snapshotted under `.local/burnlist/runs/`, but neither surface may execute instructions, produce project data, own canonical project state, mutate Burnlists, import arbitrary UI code, or start an agent.
+
+Ovens can also be authored and inspected from the CLI: `burnlist oven <list|view|create|update>`. It writes only custom Ovens, keeps built-in Ovens read-only, reuses the same contract validation, and never executes instructions. `burnlist oven view <id>` renders the detail skeleton as a box-drawing grid for quick inspection. Read `references/oven-authoring.md` for the widget/format vocabulary and source-binding conventions.
 
 Do not embed repo/domain dashboards inside the Burnlist dashboard. Domain-specific viewers must live in their repo-local tools and may be linked or launched separately. Share state only through Burnlist lifecycle files, explicit URLs, or a narrow message contract; do not share CSS, layout code, routes, or polling loops.
 

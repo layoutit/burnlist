@@ -413,10 +413,15 @@ assertPublishablePackage();
 
 run(process.execPath, [
   "--test",
+  "skills/burnlist/scripts/dashboard-routes.test.mjs",
   "skills/burnlist/scripts/differential-testing-adapter-sdk.test.mjs",
   "skills/burnlist/scripts/differential-testing-contract.test.mjs",
   "skills/burnlist/scripts/differential-testing-data-contract.test.mjs",
+  "skills/burnlist/scripts/discovery.test.mjs",
+  "skills/burnlist/scripts/registry-cli.test.mjs",
+  "skills/burnlist/scripts/registry.test.mjs",
   "skills/burnlist/scripts/repo-map.test.mjs",
+  "skills/burnlist/scripts/repo-state.test.mjs",
 ]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {

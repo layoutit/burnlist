@@ -29,7 +29,7 @@ An Oven directory is identified by a lowercase slug and contains these two canon
 
 `detail.json` is a bounded, versioned data document. Its grid dimensions, section count, section ids, controlled widget and format names, optional sources, bounds, and overlap rules are validated. It cannot define or execute HTML, JavaScript, CSS, shell commands, or component imports.
 
-Default Ovens ship with the skill. Custom Ovens are created once under ignored `.local/burnlist/ovens/` state. There is no dashboard update endpoint. Manual changes affect only future Runs. A built-in renderer may define and validate a versioned normalized-data contract; Differential Testing uses `burnlist-differential-testing-data@1`.
+Default Ovens ship with the skill. Custom Ovens are created once under ignored `.local/burnlist/ovens/` state. The dashboard has no update endpoint, but the `burnlist oven` CLI can create, update, view, and list custom Ovens under the same validation; built-in Ovens stay read-only there. Manual changes affect only future Runs. A built-in renderer may define and validate a versioned normalized-data contract; Differential Testing uses `burnlist-differential-testing-data@1`. For the controlled widget/format vocabulary and source-binding conventions, see `oven-authoring.md`.
 
 ## Run Boundary
 
