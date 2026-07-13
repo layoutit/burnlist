@@ -266,6 +266,14 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const minutes = Math.max(0, Math.floor((base - timestamp) / 60_000));
     return minutes === 0 ? "now" : minutes + "m";
   }
+  function kpiItem({ className, title, visual = "", heading, headingClass = "", value, valueClass = "" }) {
+    const modifier = className ? ` ${className}` : "";
+    const section = visual ? " driving-parity-kpi-section" : "";
+    const labelClass = headingClass ? ` ${headingClass}` : "";
+    const valueModifier = valueClass ? ` ${valueClass}` : "";
+    const content = `<span class="driving-parity-kpi-heading${labelClass}">${escapeHtml(heading)}</span><span class="${visual ? "driving-parity-kpi-ratio" : "driving-parity-kpi-title-subtitle"}${valueModifier}">${value}</span>`;
+    return `<div class="driving-parity-kpi-item${section}${modifier}" title="${escapeHtml(title)}">${visual}${visual ? `<div class="driving-parity-kpi-text">${content}</div>` : content}</div>`;
+  }
   function burnDonut(entries) {
     const groups = { improved: 0, worsened: 0, unchanged: 0, reverted: 0 };
     for (const entry of entries) {
@@ -287,7 +295,14 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       return circle;
     }).join("");
     const improvedPercent = total ? groups.improved / total * 100 : 0;
-    return `<div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-burns" title="Results across the current Differential Testing run"><svg class="driving-parity-kpi-gauge driving-parity-kpi-burns-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-burns-donut-track" cx="29" cy="29" r="21"${total ? ' opacity="0"' : ""}/>${circles}</svg><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Results</span><span class="driving-parity-kpi-ratio driving-parity-kpi-burns-summary"><span class="neutral">${count(groups.unchanged)}</span><span class="separator">·</span><span class="reverted">${count(groups.reverted)}</span><span class="separator">·</span><span class="worsened">${count(groups.worsened)}</span><span class="separator">·</span><span class="improved">${count(groups.improved)} (${percent(improvedPercent)})</span></span></div></div>`;
+    return kpiItem({
+      className: "driving-parity-kpi-burns",
+      title: "Results across the current Differential Testing run",
+      visual: `<svg class="driving-parity-kpi-gauge driving-parity-kpi-burns-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-burns-donut-track" cx="29" cy="29" r="21"${total ? ' opacity="0"' : ""}/>${circles}</svg>`,
+      heading: "Results",
+      valueClass: "driving-parity-kpi-burns-summary",
+      value: `<span class="neutral">${count(groups.unchanged)}</span><span class="separator">·</span><span class="reverted">${count(groups.reverted)}</span><span class="separator">·</span><span class="worsened">${count(groups.worsened)}</span><span class="separator">·</span><span class="improved">${count(groups.improved)} (${percent(improvedPercent)})</span>`,
+    });
   }
   function progressDonut(entries) {
     const latest = entries.at(-1);
@@ -295,13 +310,25 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const done = Math.max(0, Math.min(total, Number(latest?.frame) || 0));
     const donePercent = total ? done / total * 100 : 0;
     const remainingPercent = Math.max(0, 100 - donePercent);
-    return `<div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title="${count(done)} of ${count(total)} exact-prefix frames cleared"><svg class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21"/><circle class="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" transform="rotate(-90 29 29)" stroke-dasharray="${donePercent.toFixed(3)} ${remainingPercent.toFixed(3)}"/></svg><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Progress</span><span class="driving-parity-kpi-ratio"><span class="pass">${count(done)}</span><span class="separator">/</span><span class="total">${count(total)} (${percent(donePercent)})</span></span></div></div>`;
+    return kpiItem({
+      className: "driving-parity-kpi-progress",
+      title: `${count(done)} of ${count(total)} exact-prefix frames cleared`,
+      visual: `<svg class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21"/><circle class="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" transform="rotate(-90 29 29)" stroke-dasharray="${donePercent.toFixed(3)} ${remainingPercent.toFixed(3)}"/></svg>`,
+      heading: "Progress",
+      value: `<span class="fail">${count(total)}</span><span class="separator">/</span><span class="pass">${count(done)} (${percent(donePercent)})</span>`,
+    });
   }
   function waffleMetric(metric, label) {
     const failed = Number(metric.failed || 0) + Number(metric.blocked || 0);
     const ratio = metric.total ? failed / metric.total : 0;
     const failedCells = Math.min(80, Math.round(ratio * 96));
-    return `<div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-${escapeHtml(label.toLowerCase())}" title="${percent(ratio * 100)} failed ${escapeHtml(label.toLowerCase())}"><canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="${failedCells}" data-empty="${metric.total ? "false" : "true"}"></canvas><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">${escapeHtml(label)}</span><span class="driving-parity-kpi-ratio"><span class="total">${kpiTotal(metric.total)}</span><span class="separator">·</span><span class="fail">${kpiTotal(failed)} (${percent(ratio * 100)})</span></span></div></div>`;
+    return kpiItem({
+      className: `driving-parity-kpi-${label.toLowerCase()}`,
+      title: `${percent(ratio * 100)} failed ${label.toLowerCase()}`,
+      visual: `<canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="${failedCells}" data-empty="${metric.total ? "false" : "true"}"></canvas>`,
+      heading: label,
+      value: `<span class="total">${kpiTotal(metric.total)}</span><span class="separator">·</span><span class="fail">${kpiTotal(failed)} (${percent(ratio * 100)})</span>`,
+    });
   }
   function paintWaffles() {
     const scale = window.devicePixelRatio || 1;
@@ -1577,7 +1604,14 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const visibleTotal = serverPage?.total ?? visible.length;
     const pageOptions = [25, 50, 100, 200].map((size) => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("");
     const paginationHtml = `<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination"${visibleTotal <= state.pageSize ? " hidden" : ""}><select id="driving-parity-page-size" aria-label="Differential Testing rows per page">${pageOptions}</select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page"${state.pageIndex === 0 ? " disabled" : ""}>Prev</button><span class="page-status" id="driving-parity-page-status">${pageState.start}-${pageState.end} / ${visibleTotal}</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page"${state.pageIndex >= pageState.pageCount - 1 ? " disabled" : ""}>Next</button></div>`;
-    const kpiHtml = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item" title="${escapeHtml(subtitleParts.join(" · "))}"><span class="driving-parity-kpi-heading differential-scenario-heading">Scenario</span><span class="driving-parity-kpi-title-subtitle">${scenarioSelector()}</span></div>${progressDonut(state.payload.progress)}${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
+    const scenarioKpi = kpiItem({
+      className: "driving-parity-kpi-title-item",
+      title: subtitleParts.join(" · "),
+      heading: "Scenario",
+      headingClass: "differential-scenario-heading",
+      value: scenarioSelector(),
+    });
+    const kpiHtml = `${scenarioKpi}${progressDonut(state.payload.progress)}${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
     let html = templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
       .replace('<section class="differential-overview" id="differential-overview" hidden>', '<section class="differential-overview" id="differential-overview">')

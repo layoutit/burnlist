@@ -323,7 +323,7 @@ body.driving-parity-view {
   min-height: 20px;
   margin-bottom: 8px;
 }
-#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: var(--muted); font-size: 12px; }
+#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: rgba(163,172,183,.55); font-size: 12px; }
 #differential-overview-time .sep { color: rgba(163,172,183,.55); }
 .differential-overview-meta { display: inline-flex; align-items: baseline; gap: 8px; }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
@@ -479,6 +479,7 @@ body.driving-parity-view {
 .differential-refresh-status {
   flex: 0 0 auto;
   color: rgba(168,168,168,.6);
+  font-size: 12px;
 }
 .differential-refresh-status.failed {
   color: var(--red-muted);

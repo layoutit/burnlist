@@ -223,9 +223,10 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
   pointer-events: none;
 }
 
-.dashboard-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.dashboard-brand-logo { width: 28px; height: 28px; flex: 0 0 auto; }
-.dashboard-brand-name { color: var(--foreground); font: 400 14px/1 var(--dashboard-title-font); }
+.dashboard-brand { display: flex; align-items: center; gap: 8px; min-width: 0; opacity: .55; transition: opacity 120ms ease; }
+.dashboard-brand:hover, .dashboard-brand:focus-visible { opacity: 1; }
+.dashboard-brand-logo { width: 24px; height: 24px; flex: 0 0 auto; transform: translateY(-2px); }
+.dashboard-brand-name { color: #d4d4d8; font: 400 14px/1 var(--dashboard-font); }
 
 .dashboard-primary-nav { display: flex; align-items: center; gap: 8px; height: 100%; font: 14px/1 var(--dashboard-title-font); }
 .dashboard-primary-nav-item { display: contents; }
