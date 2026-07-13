@@ -47,10 +47,10 @@ const required = [
   "skills/burnlist/examples/differential-testing/adapter.mjs",
   "skills/burnlist/examples/differential-testing/reference.json",
   "skills/burnlist/examples/differential-testing/candidate.json",
-  "skills/burnlist/dashboard/differential-testing.css",
-  "skills/burnlist/dashboard/differential-testing-progress-chart.js",
-  "skills/burnlist/dashboard/differential-testing-renderer.js",
-  "skills/burnlist/dashboard/dist/index.html",
+  "dashboard/differential-testing.css",
+  "dashboard/differential-testing-progress-chart.js",
+  "dashboard/differential-testing-renderer.js",
+  "dashboard/dist/index.html",
 ];
 
 for (const path of required) {
@@ -61,7 +61,7 @@ for (const path of required) {
 }
 
 for (const extension of [".css", ".js"]) {
-  if (![...files.keys()].some((path) => path.startsWith("skills/burnlist/dashboard/dist/assets/") && path.endsWith(extension))) {
+  if (![...files.keys()].some((path) => path.startsWith("dashboard/dist/assets/") && path.endsWith(extension))) {
     console.error(`npm package is missing the built dashboard ${extension} asset.`);
     process.exit(1);
   }
@@ -78,7 +78,7 @@ const forbidden = [
   /^scripts\/(?:build-release|install)\.mjs$/u,
   /^skills\/burnlist-create(?:\/|$)/u,
   /^skills\/burnlist\/contracts\/compare-data\.schema\.json$/u,
-  /^skills\/burnlist\/dashboard\/compare-oven(?:-renderer\.js|\.css)$/u,
+  /^dashboard\/compare-oven(?:-renderer\.js|\.css)$/u,
   /^skills\/burnlist\/examples\/compare(?:\/|$)/u,
   /^skills\/burnlist\/ovens\/compare(?:\/|$)/u,
   /^skills\/burnlist\/references\/compare-data\.md$/u,

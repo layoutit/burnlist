@@ -20,8 +20,8 @@ import {
   differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
-} from "../dashboard/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../dashboard/differential-testing-progress-chart.js";
+} from "../../../dashboard/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../../../dashboard/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
