@@ -378,8 +378,8 @@ assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-r
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "grid-template-columns: 20% 10% minmax(0, 70%)", "Differential Testing rows do not use the canonical hybrid geometry.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "height: 90px", "Differential Testing collapsed rows do not use the canonical height.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "height: 220px", "Differential Testing expanded rows do not use the canonical height.");
-assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "height: 426px", "Differential Testing Overview and top panels do not preserve the canonical height.");
-assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="work-panel-title">Overview</div>', "Differential Testing does not preserve the canonical Overview section title.");
+assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", ".differential-overview:not([hidden]) + .detail-workspace {\n  height: auto;", "Differential Testing Overview and top panels do not preserve intrinsic height.");
+assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="work-panel-title">Overview</div>', "Differential Testing still renders the removed Overview section title.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", "inset: 28px 0 0", "Differential Testing top panels do not preserve the shared-card template.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing.css", ".driving-parity-view .differential-tabs", "Differential Testing tab groups do not share one component style.");

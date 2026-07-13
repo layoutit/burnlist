@@ -375,7 +375,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     return String(Math.round(number));
   }
   function log(entries, now = Date.now()) {
-    const visibleEntries = entries.slice(0, 10);
+    const visibleEntries = entries.slice(0, 8);
     const rows = visibleEntries.map((entry) => {
       const frameDelta = entry.frameDelta === null || !Number.isFinite(Number(entry.frameDelta)) ? null : Number(entry.frameDelta);
       const stateClass = frameDelta > 0 ? "improved" : "unchanged";
@@ -391,7 +391,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       return `<article class="log-row ${escapeHtml(stateClass)} no-detail log-table-row"><span class="log-table-cell age">${escapeHtml(formatLogRelativeMinutes(entry.timestamp, now))}</span><span class="log-table-cell failed ${escapeHtml(stateClass)}">${frame}</span><span class="log-table-cell result ${escapeHtml(stateClass)}">${result}</span><span class="log-table-cell delta ${escapeHtml(stateClass)}">${deltaText}</span><span class="log-table-cell done">${done}</span></article>`;
     }).join("");
     const placeholders = Array.from(
-      { length: Math.max(0, 10 - visibleEntries.length) },
+      { length: Math.max(0, 8 - visibleEntries.length) },
       () => '<article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article>',
     ).join("");
     const columns = ["Age", "Frame", "Result", "Delta", "Done"];
@@ -601,7 +601,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   function templateHtml() {
     return `  <main id="burnlist-detail" class="detail-view" hidden>
     <section class="differential-overview" id="differential-overview" hidden>
-      <div class="work-panel-head differential-overview-head"><div class="work-panel-title">Overview</div><div class="differential-overview-meta"><span id="differential-refresh-status" class="differential-refresh-status" hidden></span><time id="differential-overview-time"></time></div></div>
+      <div class="work-panel-head differential-overview-head"><div class="differential-overview-meta"><span id="differential-refresh-status" class="differential-refresh-status" hidden></span><time id="differential-overview-time"></time></div></div>
       <div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"></div>
     </section>
     <div class="detail-workspace" id="detail-workspace" data-detail-tab="dashboard">
@@ -1573,6 +1573,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   </main>`;
   }
   function render() {
+    const existingHeaderTimestamp = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-overview-time");
+    existingHeaderTimestamp?.remove();
     if (!state.oven || !state.payload) return;
     const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
     const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
@@ -1607,7 +1609,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const scenarioKpi = kpiItem({
       className: "driving-parity-kpi-scenario",
       title: subtitleParts.join(" · "),
-      visual: '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
+      visual: '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
       heading: "Scenario",
       headingClass: "differential-scenario-heading",
       value: scenarioSelector(),
@@ -1634,6 +1636,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace('<div class="rows-view" id="hybrid-rows"></div>', `<div class="rows-view" id="hybrid-rows">${fieldRows(page)}</div>`)
       .replace(/<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>[\s\S]*?<\/div>\n  <\/main>/u, `${paginationHtml}\n  </main>`);
     root.innerHTML = html;
+    const overviewTimestamp = root.querySelector("#differential-overview-time");
+    const dashboardNav = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav");
+    if (overviewTimestamp && dashboardNav) dashboardNav.append(overviewTimestamp);
     paintWaffles();
     renderProgressChart();
     const search = root.querySelector("#driving-parity-field-search"), pageSize = root.querySelector("#driving-parity-page-size");
