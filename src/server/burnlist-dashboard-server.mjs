@@ -15,6 +15,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
+import { effectiveBindings } from "./oven-bindings.mjs";
 import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
 import { buildProjectsSnapshot } from "./projects.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
@@ -104,7 +105,7 @@ const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
-const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
+const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
 const ovenHandlerCaches = new Map();
@@ -219,6 +220,11 @@ function candidateRepoRoots() {
   return observerRepoRoots({ cwd: launchCwd, home: os.homedir(), scanRoot: args.get("scan-root") });
 }
 
+function resolvedOvenDataBindings() {
+  return new Map([...effectiveBindings({ repoRoots: candidateRepoRoots(), override: ovenDataOverrides })]
+    .map(([id, binding]) => [id, binding.path]));
+}
+
 function burnlistPathsFor(repoRoots) {
   const paths = [];
   for (const repoRoot of repoRoots) {
@@ -243,10 +249,10 @@ function discoverBurnlists() {
   return burnlistPaths().map((path) => summaryForPlan(path, maxPlanBytes));
 }
 
-function dashboardEntries() {
+function dashboardEntries(ovenDataBindings = resolvedOvenDataBindings()) {
   return discoverOvens().flatMap((oven) => {
     const handler = getOvenHandler(oven.id) ?? genericJsonHandler;
-    return handler.dashboardEntries?.(ovenHandlerContext({ oven })) ?? [];
+    return handler.dashboardEntries?.(ovenHandlerContext({ oven, ovenDataBindings })) ?? [];
   })
     .map((entry) => {
       let key = null;
@@ -260,7 +266,7 @@ function dashboardEntries() {
     .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
 }
 
-function ovenHandlerContext({ id, oven, req, res, url, bindingPath } = {}) {
+function ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings = resolvedOvenDataBindings() } = {}) {
   const cacheId = id ?? oven?.id;
   if (cacheId && !ovenHandlerCaches.has(cacheId)) ovenHandlerCaches.set(cacheId, new Map());
   return {
@@ -278,7 +284,7 @@ function ovenHandlerContext({ id, oven, req, res, url, bindingPath } = {}) {
   };
 }
 
-function projectsSnapshot() {
+function projectsSnapshot(ovenDataBindings = resolvedOvenDataBindings()) {
   const home = os.homedir();
   const hasScanRootOverride = Boolean(args.get("scan-root"));
   let registeredRoots = [];
@@ -323,7 +329,7 @@ function projectsSnapshot() {
     observerRoots,
     registeredRoots,
     health,
-    entries: dashboardEntries(),
+    entries: dashboardEntries(ovenDataBindings),
     repoKey,
     realpath: realpathSync,
   });
@@ -863,6 +869,7 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
+    const ovenDataBindings = resolvedOvenDataBindings();
     const dashboardAsset = dashboardAssetPath(url.pathname);
     if (dashboardAsset) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
@@ -874,12 +881,12 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/projects") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, projectsSnapshot());
+      json(res, 200, projectsSnapshot(ovenDataBindings));
       return;
     }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries() });
+      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries(ovenDataBindings) });
       return;
     }
     if (url.pathname === "/api/progress") {
@@ -929,7 +936,7 @@ const server = createServer(async (req, res) => {
       if (!bindingPath) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
         const handler = getOvenHandler(id) ?? genericJsonHandler;
-        const response = handler.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath }));
+        const response = handler.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings }));
         if (response !== undefined) json(res, 200, response);
       } catch (error) {
         json(res, Number.isInteger(error.status) ? error.status : 422, {
@@ -1016,8 +1023,12 @@ function listen(port) {
 if (!reportMode) {
   for (const handler of listOvenHandlers()) {
     if (typeof handler.warm !== "function" || !handler.warmIntervalMs) continue;
-    if (!handler.id || !ovenDataBindings.has(handler.id)) continue;
-    const warm = () => handler.warm(ovenHandlerContext({ id: handler.id }));
+    if (!handler.id) continue;
+    const warm = () => {
+      const ovenDataBindings = resolvedOvenDataBindings();
+      if (!ovenDataBindings.has(handler.id)) return;
+      handler.warm(ovenHandlerContext({ id: handler.id, ovenDataBindings }));
+    };
     warm();
     const warmTimer = setInterval(warm, handler.warmIntervalMs);
     warmTimer.unref();

@@ -120,7 +120,7 @@ Usage:
   burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
-  burnlist oven <list|view|create|update> ...
+  burnlist oven <list|view|bind|unbind|bindings|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
   burnlist ready <id> [--repo <path>]

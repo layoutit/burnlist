@@ -12,7 +12,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, s
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenPackage, ovenId } from "../ovens/oven-contract.mjs";
+import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
+import { resolveUmbrella } from "./umbrella.mjs";
 
 const MAX_INSTRUCTION_BYTES = 65536;
 const MAX_DETAIL_BYTES = 131072;
@@ -44,6 +46,11 @@ for (let index = 0; index < tokens.length; index += 1) {
 function fail(message) {
   console.error(`burnlist oven: ${message}`);
   process.exit(1);
+}
+
+function bindingRepo() {
+  if (flags.get("repo") === "true") fail("--repo requires a path.");
+  return flags.has("repo") ? resolve(launchCwd, flags.get("repo")) : resolveUmbrella(launchCwd);
 }
 
 // ── storage locations (mirror the dashboard server) ──────────────────────────
@@ -247,6 +254,9 @@ const HELP = `burnlist oven — author and inspect Ovens
 Usage:
   burnlist oven list [--json]
   burnlist oven view <id> [--json] [--cell-width <n>] [--cell-height <n>]
+  burnlist oven bind <id> <path> [--repo <path>]
+  burnlist oven unbind <id> [--repo <path>]
+  burnlist oven bindings [--repo <path>]
   burnlist oven create <id> --instructions <file|-> --detail <file|-> [--name <text>]
   burnlist oven create <id> --dir <dir>            (reads instructions.md + detail.json)
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, detail})
@@ -258,6 +268,7 @@ Options:
   --detail <p>         detail.json file, or - for stdin.
   --dir <p>            Directory containing instructions.md and detail.json.
   --package <p>        JSON package file, or - for stdin.
+  --repo <p>           Repository whose local Oven bindings to use.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --force              On create, replace an existing custom Oven.
   --json               Machine-readable output for list/view.
@@ -307,6 +318,36 @@ try {
       process.exit(0);
     }
     printOven(oven);
+    process.exit(0);
+  }
+
+  if (subcommand === "bind") {
+    const [id, logicalPath] = positionals;
+    if (!id || logicalPath === undefined) fail("Usage: burnlist oven bind <id> <path> [--repo <path>]");
+    const repoRoot = bindingRepo();
+    const result = writeBinding(repoRoot, id, logicalPath, new Date().toISOString());
+    console.log(`Bound Oven ${ovenId(id)} to ${logicalPath}\nStore: ${result.path}`);
+    process.exit(0);
+  }
+
+  if (subcommand === "unbind") {
+    const id = positionals[0];
+    if (!id) fail("Usage: burnlist oven unbind <id> [--repo <path>]");
+    const repoRoot = bindingRepo();
+    if (removeBinding(repoRoot, id)) console.log(`Unbound Oven ${ovenId(id)} from ${bindingStorePath(repoRoot)}`);
+    else console.log(`No binding exists for Oven ${ovenId(id)} in ${bindingStorePath(repoRoot)}.`);
+    process.exit(0);
+  }
+
+  if (subcommand === "bindings") {
+    const repoRoot = bindingRepo();
+    const store = readBindingStore(repoRoot);
+    const entries = Object.entries(store.bindings).sort(([left], [right]) => left.localeCompare(right));
+    if (entries.length === 0) console.log(`No Oven bindings in ${bindingStorePath(repoRoot)}.`);
+    else {
+      console.log(`Oven bindings: ${bindingStorePath(repoRoot)}`);
+      for (const [id, binding] of entries) console.log(`${id}  ${binding.path}  ${binding.boundAt}`);
+    }
     process.exit(0);
   }
 
