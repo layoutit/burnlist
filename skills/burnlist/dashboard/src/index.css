@@ -289,6 +289,21 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 .dashboard-refresh-note { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted-foreground); font-size: 12px; }
 .dashboard-refresh-icon { width: 14px; height: 14px; }
 
+/* Project-grouped Burnlist landing */
+
+.dashboard-project-groups { display: grid; gap: 8px; }
+.dashboard-project-group { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.dashboard-project-summary { display: grid; grid-template-columns: 12px minmax(0, 1fr) minmax(0, 2fr) max-content max-content; align-items: center; gap: 12px; padding: 12px 20px; color: var(--muted-foreground); cursor: pointer; font: 400 12px/1.3 var(--dashboard-title-font); list-style: none; }
+.dashboard-project-summary::-webkit-details-marker { display: none; }
+.dashboard-project-summary::before { color: var(--muted-foreground); content: "+"; }
+.dashboard-project-group[open] > .dashboard-project-summary::before { content: "−"; }
+.dashboard-project-name { min-width: 0; overflow: hidden; color: var(--foreground); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-project-root { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-project-counts { white-space: nowrap; }
+.dashboard-project-badge { white-space: nowrap; }
+.burnlist-copy-button { min-height: 20px; margin-top: 6px; padding: 2px 6px; color: var(--muted-foreground); font-size: 11px; line-height: 1; }
+.burnlist-copy-button:hover { color: var(--foreground); }
+
 .dashboard-error { gap: 0; padding: 20px 0; border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .1); color: var(--destructive-foreground); }
 .dashboard-error-content { display: flex; gap: 12px; padding: 0 20px; }
 .dashboard-error-icon { width: 20px; height: 20px; flex: 0 0 auto; }
@@ -399,6 +414,8 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
   .dashboard-pagination { align-items: stretch; flex-direction: column; }
   .dashboard-pagination-controls { justify-content: space-between; }
   .oven-fields-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-project-summary { grid-template-columns: 12px minmax(0, 1fr) max-content; }
+  .dashboard-project-root { grid-column: 2 / -1; grid-row: 2; }
 }
 
 @media (max-width: 520px) {
