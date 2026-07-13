@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -69,38 +69,47 @@ function lockOwner(lockPath) {
   return isPositivePid(owner?.pid) && typeof owner.token === "string" && owner.token ? owner : null;
 }
 
-function pidIsAlive(pid) {
+function pidIsDead(pid) {
   if (!isPositivePid(pid)) return false;
   try {
     process.kill(pid, 0);
-    return true;
+    return false;
   } catch (error) {
-    return error?.code !== "ESRCH";
+    return error?.code === "ESRCH";
   }
 }
 
 export function withLock(dir, fn) {
   let lockedDir = dir;
-  const token = randomBytes(12).toString("hex");
+  const token = randomBytes(16).toString("hex");
   const lockPath = join(lockedDir, ".lock");
-  const writeLock = () => writeFileSync(lockPath, JSON.stringify({ token, pid: process.pid }), { flag: "wx" });
+  const temporary = join(lockedDir, `.lock.${token}.tmp`);
+  const busy = () => new Error(`${basename(dir)} is busy (locked)`);
   try {
-    writeLock();
-  } catch (error) {
-    if (error?.code !== "EEXIST") throw error;
-    const owner = lockOwner(lockPath);
-    if (owner && pidIsAlive(owner.pid)) throw new Error(`${basename(dir)} is busy (locked)`);
+    writeFileSync(temporary, JSON.stringify({ token, pid: process.pid }));
     try {
-      rmSync(lockPath, { force: true });
-    } catch (takeoverError) {
-      throw takeoverError;
+      linkSync(temporary, lockPath);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const owner = lockOwner(lockPath);
+      if (!owner || !pidIsDead(owner.pid)) throw busy();
+      const claim = `${lockPath}.claim.${token}`;
+      try {
+        renameSync(lockPath, claim);
+      } catch (takeoverError) {
+        if (takeoverError?.code === "ENOENT") throw busy();
+        throw takeoverError;
+      }
+      try {
+        rmSync(claim, { force: true });
+        linkSync(temporary, lockPath);
+      } catch (takeoverError) {
+        if (takeoverError?.code === "EEXIST") throw busy();
+        throw takeoverError;
+      }
     }
-    try {
-      writeLock();
-    } catch (takeoverError) {
-      if (takeoverError?.code === "EEXIST") throw new Error(`${basename(dir)} is busy (locked)`);
-      throw takeoverError;
-    }
+  } finally {
+    rmSync(temporary, { force: true });
   }
   try {
     const movedDir = fn({
@@ -136,17 +145,27 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
     const plan = parsePlan(join(sourceDir, "burnlist.md"));
     validateOrThrow(plan);
     gate(plan);
-    if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
     mkdirSync(targetRoot, { recursive: true });
-    if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
+    try {
+      mkdirSync(targetDir);
+    } catch (error) {
+      if (error?.code === "EEXIST") throw new Error(`${id}: target exists`);
+      throw error;
+    }
     try {
       renameSync(sourceDir, targetDir);
     } catch (error) {
+      rmSync(targetDir, { recursive: true, force: true });
       if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw new Error(`${id}: target exists`);
       throw error;
     }
+    try {
+      afterMove?.(parsePlan(join(targetDir, "burnlist.md")));
+    } catch (error) {
+      renameSync(targetDir, sourceDir);
+      throw error;
+    }
     retarget(targetDir);
-    afterMove?.(parsePlan(join(targetDir, "burnlist.md")));
     console.log(`${id}  ${from} -> ${to}`);
     return targetDir;
   });
