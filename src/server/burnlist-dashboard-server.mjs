@@ -113,6 +113,8 @@ const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
 const ovenHandlerCaches = new Map();
 const REPO_MAP_CACHE_MS = 2_000;
+const RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES = 262144;
+const RUN_SNAPSHOT_DETAIL_MAX_BYTES = 393216;
 
 function cachedRepoMap(repo) {
   const key = repo.root;
@@ -491,6 +493,11 @@ function runId(date = new Date()) {
   ].join("");
 }
 
+function assertSnapshotSize(contents, maxBytes, label) {
+  const bytes = Buffer.byteLength(contents);
+  if (bytes > maxBytes) throw new Error(`${label} snapshot exceeds ${maxBytes} bytes.`);
+}
+
 function createBurnRun(value) {
   assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
@@ -518,10 +525,14 @@ function createBurnRun(value) {
     summary: {},
     sections: [],
   };
+  const instructionsSnapshot = `${oven.instructions.trim()}\n`;
+  const detailSnapshot = `${JSON.stringify(oven.detail, null, 2)}\n`;
+  assertSnapshotSize(instructionsSnapshot, RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions");
+  assertSnapshotSize(detailSnapshot, RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template");
   const files = {
     "run.json": `${JSON.stringify(record, null, 2)}\n`,
-    "instructions.md": `${oven.instructions.trim()}\n`,
-    "detail.json": `${JSON.stringify(oven.detail, null, 2)}\n`,
+    "instructions.md": instructionsSnapshot,
+    "detail.json": detailSnapshot,
   };
   const path = withRepoStateLock(repo.root, () => {
     if (legacyRunsDir) return atomicDirectory(legacyRunsDir, id, files);
@@ -563,8 +574,8 @@ function readBurnRun(id) {
     const runRoot = dirname(path);
     const ovenPackage = normalizeOvenPackage({
       id: record.ovenId,
-      instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), 65536, "Run Oven instructions"),
-      detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), 131072, "Run Oven detail template")),
+      instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template")),
     });
     const snapshotRevision = ovenRevision(ovenPackage);
     if (record.schemaVersion === 4) {

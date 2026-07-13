@@ -193,6 +193,38 @@ test("Burn runs read legacy v3 revisions and write/read v4 revisions", { timeout
   });
 });
 
+test("Burn runs read max-size normalized v4 Oven snapshots", { timeout: 20_000 }, async () => {
+  const maxText = (length) => "\u0800".repeat(length);
+  const instructions = `# ${maxText(65534)}`;
+  const detail = {
+    version: 1, columns: 24, rows: 32, rowHeight: 120,
+    cells: Array.from({ length: 32 }, (_, index) => ({
+      id: `section-${String(index).padStart(2, "0")}-${"a".repeat(37)}`,
+      title: maxText(80), description: maxText(2000), widget: "comparison",
+      source: `/${maxText(159)}`, format: "timestamp",
+      column: (index % 24) + 1, row: Math.floor(index / 24) + 1, columnSpan: 1, rowSpan: 1,
+    })),
+  };
+  const oven = normalizeOvenPackage({ id: "max-size-oven", instructions, detail });
+  const instructionsSnapshot = `${oven.instructions}\n`;
+  const detailSnapshot = `${JSON.stringify(oven.detail, null, 2)}\n`;
+  assert.ok(Buffer.byteLength(instructionsSnapshot) > 65536);
+  assert.ok(Buffer.byteLength(detailSnapshot) > 131072);
+  assert.ok(Buffer.byteLength(instructionsSnapshot) <= 262144);
+  assert.ok(Buffer.byteLength(detailSnapshot) <= 393216);
+  const id = "20260714-120004-a1b2c7";
+  await withServer({
+    runs: [{
+      id, schemaVersion: 4, ovenId: oven.id, instructions: oven.instructions, detail: oven.detail,
+      ovenRevision: ovenRevision(oven), instructionsSnapshot, detailSnapshot,
+    }],
+  }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, `/api/runs/${id}`);
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).run.ovenRevision, ovenRevision(oven));
+  });
+});
+
 async function withServer({ withBurnlist, burnlists, ovenData = [], ovens = [], runs = [], scanRoots }, callback) {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-dashboard-routes-"));
   const homeRoot = join(fixtureRoot, "home");
@@ -330,8 +362,8 @@ async function writeRunFixture(fixtureRoot, fixture) {
   await mkdir(runRoot, { recursive: true });
   await Promise.all([
     writeFile(join(runRoot, "run.json"), JSON.stringify(record)),
-    writeFile(join(runRoot, "instructions.md"), fixture.instructions),
-    writeFile(join(runRoot, "detail.json"), JSON.stringify(fixture.detail)),
+    writeFile(join(runRoot, "instructions.md"), fixture.instructionsSnapshot ?? fixture.instructions),
+    writeFile(join(runRoot, "detail.json"), fixture.detailSnapshot ?? JSON.stringify(fixture.detail)),
   ]);
 }
 
