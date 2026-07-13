@@ -24,6 +24,23 @@ function fallbackUmbrella(cwd) {
 
 export function resolveUmbrella(cwd = process.cwd()) {
   const absoluteCwd = resolve(cwd);
+  const worktrees = gitProbe(absoluteCwd, ["worktree", "list", "--porcelain"]);
+  const primary = worktrees?.split(/\r?\n/u).find((line) => line.startsWith("worktree "))?.slice("worktree ".length);
+  if (primary && existsSync(join(primary, ".git"))) {
+    try {
+      return realpathSync(primary);
+    } catch {
+      // Fall through to the older common-directory and filesystem fallbacks.
+    }
+  }
+  const topLevel = gitProbe(absoluteCwd, ["rev-parse", "--show-toplevel"]);
+  if (topLevel) {
+    try {
+      return realpathSync(topLevel);
+    } catch {
+      // Fall through when Git reports a vanished working tree.
+    }
+  }
   const commonDir = gitProbe(absoluteCwd, ["rev-parse", "--git-common-dir"]);
   if (!commonDir) return fallbackUmbrella(absoluteCwd);
   try {

@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import {
   LIFECYCLES,
   parsePlan,
@@ -11,7 +10,7 @@ import {
 } from "../server/plan-model.mjs";
 import { burnItem, closeLifecycle, readyLifecycle, startLifecycle } from "./lifecycle-moves.mjs";
 import { repoKey, readRegistry } from "../server/registry.mjs";
-import { safeStat } from "../server/fs-safe.mjs";
+import { atomicDirectory, safeStat } from "../server/fs-safe.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
 const ID_PATTERN = /^\d{6}-\d{3}$/u;
@@ -72,17 +71,6 @@ function allocatedStart(repoRoot, day) {
   return highest + 1;
 }
 
-function atomicWrite(path, contents) {
-  const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
-  try {
-    writeFileSync(temporary, contents);
-    renameSync(temporary, path);
-  } catch (error) {
-    rmSync(temporary, { force: true });
-    throw error;
-  }
-}
-
 function scaffold(id, repoRoot, date) {
   const updated = `${date.getFullYear()}-${twoDigit(date.getMonth() + 1)}-${twoDigit(date.getDate())}`;
   return {
@@ -118,35 +106,30 @@ function scaffold(id, repoRoot, date) {
 function create(repoRoot) {
   const canonicalRoot = realpathSync(repoRoot);
   const draftRoot = lifecycleRoot(canonicalRoot, LIFECYCLES[0]);
-  mkdirSync(draftRoot, { recursive: true });
   const now = new Date();
   const day = localDayId(now);
   let number = allocatedStart(canonicalRoot, day);
   for (let attempt = 0; attempt < MAX_RESERVATION_ATTEMPTS; attempt += 1, number += 1) {
     if (number > 999) break;
     const id = `${day}-${String(number).padStart(3, "0")}`;
-    const folder = join(draftRoot, id);
     try {
-      mkdirSync(folder);
+      const folder = atomicDirectory(draftRoot, id, scaffold(id, canonicalRoot, now));
+      const planPath = join(folder, "burnlist.md");
+      console.log(id);
+      console.log(planPath);
+      console.log(`${repoKey(canonicalRoot)}/${id}`);
+      return;
     } catch (error) {
-      if (error?.code === "EEXIST") continue;
+      if (error?.code === "ENOTEMPTY" || error?.code === "EEXIST") continue;
       throw error;
     }
-    try {
-      for (const [name, contents] of Object.entries(scaffold(id, canonicalRoot, now))) {
-        atomicWrite(join(folder, name), contents);
-      }
-    } catch (error) {
-      rmSync(folder, { recursive: true, force: true });
-      throw error;
-    }
-    const planPath = join(folder, "burnlist.md");
-    console.log(id);
-    console.log(planPath);
-    console.log(`${repoKey(canonicalRoot)}/${id}`);
-    return;
   }
   throw new Error(`No available Burnlist ids remain for ${day}.`);
+}
+
+function validateId(id) {
+  if (!ID_PATTERN.test(id) || id.includes("..")) throw new Error(`Invalid Burnlist id: ${id}`);
+  return id;
 }
 
 function parseReference(value) {
@@ -156,7 +139,7 @@ function parseReference(value) {
   if (parts.length > 2 || !parts.every(Boolean)) throw new Error(`Invalid Burnlist reference: ${value}`);
   const [key, id] = parts.length === 2 ? parts : [null, parts[0]];
   if (key && !/^[0-9a-f]{12}$/u.test(key)) throw new Error(`Invalid repository key: ${key}`);
-  if (!ID_PATTERN.test(id)) throw new Error(`Invalid Burnlist id: ${id}`);
+  validateId(id);
   if (item !== undefined && !item.trim()) throw new Error("Item id must not be empty.");
   return { key, id, item: item?.trim() ?? null };
 }
@@ -254,11 +237,21 @@ async function main() {
   const opts = parseArgs(tokens);
   if (verb === "new" && opts.positionals.length === 0) return create(resolveRepo(opts));
   if (verb === "show" && opts.positionals.length === 1) return show(opts.positionals[0], opts);
-  if (verb === "ready" && opts.positionals.length === 1) return readyLifecycle(resolveRepo(opts), opts.positionals[0]);
-  if (verb === "start" && opts.positionals.length === 1) return startLifecycle(resolveRepo(opts), opts.positionals[0]);
-  if (verb === "close" && opts.positionals.length === 1) return closeLifecycle(resolveRepo(opts), opts.positionals[0]);
+  if (verb === "ready" && opts.positionals.length === 1) {
+    const id = validateId(opts.positionals[0]);
+    return readyLifecycle(resolveRepo(opts), id);
+  }
+  if (verb === "start" && opts.positionals.length === 1) {
+    const id = validateId(opts.positionals[0]);
+    return startLifecycle(resolveRepo(opts), id);
+  }
+  if (verb === "close" && opts.positionals.length === 1) {
+    const id = validateId(opts.positionals[0]);
+    return closeLifecycle(resolveRepo(opts), id);
+  }
   if (verb === "burn" && opts.positionals.length === 2) {
-    if (!burnItem(resolveRepo(opts), opts.positionals[0], opts.positionals[1], opts.check)) process.exitCode = 1;
+    const id = validateId(opts.positionals[0]);
+    if (!burnItem(resolveRepo(opts), id, opts.positionals[1], opts.check)) process.exitCode = 1;
     return;
   }
   usage();

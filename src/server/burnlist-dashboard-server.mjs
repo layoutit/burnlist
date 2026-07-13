@@ -1047,8 +1047,9 @@ if (!reportMode) mkdirSync(stateDir, { recursive: true });
 
 function stopExistingIfRequested() {
   if (!args.has("stop") && !args.has("replace")) return;
+  let runtime = null;
   try {
-    const runtime = existsSync(runtimePath) ? JSON.parse(readFileSync(runtimePath, "utf8")) : null;
+    runtime = existsSync(runtimePath) ? JSON.parse(readFileSync(runtimePath, "utf8")) : null;
     if (runtime?.pid && Number.isInteger(runtime.pid)) {
       try {
         process.kill(runtime.pid, "SIGTERM");
@@ -1060,7 +1061,17 @@ function stopExistingIfRequested() {
   rmSync(runtimePath, { force: true });
   if (args.has("stop")) {
     try {
-      rmSync(globalRuntimePath, { force: true });
+      const globalRuntime = existsSync(globalRuntimePath) ? JSON.parse(readFileSync(globalRuntimePath, "utf8")) : null;
+      const sameRuntime = Number.isInteger(runtime?.pid) && runtime.pid === globalRuntime?.pid;
+      let staleGlobal = false;
+      if (Number.isInteger(globalRuntime?.pid)) {
+        try {
+          process.kill(globalRuntime.pid, 0);
+        } catch (error) {
+          staleGlobal = error?.code === "ESRCH";
+        }
+      }
+      if (sameRuntime || staleGlobal) rmSync(globalRuntimePath, { force: true });
     } catch {}
     console.log("Stopped Burnlist index server.");
     process.exit(0);

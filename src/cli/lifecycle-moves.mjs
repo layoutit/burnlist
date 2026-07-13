@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -42,14 +42,41 @@ export function findBurnlistDir(repoRoot, id) {
   return matches[0];
 }
 
+function lockOwnerIsDead(lock) {
+  let pid;
+  try {
+    pid = Number.parseInt(readFileSync(join(lock, "pid"), "utf8").trim(), 10);
+  } catch {
+    return false;
+  }
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return error?.code === "ESRCH";
+  }
+}
+
 export function withLock(dir, fn) {
   let lockedDir = dir;
-  const lock = join(lockedDir, ".lock");
-  try {
-    mkdirSync(lock);
-  } catch (error) {
-    if (error?.code === "EEXIST") throw new Error(`${basename(dir)} is busy (locked)`);
-    throw error;
+  for (;;) {
+    const lock = join(lockedDir, ".lock");
+    try {
+      mkdirSync(lock);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      if (!lockOwnerIsDead(lock)) throw new Error(`${basename(dir)} is busy (locked)`);
+      rmSync(lock, { recursive: true, force: true });
+      continue;
+    }
+    try {
+      writeFileSync(join(lock, "pid"), `${process.pid}\n`);
+    } catch (error) {
+      rmSync(lock, { recursive: true, force: true });
+      throw error;
+    }
+    break;
   }
   try {
     const movedDir = fn();
@@ -82,10 +109,11 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, beforeMove }) {
     if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
     beforeMove?.(plan);
     mkdirSync(targetRoot, { recursive: true });
+    if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
     try {
       renameSync(sourceDir, targetDir);
     } catch (error) {
-      if (error?.code === "EEXIST") throw new Error(`${id}: target exists`);
+      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw new Error(`${id}: target exists`);
       throw error;
     }
     console.log(`${id}  ${from} -> ${to}`);
@@ -100,6 +128,10 @@ export function readyLifecycle(repoRoot, id) {
     from: "draft",
     to: "ready",
     gate(plan) {
+      const goalPath = join(dirname(plan.planPath), "goal.md");
+      if (!safeStat(goalPath)?.isFile() || !readFileSync(goalPath, "utf8").trim()) {
+        throw new Error("not ready: goal.md is missing");
+      }
       const contentful = plan.items.some((item) => item.id.trim() || item.title.trim());
       if (!contentful) throw new Error("not ready: active checklist is empty");
     },
@@ -168,10 +200,19 @@ function appendCompleted(lines, entry) {
 }
 
 export function burnItem(repoRoot, id, itemId, check = false) {
-  const found = findBurnlistDir(repoRoot, id);
+  const inprogress = LIFECYCLES.find((lifecycle) => lifecycle.folder === "inprogress");
+  const inprogressDir = join(lifecycleRoot(repoRoot, inprogress), id);
+  const found = safeStat(inprogressDir)?.isDirectory()
+    ? { dir: inprogressDir, lifecycle: inprogress }
+    : null;
+  if (!found) {
+    const located = findBurnlistDir(repoRoot, id);
+    throw new Error(`burnlist ${id} is not in inprogress; it is in ${located.lifecycle.folder}`);
+  }
   const planPath = join(found.dir, "burnlist.md");
   return withLock(found.dir, () => {
     const plan = parsePlan(planPath);
+    validateOrThrow(plan);
     const item = plan.items.find((entry) => entry.id === itemId);
     if (!item) throw new Error(`Active item ${itemId} was not found.`);
     const lines = removeActiveItem(plan.markdown, itemId);

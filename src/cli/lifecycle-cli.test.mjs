@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import { repoKey } from "../server/registry.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const binPath = join(repoRoot, "bin", "burnlist.mjs");
+const dashboardServerPath = join(repoRoot, "src", "server", "burnlist-dashboard-server.mjs");
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-lifecycle-cli-"));
@@ -64,8 +65,11 @@ test("new allocates incrementing ids and skips an existing draft reservation", (
     const second = newPlan(context);
     assert.equal(second.id, `${first.id.slice(0, 7)}002`);
     mkdirSync(join(context.repo, "notes", "burnlists", "draft", `${first.id.slice(0, 7)}005`));
+    writeFileSync(join(context.repo, "notes", "burnlists", "draft", `${first.id.slice(0, 7)}005`, "reserved"), "occupied\n");
     const third = newPlan(context);
     assert.equal(third.id, `${first.id.slice(0, 7)}006`);
+    assert.deepEqual(readdirSync(dirname(third.planPath)).sort(), ["burnlist.md", "goal.md"]);
+    assert.equal(readFileSync(join(context.repo, "notes", "burnlists", "draft", `${first.id.slice(0, 7)}005`, "reserved"), "utf8"), "occupied\n");
   } finally {
     context.cleanup();
   }
@@ -150,6 +154,19 @@ test("ready rejects an empty draft and moves a contentful draft", () => {
   }
 });
 
+test("ready requires a non-empty goal.md", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    rmSync(join(dirname(result.planPath), "goal.md"));
+    assert.match(runFailure(context, "ready", result.id), /not ready: goal\.md is missing/u);
+    assert.equal(existsSync(lifecycleFolder(context.repo, "draft", result.id)), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("start moves a ready Burnlist to inprogress", () => {
   const context = fixture();
   try {
@@ -201,11 +218,56 @@ test("burn removes an active item, appends its ledger entry, and can check the r
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
+    run(context, "ready", result.id);
+    run(context, "start", result.id);
+    const activePath = join(lifecycleFolder(context.repo, "inprogress", result.id), "burnlist.md");
     const output = run(context, "burn", result.id, "B1", "--check");
-    const burned = readFileSync(result.planPath, "utf8");
+    const burned = readFileSync(activePath, "utf8");
     assert.equal(burned.includes("- [ ] B1 | Inspect lifecycle output"), false);
     assert.match(burned, /- B1 \| \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2} \| Inspect lifecycle output/u);
     assert.match(output, /Burnlist check passed: 0 active, 1 completed\./u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("burn rejects a burnlist outside inprogress", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    assert.match(runFailure(context, "burn", result.id, "B1"), new RegExp(`burnlist ${result.id} is not in inprogress; it is in draft`));
+    assert.match(readFileSync(result.planPath, "utf8"), /- \[ \] B1 \| Inspect lifecycle output/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("burn validates its source before mutating it", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    run(context, "ready", result.id);
+    run(context, "start", result.id);
+    const planPath = join(lifecycleFolder(context.repo, "inprogress", result.id), "burnlist.md");
+    writeFileSync(planPath, readFileSync(planPath, "utf8").replace("- [ ] B1", "- [x] B1"));
+    const before = readFileSync(planPath, "utf8");
+    assert.match(runFailure(context, "burn", result.id, "B1", "--check"), /Active item B1 is checked/u);
+    assert.equal(readFileSync(planPath, "utf8"), before);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("mutating lifecycle verbs reject traversal ids before touching the repository", () => {
+  const context = fixture();
+  try {
+    assert.match(runFailure(context, "ready", "../evil"), /Invalid Burnlist id: \.\.\/evil/u);
+    assert.match(runFailure(context, "close", "../../x"), /Invalid Burnlist id: \.\.\/\.\.\/x/u);
+    assert.match(runFailure(context, "start", "../evil"), /Invalid Burnlist id: \.\.\/evil/u);
+    assert.match(runFailure(context, "burn", "../evil", "B1"), /Invalid Burnlist id: \.\.\/evil/u);
+    assert.equal(existsSync(join(context.repo, "notes")), false);
   } finally {
     context.cleanup();
   }
@@ -217,7 +279,47 @@ test("lifecycle verbs reject an existing per-id lock", () => {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
     mkdirSync(join(dirname(result.planPath), ".lock"));
+    writeFileSync(join(dirname(result.planPath), ".lock", "pid"), `${process.pid}\n`);
     assert.match(runFailure(context, "ready", result.id), new RegExp(`${result.id} is busy \\(locked\\)`));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("lifecycle verbs reclaim a dead lock owner", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    mkdirSync(join(dirname(result.planPath), ".lock"));
+    writeFileSync(join(dirname(result.planPath), ".lock", "pid"), "999999999\n");
+    assert.match(run(context, "ready", result.id), new RegExp(`${result.id}  draft -> ready`));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("dashboard stop preserves a live global runtime owned by another launch", () => {
+  const context = fixture();
+  try {
+    const stateDir = join(context.repo, "runtime");
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(join(stateDir, "index.server.json"), JSON.stringify({ pid: 999999999 }));
+    mkdirSync(join(context.home, ".burnlist"));
+    const globalPath = join(context.home, ".burnlist", "server.json");
+    writeFileSync(globalPath, JSON.stringify({ pid: process.pid }));
+    execFileSync(process.execPath, [dashboardServerPath, "--stop", "--state-dir", stateDir], {
+      cwd: context.repo,
+      env: { ...process.env, HOME: context.home },
+    });
+    assert.equal(existsSync(globalPath), true);
+
+    writeFileSync(globalPath, JSON.stringify({ pid: 999999999 }));
+    execFileSync(process.execPath, [dashboardServerPath, "--stop", "--state-dir", stateDir], {
+      cwd: context.repo,
+      env: { ...process.env, HOME: context.home },
+    });
+    assert.equal(existsSync(globalPath), false);
   } finally {
     context.cleanup();
   }
