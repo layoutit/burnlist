@@ -102,6 +102,7 @@ const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "m
 const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
+const globalRuntimePath = join(os.homedir(), ".burnlist", "server.json");
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
@@ -930,8 +931,19 @@ function payloadForPlan(selection) {
 function appendCompletionDigestIfMissing(plan) {
   if (/^##\s+Completion Digest\b/m.test(plan.markdown)) return false;
   const digest = completionDigestMarkdown(plan);
-  writeFileSync(plan.planPath, `${plan.markdown.replace(/\s*$/u, "")}\n\n${digest}\n`);
+  atomicWrite(plan.planPath, `${plan.markdown.replace(/\s*$/u, "")}\n\n${digest}\n`);
   return true;
+}
+
+function atomicWrite(path, contents) {
+  const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
+  try {
+    writeFileSync(temporary, contents);
+    renameSync(temporary, path);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
 }
 
 function runCloseCompleted() {
@@ -1035,14 +1047,21 @@ if (!reportMode) mkdirSync(stateDir, { recursive: true });
 
 function stopExistingIfRequested() {
   if (!args.has("stop") && !args.has("replace")) return;
-  const runtime = existsSync(runtimePath) ? JSON.parse(readFileSync(runtimePath, "utf8")) : null;
-  if (runtime?.pid && Number.isInteger(runtime.pid)) {
-    try {
-      process.kill(runtime.pid, "SIGTERM");
-    } catch {}
+  try {
+    const runtime = existsSync(runtimePath) ? JSON.parse(readFileSync(runtimePath, "utf8")) : null;
+    if (runtime?.pid && Number.isInteger(runtime.pid)) {
+      try {
+        process.kill(runtime.pid, "SIGTERM");
+      } catch {}
+    }
+  } catch {
+    // A stale runtime record must not block stop or replacement.
   }
   rmSync(runtimePath, { force: true });
   if (args.has("stop")) {
+    try {
+      rmSync(globalRuntimePath, { force: true });
+    } catch {}
     console.log("Stopped Burnlist index server.");
     process.exit(0);
   }
@@ -1210,6 +1229,8 @@ function listen(port) {
     const actualPort = typeof address === "object" && address ? address.port : port;
     const url = `http://${host}:${actualPort}/`;
     writeFileSync(runtimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt: new Date().toISOString() }, null, 2)}\n`);
+    mkdirSync(dirname(globalRuntimePath), { recursive: true });
+    atomicWrite(globalRuntimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt: new Date().toISOString() }, null, 2)}\n`);
     console.log(url);
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);

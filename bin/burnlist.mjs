@@ -12,6 +12,10 @@ const knownSubcommands = new Set([
   "oven",
   "new",
   "show",
+  "ready",
+  "start",
+  "close",
+  "burn",
   "register",
   "unregister",
   "roots",
@@ -119,6 +123,10 @@ Usage:
   burnlist oven <list|view|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
+  burnlist ready <id> [--repo <path>]
+  burnlist start <id> [--repo <path>]
+  burnlist close <id> [--repo <path>]
+  burnlist burn <id> <item> [--check] [--repo <path>]
   burnlist register [path]
   burnlist unregister [path]
   burnlist roots [--prune]
@@ -145,7 +153,7 @@ if (args[0] !== "oven" && (args.includes("--version") || args.includes("-v"))) {
 
 if (args[0] === "oven") {
   await import("../src/cli/oven-cli.mjs");
-} else if (["new", "show"].includes(args[0])) {
+} else if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])) {
   await import("../src/cli/lifecycle-cli.mjs");
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");

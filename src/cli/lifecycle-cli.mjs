@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import {
   LIFECYCLES,
@@ -8,6 +9,7 @@ import {
   summaryForPlan,
   twoDigit,
 } from "../server/plan-model.mjs";
+import { burnItem, closeLifecycle, readyLifecycle, startLifecycle } from "./lifecycle-moves.mjs";
 import { repoKey, readRegistry } from "../server/registry.mjs";
 import { safeStat } from "../server/fs-safe.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
@@ -21,11 +23,11 @@ function fail(message, code = 1) {
 }
 
 function usage() {
-  fail("Usage: burnlist new [--repo <path>] | burnlist show <id>[#<item>] [--repo <path>]", 2);
+  fail("Usage: burnlist new [--repo <path>] | burnlist show <id>[#<item>] [--repo <path>] | burnlist ready|start|close <id> [--repo <path>] | burnlist burn <id> <item> [--check] [--repo <path>]", 2);
 }
 
 function parseArgs(tokens) {
-  const opts = { repo: null, positionals: [] };
+  const opts = { check: false, repo: null, positionals: [] };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--repo") {
@@ -33,6 +35,8 @@ function parseArgs(tokens) {
       if (!value || value.startsWith("--")) throw new Error("--repo requires a path.");
       opts.repo = value;
       index += 1;
+    } else if (token === "--check") {
+      opts.check = true;
     } else if (token.startsWith("--")) {
       throw new Error(`Unknown option: ${token}`);
     } else {
@@ -229,6 +233,17 @@ function show(reference, opts) {
   }
   const handle = `${repoKey(repoRoot)}/${parsed.id}${parsed.item ? `#${parsed.item}` : ""}`;
   console.log(`Copy handle: ${handle}`);
+  const globalServerPath = join(homedir(), ".burnlist", "server.json");
+  try {
+    if (existsSync(globalServerPath)) {
+      const server = JSON.parse(readFileSync(globalServerPath, "utf8"));
+      process.kill(server.pid, 0);
+      const base = String(server.url).endsWith("/") ? server.url : `${server.url}/`;
+      console.log(`URL: ${base}r/${handle}`);
+    }
+  } catch {
+    // A stale or malformed global dashboard record must not affect show.
+  }
   console.log(`Path: ${planPath}`);
   console.log(`Title: ${plan.title}`);
 }
@@ -239,6 +254,13 @@ async function main() {
   const opts = parseArgs(tokens);
   if (verb === "new" && opts.positionals.length === 0) return create(resolveRepo(opts));
   if (verb === "show" && opts.positionals.length === 1) return show(opts.positionals[0], opts);
+  if (verb === "ready" && opts.positionals.length === 1) return readyLifecycle(resolveRepo(opts), opts.positionals[0]);
+  if (verb === "start" && opts.positionals.length === 1) return startLifecycle(resolveRepo(opts), opts.positionals[0]);
+  if (verb === "close" && opts.positionals.length === 1) return closeLifecycle(resolveRepo(opts), opts.positionals[0]);
+  if (verb === "burn" && opts.positionals.length === 2) {
+    if (!burnItem(resolveRepo(opts), opts.positionals[0], opts.positionals[1], opts.check)) process.exitCode = 1;
+    return;
+  }
   usage();
 }
 

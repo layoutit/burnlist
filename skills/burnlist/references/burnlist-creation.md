@@ -143,6 +143,15 @@ Fix only protocol errors before reporting readiness: missing sections, missing o
 
 Do not start the live dashboard by default. The dashboard index is user-run and discovers lifecycle Burnlists under `notes/burnlists/{draft,ready,inprogress,completed}/`.
 
+## CLI Lifecycle Verbs
+
+- `burnlist new [--repo <path>]` creates a draft Burnlist scaffold.
+- `burnlist show <id>[#<item>] [--repo <path>]` prints a Burnlist summary or item.
+- `burnlist ready <id> [--repo <path>]` moves a contentful draft to `ready/`.
+- `burnlist start <id> [--repo <path>]` moves a ready Burnlist to `inprogress/`.
+- `burnlist close <id> [--repo <path>]` digests and moves a complete in-progress Burnlist to `completed/`.
+- `burnlist burn <id> <item> [--check] [--repo <path>]` records and removes one active item.
+
 ## Handoff
 
 End with:

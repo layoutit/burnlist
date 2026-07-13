@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +25,16 @@ function run({ repo, home }, ...args) {
     encoding: "utf8",
     env: { ...process.env, HOME: home },
   });
+}
+
+function runFailure(context, ...args) {
+  try {
+    run(context, ...args);
+    assert.fail(`Expected burnlist ${args.join(" ")} to fail.`);
+  } catch (error) {
+    assert.notEqual(error.status, 0);
+    return `${error.stdout ?? ""}${error.stderr ?? ""}`;
+  }
 }
 
 function newPlan(context) {
@@ -81,15 +91,28 @@ function addActiveItem(planPath, repo) {
   ].join("\n"));
 }
 
+function lifecycleFolder(repo, lifecycle, id) {
+  return join(repo, "notes", "burnlists", lifecycle, id);
+}
+
 test("show prints a read-only plan summary and copy handle", () => {
   const context = fixture();
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
+    mkdirSync(join(context.home, ".burnlist"));
+    writeFileSync(join(context.home, ".burnlist", "server.json"), JSON.stringify({
+      pid: process.pid,
+      url: "http://127.0.0.1:4510/",
+      host: "127.0.0.1",
+      port: 4510,
+      startedAt: "2026-07-12T12:00:00.000Z",
+    }));
     const output = run(context, "show", result.id);
     assert.match(output, /Title: Sample Burnlist/u);
     assert.match(output, /Progress: 0\/1 \(0%\)/u);
     assert.match(output, new RegExp(`Copy handle: ${repoKey(realpathSync(context.repo))}/${result.id}`));
+    assert.match(output, new RegExp(`URL: http://127\\.0\\.0\\.1:4510/r/${repoKey(realpathSync(context.repo))}/${result.id}`));
     assert.match(output, new RegExp(`Path: ${result.planPath.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}`));
     assert.match(run(context, "show", result.handle), /Progress: 0\/1 \(0%\)/u);
   } finally {
@@ -106,6 +129,95 @@ test("show with an item reference prints that item's fields", () => {
     assert.match(output, /B1 \| Inspect lifecycle output/u);
     assert.match(output, /Action: print the lifecycle record/u);
     assert.match(output, new RegExp(`Copy handle: ${repoKey(realpathSync(context.repo))}/${result.id}#B1`));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("ready rejects an empty draft and moves a contentful draft", () => {
+  const context = fixture();
+  try {
+    const empty = newPlan(context);
+    assert.match(runFailure(context, "ready", empty.id), /not ready: active checklist is empty/u);
+    assert.equal(existsSync(lifecycleFolder(context.repo, "draft", empty.id)), true);
+
+    const contentful = newPlan(context);
+    addActiveItem(contentful.planPath, context.repo);
+    assert.match(run(context, "ready", contentful.id), new RegExp(`${contentful.id}  draft -> ready`));
+    assert.equal(existsSync(lifecycleFolder(context.repo, "ready", contentful.id)), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("start moves a ready Burnlist to inprogress", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    run(context, "ready", result.id);
+    assert.match(run(context, "start", result.id), new RegExp(`${result.id}  ready -> inprogress`));
+    assert.equal(existsSync(lifecycleFolder(context.repo, "inprogress", result.id)), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("lifecycle moves reject an existing target folder", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    mkdirSync(lifecycleFolder(context.repo, "ready", result.id), { recursive: true });
+    assert.match(runFailure(context, "ready", result.id), /target exists/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("close requires a finished queue and writes a completion digest before moving", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    run(context, "ready", result.id);
+    run(context, "start", result.id);
+    assert.match(runFailure(context, "close", result.id), /not ready to close/u);
+
+    const activePath = join(lifecycleFolder(context.repo, "inprogress", result.id), "burnlist.md");
+    writeFileSync(activePath, readFileSync(activePath, "utf8")
+      .replace(/- \[ \] B1 \| Inspect lifecycle output[\s\S]*?\n\n## Completed/u, "## Completed")
+      .replace("## Completed", "## Completed\n- B1 | 2026-07-12T12:00:00+00:00 | Inspect lifecycle output"));
+    assert.match(run(context, "close", result.id), new RegExp(`${result.id}  inprogress -> completed`));
+    const completedPlan = join(lifecycleFolder(context.repo, "completed", result.id), "burnlist.md");
+    assert.equal(readFileSync(completedPlan, "utf8").includes("## Completion Digest"), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("burn removes an active item, appends its ledger entry, and can check the result", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    const output = run(context, "burn", result.id, "B1", "--check");
+    const burned = readFileSync(result.planPath, "utf8");
+    assert.equal(burned.includes("- [ ] B1 | Inspect lifecycle output"), false);
+    assert.match(burned, /- B1 \| \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2} \| Inspect lifecycle output/u);
+    assert.match(output, /Burnlist check passed: 0 active, 1 completed\./u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("lifecycle verbs reject an existing per-id lock", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    mkdirSync(join(dirname(result.planPath), ".lock"));
+    assert.match(runFailure(context, "ready", result.id), new RegExp(`${result.id} is busy \\(locked\\)`));
   } finally {
     context.cleanup();
   }
