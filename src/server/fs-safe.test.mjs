@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
-import { atomicDirectory } from "./fs-safe.mjs";
+import { atomicDirectory, atomicOvenPackage, withOvenPackageLock } from "./fs-safe.mjs";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-fs-safe-"));
@@ -74,5 +74,60 @@ test("atomicDirectory surfaces failed rollback and old-directory cleanup", () =>
   } finally {
     rollback.cleanup();
     cleanup.cleanup();
+  }
+});
+
+function ovenFiles(version) {
+  return {
+    "instructions.md": `# Oven ${version}\n`,
+    "detail.json": `{ "version": "${version}" }\n`,
+    "oven.json": `{ "source": "${version}" }\n`,
+  };
+}
+
+test("Oven package swaps retain a resolved reader revision and only the newest two", () => {
+  const context = fixture();
+  const target = join(context.root, "oven");
+  try {
+    withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("one")));
+    const oldRevision = readFileSync(join(target, "instructions.md"), "utf8");
+    const oldPath = realpathSync(target);
+    withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("two"), { replace: true }));
+
+    assert.equal(oldRevision, "# Oven one\n");
+    for (const [name, contents] of Object.entries(ovenFiles("one"))) {
+      assert.equal(readFileSync(join(oldPath, name), "utf8"), contents);
+    }
+
+    withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("three"), { replace: true }));
+    const revisions = readdirSync(context.root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith(".oven."))
+      .map((entry) => entry.name);
+    assert.equal(revisions.length, 2);
+    assert.equal(revisions.includes(basename(oldPath)), false);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("a crashed legacy Oven migration self-heals before the next publish", () => {
+  const context = fixture();
+  const target = join(context.root, "oven");
+  const migration = join(context.root, ".oven.migrating.crashed");
+  try {
+    atomicDirectory(context.root, "oven", { ...ovenFiles("legacy"), "extra.txt": "preserved\n" });
+    cpSync(target, join(context.root, ".oven.revision-before-crash"), { recursive: true });
+    renameSync(target, migration);
+
+    withOvenPackageLock(context.root, "oven", () => (
+      atomicOvenPackage(context.root, "oven", ovenFiles("updated"), { replace: true })
+    ));
+
+    assert.equal(lstatSync(target).isSymbolicLink(), true);
+    assert.equal(readFileSync(join(target, "instructions.md"), "utf8"), "# Oven updated\n");
+    assert.equal(readFileSync(join(target, "extra.txt"), "utf8"), "preserved\n");
+    assert.equal(existsSync(migration), false);
+  } finally {
+    context.cleanup();
   }
 });

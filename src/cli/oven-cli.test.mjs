@@ -141,7 +141,7 @@ test("oven create and update swap the package while preserving sibling files", (
     assert.match(readFileSync(join(ovensDir, "sample-oven", "instructions.md"), "utf8"), /Updated checklist/u);
     assert.deepEqual(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "detail.json"), "utf8")), detailFixture());
     assert.equal(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
-    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".")).length, 1);
+    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".")).length, 2);
   } finally { context.cleanup(); }
 });
 
@@ -229,7 +229,7 @@ test("a killed writer leaves the prior symlink package readable and cleans its s
     run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     assert.match(JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir)).instructions, /Published after recovery/u);
     assert.equal(lstatSync(join(ovensDir, "sample-oven")).isSymbolicLink(), true);
-    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".sample-oven.")).length, 1);
+    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".sample-oven.")).length, 2);
   } finally { context.cleanup(); }
 });
 
