@@ -1,12 +1,7 @@
 name: Publish
 
-# Manual-only. Bumps the package version (patch/minor/major), gates it, publishes to
-# npm after committing the version bump, then pushes a `v<X.Y.Z>` tag back to main.
-#
-# Trigger from the Actions tab ("Run workflow") or:
-#   gh workflow run publish.yml -f bump=patch
-# Requires an `NPM_TOKEN` repository secret with publish rights.
-# Recovery is version-bound: after a failed publish, a maintainer must verify HEAD is still the release bump commit before rerunning.
+# Manual-only. Every publish and tag is bound to the version-bump commit, even
+# when a rerun happens after main has advanced.
 on:
   workflow_dispatch:
     inputs:
@@ -57,32 +52,79 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Gate — build, verify, package
-        run: |
-          npm run build:dashboard
-          npm run verify
-          npm run verify:package
-
       - name: Determine release action
         id: release-state
         run: |
           set -euo pipefail
           current="$(node -p "require('./package.json').version")"
           tag="v${current}"
-          if ! npm view "burnlist@${current}" version >/dev/null 2>&1; then
-            action=publish
-          elif ! git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            action=tag
+          npm_error="$(mktemp)"
+          if npm_version="$(npm view "burnlist@${current}" version 2>"$npm_error")"; then
+            if [[ "$npm_version" != "$current" ]]; then
+              echo "npm returned version '$npm_version', expected '$current'."
+              exit 1
+            fi
+            npm_state=present
+          elif grep -Eq '(^|[^[:alnum:]])E404([^[:alnum:]]|$)' "$npm_error"; then
+            npm_state=missing
           else
-            action=bump
+            echo "npm view failed while checking burnlist@${current}:"
+            cat "$npm_error"
+            exit 1
+          fi
+          rm -f "$npm_error"
+
+          if [[ "$npm_state" == "missing" ]]; then
+            action=publish
+          else
+            git_error="$(mktemp)"
+            if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >"$git_error" 2>&1; then
+              action=verify-tag
+            else
+              status=$?
+              if [[ "$status" -eq 2 ]]; then
+                action=tag
+              else
+                echo "git ls-remote failed while checking ${tag}:"
+                cat "$git_error"
+                exit 1
+              fi
+            fi
+            rm -f "$git_error"
           fi
           echo "current=${current}" >> "$GITHUB_OUTPUT"
           echo "action=${action}" >> "$GITHUB_OUTPUT"
           echo "Release action: ${action} (${tag})"
 
+      - name: Verify completed release tag
+        if: steps.release-state.outputs.action == 'verify-tag'
+        env:
+          VERSION: v${{ steps.release-state.outputs.current }}
+        run: |
+          set -euo pipefail
+          npm_error="$(mktemp)"
+          if ! artifact_commit="$(npm view "burnlist@${VERSION#v}" gitHead 2>"$npm_error")"; then
+            echo "npm view failed while reading ${VERSION} gitHead:"
+            cat "$npm_error"
+            exit 1
+          fi
+          rm -f "$npm_error"
+          if [[ ! "$artifact_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "npm metadata for ${VERSION} does not contain a full gitHead SHA."
+            exit 1
+          fi
+          git cat-file -e "${artifact_commit}^{commit}"
+          git merge-base --is-ancestor "$artifact_commit" origin/main
+          tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}")"
+          tag_target="$(awk -v ref="refs/tags/${VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
+          if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$artifact_commit" ]]; then
+            echo "Remote tag ${VERSION} does not point to npm artifact ${artifact_commit}."
+            exit 1
+          fi
+
       - name: Bump version
         id: bump
-        if: steps.release-state.outputs.action == 'bump'
+        if: steps.release-state.outputs.action == 'verify-tag'
         run: |
           set -euo pipefail
           next="$(npm version "${{ inputs.bump }}" --no-git-tag-version)"
@@ -98,12 +140,11 @@ jobs:
         run: |
           set -euo pipefail
           version="v${CURRENT_VERSION}"
-          if [[ "$ACTION" == "bump" ]]; then version="$BUMPED_VERSION"; fi
+          if [[ "$ACTION" == "verify-tag" ]]; then version="$BUMPED_VERSION"; fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-      # Record only a new bump. Reruns publish or tag the recorded version instead.
       - name: Commit and push version bump
-        if: steps.release-state.outputs.action == 'bump'
+        if: steps.release-state.outputs.action == 'verify-tag'
         env:
           NEXT_VERSION: ${{ steps.release.outputs.version }}
           ACTOR: ${{ github.actor }}
@@ -116,20 +157,136 @@ jobs:
           git commit -m "chore(release): ${NEXT_VERSION}"
           git push origin HEAD:main
 
+      - name: Resolve and verify release commit
+        id: release-commit
+        env:
+          ACTION: ${{ steps.release-state.outputs.action }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$ACTION" == "verify-tag" ]]; then
+            release_commit="$(git rev-parse HEAD)"
+          elif [[ "$ACTION" == "tag" ]]; then
+            npm_error="$(mktemp)"
+            if ! release_commit="$(npm view "burnlist@${VERSION#v}" gitHead 2>"$npm_error")"; then
+              echo "npm view failed while reading ${VERSION} gitHead:"
+              cat "$npm_error"
+              exit 1
+            fi
+            rm -f "$npm_error"
+          else
+            release_commit="$(git log -1 --format=%H --grep="^chore(release): ${VERSION}$" origin/main)"
+            if [[ -z "$release_commit" ]]; then
+              echo "Could not find the version-bump commit for ${VERSION} on origin/main."
+              exit 1
+            fi
+          fi
+          if [[ ! "$release_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release commit for ${VERSION} is not a full SHA."
+            exit 1
+          fi
+          git cat-file -e "${release_commit}^{commit}"
+          git merge-base --is-ancestor "$release_commit" origin/main
+          commit_version="$(git show "${release_commit}:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          if [[ "$commit_version" != "${VERSION#v}" ]]; then
+            echo "Release commit ${release_commit} does not contain version ${VERSION}."
+            exit 1
+          fi
+          echo "sha=${release_commit}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out exact release commit
+        env:
+          RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
+        run: git checkout --detach "$RELEASE_COMMIT"
+
+      - name: Verify any existing remote tag
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git_error="$(mktemp)"
+          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" 2>"$git_error")"; then
+            tag_target="$(awk -v ref="refs/tags/${VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
+            if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$RELEASE_COMMIT" ]]; then
+              echo "Remote tag ${VERSION} does not point to release commit ${RELEASE_COMMIT}."
+              exit 1
+            fi
+          else
+            status=$?
+            if [[ "$status" -ne 2 ]]; then
+              echo "git ls-remote failed while checking ${VERSION}:"
+              cat "$git_error"
+              exit 1
+            fi
+          fi
+          rm -f "$git_error"
+
+      - name: Gate exact release commit
+        run: |
+          npm run build:dashboard
+          npm run verify
+          npm run verify:package
+
       - name: Publish to npm
         if: steps.release-state.outputs.action != 'tag'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Bind npm artifact to release commit
+        id: artifact
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          npm_error="$(mktemp)"
+          if ! npm_version="$(npm view "burnlist@${VERSION#v}" version 2>"$npm_error")"; then
+            echo "npm view failed while confirming ${VERSION}:"
+            cat "$npm_error"
+            exit 1
+          fi
+          if [[ "$npm_version" != "${VERSION#v}" ]]; then
+            echo "npm returned version '$npm_version', expected '${VERSION#v}'."
+            exit 1
+          fi
+          if ! artifact_commit="$(npm view "burnlist@${VERSION#v}" gitHead 2>>"$npm_error")"; then
+            echo "npm view failed while reading ${VERSION} gitHead:"
+            cat "$npm_error"
+            exit 1
+          fi
+          rm -f "$npm_error"
+          if [[ ! "$artifact_commit" =~ ^[0-9a-f]{40}$ || "$artifact_commit" != "$RELEASE_COMMIT" ]]; then
+            echo "npm artifact ${VERSION} is not bound to release commit ${RELEASE_COMMIT}."
+            exit 1
+          fi
+          git cat-file -e "${artifact_commit}^{commit}"
+          git merge-base --is-ancestor "$artifact_commit" origin/main
+          echo "sha=${artifact_commit}" >> "$GITHUB_OUTPUT"
+
       - name: Tag published release
         env:
           NEXT_VERSION: ${{ steps.release.outputs.version }}
+          ARTIFACT_COMMIT: ${{ steps.artifact.outputs.sha }}
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_VERSION}" >/dev/null 2>&1; then
-            echo "Tag ${NEXT_VERSION} already exists; skipping."
+          git_error="$(mktemp)"
+          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${NEXT_VERSION}" 2>"$git_error")"; then
+            tag_target="$(awk -v ref="refs/tags/${NEXT_VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
+            if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$ARTIFACT_COMMIT" ]]; then
+              echo "Remote tag ${NEXT_VERSION} does not point to npm artifact ${ARTIFACT_COMMIT}."
+              exit 1
+            fi
+            echo "Tag ${NEXT_VERSION} already points to the npm artifact."
             exit 0
           fi
-          git tag "${NEXT_VERSION}"
+          status=$?
+          if [[ "$status" -ne 2 ]]; then
+            echo "git ls-remote failed while checking ${NEXT_VERSION}:"
+            cat "$git_error"
+            exit 1
+          fi
+          rm -f "$git_error"
+          git tag "${NEXT_VERSION}" "${ARTIFACT_COMMIT}"
           git push origin "${NEXT_VERSION}"

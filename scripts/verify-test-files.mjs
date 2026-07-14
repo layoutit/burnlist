@@ -20,6 +20,7 @@ export const verificationTestFiles = [
   "src/cli/registry-cli.test.mjs",
   "src/cli/git-ignore.test.mjs",
   "src/cli/oven-cli.test.mjs",
+  "src/cli/oven-storage.test.mjs",
   "src/cli/umbrella.test.mjs",
   "src/server/oven-bindings.test.mjs",
   "src/server/oven-warm.test.mjs",

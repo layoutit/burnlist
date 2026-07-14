@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { readFileSync, readSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
@@ -11,6 +11,10 @@ import {
   serializeOvenPackage,
 } from "../server/oven-storage.mjs";
 import { assertGitIgnored } from "./git-ignore.mjs";
+
+// This carries both stored files plus JSON escaping and authoring whitespace.
+// It is intentionally a transport limit, not a stored-file limit.
+export const OVEN_PACKAGE_MAX_BYTES = 1_048_576;
 
 function safeStat(path) {
   try {
@@ -128,16 +132,24 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
 
 function readInput(spec, maxBytes, label) {
   if (spec === "-") {
-    const value = readFileSync(0, "utf8");
-    if (Buffer.byteLength(value, "utf8") > maxBytes) throw new Error(`${label} exceeds the ${maxBytes} byte limit.`);
-    return value;
+    const chunks = [];
+    let total = 0;
+    const buffer = Buffer.allocUnsafe(Math.min(65_536, maxBytes + 1));
+    while (total <= maxBytes) {
+      const bytes = readSync(0, buffer, 0, Math.min(buffer.length, maxBytes + 1 - total), null);
+      if (bytes === 0) break;
+      chunks.push(Buffer.from(buffer.subarray(0, bytes)));
+      total += bytes;
+    }
+    if (total > maxBytes) throw new Error(`${label} exceeds the ${maxBytes} byte limit.`);
+    return Buffer.concat(chunks, total).toString("utf8");
   }
   return readTextFileWithLimit(resolve(spec), maxBytes, label);
 }
 
 export function resolvePackageInput({ flags, positionals }) {
   const pkg = {};
-  if (flags.has("package")) Object.assign(pkg, JSON.parse(readInput(flags.get("package"), OVEN_DETAIL_MAX_BYTES, "Oven package")));
+  if (flags.has("package")) Object.assign(pkg, JSON.parse(readInput(flags.get("package"), OVEN_PACKAGE_MAX_BYTES, "Oven package")));
   if (flags.has("dir")) {
     const dir = resolve(flags.get("dir"));
     pkg.instructions = readTextFileWithLimit(join(dir, "instructions.md"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
@@ -159,7 +171,11 @@ export function resolvePackageInput({ flags, positionals }) {
     else lines[headingIndex] = `# ${name}`;
     instructions = lines.join("\n");
   }
-  return normalizeOvenPackage({ id, instructions, detail: normalizeOvenDetail(pkg.detail) });
+  const normalized = normalizeOvenPackage({ id, instructions, detail: normalizeOvenDetail(pkg.detail) });
+  // Serialize here as well as at persist time so every input shape receives
+  // the same independent instructions.md and detail.json byte checks.
+  serializeOvenPackage(normalized);
+  return normalized;
 }
 
 export function persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, { allowReplace, sidecar }) {
