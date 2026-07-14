@@ -8,7 +8,7 @@ export const genericJsonHandler = Object.freeze({
       throw Object.assign(new Error(`configured data for Oven ${id} is missing`), { status: 404 });
     }
     const payload = JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, `Oven ${id} data`));
-    return { ovenId: id, path: bindingPath, payload };
+    return { ovenId: id, path: bindingPath, payload, validated: false };
   },
 
   dashboardEntries({ id, discoverBurnlists }) {

@@ -14,10 +14,11 @@ import {
 
 function differentialTestingIndexCache(ctx, path) {
   const readPath = resolve(realpathSync(dirname(path)), basename(path));
+  const cacheKey = `index:${readPath}`;
   const stat = safeStat(readPath);
   if (!stat?.isFile()) throw new Error("configured Differential Testing data is missing");
   const signature = `${readPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
-  const cached = ctx.cache.get("index");
+  const cached = ctx.cache.get(cacheKey);
   if (cached?.signature === signature) return cached;
   const source = readTextFileWithLimit(readPath, ctx.maxOvenDataBytes, "Oven differential-testing data");
   const document = JSON.parse(source);
@@ -62,7 +63,7 @@ function differentialTestingIndexCache(ctx, path) {
       scenarioResponses: new Map(),
     };
   }
-  ctx.cache.set("index", index);
+  ctx.cache.set(cacheKey, index);
   return index;
 }
 
@@ -178,21 +179,21 @@ export const differentialTestingHandler = Object.freeze({
   warmIntervalMs: 1_000,
 
   dashboardEntries(ctx) {
-    const path = ctx.ovenDataBindings.get("differential-testing");
-    if (!path) return [];
-    const index = differentialTestingIndexCache(ctx, path);
-    const matchedRepo = ctx.discoveredRepos()
-      .filter((entry) => index.readPath === entry.root || index.readPath.startsWith(`${entry.root}/`))
-      .sort((left, right) => right.root.length - left.root.length)[0] ?? null;
-    const repo = matchedRepo?.name ?? "differential-testing";
-    return index.scenarios.map((scenario) => ({
-      id: scenario.id, repo, repoRoot: matchedRepo?.root ?? null, title: scenario.label,
-      status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
-      percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
-      ovenId: "differential-testing", ovenName: "Differential Testing",
-      href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}`,
-      progressLabel: `${scenario.frameCount} frames`,
-    }));
+    const bindings = ctx.ovenDataBindings.get("differential-testing") ?? [];
+    return bindings.flatMap((binding) => {
+      const index = differentialTestingIndexCache(ctx, binding.path);
+      const repo = binding.repoKey === null
+        ? "differential-testing"
+        : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name ?? basename(binding.repoRoot);
+      return index.scenarios.map((scenario) => ({
+        id: scenario.id, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot, title: scenario.label,
+        status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
+        percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
+        ovenId: "differential-testing", ovenName: "Differential Testing",
+        href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}${binding.repoKey === null ? "" : `&repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+        progressLabel: `${scenario.frameCount} frames`,
+      }));
+    });
   },
 
   serveData(ctx) {
@@ -218,12 +219,13 @@ export const differentialTestingHandler = Object.freeze({
   },
 
   warm(ctx) {
-    const path = ctx.ovenDataBindings.get("differential-testing");
-    if (!path) return;
-    try {
-      differentialTestingIndexCache(ctx, path);
-    } catch {
-      // The request path reports validation errors; background warming remains silent.
+    const paths = new Set((ctx.ovenDataBindings.get("differential-testing") ?? []).map((binding) => binding.path));
+    for (const path of paths) {
+      try {
+        differentialTestingIndexCache(ctx, path);
+      } catch {
+        // The request path reports validation errors; background warming remains silent.
+      }
     }
   },
 });

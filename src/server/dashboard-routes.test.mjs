@@ -4,7 +4,7 @@ import { createServer, get, request } from "node:http";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import { normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
@@ -100,11 +100,15 @@ test("registered Oven routes and dashboard entries ignore malformed custom Oven 
   }, async ({ baseUrl }) => {
     const checklist = await httpGet(baseUrl, "/api/oven-data/checklist");
     assert.equal(checklist.status, 200);
-    assert.deepEqual(JSON.parse(checklist.body).payload, { source: "generic" });
+    const checklistResponse = JSON.parse(checklist.body);
+    assert.deepEqual(checklistResponse.payload, { source: "generic" });
+    assert.equal(checklistResponse.validated, false);
 
     const differentialTesting = await httpGet(baseUrl, "/api/oven-data/differential-testing");
     assert.equal(differentialTesting.status, 200);
-    assert.equal(JSON.parse(differentialTesting.body).scenarioId, differentialTestingPayload.scenarioCatalog.selectedScenarioId);
+    const differentialTestingResponse = JSON.parse(differentialTesting.body);
+    assert.equal(differentialTestingResponse.scenarioId, differentialTestingPayload.scenarioCatalog.selectedScenarioId);
+    assert.equal(Object.hasOwn(differentialTestingResponse, "validated"), false);
 
     const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
     assert.equal(entries.some((entry) => entry.ovenId === "checklist"), true);
@@ -121,6 +125,57 @@ test("an unknown Oven with a data binding remains unvalidated", { timeout: 20_00
     const unknown = await httpGet(baseUrl, "/api/oven-data/ghost");
     assert.equal(unknown.status, 404);
     assert.equal(JSON.parse(unknown.body).validated, false);
+  });
+});
+
+test("a discovered custom Oven with a data binding is served as unvalidated JSON", { timeout: 20_000 }, async () => {
+  await withServer({
+    ovens: [{ id: "custom-oven" }],
+    ovenData: [{ id: "custom-oven", payload: { source: "custom" } }],
+  }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/oven-data/custom-oven");
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(response.body).payload, { source: "custom" });
+    assert.equal(JSON.parse(response.body).validated, false);
+  });
+});
+
+test("Differential Testing bindings remain distinct for each repository", { timeout: 20_000 }, async () => {
+  const timestamp = "2026-01-01T12:00:00.000Z";
+  const payloadFor = (captureId) => buildPayload(
+    {
+      captureId, generatedAt: timestamp,
+      fields: [{ id: "position", label: "Position", sourceOwner: "fixture", meaning: "Position", unit: "units", tolerance: 0 }],
+      samples: [{ tick: 0, values: { position: 1 } }],
+    },
+    { captureId: `${captureId}-candidate`, generatedAt: timestamp, samples: [{ tick: 0, values: { position: 1 } }] },
+  );
+  const first = payloadFor("first-repo");
+  const second = payloadFor("second-repo");
+  await withServer({
+    burnlists: [{ repoPath: "a/first" }, { repoPath: "b/second" }],
+    scanRoots: ["a", "b"],
+    ovenData: [
+      { id: "differential-testing", payload: first, repoPath: "a/first", persisted: true, override: false },
+      { id: "differential-testing", payload: second, repoPath: "b/second", persisted: true, override: false },
+    ],
+  }, async ({ baseUrl }) => {
+    const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists
+      .filter((entry) => entry.ovenId === "differential-testing");
+    assert.equal(entries.length, 2);
+    assert.equal(new Set(entries.map((entry) => entry.repoKey)).size, 2);
+    for (const entry of entries) assert.match(entry.href, new RegExp(`^/ovens/differential-testing/view\\?scenario=${entry.id}&repoKey=${entry.repoKey}$`, "u"));
+
+    const firstEntry = entries.find((entry) => entry.title === "first-repo");
+    const secondEntry = entries.find((entry) => entry.title === "second-repo");
+    assert.ok(firstEntry);
+    assert.ok(secondEntry);
+    const firstResponse = await httpGet(baseUrl, `/api/oven-data/differential-testing?repoKey=${firstEntry.repoKey}`);
+    const secondResponse = await httpGet(baseUrl, `/api/oven-data/differential-testing?repoKey=${secondEntry.repoKey}`);
+    assert.equal(firstResponse.status, 200);
+    assert.equal(secondResponse.status, 200);
+    assert.equal(JSON.parse(firstResponse.body).payload.subtitle, "first-repo / first-repo-candidate");
+    assert.equal(JSON.parse(secondResponse.body).payload.subtitle, "second-repo / second-repo-candidate");
   });
 });
 
@@ -246,14 +301,30 @@ async function withServer({ withBurnlist, burnlists, ovenData = [], ovens = [], 
         writeFile(join(dirname(planPath), "goal.md"), "# Fixture Goal\n\n## Goal\n\nRoute behavior fixture.\n"),
       ]);
     }));
-    await Promise.all(ovenData.map(({ id, payload }) => writeFile(
-      join(fixtureRoot, `${id}.json`),
-      JSON.stringify(payload),
-    )));
+    const writtenOvenData = await Promise.all(ovenData.map(async (entry, index) => {
+      const path = join(fixtureRoot, entry.repoPath ?? "", entry.fileName ?? `${entry.id}-${index}.json`);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, JSON.stringify(entry.payload));
+      return { ...entry, path };
+    }));
+    const persistedBindings = new Map();
+    for (const entry of writtenOvenData.filter((candidate) => candidate.persisted)) {
+      const repoRoot = join(fixtureRoot, entry.repoPath);
+      const bindings = persistedBindings.get(repoRoot) ?? {};
+      bindings[entry.id] = { path: relative(repoRoot, entry.path), boundAt: "2026-07-14T12:00:00.000Z" };
+      persistedBindings.set(repoRoot, bindings);
+    }
+    await Promise.all([...persistedBindings].map(async ([repoRoot, bindings]) => {
+      const storePath = join(repoRoot, ".local", "burnlist", "bindings.json");
+      await mkdir(dirname(storePath), { recursive: true });
+      await writeFile(storePath, JSON.stringify({ schemaVersion: 1, bindings }));
+    }));
     await Promise.all(ovens.map((oven) => writeOvenFixture(fixtureRoot, oven)));
     await Promise.all(runs.map((run) => writeRunFixture(fixtureRoot, run)));
     const port = await availablePort();
-    const ovenDataBindings = ovenData.map(({ id }) => `${id}=${join(fixtureRoot, `${id}.json`)}`).join(",");
+    const ovenDataBindings = writtenOvenData
+      .filter((entry) => entry.override !== false)
+      .map((entry) => `${entry.id}=${entry.path}`).join(",");
     child = spawn(process.execPath, [
       serverPath,
       "--port", String(port),

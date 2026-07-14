@@ -61,7 +61,7 @@ test("effective bindings re-read an atomically replaced store with an identical 
     writeBinding(root, "sample-oven", "first.json", BOUND_AT);
     utimesSync(bindingStorePath(root), unchangedMtime, unchangedMtime);
     const first = statSync(bindingStorePath(root));
-    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven").path, resolve(root, "first.json"));
+    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven")[0].path, resolve(root, "first.json"));
     writeBinding(root, "sample-oven", "a-longer-second.json", "2026-07-14T12:01:00.000Z");
     utimesSync(bindingStorePath(root), unchangedMtime, unchangedMtime);
     const second = statSync(bindingStorePath(root));
@@ -69,11 +69,11 @@ test("effective bindings re-read an atomically replaced store with an identical 
     assert.notEqual(second.ino, first.ino);
     assert.notEqual(second.size, first.size);
     assert.notEqual(second.ctimeMs, first.ctimeMs);
-    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven").path, resolve(root, "a-longer-second.json"));
+    assert.equal(effectiveBindings({ repoRoots: [root] }).get("sample-oven")[0].path, resolve(root, "a-longer-second.json"));
   } finally { cleanup(); }
 });
 
-test("effective bindings select the smallest repository root and let overrides win", () => {
+test("effective bindings retain every repository binding and append global overrides", () => {
   const { root, cleanup } = fixture();
   const first = join(root, "a-repo");
   const second = join(root, "b-repo");
@@ -83,11 +83,19 @@ test("effective bindings select the smallest repository root and let overrides w
     writeBinding(first, "sample-oven", "first.json", BOUND_AT);
     writeBinding(second, "sample-oven", "second.json", BOUND_AT);
     const persisted = effectiveBindings({ repoRoots: [second, first] }).get("sample-oven");
-    assert.deepEqual(persisted, { path: resolve(first, "first.json"), repoRoot: first });
+    assert.deepEqual(persisted.map(({ path, repoRoot }) => ({ path, repoRoot })), [
+      { path: resolve(first, "first.json"), repoRoot: first },
+      { path: resolve(second, "second.json"), repoRoot: second },
+    ]);
     const overridden = effectiveBindings({
       repoRoots: [first, second],
       override: new Map([["sample-oven", "/temporary/override.json"]]),
     }).get("sample-oven");
-    assert.deepEqual(overridden, { path: "/temporary/override.json", repoRoot: null });
+    assert.deepEqual(overridden.map(({ path, repoRoot }) => ({ path, repoRoot })), [
+      { path: resolve(first, "first.json"), repoRoot: first },
+      { path: resolve(second, "second.json"), repoRoot: second },
+      { path: "/temporary/override.json", repoRoot: null },
+    ]);
+    assert.equal(overridden.at(-1).repoKey, null);
   } finally { cleanup(); }
 });

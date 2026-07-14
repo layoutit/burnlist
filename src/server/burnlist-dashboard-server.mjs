@@ -226,8 +226,15 @@ function candidateRepoRoots() {
 }
 
 function resolvedOvenDataBindings() {
-  return new Map([...effectiveBindings({ repoRoots: candidateRepoRoots(), override: ovenDataOverrides })]
-    .map(([id, binding]) => [id, binding.path]));
+  return effectiveBindings({ repoRoots: candidateRepoRoots(), override: ovenDataOverrides });
+}
+
+function selectedOvenDataBinding(ovenDataBindings, id, url) {
+  const bindings = ovenDataBindings.get(id) ?? [];
+  const repoKeys = url.searchParams.getAll("repoKey");
+  if (repoKeys.length > 1) throw Object.assign(new Error("repoKey must be supplied at most once"), { status: 400 });
+  if (repoKeys.length === 1) return bindings.find((binding) => binding.repoKey === repoKeys[0]) ?? null;
+  return bindings.find((binding) => binding.repoKey === null) ?? null;
 }
 
 function burnlistPathsFor(repoRoots) {
@@ -980,16 +987,16 @@ const server = createServer(async (req, res) => {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const id = ovenDataRoute[1];
       const handler = getOvenHandler(id);
-      const bindingPath = ovenDataBindings.get(id);
+      const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
       let oven = null;
       if (!handler) {
         oven = discoverOvens().find((entry) => entry.id === id) ?? null;
         if (!oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
       }
-      if (!bindingPath) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
+      if (!binding) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
         const active = handler ?? genericJsonHandler;
-        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings }));
+        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath: binding.path, ovenDataBindings }));
         if (response !== undefined) json(res, 200, response);
       } catch (error) {
         json(res, Number.isInteger(error.status) ? error.status : 422, {

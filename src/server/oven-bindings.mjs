@@ -1,9 +1,10 @@
-// Binding precedence: persisted repo-local bindings merge by smallest repo root;
-// explicit --oven-data overrides always win. Persisted relative paths resolve per read.
+// Persisted bindings remain scoped to their repository; explicit --oven-data
+// bindings are global defaults. Persisted relative paths resolve per read.
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ovenId } from "../ovens/oven-contract.mjs";
+import { repoKey } from "./registry.mjs";
 import { withRepoStateLock } from "./repo-state.mjs";
 
 export const BINDING_SCHEMA_VERSION = 1;
@@ -130,9 +131,15 @@ export function effectiveBindings({ repoRoots = [], override = new Map(), statFn
   const bindings = new Map();
   for (const repoRoot of [...new Set(repoRoots)].sort((left, right) => left.localeCompare(right))) {
     for (const [id, binding] of Object.entries(cachedStore(repoRoot, statFn).bindings)) {
-      if (!bindings.has(id)) bindings.set(id, { path: resolve(repoRoot, binding.path), repoRoot });
+      const entries = bindings.get(id) ?? [];
+      entries.push({ repoKey: repoKey(repoRoot), repoRoot, path: resolve(repoRoot, binding.path) });
+      bindings.set(id, entries);
     }
   }
-  for (const [id, path] of override) bindings.set(id, { path, repoRoot: null });
+  for (const [id, path] of override) {
+    const entries = bindings.get(id) ?? [];
+    entries.push({ repoKey: null, repoRoot: null, path });
+    bindings.set(id, entries);
+  }
   return bindings;
 }

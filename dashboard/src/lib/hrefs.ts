@@ -7,6 +7,12 @@ export function currentSection() {
   return "burnlists";
 }
 
+export function ovenRepoKey() {
+  return currentSection() === "differential-testing"
+    ? new URLSearchParams(window.location.search).get("repoKey")
+    : null;
+}
+
 export function selectedBurnlist(): SelectedBurnlist | null {
   if (currentSection() !== "burnlists") return null;
   const plan = new URLSearchParams(window.location.search).get("plan");

@@ -1501,6 +1501,7 @@ test("live Differential Testing dashboard polls and updates only when the payloa
       return 17;
     },
     clearIntervalImpl: (timer) => { clearedTimer = timer; },
+    repoKey: "0123456789ab",
     mount: (_root, _oven, initialPayload) => {
       mountedPayloads.push(initialPayload);
       return { update: (_nextOven, nextPayload) => updatedPayloads.push(nextPayload) };
@@ -1520,7 +1521,7 @@ test("live Differential Testing dashboard polls and updates only when the payloa
   assert.deepEqual(updatedPayloads, [payload]);
   payload = { publishedAt: "2026-01-01T12:00:04.000Z" };
   await controller.selectScenario("0123456789abcdef");
-  assert.equal(requests.at(-1)[0], "/api/oven-data/differential-testing?scenario=0123456789abcdef");
+  assert.equal(requests.at(-1)[0], "/api/oven-data/differential-testing?scenario=0123456789abcdef&repoKey=0123456789ab");
   assert.deepEqual(updatedPayloads, [{ publishedAt: "2026-01-01T12:00:02.000Z" }, payload]);
   assert.equal(requests.filter(([url]) => url === "/api/ovens/differential-testing").length, 1);
   assert.ok(requests.every(([, options]) => options.cache === "no-store"));
