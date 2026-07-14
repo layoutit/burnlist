@@ -313,6 +313,12 @@ export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
     if (previous) copyPackageFiles(previous, revisionDir);
     else if (legacy) copyPackageFiles(pkgRoot, revisionDir);
     for (const [name, contents] of Object.entries(files)) writeFileSync(join(revisionDir, name), contents);
+    // Touch the outgoing rev to now BEFORE the swap so its grace window starts at retirement even if
+    // the process dies right after publishCurrent (a post-swap touch could leave it stale for GC).
+    if (previous) {
+      const retiredAt = new Date();
+      utimesSync(previous, retiredAt, retiredAt);
+    }
     publishCurrent(pkgRoot, id, revision);
   } catch (error) {
     try {
@@ -321,10 +327,6 @@ export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
       throw cleanupError([error, cleanupFailure], `Could not publish Oven ${id}`);
     }
     throw error;
-  }
-  if (previous) {
-    const retiredAt = new Date();
-    utimesSync(previous, retiredAt, retiredAt);
   }
   removeLegacyFiles(pkgRoot);
   gcOldRevisions(pkgRoot, revision);
