@@ -7,7 +7,6 @@ import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
 import { resolveOvenPackageDir } from "../server/fs-safe.mjs";
 import { assertCustomOvenPath } from "../server/oven-storage.mjs";
-
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const binPath = join(repoRoot, "bin", "burnlist.mjs");
 const serverPath = join(repoRoot, "src", "server", "burnlist-dashboard-server.mjs");
@@ -18,7 +17,6 @@ function fixture() {
   mkdirSync(repo);
   return { repo, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
-
 function run(context, ...args) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd: context.repo, encoding: "utf8" });
 }
@@ -77,11 +75,12 @@ function pausedUpdate(context, ovensDir, packagePath) {
   ], { cwd: context.repo, stdio: ["pipe", "pipe", "pipe"] });
 }
 
-function waitForBarrier(child) {
+function waitForBarrier(child, timeoutMs = 5_000) {
   return new Promise((resolve, reject) => {
-    child.stdout.on("data", (chunk) => { if (chunk.toString().includes("staged")) resolve(); });
-    child.on("error", reject);
-    child.on("close", (status) => reject(new Error(`update ended before reaching its publish barrier: ${status}`)));
+    const timer = setTimeout(() => reject(new Error(`update did not reach its publish barrier within ${timeoutMs}ms`)), timeoutMs);
+    child.stdout.on("data", (chunk) => { if (chunk.toString().includes("staged")) { clearTimeout(timer); resolve(); } });
+    child.on("error", (error) => { clearTimeout(timer); reject(error); });
+    child.on("close", (status) => { clearTimeout(timer); reject(new Error(`update ended before reaching its publish barrier: ${status}`)); });
   });
 }
 
@@ -314,19 +313,21 @@ test("oven view and list read complete packages on both sides of a publish barri
       instructions: "# Updated Oven\n\nUpdated checklist.", detail: detailFixture(),
     }));
     const writer = pausedUpdate(context, ovensDir, packagePath);
-    const writerStatus = new Promise((resolve) => writer.on("close", resolve));
-    await waitForBarrier(writer);
-    const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
-    const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
-    assert.match(oldView.instructions, /Initial checklist/u);
-    assert.equal(oldList.name, "Initial Oven");
-    writer.stdin.end("publish\n");
-    const status = await writerStatus;
-    assert.equal(status, 0);
-    const newView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
-    const newList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
-    assert.match(newView.instructions, /Updated checklist/u);
-    assert.equal(newList.name, "Updated Oven");
+    try {
+      const writerStatus = new Promise((resolve) => writer.on("close", resolve));
+      await waitForBarrier(writer);
+      const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+      const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+      assert.match(oldView.instructions, /Initial checklist/u);
+      assert.equal(oldList.name, "Initial Oven");
+      writer.stdin.end("publish\n");
+      const status = await writerStatus;
+      assert.equal(status, 0);
+      const newView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+      const newList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+      assert.match(newView.instructions, /Updated checklist/u);
+      assert.equal(newList.name, "Updated Oven");
+    } finally { writer.stdin.end(); writer.kill("SIGKILL"); }
   } finally { context.cleanup(); }
 });
 
@@ -339,19 +340,21 @@ test("a killed writer leaves the prior pointer package readable", async () => {
     run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     writeFileSync(packagePath, JSON.stringify({ instructions: "# Interrupted Oven\n\nNever published.", detail: detailFixture() }));
     const writer = pausedUpdate(context, ovensDir, packagePath);
-    await waitForBarrier(writer);
-    const priorCurrent = readFileSync(join(ovensDir, "sample-oven", "current"), "utf8");
-    writer.kill("SIGKILL");
-    await new Promise((resolve) => writer.on("close", resolve));
-    const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
-    const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
-    assert.match(oldView.instructions, /Initial checklist/u);
-    assert.equal(oldList.name, "Initial Oven");
-    assert.equal(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Recovered Oven\n\nPublished after recovery.", detail: detailFixture() }));
-    run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
-    assert.match(JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir)).instructions, /Published after recovery/u);
-    assert.notEqual(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
+    try {
+      await waitForBarrier(writer);
+      const priorCurrent = readFileSync(join(ovensDir, "sample-oven", "current"), "utf8");
+      writer.kill("SIGKILL");
+      await new Promise((resolve) => writer.on("close", resolve));
+      const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+      const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+      assert.match(oldView.instructions, /Initial checklist/u);
+      assert.equal(oldList.name, "Initial Oven");
+      assert.equal(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
+      writeFileSync(packagePath, JSON.stringify({ instructions: "# Recovered Oven\n\nPublished after recovery.", detail: detailFixture() }));
+      run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
+      assert.match(JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir)).instructions, /Published after recovery/u);
+      assert.notEqual(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
+    } finally { writer.stdin.end(); writer.kill("SIGKILL"); }
   } finally { context.cleanup(); }
 });
 

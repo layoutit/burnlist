@@ -11,22 +11,39 @@ function validRow(id) {
   };
 }
 
-test("dashboard row normalization blocks malformed handler rows without hiding healthy handlers", () => {
+function blockedEntry(handler, error) {
+  return { ...validRow(`blocked-${handler.id}`), ovenId: handler.id, blockers: error.message };
+}
+
+test("dashboard row normalization isolates malformed rows without hiding their healthy siblings", () => {
   const handlers = [
-    { id: "null-row", dashboardEntries: () => [null] },
-    { id: "missing-field", dashboardEntries: () => [{ id: "missing-field" }] },
-    { id: "healthy", dashboardEntries: () => [validRow("healthy")] },
+    {
+      id: "mixed", dashboardEntries: () => [
+        { ...validRow("older"), updatedAt: "2026-01-01T00:00:00Z" },
+        null,
+        { ...validRow("newer"), updatedAt: "2026-01-03T00:00:00Z" },
+      ],
+    },
+    { id: "throws", dashboardEntries: () => { throw new Error("handler failed"); } },
   ];
   const entries = isolatedDashboardEntries({
     handlers,
     contextForHandler: () => ({}),
     repoKeyForRoot: (root) => root,
-    blockedEntry: (handler, error) => ({ ...validRow(`blocked-${handler.id}`), ovenId: handler.id, blockers: error.message }),
+    blockedEntry,
   });
-  assert.equal(entries.some((entry) => entry.id === "healthy"), true);
-  assert.deepEqual(entries.filter((entry) => entry.id.startsWith("blocked-")).map((entry) => entry.ovenId).sort(), [
-    "missing-field", "null-row",
-  ]);
-  assert.deepEqual(entries.find((entry) => entry.id === "healthy")?.planPath, null);
-  assert.deepEqual(entries.find((entry) => entry.id === "healthy")?.planLabel, null);
+  assert.deepEqual(entries.map((entry) => entry.id), ["newer", "older", "blocked-mixed-1", "blocked-throws"]);
+  assert.equal(entries.find((entry) => entry.id === "blocked-mixed-1")?.blockers, "Dashboard handler returned a malformed row.");
+  assert.equal(entries.find((entry) => entry.id === "blocked-throws")?.blockers, "handler failed");
+});
+
+test("dashboard row normalization blocks a non-slug oven id", () => {
+  const entries = isolatedDashboardEntries({
+    handlers: [{ id: "contract", dashboardEntries: () => [{ ...validRow("valid"), ovenId: "Not a slug" }] }],
+    contextForHandler: () => ({}),
+    repoKeyForRoot: (root) => root,
+    blockedEntry,
+  });
+  assert.deepEqual(entries.map((entry) => entry.id), ["blocked-contract-0"]);
+  assert.match(entries[0].blockers, /Oven id must be a lowercase slug/u);
 });

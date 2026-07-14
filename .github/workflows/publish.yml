@@ -62,19 +62,49 @@ jobs:
           npm run verify
           npm run verify:package
 
+      - name: Determine release action
+        id: release-state
+        run: |
+          set -euo pipefail
+          current="$(node -p "require('./package.json').version")"
+          tag="v${current}"
+          if ! npm view "burnlist@${current}" version >/dev/null 2>&1; then
+            action=publish
+          elif ! git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            action=tag
+          else
+            action=bump
+          fi
+          echo "current=${current}" >> "$GITHUB_OUTPUT"
+          echo "action=${action}" >> "$GITHUB_OUTPUT"
+          echo "Release action: ${action} (${tag})"
+
       - name: Bump version
         id: bump
+        if: steps.release-state.outputs.action == 'bump'
         run: |
           set -euo pipefail
           next="$(npm version "${{ inputs.bump }}" --no-git-tag-version)"
           echo "version=${next}" >> "$GITHUB_OUTPUT"
           echo "Bumped to ${next}"
 
-      # Record the version bump on main before publishing. A failed publish is then
-      # rerunnable from the recorded intent, but has no release tag.
-      - name: Commit and push version bump
+      - name: Set release version
+        id: release
         env:
-          NEXT_VERSION: ${{ steps.bump.outputs.version }}
+          ACTION: ${{ steps.release-state.outputs.action }}
+          CURRENT_VERSION: ${{ steps.release-state.outputs.current }}
+          BUMPED_VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          version="v${CURRENT_VERSION}"
+          if [[ "$ACTION" == "bump" ]]; then version="$BUMPED_VERSION"; fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      # Record only a new bump. Reruns publish or tag the recorded version instead.
+      - name: Commit and push version bump
+        if: steps.release-state.outputs.action == 'bump'
+        env:
+          NEXT_VERSION: ${{ steps.release.outputs.version }}
           ACTOR: ${{ github.actor }}
           ACTOR_ID: ${{ github.actor_id }}
         run: |
@@ -86,14 +116,19 @@ jobs:
           git push origin HEAD:main
 
       - name: Publish to npm
+        if: steps.release-state.outputs.action != 'tag'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag published release
         env:
-          NEXT_VERSION: ${{ steps.bump.outputs.version }}
+          NEXT_VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/${NEXT_VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${NEXT_VERSION} already exists; skipping."
+            exit 0
+          fi
           git tag "${NEXT_VERSION}"
-          git push --atomic origin "${NEXT_VERSION}"
+          git push origin "${NEXT_VERSION}"

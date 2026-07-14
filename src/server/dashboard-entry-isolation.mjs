@@ -1,3 +1,5 @@
+import { ovenId } from "../ovens/oven-contract.mjs";
+
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -49,7 +51,7 @@ function dashboardRow(row, repoKeyForRoot) {
     warnings: count(row.warnings, "warnings"),
     lastCompletedAt: nullableText(row.lastCompletedAt, "lastCompletedAt"),
     updatedAt: nullableText(row.updatedAt, "updatedAt"),
-    ovenId: requiredText(row.ovenId, "ovenId"),
+    ovenId: ovenId(row.ovenId),
     ovenName: requiredText(row.ovenName, "ovenName"),
     href: requiredText(row.href, "href"),
     progressLabel: requiredText(row.progressLabel, "progressLabel"),
@@ -57,20 +59,30 @@ function dashboardRow(row, repoKeyForRoot) {
   };
 }
 
-// A handler's call, row normalization, repo key derivation, and sorting share one
-// boundary: no malformed adapter result can poison another Oven's dashboard rows.
+// A handler's call, row normalization, repo key derivation, and sorting share
+// isolation boundaries: no malformed adapter result can poison other rows or Ovens.
 export function isolatedDashboardEntries({ handlers, contextForHandler, repoKeyForRoot, blockedEntry }) {
   const entries = [];
   for (const handler of handlers) {
+    let rows;
     try {
-      const rows = handler.dashboardEntries?.(contextForHandler(handler)) ?? [];
+      rows = handler.dashboardEntries?.(contextForHandler(handler)) ?? [];
       if (!Array.isArray(rows)) throw new Error("Dashboard handler must return an array of rows.");
-      entries.push(...rows.map((row) => dashboardRow(row, repoKeyForRoot)).sort(
-        (left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")),
-      ));
     } catch (error) {
       entries.push(blockedEntry(handler, error));
+      continue;
     }
+    const normalizedRows = [];
+    for (const [index, row] of rows.entries()) {
+      try {
+        normalizedRows.push(dashboardRow(row, repoKeyForRoot));
+      } catch (error) {
+        normalizedRows.push({ ...blockedEntry(handler, error), id: `blocked-${handler.id}-${index}` });
+      }
+    }
+    entries.push(...normalizedRows.sort(
+      (left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")),
+    ));
   }
   return entries.sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
 }

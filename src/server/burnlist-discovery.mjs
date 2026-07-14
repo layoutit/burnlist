@@ -5,7 +5,9 @@ import { LIFECYCLES, summaryForPlan } from "./plan-model.mjs";
 
 // Discovery is deliberately best-effort: a broken lifecycle directory or plan
 // must not make every other repository disappear from the observer dashboard.
-export function discoverBurnlistSummaries({ repoRoots, maxPlanBytes, lifecycles = LIFECYCLES } = {}) {
+export function discoverBurnlistSummaries({
+  repoRoots, maxPlanBytes, lifecycles = LIFECYCLES, summaryForPlan: summarize = summaryForPlan,
+} = {}) {
   const entries = [];
   for (const repoRoot of repoRoots ?? []) {
     for (const lifecycle of lifecycles) {
@@ -22,7 +24,7 @@ export function discoverBurnlistSummaries({ repoRoots, maxPlanBytes, lifecycles 
         const planPath = join(lifecycleRoot, id, "burnlist.md");
         if (!safeStat(planPath)?.isFile()) continue;
         try {
-          entries.push(summaryForPlan(planPath, maxPlanBytes));
+          entries.push(summarize(planPath, maxPlanBytes));
         } catch {
           // summaryForPlan normally turns malformed plans into blocked rows. This
           // final guard also keeps an unexpected per-plan filesystem failure local.

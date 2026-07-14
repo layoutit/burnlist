@@ -9,17 +9,28 @@ function validPlan(title) {
   return `# ${title}\n\n## Active Checklist\n\n- [ ] ISO-01 | Keep discovery isolated\n\n## Completed\n`;
 }
 
-test("Burnlist discovery keeps healthy plans when another plan is malformed", () => {
+test("Burnlist discovery keeps later healthy plans when one summary throws", () => {
   const root = mkdtempSync(join(tmpdir(), "burnlist-discovery-"));
   try {
     const lifecycle = join(root, "notes", "burnlists", "inprogress");
-    mkdirSync(join(lifecycle, "healthy"), { recursive: true });
-    mkdirSync(join(lifecycle, "broken"), { recursive: true });
-    writeFileSync(join(lifecycle, "healthy", "burnlist.md"), validPlan("Healthy"));
-    writeFileSync(join(lifecycle, "broken", "burnlist.md"), "\0");
-    const summaries = discoverBurnlistSummaries({ repoRoots: [root], maxPlanBytes: 1024 });
-    assert.equal(summaries.some((entry) => entry.id === "healthy"), true);
-    assert.ok((summaries.find((entry) => entry.id === "broken")?.errors ?? 0) > 0);
+    mkdirSync(join(lifecycle, "a-broken"), { recursive: true });
+    mkdirSync(join(lifecycle, "z-healthy"), { recursive: true });
+    writeFileSync(join(lifecycle, "a-broken", "burnlist.md"), validPlan("Broken"));
+    writeFileSync(join(lifecycle, "z-healthy", "burnlist.md"), validPlan("Healthy"));
+    let forcedFailure = false;
+    const summaries = discoverBurnlistSummaries({
+      repoRoots: [root],
+      maxPlanBytes: 1024,
+      summaryForPlan: (planPath) => {
+        if (planPath.includes("a-broken")) {
+          forcedFailure = true;
+          throw new Error("forced summary failure");
+        }
+        return { id: "z-healthy", planPath };
+      },
+    });
+    assert.equal(forcedFailure, true);
+    assert.deepEqual(summaries.map((entry) => entry.id), ["z-healthy"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
