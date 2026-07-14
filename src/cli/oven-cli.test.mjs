@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -18,6 +18,10 @@ function fixture() {
 
 function run(context, ...args) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd: context.repo, encoding: "utf8" });
+}
+
+function runFrom(cwd, ...args) {
+  return execFileSync(process.execPath, [binPath, ...args], { cwd, encoding: "utf8" });
 }
 
 function detailFixture() {
@@ -109,6 +113,74 @@ test("oven create and update swap the package while preserving sibling files", (
     assert.deepEqual(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "detail.json"), "utf8")), detailFixture());
     assert.equal(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
     assert.equal(readdirSync(ovensDir).some((name) => name.startsWith(".")), false);
+  } finally { context.cleanup(); }
+});
+
+test("oven storage follows the umbrella root when launched from a subdirectory", () => {
+  const context = fixture();
+  const subdirectory = join(context.repo, "work", "nested");
+  try {
+    mkdirSync(join(context.repo, "notes", "burnlists"), { recursive: true });
+    mkdirSync(subdirectory, { recursive: true });
+    const packagePath = join(context.repo, "package.json");
+    writeFileSync(packagePath, JSON.stringify({
+      instructions: "# Umbrella Oven\n\nStored with the umbrella.", detail: detailFixture(),
+    }));
+    runFrom(subdirectory, "oven", "create", "umbrella-oven", "--package", packagePath);
+    const ovenPath = join(context.repo, ".local", "burnlist", "ovens", "umbrella-oven");
+    assert.match(readFileSync(join(ovenPath, "instructions.md"), "utf8"), /Stored with the umbrella/u);
+    const ovens = JSON.parse(runFrom(subdirectory, "oven", "list", "--json"));
+    assert.equal(ovens.some((oven) => oven.id === "umbrella-oven"), true);
+  } finally { context.cleanup(); }
+});
+
+test("an oven reader waits for an update swap and receives a complete package", async () => {
+  const context = fixture();
+  const ovensDir = join(context.repo, "ovens");
+  try {
+    const packagePath = join(context.repo, "replacement.json");
+    writeFileSync(packagePath, JSON.stringify({
+      instructions: "# Initial Oven\n\nInitial checklist.", detail: detailFixture(),
+    }));
+    run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
+    writeFileSync(packagePath, JSON.stringify({
+      instructions: "# Updated Oven\n\nUpdated checklist.", detail: detailFixture(),
+    }));
+    const script = [
+      'import fs from "node:fs";',
+      'import { syncBuiltinESMExports } from "node:module";',
+      'import { join } from "node:path";',
+      'const [bin, ovensDir, target] = process.argv.slice(1, 4);',
+      'const rename = fs.renameSync;',
+      'fs.renameSync = (from, to) => {',
+      '  const result = rename(from, to);',
+      '  if (from === target && to.startsWith(join(ovensDir, ".sample-oven.old."))) {',
+      '    process.stdout.write("target-hidden\\n");',
+      '    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 750);',
+      '  }',
+      '  return result;',
+      '};',
+      'syncBuiltinESMExports();',
+      'process.argv = [process.argv[0], bin, ...process.argv.slice(4)];',
+      'await import(bin);',
+    ].join("\n");
+    const writer = spawn(process.execPath, [
+      "--input-type=module", "--eval", script, binPath, ovensDir, join(ovensDir, "sample-oven"),
+      "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir,
+    ], { cwd: context.repo });
+    const writerStatus = new Promise((resolve) => writer.on("close", resolve));
+    await new Promise((resolve, reject) => {
+      writer.stdout.on("data", (chunk) => {
+        if (chunk.toString().includes("target-hidden")) resolve();
+      });
+      writer.on("error", reject);
+      writer.on("close", (status) => reject(new Error(`update ended before the swap reader ran: ${status}`)));
+    });
+    const reader = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+    assert.match(reader.instructions, /Updated checklist/u);
+    assert.deepEqual(reader.detail, detailFixture());
+    const status = await writerStatus;
+    assert.equal(status, 0);
   } finally { context.cleanup(); }
 });
 

@@ -32,7 +32,7 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
-import { readTextFileWithLimit, safeStat } from "./fs-safe.mjs";
+import { ovenPackageLockRoot, readTextFileWithLimit, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
@@ -365,42 +365,50 @@ function instructionsDescription(instructions) {
 
 function readOven(root, id, builtIn) {
   const safeId = ovenId(id);
-  const ovenRoot = join(root, safeId);
-  const instructionsPath = join(ovenRoot, "instructions.md");
-  const detailPath = join(ovenRoot, "detail.json");
-  if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
-  const ovenPackage = normalizeOvenPackage({
-    id: safeId,
-    instructions: readTextFileWithLimit(instructionsPath, 65536, "Oven instructions"),
-    detail: JSON.parse(readTextFileWithLimit(detailPath, 131072, "Oven detail template")),
-  });
-  const lineagePath = join(ovenRoot, "oven.json");
-  let forkedFrom;
-  if (safeStat(lineagePath)?.isFile()) {
-    try {
-      forkedFrom = normalizeOvenForkedFrom(
-        JSON.parse(readTextFileWithLimit(lineagePath, 131072, "Oven lineage sidecar")),
-      ).forkedFrom;
-    } catch (error) {
-      throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+  const readPackage = () => {
+    const ovenRoot = join(root, safeId);
+    const instructionsPath = join(ovenRoot, "instructions.md");
+    const detailPath = join(ovenRoot, "detail.json");
+    if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
+    const ovenPackage = normalizeOvenPackage({
+      id: safeId,
+      instructions: readTextFileWithLimit(instructionsPath, 65536, "Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(detailPath, 131072, "Oven detail template")),
+    });
+    const lineagePath = join(ovenRoot, "oven.json");
+    let forkedFrom;
+    if (safeStat(lineagePath)?.isFile()) {
+      try {
+        forkedFrom = normalizeOvenForkedFrom(
+          JSON.parse(readTextFileWithLimit(lineagePath, 131072, "Oven lineage sidecar")),
+        ).forkedFrom;
+      } catch (error) {
+        throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+      }
     }
-  }
-  return {
-    id: ovenPackage.id,
-    name: instructionsName(ovenPackage.instructions, safeId),
-    description: instructionsDescription(ovenPackage.instructions),
-    builtIn,
-    instructions: ovenPackage.instructions,
-    detail: ovenPackage.detail,
-    ovenRevision: ovenRevision(ovenPackage),
-    ...(forkedFrom ? { forkedFrom } : {}),
+    return {
+      id: ovenPackage.id,
+      name: instructionsName(ovenPackage.instructions, safeId),
+      description: instructionsDescription(ovenPackage.instructions),
+      builtIn,
+      instructions: ovenPackage.instructions,
+      detail: ovenPackage.detail,
+      ovenRevision: ovenRevision(ovenPackage),
+      ...(forkedFrom ? { forkedFrom } : {}),
+    };
   };
+  return builtIn ? readPackage() : withOvenPackageLock(root, safeId, readPackage, { wait: true });
 }
 
 function ovensIn(root, builtIn) {
   if (!safeStat(root)?.isDirectory()) return [];
-  return readdirSync(root)
-    .filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
+  const ids = new Set(readdirSync(root).filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)));
+  if (!builtIn && safeStat(ovenPackageLockRoot(root))?.isDirectory()) {
+    for (const id of readdirSync(ovenPackageLockRoot(root))) {
+      if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)) ids.add(id);
+    }
+  }
+  return [...ids]
     .map((id) => readOven(root, id, builtIn))
     .filter(Boolean);
 }
@@ -459,10 +467,10 @@ function createOven(value) {
   instructions = instructionLines.join("\n");
   const detail = normalizeOvenDetail(value.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
-  const path = atomicDirectory(customOvensDir, id, {
+  const path = withOvenPackageLock(customOvensDir, id, () => atomicDirectory(customOvensDir, id, {
     "instructions.md": `${ovenPackage.instructions}\n`,
     "detail.json": `${JSON.stringify(ovenPackage.detail, null, 2)}\n`,
-  });
+  }));
   return { ...readOven(customOvensDir, id, false), path };
 }
 

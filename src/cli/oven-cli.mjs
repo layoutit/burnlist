@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
-import { atomicDirectory } from "../server/fs-safe.mjs";
+import { atomicDirectory, ovenPackageLockRoot, withOvenPackageLock } from "../server/fs-safe.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
@@ -48,16 +48,20 @@ function fail(message) {
   process.exit(1);
 }
 
-function bindingRepo() {
+function repoRoot() {
   if (flags.get("repo") === "true") fail("--repo requires a path.");
   return flags.has("repo") ? resolve(launchCwd, flags.get("repo")) : resolveUmbrella(launchCwd);
+}
+
+function bindingRepo() {
+  return repoRoot();
 }
 
 // ── storage locations (mirror the dashboard server) ──────────────────────────
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const launchCwd = process.cwd();
-const customOvensDir = resolve(launchCwd, flags.get("ovens-dir") ?? ".local/burnlist/ovens");
+const customOvensDir = resolve(repoRoot(), flags.get("ovens-dir") ?? ".local/burnlist/ovens");
 
 function safeStat(path) {
   try {
@@ -89,43 +93,51 @@ function instructionsDescription(instructions) {
 
 function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
-  const ovenRoot = join(root, safeId);
-  const instructionsPath = join(ovenRoot, "instructions.md");
-  const detailPath = join(ovenRoot, "detail.json");
-  if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
-  const ovenPackage = normalizeOvenPackage({
-    id: safeId,
-    instructions: readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions"),
-    detail: JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template")),
-  });
-  const lineagePath = join(ovenRoot, "oven.json");
-  let forkedFrom;
-  if (safeStat(lineagePath)?.isFile()) {
-    try {
-      forkedFrom = normalizeOvenForkedFrom(
-        JSON.parse(readTextFileWithLimit(lineagePath, MAX_DETAIL_BYTES, "Oven lineage sidecar")),
-      ).forkedFrom;
-    } catch (error) {
-      throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+  const readPackage = () => {
+    const ovenRoot = join(root, safeId);
+    const instructionsPath = join(ovenRoot, "instructions.md");
+    const detailPath = join(ovenRoot, "detail.json");
+    if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
+    const ovenPackage = normalizeOvenPackage({
+      id: safeId,
+      instructions: readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template")),
+    });
+    const lineagePath = join(ovenRoot, "oven.json");
+    let forkedFrom;
+    if (safeStat(lineagePath)?.isFile()) {
+      try {
+        forkedFrom = normalizeOvenForkedFrom(
+          JSON.parse(readTextFileWithLimit(lineagePath, MAX_DETAIL_BYTES, "Oven lineage sidecar")),
+        ).forkedFrom;
+      } catch (error) {
+        throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+      }
     }
-  }
-  return {
-    id: ovenPackage.id,
-    name: instructionsName(ovenPackage.instructions, safeId),
-    description: instructionsDescription(ovenPackage.instructions),
-    builtIn,
-    path: ovenRoot,
-    instructions: ovenPackage.instructions,
-    detail: ovenPackage.detail,
-    ovenRevision: ovenRevision(ovenPackage),
-    ...(forkedFrom ? { forkedFrom } : {}),
+    return {
+      id: ovenPackage.id,
+      name: instructionsName(ovenPackage.instructions, safeId),
+      description: instructionsDescription(ovenPackage.instructions),
+      builtIn,
+      path: ovenRoot,
+      instructions: ovenPackage.instructions,
+      detail: ovenPackage.detail,
+      ovenRevision: ovenRevision(ovenPackage),
+      ...(forkedFrom ? { forkedFrom } : {}),
+    };
   };
+  return builtIn ? readPackage() : withOvenPackageLock(root, safeId, readPackage, { wait: true });
 }
 
 function ovensIn(root, builtIn) {
   if (!safeStat(root)?.isDirectory()) return [];
-  return readdirSync(root)
-    .filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
+  const ids = new Set(readdirSync(root).filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)));
+  if (!builtIn && safeStat(ovenPackageLockRoot(root))?.isDirectory()) {
+    for (const id of readdirSync(ovenPackageLockRoot(root))) {
+      if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)) ids.add(id);
+    }
+  }
+  return [...ids]
     .map((id) => {
       try {
         return readOvenDir(root, id, builtIn);
@@ -148,7 +160,7 @@ function discoverOvens() {
 
 function findOven(id) {
   const safeId = ovenId(id);
-  return discoverOvens().find((oven) => oven.id === safeId) ?? null;
+  return readOvenDir(builtInOvensDir, safeId, true) ?? readOvenDir(customOvensDir, safeId, false);
 }
 
 function printOven(oven) {
@@ -220,7 +232,9 @@ function persistOven(pkg, { allowReplace, sidecar }) {
     ...(sidecar ? { "oven.json": `${JSON.stringify(sidecar, null, 2)}\n` } : {}),
   };
   try {
-    return atomicDirectory(customOvensDir, pkg.id, files, { replace: allowReplace, preserveExisting: allowReplace });
+    return withOvenPackageLock(customOvensDir, pkg.id, () => (
+      atomicDirectory(customOvensDir, pkg.id, files, { replace: allowReplace, preserveExisting: allowReplace })
+    ));
   } catch (error) {
     if (!allowReplace && error.message === `${pkg.id} already exists.`) {
       throw new Error(`Oven ${pkg.id} already exists. Use \`oven update ${pkg.id}\` or --force.`);

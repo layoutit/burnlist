@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -8,7 +8,9 @@ import {
   parsePlan,
   validatePlan,
 } from "../server/plan-model.mjs";
-import { safeStat } from "../server/fs-safe.mjs";
+import { safeStat, withLock } from "../server/fs-safe.mjs";
+
+export { withLock } from "../server/fs-safe.mjs";
 
 function lifecycleRoot(repoRoot, lifecycle) {
   return join(repoRoot, "notes", "burnlists", lifecycle.folder);
@@ -50,79 +52,6 @@ export function findBurnlistDir(repoRoot, id) {
     throw new Error(`Burnlist ${id} is ambiguous across ${matches.map((match) => match.lifecycle.folder).join(", ")}.`);
   }
   return matches[0];
-}
-
-function isPositivePid(pid) {
-  return Number.isInteger(pid) && pid > 0;
-}
-
-function readLock(lockPath) {
-  try {
-    return JSON.parse(readFileSync(lockPath, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-function lockOwner(lockPath) {
-  const owner = readLock(lockPath);
-  return isPositivePid(owner?.pid) && typeof owner.token === "string" && owner.token ? owner : null;
-}
-
-function pidIsDead(pid) {
-  if (!isPositivePid(pid)) return false;
-  try {
-    process.kill(pid, 0);
-    return false;
-  } catch (error) {
-    return error?.code === "ESRCH";
-  }
-}
-
-export function withLock(dir, fn) {
-  let lockedDir = dir;
-  const token = randomBytes(16).toString("hex");
-  const lockPath = join(lockedDir, ".lock");
-  const temporary = join(lockedDir, `.lock.${token}.tmp`);
-  const busy = () => new Error(`${basename(dir)} is busy (locked)`);
-  try {
-    writeFileSync(temporary, JSON.stringify({ token, pid: process.pid }));
-    try {
-      linkSync(temporary, lockPath);
-    } catch (error) {
-      if (error?.code !== "EEXIST") throw error;
-      const owner = lockOwner(lockPath);
-      if (!owner || !pidIsDead(owner.pid)) throw busy();
-      const claim = `${lockPath}.claim.${token}`;
-      try {
-        renameSync(lockPath, claim);
-      } catch (takeoverError) {
-        if (takeoverError?.code === "ENOENT") throw busy();
-        throw takeoverError;
-      }
-      try {
-        rmSync(claim, { force: true });
-        linkSync(temporary, lockPath);
-      } catch (takeoverError) {
-        if (takeoverError?.code === "EEXIST") throw busy();
-        throw takeoverError;
-      }
-    }
-  } finally {
-    rmSync(temporary, { force: true });
-  }
-  try {
-    const movedDir = fn({
-      retarget(movedDir) {
-        if (typeof movedDir === "string") lockedDir = movedDir;
-      },
-    });
-    if (typeof movedDir === "string") lockedDir = movedDir;
-    return movedDir;
-  } finally {
-    const finalLockPath = join(lockedDir, ".lock");
-    if (readLock(finalLockPath)?.token === token) rmSync(finalLockPath, { force: true });
-  }
 }
 
 function appendCompletionDigestIfMissing(plan) {

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
 
 export function readTextFileWithLimit(path, maxBytes, label) {
   const stat = statSync(path);
@@ -13,6 +13,116 @@ export function safeStat(path) {
     return statSync(path);
   } catch {
     return null;
+  }
+}
+
+function isPositivePid(pid) {
+  return Number.isInteger(pid) && pid > 0;
+}
+
+function readLock(lockPath) {
+  try {
+    return JSON.parse(readFileSync(lockPath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function lockOwner(lockPath) {
+  const owner = readLock(lockPath);
+  return isPositivePid(owner?.pid) && typeof owner.token === "string" && owner.token ? owner : null;
+}
+
+function pidIsDead(pid) {
+  if (!isPositivePid(pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return error?.code === "ESRCH";
+  }
+}
+
+export function withLock(dir, fn) {
+  let lockedDir = dir;
+  const token = randomBytes(16).toString("hex");
+  const lockPath = join(lockedDir, ".lock");
+  const temporary = join(lockedDir, `.lock.${token}.tmp`);
+  const busy = () => Object.assign(new Error(`${basename(dir)} is busy (locked)`), { code: "ELOCKED" });
+  try {
+    writeFileSync(temporary, JSON.stringify({ token, pid: process.pid }));
+    try {
+      linkSync(temporary, lockPath);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      const owner = lockOwner(lockPath);
+      if (!owner || !pidIsDead(owner.pid)) throw busy();
+      const claim = `${lockPath}.claim.${token}`;
+      try {
+        renameSync(lockPath, claim);
+      } catch (takeoverError) {
+        if (takeoverError?.code === "ENOENT") throw busy();
+        throw takeoverError;
+      }
+      try {
+        rmSync(claim, { force: true });
+        linkSync(temporary, lockPath);
+      } catch (takeoverError) {
+        if (takeoverError?.code === "EEXIST") throw busy();
+        throw takeoverError;
+      }
+    }
+  } finally {
+    rmSync(temporary, { force: true });
+  }
+  try {
+    const movedDir = fn({
+      retarget(movedDir) {
+        if (typeof movedDir === "string") lockedDir = movedDir;
+      },
+    });
+    if (typeof movedDir === "string") lockedDir = movedDir;
+    return movedDir;
+  } finally {
+    const finalLockPath = join(lockedDir, ".lock");
+    if (readLock(finalLockPath)?.token === token) rmSync(finalLockPath, { force: true });
+  }
+}
+
+export function ovenPackageLockRoot(root) {
+  return join(root, ".oven-locks");
+}
+
+function removeEmptyDirectory(path) {
+  try {
+    rmdirSync(path);
+  } catch (error) {
+    if (!["ENOENT", "ENOTEMPTY"].includes(error?.code)) throw error;
+  }
+}
+
+export function withOvenPackageLock(root, id, fn, { wait = false } = {}) {
+  const lockRoot = ovenPackageLockRoot(root);
+  const lockDir = join(lockRoot, id);
+  mkdirSync(lockDir, { recursive: true });
+  try {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      try {
+        let result;
+        withLock(lockDir, () => { result = fn(); });
+        return result;
+      } catch (error) {
+        if (error?.code === "ENOENT" && attempt < 299) {
+          mkdirSync(lockDir, { recursive: true });
+          continue;
+        }
+        if (!wait || error?.code !== "ELOCKED" || attempt === 299) throw error;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+      }
+    }
+  } finally {
+    removeEmptyDirectory(lockDir);
+    removeEmptyDirectory(lockRoot);
   }
 }
 
