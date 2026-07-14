@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -85,28 +85,84 @@ function ovenFiles(version) {
   };
 }
 
-test("Oven pointer swaps retain a resolved reader revision and grace GC keeps young revisions", () => {
+test("Oven pointer swaps measure revision GC grace from retirement", () => {
   const context = fixture();
   const target = join(context.root, "oven");
   try {
     withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("one")));
     const oldPath = resolveOvenPackageDir(target);
+    const longAgo = new Date(Date.now() - OVEN_REV_GRACE_MS - 1_000);
+    utimesSync(oldPath, longAgo, longAgo);
     withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("two"), { replace: true }));
 
     for (const [name, contents] of Object.entries(ovenFiles("one"))) {
       assert.equal(readFileSync(join(oldPath, name), "utf8"), contents);
     }
+    assert.ok(Date.now() - statSync(oldPath).mtimeMs < OVEN_REV_GRACE_MS);
+
+    const stale = join(target, "rev-deadbeef");
+    mkdirSync(stale);
+    utimesSync(stale, longAgo, longAgo);
     withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("three"), { replace: true }));
+    assert.equal(existsSync(stale), false);
+    assert.equal(existsSync(oldPath), true);
     const revisions = readdirSync(target, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith("rev-"))
       .map((entry) => entry.name);
     assert.equal(revisions.length, 3);
     assert.match(readFileSync(join(target, "current"), "utf8"), /^rev-[a-f0-9]+\n$/u);
 
-    utimesSync(oldPath, new Date(Date.now() - OVEN_REV_GRACE_MS - 1_000), new Date(Date.now() - OVEN_REV_GRACE_MS - 1_000));
+    const currentPath = resolveOvenPackageDir(target);
+    utimesSync(currentPath, longAgo, longAgo);
     withOvenPackageLock(context.root, "oven", () => atomicOvenPackage(context.root, "oven", ovenFiles("four"), { replace: true }));
-    assert.equal(existsSync(oldPath), false);
-    assert.equal(readdirSync(target, { withFileTypes: true }).filter((entry) => entry.isDirectory() && entry.name.startsWith("rev-")).length, 3);
+    assert.equal(existsSync(currentPath), true);
+    assert.equal(existsSync(resolveOvenPackageDir(target)), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("Oven readers only fall back for an absent current pointer", () => {
+  const context = fixture();
+  try {
+    const flat = join(context.root, "flat");
+    mkdirSync(flat);
+    for (const [name, contents] of Object.entries(ovenFiles("flat"))) writeFileSync(join(flat, name), contents);
+    assert.equal(resolveOvenPackageDir(flat), flat);
+
+    const missing = join(context.root, "missing");
+    mkdirSync(missing);
+    writeFileSync(join(missing, "current"), "rev-deadbeef\n");
+    assert.throws(() => resolveOvenPackageDir(missing), /missing revision rev-deadbeef/u);
+
+    const nonFile = join(context.root, "non-file");
+    mkdirSync(join(nonFile, "current"), { recursive: true });
+    assert.throws(() => resolveOvenPackageDir(nonFile), /not a file/u);
+
+    const linked = join(context.root, "linked");
+    mkdirSync(linked);
+    writeFileSync(join(linked, "pointer-target"), "rev-deadbeef\n");
+    symlinkSync("pointer-target", join(linked, "current"));
+    assert.throws(() => resolveOvenPackageDir(linked), /not a file/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("Oven current pointers require one exact revision line", () => {
+  const context = fixture();
+  const target = join(context.root, "oven");
+  try {
+    mkdirSync(target);
+    mkdirSync(join(target, "rev-deadbeef"));
+    for (const contents of [" rev-deadbeef", "rev-deadbeef\nextra", "rev-deadbeef \n"]) {
+      writeFileSync(join(target, "current"), contents);
+      assert.throws(() => resolveOvenPackageDir(target), /Invalid Oven current pointer/u);
+    }
+    for (const contents of ["rev-deadbeef", "rev-deadbeef\n"]) {
+      writeFileSync(join(target, "current"), contents);
+      assert.equal(resolveOvenPackageDir(target), join(target, "rev-deadbeef"));
+    }
   } finally {
     context.cleanup();
   }
@@ -143,8 +199,11 @@ test("legacy migration stays readable on either side of current and recovery tru
     const orphanRevision = join(orphanRoot, "rev-deadbeef");
     mkdirSync(orphanRevision);
     for (const [name, contents] of Object.entries(ovenFiles("orphan"))) writeFileSync(join(orphanRevision, name), contents);
+    const orphanPointerTemp = join(orphanRoot, ".current.deadcafe");
+    writeFileSync(orphanPointerTemp, "rev-deadbeef\n");
     withOvenPackageLock(context.root, "orphan", () => atomicOvenPackage(context.root, "orphan", ovenFiles("created")));
     assert.equal(readFileSync(join(resolveOvenPackageDir(orphanRoot), "instructions.md"), "utf8"), "# Oven created\n");
+    assert.equal(existsSync(orphanPointerTemp), false);
 
     writeFileSync(join(target, "current"), "rev-facefeed\n");
     assert.throws(

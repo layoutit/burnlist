@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
 export const OVEN_REV_GRACE_MS = 60_000;
@@ -183,7 +183,7 @@ function missing(error) {
 
 function entryAt(path) {
   try {
-    return statSync(path);
+    return lstatSync(path);
   } catch (error) {
     if (missing(error)) return null;
     throw error;
@@ -199,21 +199,26 @@ function revisionName(value) {
   return /^rev-[a-f0-9]+$/u.test(value) ? value : null;
 }
 
+function pointerRevision(value) {
+  const match = /^(rev-[a-f0-9]+)\n?$/u.exec(value);
+  return match ? revisionName(match[1]) : null;
+}
+
 // Readers resolve this once, then use the returned immutable path for every
 // file in their package read. ENOENT is deliberately left for callers to treat
 // as an ordinary concurrent disappearance.
 export function resolveOvenPackageDir(pkgRoot) {
   const pointer = join(pkgRoot, "current");
-  let current;
-  try {
-    if (!statSync(pointer).isFile()) return pkgRoot;
-    current = readFileSync(pointer, "utf8").trim();
-  } catch (error) {
-    if (missing(error)) return pkgRoot;
-    throw error;
-  }
+  const entry = entryAt(pointer);
+  if (!entry) return pkgRoot;
+  if (!entry.isFile()) throw new Error(`Invalid Oven current pointer at ${pointer}: not a file.`);
+  const current = pointerRevision(readFileSync(pointer, "utf8"));
   if (!revisionName(current)) throw new Error(`Invalid Oven current pointer at ${pointer}.`);
-  return join(pkgRoot, current);
+  const revisionDir = join(pkgRoot, current);
+  if (!entryAt(revisionDir)?.isDirectory()) {
+    throw new Error(`Invalid Oven current pointer at ${pointer}: missing revision ${current}.`);
+  }
+  return revisionDir;
 }
 
 function currentRevision(pkgRoot, id) {
@@ -221,7 +226,7 @@ function currentRevision(pkgRoot, id) {
   const entry = entryAt(pointer);
   if (!entry) return null;
   if (!entry.isFile()) throw new Error(`Oven ${id} current pointer is not a file.`);
-  const revision = readFileSync(pointer, "utf8").trim();
+  const revision = pointerRevision(readFileSync(pointer, "utf8"));
   if (!revisionName(revision)) throw new Error(`Oven ${id} current pointer is invalid.`);
   const revisionDir = join(pkgRoot, revision);
   if (!entryAt(revisionDir)?.isDirectory()) {
@@ -268,8 +273,16 @@ function removeLegacyFiles(pkgRoot) {
 function gcOldRevisions(pkgRoot, current) {
   try {
     for (const entry of readdirSync(pkgRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name === current || !revisionName(entry.name)) continue;
       const path = join(pkgRoot, entry.name);
+      if (entry.isFile() && entry.name.startsWith(".current.")) {
+        try {
+          rmSync(path, { force: true });
+        } catch (error) {
+          if (!missing(error)) throw error;
+        }
+        continue;
+      }
+      if (!entry.isDirectory() || entry.name === current || !revisionName(entry.name)) continue;
       try {
         if (Date.now() - statSync(path).mtimeMs >= OVEN_REV_GRACE_MS) rmSync(path, { recursive: true, force: true });
       } catch (error) {
@@ -283,7 +296,8 @@ function gcOldRevisions(pkgRoot, current) {
 
 // Custom Oven packages are immutable nested revisions published by atomically
 // replacing a small pointer file. A reader that resolved the old revision keeps
-// a stable path until grace-period GC makes it eligible for deletion.
+// a stable path until grace-period GC makes it eligible for deletion. A reader
+// suspended beyond that grace period mid-read is out of scope for this localhost tool.
 export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
   mkdirSync(parent, { recursive: true });
   const pkgRoot = join(parent, id);
@@ -307,6 +321,10 @@ export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
       throw cleanupError([error, cleanupFailure], `Could not publish Oven ${id}`);
     }
     throw error;
+  }
+  if (previous) {
+    const retiredAt = new Date();
+    utimesSync(previous, retiredAt, retiredAt);
   }
   removeLegacyFiles(pkgRoot);
   gcOldRevisions(pkgRoot, revision);
