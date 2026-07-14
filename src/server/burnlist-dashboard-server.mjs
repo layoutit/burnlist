@@ -491,10 +491,11 @@ function selectedRepoKey(url) {
 
 function findOven(id, selectedKey = null) {
   const safeId = ovenId(id);
-  if (selectedKey === null) {
-    const oven = readOven(builtInOvensDir, safeId, true);
-    return oven ? { ...oven, repoKey: null, repoRoot: null } : null;
-  }
+  // Built-ins are global: resolve them by id regardless of repoKey (repoKey only selects a repo's
+  // DATA binding, not the oven's identity). Custom ovens are identified by (repoKey, id).
+  const builtin = readOven(builtInOvensDir, safeId, true);
+  if (builtin) return { ...builtin, repoKey: null, repoRoot: null };
+  if (selectedKey === null) return null;
   const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
   const oven = repo ? readOven(customOvensDirFor(repo.root), safeId, false, repo.root) : null;
   return oven ? { ...oven, repoKey: repo.repoKey, repoRoot: repo.root } : null;

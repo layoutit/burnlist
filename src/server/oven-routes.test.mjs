@@ -92,6 +92,32 @@ test("registered Oven routes and dashboard entries isolate malformed custom Oven
   });
 });
 
+test("a generated Differential Testing row href resolves (global built-in, repoKey selects data)", { timeout: 20_000 }, async () => {
+  const timestamp = "2026-01-01T12:00:00.000Z";
+  const payload = buildPayload(
+    {
+      captureId: "reference-fixture", generatedAt: timestamp,
+      fields: [{ id: "position", label: "Position", sourceOwner: "fixture", meaning: "Position", unit: "units", tolerance: 0 }],
+      samples: [{ tick: 0, values: { position: 1 } }],
+    },
+    { captureId: "candidate-fixture", generatedAt: timestamp, samples: [{ tick: 0, values: { position: 1 } }] },
+  );
+  await withServer({
+    burnlists: [{ repoPath: "app" }],
+    ovenData: [{ id: "differential-testing", payload, repoPath: "app", persisted: true, override: false }],
+  }, async ({ baseUrl }) => {
+    const rows = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
+    const dtRow = rows.find((row) => row.ovenId === "differential-testing" && row.statusLabel !== "Blocked");
+    assert.ok(dtRow, "expected a Differential Testing dashboard row");
+    assert.match(dtRow.href, /\/ovens\/differential-testing\/view\?.*repoKey=/u);
+    // The generated row link (built-in oven + a repoKey data selector) must resolve, not 404.
+    assert.equal((await httpGet(baseUrl, dtRow.href)).status, 200);
+    // The oven itself is global; repoKey only selects that repo's data binding.
+    assert.equal((await httpGet(baseUrl, `/api/ovens/differential-testing?repoKey=${dtRow.repoKey}`)).status, 200);
+    assert.equal((await httpGet(baseUrl, `/api/oven-data/differential-testing?repoKey=${dtRow.repoKey}`)).status, 200);
+  });
+});
+
 test("an unknown Oven with a data binding remains unvalidated", { timeout: 20_000 }, async () => {
   await withServer({ ovenData: [{ id: "ghost", payload: { ignored: true } }] }, async ({ baseUrl }) => {
     const unknown = await httpGet(baseUrl, "/api/oven-data/ghost");

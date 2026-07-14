@@ -55,9 +55,6 @@ jobs:
           git fetch origin main
           git checkout --detach origin/main
 
-      - name: Install dependencies
-        run: npm ci
-
       - name: Determine release action
         id: release-state
         run: |
@@ -204,6 +201,10 @@ jobs:
         env:
           RELEASE_COMMIT: ${{ steps.release-commit.outputs.sha }}
         run: git checkout --detach "$RELEASE_COMMIT"
+
+      # Install from the RELEASE commit's lockfile so gate + publish match the released tree.
+      - name: Install dependencies for the release commit
+        run: npm ci
 
       - name: Verify any existing remote tag
         env:
