@@ -36,6 +36,7 @@ import {
 } from "./differential-testing-transport.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { assertStreamingDiffData } from "./streaming-diff-contract.mjs";
+import { assertVisualParityData, visualParityDeltaChartMetrics } from "./visual-parity-contract.mjs";
 
 const args = new Map();
 const allowedArgs = new Set([
@@ -323,6 +324,14 @@ function warmDifferentialTestingData() {
   } catch {
     // The request path reports validation errors; background warming remains silent.
   }
+}
+
+function readVisualParityData(path) {
+  const readPath = resolve(realpathSync(dirname(path)), basename(path));
+  const stat = safeStat(readPath);
+  if (!stat?.isFile()) throw new Error("configured Visual Parity data is missing");
+  const source = readTextFileWithLimit(readPath, maxOvenDataBytes, "Oven visual-parity data");
+  return { readPath, payload: assertVisualParityData(JSON.parse(source)) };
 }
 
 function positiveInteger(value, name) {
@@ -872,8 +881,41 @@ function streamingDiffDashboardEntries() {
   }];
 }
 
+function visualParityDashboardEntries() {
+  const path = ovenDataBindings.get("visual-parity");
+  if (!path) return [];
+  const { readPath, payload } = readVisualParityData(path);
+  const data = payload.differentialTesting;
+  const comparisons = payload.comparisons;
+  const failed = comparisons.filter((comparison) => comparison.status === "fail").length;
+  const latest = data.progress.at(-1);
+  const total = Number(latest?.frames ?? data.summary.frames.total) || 0;
+  const done = Number(latest?.frame ?? data.summary.frames.passed) || 0;
+  const repo = discoveredRepos()
+    .filter((entry) => readPath === entry.root || readPath.startsWith(`${entry.root}/`))
+    .sort((left, right) => right.root.length - left.root.length)[0]?.name ?? "visual-parity";
+  return [{
+    id: `${data.scenarioCatalog.selectedScenarioId}-visual-parity`,
+    repo,
+    title: `${comparisons.length} frame deltas`,
+    status: "active",
+    statusLabel: failed === 0 ? "Pass" : "Fail",
+    total,
+    done,
+    remaining: Math.max(0, total - done),
+    percent: total ? Math.round(done / total * 100) : 0,
+    errors: failed,
+    warnings: 0,
+    updatedAt: data.publishedAt,
+    ovenId: "visual-parity",
+    ovenName: "Visual Parity",
+    href: `/ovens/visual-parity/view?view=${encodeURIComponent(data.scenarioCatalog.selectedScenarioId)}`,
+    progressLabel: `${comparisons.length} deltas · ${failed} failed`,
+  }];
+}
+
 function dashboardEntries() {
-  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries(), ...streamingDiffDashboardEntries()]
+  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries(), ...visualParityDashboardEntries(), ...streamingDiffDashboardEntries()]
     .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
 }
 
@@ -1527,6 +1569,26 @@ const server = createServer(async (req, res) => {
           sendDifferentialTestingData(req, res, selected);
           return;
         }
+        if (id === "visual-parity") {
+          const data = readVisualParityData(path);
+          const requestedScenarioIds = url.searchParams.getAll("view");
+          if (requestedScenarioIds.length > 1) return json(res, 400, { error: "view must be supplied at most once" });
+          const requestedScenarioId = requestedScenarioIds[0] ?? "";
+          if (requestedScenarioId && !/^[a-f0-9]{16}$/u.test(requestedScenarioId)) {
+            return json(res, 400, { error: "view must be a lowercase 16-character hexadecimal scenario id" });
+          }
+          const selectedScenarioId = data.payload.differentialTesting.scenarioCatalog.selectedScenarioId;
+          if (requestedScenarioId && requestedScenarioId !== selectedScenarioId) {
+            return json(res, 404, { error: `visual parity scenario ${requestedScenarioId} is not currently published` });
+          }
+          json(res, 200, {
+            ovenId: id,
+            path: data.readPath,
+            payload: data.payload,
+            frameDeltaMetrics: visualParityDeltaChartMetrics(data.payload.comparisons),
+          });
+          return;
+        }
         const readPath = path;
         if (!safeStat(readPath)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
         const indexPayload = JSON.parse(readTextFileWithLimit(readPath, maxOvenDataBytes, `Oven ${id} data`));
@@ -1570,7 +1632,7 @@ const server = createServer(async (req, res) => {
       json(res, 200, { run });
       return;
     }
-    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/ovens/streaming-diff/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/ovens/streaming-diff/view", "/ovens/visual-parity/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;

@@ -48,7 +48,9 @@ function withoutCanonicalTemplateVocabulary(text) {
   return text
     .replaceAll(/driving-parity/giu, "")
     .replaceAll(/driving parity/giu, "")
-    .replaceAll(/parity progress/giu, "");
+    .replaceAll(/parity progress/giu, "")
+    .replaceAll(/visual-parity/giu, "")
+    .replaceAll(/visual parity/giu, "");
 }
 
 const leakPatterns = [
@@ -266,6 +268,7 @@ const jsFiles = [
   ...walkFiles(resolve(repoRoot, "skills/burnlist/scripts"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-progress-chart.js"),
   resolve(repoRoot, "skills/burnlist/dashboard/differential-testing-renderer.js"),
+  resolve(repoRoot, "skills/burnlist/dashboard/visual-parity-renderer.js"),
 ].sort();
 
 for (const file of jsFiles) {
@@ -406,10 +409,11 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"
 assertSourceExcludes("skills/burnlist/dashboard/src/app.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("skills/burnlist/scripts/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "differential-testing", "streaming-diff"]);
+assertBuiltInOvenSet(["checklist", "differential-testing", "streaming-diff", "visual-parity"]);
 assertBuiltInOven("checklist", "Checklist");
 assertBuiltInOven("differential-testing", "Differential Testing");
 assertBuiltInOven("streaming-diff", "Streaming Diff");
+assertBuiltInOven("visual-parity", "Visual Parity");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
@@ -426,6 +430,7 @@ run(process.execPath, [
   "skills/burnlist/scripts/repo-state.test.mjs",
   "skills/burnlist/scripts/streaming-diff-contract.test.mjs",
   "skills/burnlist/scripts/streaming-diff-server.test.mjs",
+  "skills/burnlist/scripts/visual-parity.test.mjs",
 ]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {

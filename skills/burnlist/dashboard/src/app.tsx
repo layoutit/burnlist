@@ -13,6 +13,7 @@ import { NewOvenPage, RunBurnPage } from "@/burn-ovens";
 import { ChecklistDashboard, type ChecklistProgressData } from "@/checklist-dashboard";
 import { DifferentialTestingPage } from "@/differential-testing";
 import { StreamingDiffPage, type StreamingDiffConnection } from "@/streaming-diff";
+import { VisualParityPage } from "@/visual-parity";
 
 type Filter = "active" | "draft" | "ready" | "complete" | "all";
 
@@ -30,7 +31,7 @@ type Burnlist = {
   errors: number;
   warnings: number;
   updatedAt: string | null;
-  ovenId: "checklist" | "differential-testing" | "streaming-diff";
+  ovenId: "checklist" | "differential-testing" | "streaming-diff" | "visual-parity";
   ovenName: string;
   href: string;
   progressLabel: string;
@@ -56,6 +57,7 @@ function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
   if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
+  if (window.location.pathname === "/ovens/visual-parity/view") return "visual-parity";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
@@ -67,7 +69,7 @@ function selectedBurnlist() {
 }
 
 function AppHeader({ detail, onStreamingDisconnect, section, streamingConnection, streamingTimestamp }: { detail: ProgressData | null; onStreamingDisconnect: () => void; section: string; streamingConnection: StreamingDiffConnection; streamingTimestamp: string | null }) {
-  const title = section === "differential-testing" ? "Differential Testing" : section === "streaming-diff" ? "Streaming Diff" : detail?.title;
+  const title = section === "differential-testing" ? "Differential Testing" : section === "streaming-diff" ? "Streaming Diff" : section === "visual-parity" ? "Visual Parity" : detail?.title;
   const connectionLabel = streamingConnection[0].toUpperCase() + streamingConnection.slice(1);
   return (
     <header className="dashboard-header">
@@ -83,7 +85,7 @@ function AppHeader({ detail, onStreamingDisconnect, section, streamingConnection
               {streamingConnection === "connected" ? <button aria-label="Disconnect agent" className="dashboard-stream-status" data-status="connected" onClick={onStreamingDisconnect} type="button"><span aria-hidden="true" className="dashboard-stream-status-dot" /><span className="dashboard-stream-connected-label">Connected</span><span className="dashboard-stream-disconnect-label">Disconnect</span></button> : <span aria-live="polite" className="dashboard-stream-status" data-status={streamingConnection} role="status"><span aria-hidden="true" className="dashboard-stream-status-dot" />{connectionLabel}</span>}
               {streamingTimestamp ? <><span aria-hidden="true" className="dashboard-stream-separator">·</span><time dateTime={streamingTimestamp}>{formatStreamingTime(streamingTimestamp)}</time></> : null}
             </div>
-          ) : section !== "differential-testing" && HEADER_LINKS.map((link, index) => (
+          ) : !["differential-testing", "visual-parity"].includes(section) && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a
@@ -327,13 +329,15 @@ export function App() {
       <AppHeader detail={selected ? progress : null} onStreamingDisconnect={() => setStreamingDisconnectRequest((request) => request + 1)} section={section} streamingConnection={streamingConnection} streamingTimestamp={streamingTimestamp} />
       <main
         className="dashboard-main"
-        data-layout={section === "differential-testing" || section === "streaming-diff" || selected ? "full" : "index"}
+        data-layout={section === "differential-testing" || section === "streaming-diff" || section === "visual-parity" || selected ? "full" : "index"}
         data-section={section}
       >
         {section === "differential-testing" ? (
           <DifferentialTestingPage />
         ) : section === "streaming-diff" ? (
           <StreamingDiffPage disconnectRequest={streamingDisconnectRequest} onConnectionChange={setStreamingConnection} onTimestampChange={setStreamingTimestamp} />
+        ) : section === "visual-parity" ? (
+          <VisualParityPage />
         ) : section === "new-oven" ? (
           <NewOvenPage />
         ) : section === "run-burn" ? (

@@ -12,7 +12,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-export function differentialTestingLoadingMarkup() {
+export function differentialTestingLoadingMarkup({ ovenName = "Differential Testing" } = {}) {
   const title = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item">
       <span class="driving-parity-kpi-heading differential-scenario-heading">Scenario</span>
       <span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select aria-label="Differential Testing scenario" disabled><option selected>Loading scenario…</option></select></span></span>
@@ -28,7 +28,7 @@ export function differentialTestingLoadingMarkup() {
     .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', '<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List</h2>')
     .replace('<div id="driving-parity-controls" class="driving-parity-controls" hidden>', '<div id="driving-parity-controls" class="driving-parity-controls">');
   return `<div class="differential-testing-loading" aria-busy="true">
-    <span class="differential-loading-sr" role="status">Loading Differential Testing</span>
+    <span class="differential-loading-sr" role="status">Loading ${escapeHtml(ovenName)}</span>
     <div class="differential-testing-loading-visual" aria-hidden="true" inert>${template}</div>
   </div>`;
 }
@@ -160,6 +160,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   onFieldViewChange = () => {},
   fieldPage = null,
   frameDeltaMetrics = null,
+  detailCellId = "field-details",
+  detailRenderer = null,
+  initialProgressChart = "delta",
   templateOnly = false,
 } = {}) {
   if (templateOnly) return templateHtml();
@@ -170,7 +173,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   const telemetryAvailability = differentialTelemetryAvailability(payload);
   const state = {
     chart: "current",
-    progressChart: "delta",
+    progressChart: initialProgressChart,
     sort: fieldPage?.sort ?? (telemetryAvailability.status === "comparable" ? "changed" : "default"),
     filter: fieldPage?.filter ?? "all",
     search: fieldPage?.search ?? "",
@@ -1593,7 +1596,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     existingHeaderStatus?.remove();
     if (!state.oven || !state.payload) return;
     const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
-    const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
+    const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get(detailCellId);
     if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
     const titleText = String(title.title || state.oven.name || "Differential Testing");
     if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
@@ -1652,6 +1655,11 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace('<div class="rows-view" id="hybrid-rows"></div>', `<div class="rows-view" id="hybrid-rows">${fieldRows(page)}</div>`)
       .replace(/<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>[\s\S]*?<\/div>\n  <\/main>/u, `${paginationHtml}\n  </main>`);
     root.innerHTML = html;
+    if (detailRenderer) {
+      const detailRows = root.querySelector("#hybrid-rows");
+      if (detailRows) detailRows.innerHTML = detailRenderer({ cell: details, oven: state.oven, payload: state.payload });
+      root.querySelector("#driving-parity-pagination")?.remove();
+    }
     const overviewTimestamp = root.querySelector("#differential-overview-time");
     const refreshStatusElement = root.querySelector("#differential-refresh-status");
     const dashboardNav = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav");
@@ -1662,7 +1670,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     paintWaffles();
     renderProgressChart();
     const search = root.querySelector("#driving-parity-field-search"), pageSize = root.querySelector("#driving-parity-page-size");
-    search.value = state.search;
+    if (search) search.value = state.search;
     if (pageSize) pageSize.value = String(state.pageSize);
   }
   function requestFieldView({ refocusSearch = false } = {}) {
@@ -1806,13 +1814,17 @@ export function startDifferentialTestingLiveUpdates(root, {
   locationImpl = globalThis.location,
   historyImpl = globalThis.history,
   mount = mountDifferentialTestingDashboard,
+  ovenId = "differential-testing",
+  ovenName = "Differential Testing",
+  scenarioParam = "scenario",
+  payloadTransform = (json) => differentialPagedPayload(json.payload, json.fieldPage),
   refreshMs = DIFFERENTIAL_TESTING_REFRESH_MS,
   onError = (error, hasDashboard) => {
     if (!hasDashboard) root.innerHTML = `<div class="empty">${escapeHtml(String(error?.message || error))}</div>`;
-    else console.error("Could not refresh Differential Testing data.", error);
+    else console.error(`Could not refresh ${ovenName} data.`, error);
   },
 } = {}) {
-  root.innerHTML = differentialTestingLoadingMarkup();
+  root.innerHTML = differentialTestingLoadingMarkup({ ovenName });
   let oven = null;
   let dashboard = null;
   let payloadRevision = "";
@@ -1825,13 +1837,16 @@ export function startDifferentialTestingLiveUpdates(root, {
   const payloadCache = new Map();
   let fieldViewQuery = null;
   let selectedScenarioId = (() => {
-    try { return new URLSearchParams(locationImpl?.search || "").get("scenario") || ""; }
+    try { return new URLSearchParams(locationImpl?.search || "").get(scenarioParam) || ""; }
     catch { return ""; }
   })();
 
   const payloadUrl = (scenarioId) => {
     const searchParams = new URLSearchParams();
-    if (scenarioId) searchParams.set("scenario", scenarioId);
+    if (scenarioId) {
+      if (scenarioParam === "scenario") searchParams.set("scenario", scenarioId);
+      else searchParams.set(scenarioParam, scenarioId);
+    }
     if (fieldViewQuery) {
       searchParams.set("search", fieldViewQuery.search);
       searchParams.set("filter", fieldViewQuery.filter);
@@ -1840,7 +1855,7 @@ export function startDifferentialTestingLiveUpdates(root, {
       searchParams.set("pageSize", String(fieldViewQuery.pageSize));
     }
     const query = searchParams.toString();
-    return `/api/oven-data/differential-testing${query ? `?${query}` : ""}`;
+    return `/api/oven-data/${ovenId}${query ? `?${query}` : ""}`;
   };
 
   const read = async (url, key, fallbackMessage) => {
@@ -1857,13 +1872,13 @@ export function startDifferentialTestingLiveUpdates(root, {
       ...(cached?.etag ? { headers: { "If-None-Match": cached.etag } } : {}),
     });
     if (response.status === 304) {
-      if (!cached) throw new Error("Differential Testing data returned 304 before an initial payload was loaded.");
+      if (!cached) throw new Error(`${ovenName} data returned 304 before an initial payload was loaded.`);
       return { ...cached, notModified: true };
     }
     const json = await response.json();
-    if (!response.ok) throw new Error(json.error || "Could not load Differential Testing data.");
+    if (!response.ok) throw new Error(json.error || `Could not load ${ovenName} data.`);
     const result = {
-      payload: differentialPagedPayload(json.payload, json.fieldPage),
+      payload: payloadTransform(json),
       transport: json.transport ?? null,
       fieldPage: json.fieldPage ?? null,
       frameDeltaMetrics: json.frameDeltaMetrics ?? null,
@@ -1890,7 +1905,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     const requestPayloadUrl = payloadUrl(requestScenarioId);
     try {
       const [nextOven, payloadResult] = await Promise.all([
-        oven ?? read("/api/ovens/differential-testing", "oven", "Could not load Differential Testing Oven."),
+        oven ?? read(`/api/ovens/${ovenId}`, "oven", `Could not load ${ovenName} Oven.`),
         readPayload(requestPayloadUrl),
       ]);
       if (stopped || requestGeneration !== scenarioGeneration) return;
@@ -1940,8 +1955,9 @@ export function startDifferentialTestingLiveUpdates(root, {
     fieldViewQuery = null;
     payloadCache.clear();
     try {
-      const nextUrl = new URL(locationImpl?.href || "/ovens/differential-testing/view", "http://localhost");
-      nextUrl.searchParams.set("scenario", scenarioId);
+      const nextUrl = new URL(locationImpl?.href || `/ovens/${ovenId}/view`, "http://localhost");
+      if (scenarioParam === "scenario") nextUrl.searchParams.set("scenario", scenarioId);
+      else nextUrl.searchParams.set(scenarioParam, scenarioId);
       historyImpl?.replaceState?.(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     } catch {}
     return refresh();
