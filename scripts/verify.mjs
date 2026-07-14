@@ -432,6 +432,7 @@ run(process.execPath, [
   "ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
   "src/server/discovery.test.mjs",
   "src/server/plan-model.test.mjs",
+  "src/server/fs-safe.test.mjs",
   "src/cli/lifecycle-cli.test.mjs",
   "src/cli/lifecycle-moves.test.mjs",
   "src/cli/registry-cli.test.mjs",

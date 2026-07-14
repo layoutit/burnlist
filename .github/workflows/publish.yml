@@ -85,7 +85,7 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore(release): ${NEXT_VERSION}"
           git tag "${NEXT_VERSION}"
-          git push origin HEAD:main "${NEXT_VERSION}"
+          git push --atomic origin HEAD:main "${NEXT_VERSION}"
 
       - name: Publish to npm
         run: npm publish

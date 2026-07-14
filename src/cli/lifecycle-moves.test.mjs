@@ -221,6 +221,7 @@ test("close leaves its source unchanged when a populated target prevents the ren
     assert.throws(() => closeLifecycle(context.root, id), /260713-001: target exists/u);
     assert.equal(readFileSync(planPath, "utf8"), before);
     assert.equal(readFileSync(planPath, "utf8").includes("## Completion Digest"), false);
+    assert.equal(readFileSync(join(target, "existing"), "utf8"), "keep\n");
   } finally {
     context.cleanup();
   }
@@ -261,6 +262,25 @@ test("close reports an already-completed burnlist with a digest", () => {
     writeFileSync(planPath, `${readFileSync(planPath, "utf8")}\n## Completion Digest\n- Complete\n`);
     const { output } = captureConsole(() => closeLifecycle(context.root, id));
     assert.match(output, /260713-001 already completed/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("resumable close validates and re-applies the close gate before digesting", () => {
+  const context = fixture();
+  try {
+    const id = "260713-001";
+    const { planPath } = writePlan(context.root, "completed", id);
+    assert.throws(
+      () => closeLifecycle(context.root, id),
+      /not ready to close: active checklist must be empty with completed entries/u,
+    );
+    assert.equal(readFileSync(planPath, "utf8").includes("## Completion Digest"), false);
+
+    writeFileSync(planPath, "# Test Burnlist\n\n## Active Checklist\n\n## Completed\n- B1 | not-a-timestamp | Test staged burn\n");
+    assert.throws(() => closeLifecycle(context.root, id), /invalid timestamp/u);
+    assert.equal(readFileSync(planPath, "utf8").includes("## Completion Digest"), false);
   } finally {
     context.cleanup();
   }

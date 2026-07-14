@@ -233,7 +233,11 @@ function selectedOvenDataBinding(ovenDataBindings, id, url) {
   const bindings = ovenDataBindings.get(id) ?? [];
   const repoKeys = url.searchParams.getAll("repoKey");
   if (repoKeys.length > 1) throw Object.assign(new Error("repoKey must be supplied at most once"), { status: 400 });
-  if (repoKeys.length === 1) return bindings.find((binding) => binding.repoKey === repoKeys[0]) ?? null;
+  if (repoKeys.length === 1) {
+    return bindings.find((binding) => binding.repoKey === repoKeys[0])
+      ?? bindings.find((binding) => binding.repoKey === null)
+      ?? null;
+  }
   return bindings.find((binding) => binding.repoKey === null) ?? null;
 }
 

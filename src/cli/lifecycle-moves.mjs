@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { linkSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -135,32 +135,13 @@ function targetExists(id) {
   return new Error(`${id}: target exists`);
 }
 
-function reserveTarget(targetDir, id) {
+function reclaimEmptyTarget(targetDir, id) {
   try {
-    mkdirSync(targetDir);
+    rmdirSync(targetDir);
     return;
   } catch (error) {
-    if (error?.code !== "EEXIST") throw error;
-  }
-  let entries;
-  try {
-    entries = readdirSync(targetDir);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw targetExists(id);
-  }
-  if (entries?.length) throw targetExists(id);
-  if (entries) {
-    try {
-      rmdirSync(targetDir);
-    } catch (error) {
-      if (error?.code !== "ENOENT" && error?.code !== "ENOTEMPTY") throw error;
-      if (error?.code === "ENOTEMPTY") throw targetExists(id);
-    }
-  }
-  try {
-    mkdirSync(targetDir);
-  } catch (error) {
-    if (error?.code === "EEXIST") throw targetExists(id);
+    if (error?.code === "ENOENT") return;
+    if (error?.code === "ENOTEMPTY") throw targetExists(id);
     throw error;
   }
 }
@@ -180,14 +161,8 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
     validateOrThrow(plan);
     gate(plan);
     mkdirSync(targetRoot, { recursive: true });
-    reserveTarget(targetDir, id);
-    try {
-      renameSync(sourceDir, targetDir);
-    } catch (error) {
-      rmSync(targetDir, { recursive: true, force: true });
-      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw targetExists(id);
-      throw error;
-    }
+    reclaimEmptyTarget(targetDir, id);
+    renameSync(sourceDir, targetDir);
     try {
       afterMove?.(parsePlan(join(targetDir, "burnlist.md")));
     } catch (error) {
@@ -227,7 +202,10 @@ export function closeLifecycle(repoRoot, id) {
   const completedDir = join(repoRoot, "notes", "burnlists", "completed", id);
   if (!safeStat(inprogressDir)?.isDirectory() && safeStat(completedDir)?.isDirectory()) {
     return withLock(completedDir, () => {
-      const repaired = appendCompletionDigestIfMissing(parsePlan(join(completedDir, "burnlist.md")));
+      const plan = parsePlan(join(completedDir, "burnlist.md"));
+      validateOrThrow(plan);
+      assertCloseGate(plan);
+      const repaired = appendCompletionDigestIfMissing(plan);
       console.log(repaired ? `${id} completed (digest repaired)` : `${id} already completed`);
       return completedDir;
     });
@@ -237,13 +215,15 @@ export function closeLifecycle(repoRoot, id) {
     id,
     from: "inprogress",
     to: "completed",
-    gate(plan) {
-      if (plan.items.length || !plan.completed.length) {
-        throw new Error("not ready to close: active checklist must be empty with completed entries");
-      }
-    },
+    gate: assertCloseGate,
     afterMove: appendCompletionDigestIfMissing,
   });
+}
+
+function assertCloseGate(plan) {
+  if (plan.items.length || !plan.completed.length) {
+    throw new Error("not ready to close: active checklist must be empty with completed entries");
+  }
 }
 
 function activeRange(lines) {

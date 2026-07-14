@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -70,6 +70,30 @@ test("new allocates incrementing ids and skips an existing draft reservation", (
     assert.equal(third.id, `${first.id.slice(0, 7)}006`);
     assert.deepEqual(readdirSync(dirname(third.planPath)).sort(), ["burnlist.md", "goal.md"]);
     assert.equal(readFileSync(join(context.repo, "notes", "burnlists", "draft", `${first.id.slice(0, 7)}005`, "reserved"), "utf8"), "occupied\n");
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("concurrent new commands allocate distinct ids", async () => {
+  const context = fixture();
+  try {
+    const create = () => new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [binPath, "new"], {
+        cwd: context.repo,
+        env: { ...process.env, HOME: context.home },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "";
+      let errors = "";
+      child.stdout.on("data", (chunk) => { output += chunk; });
+      child.stderr.on("data", (chunk) => { errors += chunk; });
+      child.on("error", reject);
+      child.on("close", (status) => resolve({ status, output, errors }));
+    });
+    const results = await Promise.all([create(), create()]);
+    assert.deepEqual(results.map((result) => result.status), [0, 0]);
+    assert.deepEqual(new Set(results.map((result) => result.output.trim().split("\n")[0])).size, 2);
   } finally {
     context.cleanup();
   }

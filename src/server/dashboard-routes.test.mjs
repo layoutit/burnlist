@@ -179,6 +179,48 @@ test("Differential Testing bindings remain distinct for each repository", { time
   });
 });
 
+test("Oven data repo binding falls back to the global override", { timeout: 20_000 }, async () => {
+  const timestamp = "2026-01-01T12:00:00.000Z";
+  const payloadFor = (captureId) => buildPayload(
+    {
+      captureId, generatedAt: timestamp,
+      fields: [{ id: "position", label: "Position", sourceOwner: "fixture", meaning: "Position", unit: "units", tolerance: 0 }],
+      samples: [{ tick: 0, values: { position: 1 } }],
+    },
+    { captureId: `${captureId}-candidate`, generatedAt: timestamp, samples: [{ tick: 0, values: { position: 1 } }] },
+  );
+  const override = payloadFor("global-override");
+  const exact = payloadFor("exact-repo");
+  await withServer({
+    burnlists: [
+      { repoPath: "a/first", title: "First repository" },
+      { repoPath: "b/second", title: "Second repository" },
+    ],
+    scanRoots: ["a", "b"],
+    ovenData: [
+      { id: "differential-testing", payload: override },
+      { id: "differential-testing", payload: exact, repoPath: "a/first", persisted: true, override: false },
+    ],
+  }, async ({ baseUrl }) => {
+    const burnlists = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
+    const dtEntries = burnlists.filter((entry) => entry.ovenId === "differential-testing");
+    // repoKeys come from the checklist entries (DT entry titles are scenario labels, not repo titles).
+    const firstChecklist = burnlists.find((entry) => entry.ovenId === "checklist" && entry.title === "First repository");
+    const secondChecklist = burnlists.find((entry) => entry.ovenId === "checklist" && entry.title === "Second repository");
+    assert.ok(firstChecklist);
+    assert.ok(secondChecklist);
+    // a/first has its own persisted binding → a DT row; b/second (unbound) gets no fabricated row.
+    assert.equal(dtEntries.some((entry) => entry.repoKey === firstChecklist.repoKey), true);
+    assert.equal(dtEntries.some((entry) => entry.repoKey === secondChecklist.repoKey), false);
+    const exactResponse = await httpGet(baseUrl, `/api/oven-data/differential-testing?repoKey=${firstChecklist.repoKey}`);
+    const fallbackResponse = await httpGet(baseUrl, `/api/oven-data/differential-testing?repoKey=${secondChecklist.repoKey}`);
+    assert.equal(exactResponse.status, 200);
+    assert.equal(fallbackResponse.status, 200);
+    assert.equal(JSON.parse(exactResponse.body).payload.subtitle, "exact-repo / exact-repo-candidate");
+    assert.equal(JSON.parse(fallbackResponse.body).payload.subtitle, "global-override / global-override-candidate");
+  });
+});
+
 test("Oven discovery exposes optional lineage and rejects malformed sidecars", { timeout: 20_000 }, async () => {
   const forkedFrom = { ovenId: "source-oven", revision: `o1-sha256:${"a".repeat(64)}` };
   await withServer({
