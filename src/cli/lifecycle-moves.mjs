@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -8,7 +8,9 @@ import {
   parsePlan,
   validatePlan,
 } from "../server/plan-model.mjs";
-import { safeStat } from "../server/fs-safe.mjs";
+import { safeStat, withLock } from "../server/fs-safe.mjs";
+
+export { withLock } from "../server/fs-safe.mjs";
 
 function lifecycleRoot(repoRoot, lifecycle) {
   return join(repoRoot, "notes", "burnlists", lifecycle.folder);
@@ -52,81 +54,28 @@ export function findBurnlistDir(repoRoot, id) {
   return matches[0];
 }
 
-function isPositivePid(pid) {
-  return Number.isInteger(pid) && pid > 0;
-}
-
-function lockOwner(lock) {
-  try {
-    const owner = JSON.parse(readFileSync(join(lock, "owner.json"), "utf8"));
-    return isPositivePid(owner?.pid) && typeof owner.token === "string" && owner.token ? owner : null;
-  } catch {
-    return null;
-  }
-}
-
-function pidIsAlive(pid) {
-  if (!isPositivePid(pid)) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error?.code !== "ESRCH";
-  }
-}
-
-export function withLock(dir, fn) {
-  let lockedDir = dir;
-  const token = randomBytes(12).toString("hex");
-  const lock = join(lockedDir, ".lock");
-  try {
-    mkdirSync(lock);
-  } catch (error) {
-    if (error?.code !== "EEXIST") throw error;
-    const owner = lockOwner(lock);
-    if (owner && pidIsAlive(owner.pid)) throw new Error(`${basename(dir)} is busy (locked)`);
-    const currentOwner = lockOwner(lock);
-    if (currentOwner?.token !== owner?.token) throw new Error(`${basename(dir)} is busy (locked)`);
-    const retired = `${lock}.${token}.stale`;
-    try {
-      renameSync(lock, retired);
-    } catch (takeoverError) {
-      if (takeoverError?.code === "EEXIST" || takeoverError?.code === "ENOENT") {
-        throw new Error(`${basename(dir)} is busy (locked)`);
-      }
-      throw takeoverError;
-    }
-    rmSync(retired, { recursive: true, force: true });
-    try {
-      mkdirSync(lock);
-    } catch (takeoverError) {
-      if (takeoverError?.code === "EEXIST") throw new Error(`${basename(dir)} is busy (locked)`);
-      throw takeoverError;
-    }
-  }
-  try {
-    atomicWrite(join(lock, "owner.json"), `${JSON.stringify({ token, pid: process.pid })}\n`);
-  } catch (error) {
-    if (lockOwner(lock)?.token === token) rmSync(lock, { recursive: true, force: true });
-    throw error;
-  }
-  try {
-    const movedDir = fn();
-    if (typeof movedDir === "string") lockedDir = movedDir;
-    return movedDir;
-  } finally {
-    const finalLock = join(lockedDir, ".lock");
-    if (lockOwner(finalLock)?.token === token) rmSync(finalLock, { recursive: true, force: true });
-  }
-}
-
 function appendCompletionDigestIfMissing(plan) {
   if (/^##\s+Completion Digest\b/m.test(plan.markdown)) return false;
   atomicWrite(plan.planPath, `${plan.markdown.replace(/\s*$/u, "")}\n\n${completionDigestMarkdown(plan)}\n`);
   return true;
 }
 
-export function moveLifecycle({ repoRoot, id, from, to, gate, beforeMove }) {
+function targetExists(id) {
+  return new Error(`${id}: target exists`);
+}
+
+function reclaimEmptyTarget(targetDir, id) {
+  try {
+    rmdirSync(targetDir);
+    return;
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    if (error?.code === "ENOTEMPTY") throw targetExists(id);
+    throw error;
+  }
+}
+
+export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
   assertValidBurnlistId(id);
   const sourceLifecycle = LIFECYCLES.find((lifecycle) => lifecycle.folder === from);
   const sourceDir = join(lifecycleRoot(repoRoot, sourceLifecycle), id);
@@ -136,20 +85,20 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, beforeMove }) {
   }
   const targetRoot = join(repoRoot, "notes", "burnlists", to);
   const targetDir = join(targetRoot, id);
-  return withLock(sourceDir, () => {
+  return withLock(sourceDir, ({ retarget }) => {
     const plan = parsePlan(join(sourceDir, "burnlist.md"));
     validateOrThrow(plan);
     gate(plan);
-    if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
-    beforeMove?.(plan);
     mkdirSync(targetRoot, { recursive: true });
-    if (safeStat(targetDir)) throw new Error(`${id}: target exists`);
+    reclaimEmptyTarget(targetDir, id);
+    renameSync(sourceDir, targetDir);
     try {
-      renameSync(sourceDir, targetDir);
+      afterMove?.(parsePlan(join(targetDir, "burnlist.md")));
     } catch (error) {
-      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw new Error(`${id}: target exists`);
+      renameSync(targetDir, sourceDir);
       throw error;
     }
+    retarget(targetDir);
     console.log(`${id}  ${from} -> ${to}`);
     return targetDir;
   });
@@ -177,18 +126,33 @@ export function startLifecycle(repoRoot, id) {
 }
 
 export function closeLifecycle(repoRoot, id) {
+  assertValidBurnlistId(id);
+  const inprogressDir = join(repoRoot, "notes", "burnlists", "inprogress", id);
+  const completedDir = join(repoRoot, "notes", "burnlists", "completed", id);
+  if (!safeStat(inprogressDir)?.isDirectory() && safeStat(completedDir)?.isDirectory()) {
+    return withLock(completedDir, () => {
+      const plan = parsePlan(join(completedDir, "burnlist.md"));
+      validateOrThrow(plan);
+      assertCloseGate(plan);
+      const repaired = appendCompletionDigestIfMissing(plan);
+      console.log(repaired ? `${id} completed (digest repaired)` : `${id} already completed`);
+      return completedDir;
+    });
+  }
   return moveLifecycle({
     repoRoot,
     id,
     from: "inprogress",
     to: "completed",
-    gate(plan) {
-      if (plan.items.length || !plan.completed.length) {
-        throw new Error("not ready to close: active checklist must be empty with completed entries");
-      }
-    },
-    beforeMove: appendCompletionDigestIfMissing,
+    gate: assertCloseGate,
+    afterMove: appendCompletionDigestIfMissing,
   });
+}
+
+function assertCloseGate(plan) {
+  if (plan.items.length || !plan.completed.length) {
+    throw new Error("not ready to close: active checklist must be empty with completed entries");
+  }
 }
 
 function activeRange(lines) {

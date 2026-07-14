@@ -25,6 +25,8 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@layout";
+import { ovenActionUrl, ovenCatalogKey, ovenTargetRepoRoot } from "@lib/oven-identity.mjs";
+import type { OvenSummary, RepoSummary } from "@lib/types";
 import {
   Card,
   CardContent,
@@ -32,15 +34,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@layout";
-
-type OvenSummary = {
-  id: string;
-  name: string;
-  description: string;
-  builtIn: boolean;
-};
-
-type RepoSummary = { name: string; root: string };
 
 type DetailSection = {
   id: string;
@@ -573,14 +566,19 @@ export function NewOvenPage() {
     cells: [],
   });
   const [writeToken, setWriteToken] = useState("");
+  const [repos, setRepos] = useState<RepoSummary[]>([]);
+  const [repoKey, setRepoKey] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/ovens")
-      .then((response) => response.json())
-      .then((payload) => setWriteToken(payload.writeToken || ""))
+    Promise.all([fetch("/api/ovens").then((response) => response.json()), fetch("/api/repos").then((response) => response.json())])
+      .then(([ovensPayload, reposPayload]) => {
+        setWriteToken(ovensPayload.writeToken || "");
+        setRepos(reposPayload.repos || []);
+        setRepoKey(reposPayload.repos?.[0]?.repoKey || "");
+      })
       .catch(() => setError("Could not initialize Oven saving."));
   }, []);
 
@@ -626,7 +624,7 @@ export function NewOvenPage() {
           "content-type": "application/json",
           "x-burnlist-token": writeToken,
         },
-        body: JSON.stringify({ id, name, instructions, detail }),
+        body: JSON.stringify({ id, name, instructions, detail, ...(repoKey ? { repoKey } : {}) }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -657,6 +655,12 @@ export function NewOvenPage() {
           </CardHeader>
           <CardContent className="oven-form-content">
             <div className="oven-fields-row">
+              <label className="form-field">
+                Repository
+                <select className={fieldClass} onChange={(event) => setRepoKey(event.target.value)} required value={repoKey}>
+                  {repos.map((repo) => <option key={repo.repoKey} value={repo.repoKey}>{repo.name}</option>)}
+                </select>
+              </label>
               <label className="form-field">
                 Oven name
                 <input
@@ -760,6 +764,7 @@ export function RunBurnPage() {
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [writeToken, setWriteToken] = useState("");
   const [ovenId, setOvenId] = useState("checklist");
+  const [ovenRepoKey, setOvenRepoKey] = useState<string | null>(null);
   const [repoRoot, setRepoRoot] = useState("");
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
@@ -787,13 +792,21 @@ export function RunBurnPage() {
     setError("");
     setStatus("Creating run manifest...");
     try {
+      const oven = ovens.find((candidate) => candidate.id === ovenId && candidate.repoKey === ovenRepoKey);
+      if (!oven) throw new Error("Select an Oven.");
       const response = await fetch("/api/runs", {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-burnlist-token": writeToken,
         },
-        body: JSON.stringify({ ovenId, repoRoot, title, objective }),
+        body: JSON.stringify({
+          ovenId: oven.id,
+          ovenRepoKey: oven.repoKey,
+          repoRoot: ovenTargetRepoRoot(oven, repos) ?? repoRoot,
+          title,
+          objective,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -833,12 +846,18 @@ export function RunBurnPage() {
             Oven
             <select
               className={fieldClass}
-              onChange={(event) => setOvenId(event.target.value)}
+              onChange={(event) => {
+                const oven = ovens.find((candidate) => ovenCatalogKey(candidate) === event.target.value);
+                setOvenId(oven?.id || "");
+                setOvenRepoKey(oven?.repoKey ?? null);
+                const targetRepoRoot = oven ? ovenTargetRepoRoot(oven, repos) : null;
+                if (targetRepoRoot) setRepoRoot(targetRepoRoot);
+              }}
               required
-              value={ovenId}
+              value={ovenCatalogKey({ id: ovenId, repoKey: ovenRepoKey })}
             >
               {ovens.map((oven) => (
-                <option key={oven.id} value={oven.id}>
+                <option data-oven-url={ovenActionUrl(oven)} key={ovenCatalogKey(oven)} value={ovenCatalogKey(oven)}>
                   {oven.name} · {oven.builtIn ? "default" : "custom"}
                 </option>
               ))}

@@ -51,7 +51,7 @@ Burnlist ships with two default Ovens:
 - **Checklist** tracks the active work queue.
 - **Differential Testing** renders aligned reference and candidate series, optional aggregate telemetry, and optional exact-first evidence.
 
-Custom Ovens use the same two-file package. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
+Custom Ovens use the same two-file package and are scoped to the repository that owns their ignored local state; built-in Ovens are global. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. `--ovens-dir` overrides custom Oven storage only for the dashboard's launch repository, while other observed repositories continue to use their own `.local/burnlist/ovens/`. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
 
 ## Differential Testing
 

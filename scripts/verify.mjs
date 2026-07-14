@@ -3,7 +3,8 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeOvenPackage } from "../src/ovens/oven-contract.mjs";
+import { assertBuiltInOven, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
+import { verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
@@ -113,53 +114,6 @@ function assertSourceExcludes(path, needle, message) {
   }
 }
 
-function assertBuiltInOvenSet(expected) {
-  const ovensRoot = resolve(repoRoot, "ovens");
-  const actual = readdirSync(ovensRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  const wanted = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
-    console.error(`Default Oven ids must be exactly ${wanted.join(", ")}; found ${actual.join(", ") || "none"}.`);
-    process.exit(1);
-  }
-}
-
-function assertSkillSet(expected) {
-  const skillsRoot = resolve(repoRoot, "skills");
-  const actual = readdirSync(skillsRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  const wanted = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
-    console.error(`Published skill ids must be exactly ${wanted.join(", ")}; found ${actual.join(", ") || "none"}.`);
-    process.exit(1);
-  }
-}
-
-function assertBuiltInOven(id, expectedName) {
-  const root = resolve(repoRoot, "ovens", id);
-  const instructionsPath = resolve(root, "instructions.md");
-  const detailPath = resolve(root, "detail.json");
-  try {
-    const ovenPackage = normalizeOvenPackage({
-      id,
-      instructions: readFileSync(instructionsPath, "utf8"),
-      detail: JSON.parse(readFileSync(detailPath, "utf8")),
-    });
-    const heading = ovenPackage.instructions
-      .split(/\r?\n/u)
-      .find((line) => /^#\s+\S/u.test(line.trim()))
-      ?.trim()
-      .replace(/^#\s+/u, "");
-    if (heading !== expectedName) throw new Error(`expected heading "${expectedName}", found "${heading || "none"}"`);
-  } catch (error) {
-    console.error(`Default oven ${id} violates the Oven contract: ${error.message}`);
-    process.exit(1);
-  }
-}
 
 function assertDifferentialTestingContractAssets() {
   const schemaPath = resolve(repoRoot, "ovens/differential-testing/schema/differential-testing-data.schema.json");
@@ -260,14 +214,18 @@ function assertPublishablePackage() {
   }
 }
 
-const jsFiles = [
+const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "bin"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
+  resolve(repoRoot, "src/ovens/oven-registry.mjs"),
+  resolve(repoRoot, "src/ovens/built-in-handlers.mjs"),
+  resolve(repoRoot, "src/ovens/handlers/generic-json-handler.mjs"),
+  resolve(repoRoot, "ovens/differential-testing/engine/differential-testing-handler.mjs"),
   resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-progress-chart.js"),
   resolve(repoRoot, "ovens/differential-testing/renderer/differential-testing-renderer.js"),
-].sort();
+])].sort();
 
 for (const file of jsFiles) {
   run(process.execPath, ["--check", relative(repoRoot, file)]);
@@ -286,10 +244,14 @@ assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-da
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
 assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
+assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
+assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
+assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'id === "differential-testing"', "Dashboard server still hardcodes the Differential Testing Oven.");
 assertSourceIncludes("dashboard/src/lib/hrefs.ts", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", '<th className="burnlist-table-heading">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
@@ -332,7 +294,8 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "builder-hint",
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Drag to place a detail section", "React New Oven still renders the removed skeleton helper text.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "grid-ruler", "Oven detail skeleton still renders grid ruler numbers.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
-assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision", "Burn runs still claim a fixed Oven revision.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "schemaVersion: 4", "Burn runs do not write manifest schema version 4.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision: oven.ovenRevision", "Burn runs do not pin the Oven revision.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
 assertSourceIncludes("ovens/differential-testing/instructions.md", "fix the capture, adapter, or comparison seam", "Differential Testing is missing source-fix discipline.");
@@ -362,7 +325,6 @@ assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-r
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'role="button" tabindex="0" aria-expanded=', "Differential Testing rows do not preserve the expand interaction contract.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'placeholder="Search Fields..."', "Differential Testing does not preserve the canonical search control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-chart="delta"', "Differential Testing does not preserve the canonical Value and Delta controls.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-sort="improved"', "Differential Testing does not preserve the canonical Changed control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'data-driving-parity-filter="failing"', "Differential Testing does not preserve the canonical Failed control.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'class="hybrid-cell hybrid-field"', "Differential Testing does not preserve the canonical hybrid field cell.");
@@ -406,31 +368,14 @@ assertSourceExcludes("README.md", "**Target**", "README still advertises the rem
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
-assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "differential-testing"]);
-assertBuiltInOven("checklist", "Checklist");
-assertBuiltInOven("differential-testing", "Differential Testing");
+assertSkillSet(repoRoot, ["burnlist"]);
+assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing"]);
+assertBuiltInOven(repoRoot, "checklist", "Checklist");
+assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
-run(process.execPath, [
-  "--test",
-  "src/server/dashboard-routes.test.mjs",
-  "src/server/projects.test.mjs",
-  "src/server/projects-api.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-contract.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
-  "src/server/discovery.test.mjs",
-  "src/server/plan-model.test.mjs",
-  "src/cli/lifecycle-cli.test.mjs",
-  "src/cli/lifecycle-moves.test.mjs",
-  "src/cli/registry-cli.test.mjs",
-  "src/cli/umbrella.test.mjs",
-  "src/server/registry.test.mjs",
-  "src/server/repo-map.test.mjs",
-  "src/server/repo-state.test.mjs",
-]);
+run(process.execPath, ["--test", ...verificationTestFiles]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
   env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },

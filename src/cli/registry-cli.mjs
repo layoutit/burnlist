@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -16,9 +15,10 @@ import {
   registerRoot,
   unregisterRoot,
 } from "../server/registry.mjs";
+import { gitProbe } from "./git-ignore.mjs";
 
 const LIFECYCLE_FOLDERS = ["draft", "ready", "inprogress", "completed"];
-const IGNORE_LINE = "/notes/burnlists/";
+const IGNORE_LINES = ["/notes/burnlists/", "/.local/"];
 
 function parseArgs(tokens) {
   const flags = new Set();
@@ -45,24 +45,15 @@ function atomicWrite(path, text) {
   }
 }
 
-function gitProbe(dir, args) {
-  return spawnSync("git", ["-C", dir, ...args], {
-    cwd: dir,
-    encoding: "utf8",
-    shell: false,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
-}
-
 function excludePath(dir) {
   const result = gitProbe(dir, ["rev-parse", "--git-path", "info/exclude"]);
   if (result.status !== 0 || !result.stdout.trim()) return null;
   return resolve(dir, result.stdout.trim());
 }
 
-function isIgnoreLine(line) {
+function isIgnoreLine(line, ignoredLines = IGNORE_LINES) {
   const trimmed = line.trim();
-  return trimmed === IGNORE_LINE || trimmed === "notes/burnlists/";
+  return ignoredLines.some((ignore) => trimmed === ignore || trimmed === ignore.slice(1));
 }
 
 function readExclude(path) {
@@ -74,18 +65,20 @@ function readExclude(path) {
   }
 }
 
-function appendIgnoreLine(path) {
+function appendIgnoreLines(path, lines) {
   const content = readExclude(path);
-  if (content.split(/\r?\n/u).some(isIgnoreLine)) return false;
+  const existing = content.split(/\r?\n/u).map((line) => line.trim());
+  const missing = lines.filter((line) => !existing.includes(line) && !existing.includes(line.slice(1)));
+  if (missing.length === 0) return false;
   const prefix = content.length === 0 || content.endsWith("\n") ? content : `${content}\n`;
-  atomicWrite(path, `${prefix}${IGNORE_LINE}\n`);
+  atomicWrite(path, `${prefix}${missing.join("\n")}\n`);
   return true;
 }
 
-function removeIgnoreLine(path) {
+function removeIgnoreLines(path, ignoredLines) {
   const content = readExclude(path);
   const lines = content.split(/\r?\n/u);
-  const kept = lines.filter((line) => !isIgnoreLine(line));
+  const kept = lines.filter((line) => !isIgnoreLine(line, ignoredLines));
   if (kept.length === lines.length) return false;
   atomicWrite(path, kept.join("\n"));
   return true;
@@ -104,17 +97,15 @@ function initializeFolders(dir, track) {
 }
 
 function configureIgnore(dir, track) {
-  if (!track) {
-    const ignored = gitProbe(dir, ["check-ignore", "-q", "notes/burnlists"]);
-    if (ignored.status === 0) return "already ignored";
-  }
   const path = excludePath(dir);
   if (!path) return "not a git repository";
   if (track) {
-    removeIgnoreLine(path);
+    removeIgnoreLines(path, ["/notes/burnlists/"]);
+    appendIgnoreLines(path, ["/.local/"]);
     return "tracked";
   }
-  return appendIgnoreLine(path) ? "ignored" : "already ignored";
+  const missing = IGNORE_LINES.filter((line) => gitProbe(dir, ["check-ignore", "-q", "--", line.slice(1)]).status !== 0);
+  return appendIgnoreLines(path, missing) ? "ignored" : "already ignored";
 }
 
 function printUsage() {
@@ -154,8 +145,8 @@ function runInit(path, track) {
   console.log(`Initialized ${folders.created} lifecycle ${folders.created === 1 ? "folder" : "folders"} in ${dir}.`);
   if (track) console.log("Tracking notes/burnlists/ with .gitkeep files.");
   else if (ignoreState === "not a git repository") console.log("No Git repository; local ignore skipped.");
-  else if (ignoreState === "already ignored") console.log("notes/burnlists/ is already ignored locally.");
-  else console.log("Ignored /notes/burnlists/ locally.");
+  else if (ignoreState === "already ignored") console.log("notes/burnlists/ and .local/ are already ignored locally.");
+  else console.log("Ignored /notes/burnlists/ and /.local/ locally.");
   console.log(`${registration.added ? "Registered" : "Already registered"} ${registration.root}.`);
 }
 

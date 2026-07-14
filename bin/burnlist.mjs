@@ -120,7 +120,7 @@ Usage:
   burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
-  burnlist oven <list|view|create|update> ...
+  burnlist oven <list|view|bind|unbind|bindings|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
   burnlist ready <id> [--repo <path>]
@@ -137,7 +137,7 @@ Options:
   --auto-port           Try the next available loopback port.
   --host <host>         Bind host; loopback is required by default.
   --state-dir <path>    Override ignored dashboard observer state.
-  --ovens-dir <path>    Override custom Oven storage.
+  --ovens-dir <path>    Override launch-repository custom Oven storage only.
   --runs-dir <path>     Override Run snapshot storage.
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
   --version, -v         Print the installed Burnlist version.

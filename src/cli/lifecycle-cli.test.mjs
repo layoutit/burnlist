@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -70,6 +70,30 @@ test("new allocates incrementing ids and skips an existing draft reservation", (
     assert.equal(third.id, `${first.id.slice(0, 7)}006`);
     assert.deepEqual(readdirSync(dirname(third.planPath)).sort(), ["burnlist.md", "goal.md"]);
     assert.equal(readFileSync(join(context.repo, "notes", "burnlists", "draft", `${first.id.slice(0, 7)}005`, "reserved"), "utf8"), "occupied\n");
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("concurrent new commands allocate distinct ids", async () => {
+  const context = fixture();
+  try {
+    const create = () => new Promise((resolve, reject) => {
+      const child = spawn(process.execPath, [binPath, "new"], {
+        cwd: context.repo,
+        env: { ...process.env, HOME: context.home },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "";
+      let errors = "";
+      child.stdout.on("data", (chunk) => { output += chunk; });
+      child.stderr.on("data", (chunk) => { errors += chunk; });
+      child.on("error", reject);
+      child.on("close", (status) => resolve({ status, output, errors }));
+    });
+    const results = await Promise.all([create(), create()]);
+    assert.deepEqual(results.map((result) => result.status), [0, 0]);
+    assert.deepEqual(new Set(results.map((result) => result.output.trim().split("\n")[0])).size, 2);
   } finally {
     context.cleanup();
   }
@@ -180,19 +204,34 @@ test("start moves a ready Burnlist to inprogress", () => {
   }
 });
 
-test("lifecycle moves reject an existing target folder", () => {
+test("lifecycle moves reject a populated target folder", () => {
   const context = fixture();
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
     mkdirSync(lifecycleFolder(context.repo, "ready", result.id), { recursive: true });
+    writeFileSync(join(lifecycleFolder(context.repo, "ready", result.id), "existing"), "keep\n");
     assert.match(runFailure(context, "ready", result.id), /target exists/u);
   } finally {
     context.cleanup();
   }
 });
 
-test("close requires a finished queue and writes a completion digest before moving", () => {
+test("lifecycle moves reclaim an empty target folder", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    mkdirSync(lifecycleFolder(context.repo, "ready", result.id), { recursive: true });
+    assert.match(run(context, "ready", result.id), new RegExp(`${result.id}  draft -> ready`));
+    assert.equal(existsSync(lifecycleFolder(context.repo, "draft", result.id)), false);
+    assert.equal(existsSync(lifecycleFolder(context.repo, "ready", result.id)), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("close requires a finished queue and writes a completion digest in the target", () => {
   const context = fixture();
   try {
     const result = newPlan(context);
@@ -278,8 +317,7 @@ test("lifecycle verbs reject an existing per-id lock", () => {
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
-    mkdirSync(join(dirname(result.planPath), ".lock"));
-    writeFileSync(join(dirname(result.planPath), ".lock", "owner.json"), JSON.stringify({ token: "foreign", pid: process.pid }));
+    writeFileSync(join(dirname(result.planPath), ".lock"), JSON.stringify({ token: "foreign", pid: process.pid }));
     assert.match(runFailure(context, "ready", result.id), new RegExp(`${result.id} is busy \\(locked\\)`));
   } finally {
     context.cleanup();
@@ -291,11 +329,44 @@ test("lifecycle verbs reclaim a dead lock owner", () => {
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
-    mkdirSync(join(dirname(result.planPath), ".lock"));
-    writeFileSync(join(dirname(result.planPath), ".lock", "pid"), "999999999\n");
+    writeFileSync(join(dirname(result.planPath), ".lock"), JSON.stringify({ token: "dead", pid: 999999999 }));
     assert.match(run(context, "ready", result.id), new RegExp(`${result.id}  draft -> ready`));
   } finally {
     context.cleanup();
+  }
+});
+
+const gitAvailable = spawnSync("git", ["--version"], { stdio: "ignore" }).status === 0;
+
+test("full lifecycle from a linked worktree uses the primary repository", { skip: !gitAvailable }, () => {
+  const root = mkdtempSync(join(tmpdir(), "burnlist-lifecycle-worktree-"));
+  const primary = join(root, "primary");
+  const linked = join(root, "linked");
+  const home = join(root, "home");
+  try {
+    mkdirSync(primary);
+    mkdirSync(home);
+    execFileSync("git", ["init", "--quiet", primary]);
+    execFileSync("git", ["-C", primary, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", primary, "config", "user.name", "Burnlist Test"]);
+    mkdirSync(join(primary, "notes", "burnlists"), { recursive: true });
+    writeFileSync(join(primary, "README.md"), "# primary\n");
+    execFileSync("git", ["-C", primary, "add", "README.md"]);
+    execFileSync("git", ["-C", primary, "commit", "--quiet", "-m", "initial"]);
+    execFileSync("git", ["-C", primary, "worktree", "add", "--detach", linked], { stdio: "ignore" });
+
+    const context = { repo: linked, home };
+    const result = newPlan(context);
+    assert.equal(result.planPath.startsWith(`${realpathSync(primary)}/`), true);
+    addActiveItem(result.planPath, primary);
+    run(context, "ready", result.id);
+    run(context, "start", result.id);
+    run(context, "burn", result.id, "B1");
+    run(context, "close", result.id);
+    assert.equal(existsSync(lifecycleFolder(primary, "completed", result.id)), true);
+    assert.equal(existsSync(lifecycleFolder(linked, "completed", result.id)), false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

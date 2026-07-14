@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Badge } from "@layout";
+import { projectGroupOpen, projectGroupShouldResetOpen } from "@lib/project-open";
 import type { Filter, Project } from "@lib";
 import { BurnlistTable } from "./BurnlistTable";
 
@@ -7,7 +8,13 @@ export function ProjectGroup({ project, filter }: { project: Project; filter: Fi
   // Uncontrolled-with-state: initial open when the current filter has rows, and the user's
   // toggle survives the 5s poll re-render (a bare `open` prop would fight the poll).
   const filteredEntries = project.entries.filter((entry) => filter === "all" || entry.status === filter);
-  const [open, setOpen] = useState(() => filteredEntries.length > 0 || project.counts.total === 0);
+  const derivedOpen = projectGroupOpen(filteredEntries, project.counts.total);
+  const [open, setOpen] = useState(() => derivedOpen);
+  const previousFilter = useRef(filter);
+  if (projectGroupShouldResetOpen(previousFilter.current, filter)) {
+    previousFilter.current = filter;
+    setOpen(derivedOpen);
+  }
   const badge = `${project.registered ? "registered" : "observed"} · ${project.health}`;
   const emptyLabel = project.counts.total === 0
     ? "no burnlists yet — run `burnlist new` here"
@@ -20,7 +27,7 @@ export function ProjectGroup({ project, filter }: { project: Project; filter: Fi
         <span className="dashboard-project-counts">{project.counts.total} lists · {project.counts.active} active</span>
         <Badge className="dashboard-project-badge" variant="ghost">{badge}</Badge>
       </summary>
-      <BurnlistTable emptyLabel={emptyLabel} entries={filteredEntries} filter={filter} />
+      <BurnlistTable ambiguousIds={project.ambiguousIds} emptyLabel={emptyLabel} entries={filteredEntries} filter={filter} />
     </details>
   );
 }

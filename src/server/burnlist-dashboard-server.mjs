@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import {
   existsSync,
@@ -15,26 +15,38 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
+import { effectiveBindings } from "./oven-bindings.mjs";
 import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
 import { buildProjectsSnapshot } from "./projects.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
+import { resolveUmbrella } from "../cli/umbrella.mjs";
+import { assertGitIgnored } from "../cli/git-ignore.mjs";
 import {
   assertKnownKeys,
   boundedText,
   normalizeOvenDetail,
+  normalizeOvenForkedFrom,
   normalizeOvenPackage,
   ovenId,
+  ovenRevision,
 } from "../ovens/oven-contract.mjs";
-import { assertDifferentialTestingData } from "../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
-import {
-  DIFFERENTIAL_TESTING_PAGE_SCHEMA,
-  isDifferentialTestingBundle,
-  queryDifferentialTestingFieldPage,
-  readDifferentialTestingBundleManifest,
-  readDifferentialTestingBundleScenario,
-} from "../../ovens/differential-testing/engine/differential-testing-transport.mjs";
+import "../ovens/built-in-handlers.mjs";
+import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
+import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
-import { readTextFileWithLimit, safeStat } from "./fs-safe.mjs";
+import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
+import { isolatedDashboardEntries } from "./dashboard-entry-isolation.mjs";
+import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
+import {
+  assertCustomOvensDir,
+  assertCustomOvenPath,
+  OVEN_DETAIL_MAX_BYTES,
+  OVEN_INSTRUCTIONS_MAX_BYTES,
+  OVEN_LINEAGE_MAX_BYTES,
+  resolveCustomOvensDir,
+  serializeOvenPackage,
+} from "./oven-storage.mjs";
+import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
   burnlistIdForPlan,
@@ -44,7 +56,6 @@ import {
   lifecycleForPlan,
   localIsoTimestamp,
   parsePlan,
-  summaryForPlan,
   twoDigit,
   validatePlan,
 } from "./plan-model.mjs";
@@ -69,6 +80,7 @@ const allowedArgs = new Set([
   "stamp",
   "state-dir",
   "stop",
+  "unsafe-ovens-dir",
 ]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const arg = process.argv[index];
@@ -107,13 +119,28 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..")
 const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(packageRoot, "ovens");
-const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
+const umbrellaRoot = resolveUmbrella(launchCwd);
+if (args.get("ovens-dir") === "true") {
+  console.error("--ovens-dir requires a path.");
+  process.exit(2);
+}
+const unsafeOvensDir = args.has("unsafe-ovens-dir");
+// --ovens-dir overrides custom Oven storage for the launch umbrella only.
+// Other observed repositories always use their own .local/burnlist/ovens.
+const launchCustomOvensDir = resolveCustomOvensDir(
+  umbrellaRoot,
+  args.has("ovens-dir") ? args.get("ovens-dir") : undefined,
+  { unsafe: unsafeOvensDir },
+);
+const launchRepoRoot = realpathSync(umbrellaRoot);
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
-const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
+const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
-let differentialTestingDataCache = null;
+const ovenHandlerCaches = new Map();
 const REPO_MAP_CACHE_MS = 2_000;
+const RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES = 262144;
+const RUN_SNAPSHOT_DETAIL_MAX_BYTES = 393216;
 
 function cachedRepoMap(repo) {
   const key = repo.root;
@@ -127,207 +154,6 @@ function cachedRepoMap(repo) {
     });
   repoMapCache.set(key, { expiresAt: now + REPO_MAP_CACHE_MS, promise });
   return promise;
-}
-
-function differentialTestingIndexCache(path) {
-  const readPath = resolve(realpathSync(dirname(path)), basename(path));
-  const stat = safeStat(readPath);
-  if (!stat?.isFile()) throw new Error("configured Differential Testing data is missing");
-  const signature = `${readPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
-  if (differentialTestingDataCache?.signature === signature) return differentialTestingDataCache;
-  const source = readTextFileWithLimit(readPath, maxOvenDataBytes, "Oven differential-testing data");
-  const document = JSON.parse(source);
-  if (isDifferentialTestingBundle(document)) {
-    const bundle = readDifferentialTestingBundleManifest(readPath, { maxDocumentBytes: maxOvenDataBytes });
-    const emptyPayload = bundle.selectedScenarioId === null ? bundle.manifest.emptyData : null;
-    const emptySource = emptyPayload ? JSON.stringify(emptyPayload) : "";
-    differentialTestingDataCache = {
-      kind: "bundle",
-      signature,
-      readPath: bundle.readPath,
-      source: emptySource,
-      sourceBytes: Buffer.byteLength(emptySource),
-      etag: `W/\"dtb-${bundle.sha256}\"`,
-      selectedScenarioId: bundle.selectedScenarioId,
-      scenarios: structuredClone(bundle.scenarios),
-      bundle,
-      scenarioDocuments: new Map(),
-      scenarioResponses: new Map(),
-      responseExtras: emptyPayload ? {
-        transport: {
-          schema: DIFFERENTIAL_TESTING_PAGE_SCHEMA,
-          bundleSha256: bundle.sha256,
-          scenarioSha256: null,
-        },
-        fieldPage: null,
-        frameDeltaMetrics: null,
-      } : null,
-    };
-    return differentialTestingDataCache;
-  }
-  assertDifferentialTestingData(document);
-  differentialTestingDataCache = {
-    kind: "legacy",
-    signature,
-    readPath,
-    source,
-    sourceBytes: stat.size,
-    etag: `W/\"dt-${stat.ino}-${stat.size}-${Math.trunc(stat.mtimeMs)}\"`,
-    selectedScenarioId: document.scenarioCatalog.selectedScenarioId,
-    scenarios: structuredClone(document.scenarioCatalog.scenarios),
-    scenarioResponses: new Map(),
-  };
-  return differentialTestingDataCache;
-}
-
-function differentialTestingQueryValue(searchParams, name) {
-  const values = searchParams.getAll(name);
-  if (values.length > 1) throw Object.assign(new Error(`${name} must be supplied at most once`), { status: 400 });
-  return values[0] ?? null;
-}
-
-function differentialTestingIntegerQuery(searchParams, name, fallback) {
-  const value = differentialTestingQueryValue(searchParams, name);
-  if (value === null) return fallback;
-  if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
-    throw Object.assign(new Error(`${name} must be a non-negative integer`), { status: 400 });
-  }
-  const number = Number(value);
-  if (!Number.isSafeInteger(number)) throw Object.assign(new Error(`${name} must be a safe integer`), { status: 400 });
-  return number;
-}
-
-function differentialTestingBundleScenario(index, scenarioId) {
-  const cached = index.scenarioDocuments.get(scenarioId);
-  if (cached) return cached;
-  const scenario = readDifferentialTestingBundleScenario(index.bundle, scenarioId, {
-    maxDocumentBytes: maxOvenDataBytes,
-  });
-  scenario.source = JSON.stringify(scenario.data);
-  scenario.sourceBytes = Buffer.byteLength(scenario.source);
-  index.scenarioDocuments.set(scenarioId, scenario);
-  return scenario;
-}
-
-function differentialTestingBundleResponse(index, scenarioId, searchParams) {
-  const search = differentialTestingQueryValue(searchParams, "search") ?? "";
-  const filter = differentialTestingQueryValue(searchParams, "filter") ?? "all";
-  const scenario = differentialTestingBundleScenario(index, scenarioId);
-  const sort = differentialTestingQueryValue(searchParams, "sort")
-    ?? (scenario.data.telemetry?.status === "comparable" ? "changed" : "default");
-  const page = differentialTestingIntegerQuery(searchParams, "page", 0);
-  const pageSize = differentialTestingIntegerQuery(searchParams, "pageSize", 25);
-  const fieldPage = queryDifferentialTestingFieldPage(scenario, { search, filter, sort, page, pageSize });
-  const queryKey = new URLSearchParams({
-    search: fieldPage.search,
-    filter: fieldPage.filter,
-    sort: fieldPage.sort,
-    page: String(fieldPage.page),
-    pageSize: String(fieldPage.pageSize),
-  }).toString();
-  const etagDigest = createHash("sha256")
-    .update(index.bundle.sha256)
-    .update("\0")
-    .update(scenario.scenarioSha256)
-    .update("\0")
-    .update(queryKey)
-    .digest("hex");
-  const result = {
-    signature: `${index.signature}\0${scenario.scenarioSha256}\0${queryKey}`,
-    readPath: index.readPath,
-    source: scenario.source,
-    sourceBytes: scenario.sourceBytes,
-    etag: `W/\"dtb-${etagDigest}\"`,
-    selectedScenarioId: scenarioId,
-    responseExtras: {
-      transport: {
-        schema: DIFFERENTIAL_TESTING_PAGE_SCHEMA,
-        bundleSha256: index.bundle.sha256,
-        scenarioSha256: scenario.scenarioSha256,
-      },
-      fieldPage,
-      frameDeltaMetrics: scenario.frameDeltaMetrics,
-    },
-  };
-  return result;
-}
-
-function differentialTestingScenarioCache(index, scenarioId) {
-  const cached = index.scenarioResponses.get(scenarioId);
-  const scenariosDir = resolve(dirname(index.readPath), "scenarios");
-  const scenarioPath = resolve(scenariosDir, `${scenarioId}.json`);
-  const scenarioRelativePath = relative(scenariosDir, scenarioPath);
-  if (!scenarioRelativePath || scenarioRelativePath.startsWith("..") || resolve(scenariosDir, scenarioRelativePath) !== scenarioPath) {
-    throw Object.assign(new Error("scenario path escapes the published bundle"), { status: 400 });
-  }
-  const stat = safeStat(scenarioPath);
-  if (!stat?.isFile()) throw Object.assign(new Error(`published data for scenario ${scenarioId} is missing`), { status: 404 });
-  const signature = `${index.signature}\0${scenarioPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
-  if (cached?.signature === signature) return cached;
-  const sourcePayload = JSON.parse(readTextFileWithLimit(
-    scenarioPath,
-    maxOvenDataBytes,
-    `Differential Testing scenario ${scenarioId}`,
-  ));
-  assertDifferentialTestingData(sourcePayload);
-  if (sourcePayload.scenarioCatalog.selectedScenarioId !== scenarioId) {
-    throw Object.assign(new Error(`scenario file ${scenarioId} selects ${sourcePayload.scenarioCatalog.selectedScenarioId}`), { status: 422 });
-  }
-  const indexScenario = index.scenarios.find((scenario) => scenario.id === scenarioId);
-  const payloadScenario = sourcePayload.scenarioCatalog.scenarios.find((scenario) => scenario.id === scenarioId);
-  if (JSON.stringify(payloadScenario) !== JSON.stringify(indexScenario)) {
-    throw Object.assign(new Error(`scenario file ${scenarioId} does not match its published catalog entry`), { status: 422 });
-  }
-  const payload = {
-    ...sourcePayload,
-    scenarioCatalog: { selectedScenarioId: scenarioId, scenarios: index.scenarios },
-  };
-  assertDifferentialTestingData(payload);
-  const source = JSON.stringify(payload);
-  const result = {
-    signature,
-    readPath: scenarioPath,
-    source,
-    sourceBytes: Buffer.byteLength(source),
-    etag: `W/\"dt-${stat.ino}-${stat.size}-${Math.trunc(stat.mtimeMs)}-${index.etag.slice(3, -1)}\"`,
-    selectedScenarioId: scenarioId,
-  };
-  index.scenarioResponses.set(scenarioId, result);
-  return result;
-}
-
-function sendDifferentialTestingData(req, res, cached) {
-  if (req.headers["if-none-match"] === cached.etag) {
-    res.writeHead(304, { etag: cached.etag, "cache-control": "no-store" });
-    res.end();
-    return;
-  }
-  const prefix = `${JSON.stringify({
-    ovenId: "differential-testing",
-    path: cached.readPath,
-    scenarioId: cached.selectedScenarioId,
-    ...(cached.responseExtras || {}),
-  }).slice(0, -1)},\"payload\":`;
-  const suffix = "}";
-  res.writeHead(200, {
-    "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-    etag: cached.etag,
-    "content-length": Buffer.byteLength(prefix) + cached.sourceBytes + Buffer.byteLength(suffix),
-  });
-  res.write(prefix);
-  res.write(cached.source);
-  res.end(suffix);
-}
-
-function warmDifferentialTestingData() {
-  const path = ovenDataBindings.get("differential-testing");
-  if (!path) return;
-  try {
-    differentialTestingIndexCache(path);
-  } catch {
-    // The request path reports validation errors; background warming remains silent.
-  }
 }
 
 function positiveInteger(value, name) {
@@ -425,13 +251,35 @@ function candidateRepoRoots() {
   return observerRepoRoots({ cwd: launchCwd, home: os.homedir(), scanRoot: args.get("scan-root") });
 }
 
+function resolvedOvenDataBindings() {
+  return effectiveBindings({ repoRoots: ovenScopeRepos().map((repo) => repo.root), override: ovenDataOverrides });
+}
+
+function selectedOvenDataBinding(ovenDataBindings, id, url) {
+  const bindings = ovenDataBindings.get(id) ?? [];
+  const repoKeys = url.searchParams.getAll("repoKey");
+  if (repoKeys.length > 1) throw Object.assign(new Error("repoKey must be supplied at most once"), { status: 400 });
+  if (repoKeys.length === 1) {
+    return bindings.find((binding) => binding.repoKey === repoKeys[0])
+      ?? bindings.find((binding) => binding.repoKey === null)
+      ?? null;
+  }
+  return bindings.find((binding) => binding.repoKey === null) ?? null;
+}
+
 function burnlistPathsFor(repoRoots) {
   const paths = [];
   for (const repoRoot of repoRoots) {
     for (const lifecycle of LIFECYCLES) {
       const lifecycleRoot = join(repoRoot, "notes", "burnlists", lifecycle.folder);
       if (!safeStat(lifecycleRoot)?.isDirectory()) continue;
-      for (const id of readdirSync(lifecycleRoot)) {
+      let ids;
+      try {
+        ids = readdirSync(lifecycleRoot);
+      } catch {
+        continue;
+      }
+      for (const id of ids) {
         if (id.startsWith(".")) continue;
         const planPath = join(lifecycleRoot, id, "burnlist.md");
         if (safeStat(planPath)?.isFile()) paths.push(planPath);
@@ -446,64 +294,48 @@ function burnlistPaths() {
 }
 
 function discoverBurnlists() {
-  return burnlistPaths().map((path) => summaryForPlan(path, maxPlanBytes));
+  return discoverBurnlistSummaries({ repoRoots: candidateRepoRoots(), maxPlanBytes });
 }
 
-function checklistDashboardEntries() {
-  return discoverBurnlists().map((entry) => ({
-    ...entry,
-    ovenId: "checklist",
-    ovenName: "Checklist",
-    href: `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`,
-    progressLabel: `${entry.done}/${entry.total} done`,
-  }));
+function dashboardEntries(ovenDataBindings) {
+  return isolatedDashboardEntries({
+    handlers: listOvenHandlers(),
+    contextForHandler: (handler) => ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings }),
+    repoKeyForRoot: (root) => repoKey(realpathSync(root)),
+    blockedEntry: blockedDashboardEntry,
+  });
 }
 
-function differentialTestingDashboardEntries() {
-  const path = ovenDataBindings.get("differential-testing");
-  if (!path) return [];
-  const index = differentialTestingIndexCache(path);
-  const matchedRepo = discoveredRepos()
-    .filter((entry) => index.readPath === entry.root || index.readPath.startsWith(`${entry.root}/`))
-    .sort((left, right) => right.root.length - left.root.length)[0] ?? null;
-  const repo = matchedRepo?.name ?? "differential-testing";
-  return index.scenarios.map((scenario) => ({
-    id: scenario.id,
-    repo,
-    repoRoot: matchedRepo?.root ?? null,
-    title: scenario.label,
-    status: "active",
-    statusLabel: "Active",
-    total: scenario.frameCount,
-    done: null,
-    remaining: null,
-    percent: null,
-    errors: 0,
-    warnings: 0,
-    lastCompletedAt: null,
-    updatedAt: scenario.updatedAt,
-    ovenId: "differential-testing",
-    ovenName: "Differential Testing",
-    href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}`,
-    progressLabel: `${scenario.frameCount} frames`,
-  }));
+function blockedDashboardEntry(handler, error) {
+  const blockers = String(error?.message ?? error ?? "Oven dashboard data is unavailable.").slice(0, 200);
+  return {
+    id: `blocked-${handler.id}`, repo: "Oven", repoKey: null, repoRoot: null, planPath: null,
+    title: handler.id, planLabel: "Oven dashboard", status: "active", statusLabel: "Blocked",
+    total: 0, done: null, remaining: null, percent: null, errors: 1, warnings: 0,
+    lastCompletedAt: null, updatedAt: null, ovenId: handler.id, ovenName: handler.id,
+    href: "/", progressLabel: "Blocked", blockers,
+  };
 }
 
-function dashboardEntries() {
-  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries()]
-    .map((entry) => {
-      let key = null;
-      try {
-        key = entry.repoRoot ? repoKey(realpathSync(entry.repoRoot)) : null;
-      } catch {
-        // Entries for unavailable roots remain visible without a route key.
-      }
-      return { ...entry, repoKey: key };
-    })
-    .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
+function ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings = resolvedOvenDataBindings() } = {}) {
+  const cacheId = id ?? oven?.id;
+  if (cacheId && !ovenHandlerCaches.has(cacheId)) ovenHandlerCaches.set(cacheId, new Map());
+  return {
+    id: cacheId,
+    oven,
+    req,
+    res,
+    url,
+    bindingPath,
+    cache: cacheId ? ovenHandlerCaches.get(cacheId) : new Map(),
+    ovenDataBindings,
+    maxOvenDataBytes,
+    discoverBurnlists,
+    discoveredRepos,
+  };
 }
 
-function projectsSnapshot() {
+function projectsSnapshot(ovenDataBindings) {
   const home = os.homedir();
   const hasScanRootOverride = Boolean(args.get("scan-root"));
   let registeredRoots = [];
@@ -548,7 +380,7 @@ function projectsSnapshot() {
     observerRoots,
     registeredRoots,
     health,
-    entries: dashboardEntries(),
+    entries: dashboardEntries(ovenDataBindings),
     repoKey,
     realpath: realpathSync,
   });
@@ -566,42 +398,107 @@ function instructionsDescription(instructions) {
     .find((line) => line && !line.startsWith("#")) ?? "";
 }
 
-function readOven(root, id, builtIn) {
+function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
   const safeId = ovenId(id);
-  const ovenRoot = join(root, safeId);
-  const instructionsPath = join(ovenRoot, "instructions.md");
-  const detailPath = join(ovenRoot, "detail.json");
-  if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
-  const ovenPackage = normalizeOvenPackage({
-    id: safeId,
-    instructions: readTextFileWithLimit(instructionsPath, 65536, "Oven instructions"),
-    detail: JSON.parse(readTextFileWithLimit(detailPath, 131072, "Oven detail template")),
-  });
-  return {
-    id: ovenPackage.id,
-    name: instructionsName(ovenPackage.instructions, safeId),
-    description: instructionsDescription(ovenPackage.instructions),
-    builtIn,
-    instructions: ovenPackage.instructions,
-    detail: ovenPackage.detail,
-  };
+  let ovenRoot;
+  try {
+    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(customRepoRoot, root, safeId, { unsafe: unsafeOvensDir });
+    ovenRoot = resolveOvenPackageDir(realpathSync(path));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+  try {
+    const instructionsPath = join(ovenRoot, "instructions.md");
+    const detailPath = join(ovenRoot, "detail.json");
+    if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
+    const ovenPackage = normalizeOvenPackage({
+      id: safeId,
+      instructions: readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template")),
+    });
+    const lineagePath = join(ovenRoot, "oven.json");
+    let forkedFrom;
+    if (safeStat(lineagePath)?.isFile()) {
+      try {
+        forkedFrom = normalizeOvenForkedFrom(
+          JSON.parse(readTextFileWithLimit(lineagePath, OVEN_LINEAGE_MAX_BYTES, "Oven lineage sidecar")),
+        ).forkedFrom;
+      } catch (error) {
+        throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
+      }
+    }
+    return {
+      id: ovenPackage.id,
+      name: instructionsName(ovenPackage.instructions, safeId),
+      description: instructionsDescription(ovenPackage.instructions),
+      builtIn,
+      instructions: ovenPackage.instructions,
+      detail: ovenPackage.detail,
+      ovenRevision: ovenRevision(ovenPackage),
+      ...(forkedFrom ? { forkedFrom } : {}),
+    };
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
 }
 
-function ovensIn(root, builtIn) {
-  if (!safeStat(root)?.isDirectory()) return [];
-  return readdirSync(root)
-    .filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
-    .map((id) => readOven(root, id, builtIn))
+function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
+  if (!builtIn) assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
+  let entries;
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+  return entries
+    .map((entry) => entry.name)
+    .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
+    .map((id) => {
+      try {
+        return readOven(root, id, builtIn, customRepoRoot);
+      } catch (error) {
+        console.warn(`Ignoring malformed Oven ${id}: ${error.message}`);
+        return null;
+      }
+    })
     .filter(Boolean);
 }
 
 function discoverOvens() {
-  const byId = new Map();
-  for (const oven of ovensIn(builtInOvensDir, true)) byId.set(oven.id, oven);
-  for (const oven of ovensIn(customOvensDir, false)) {
-    if (!byId.get(oven.id)?.builtIn) byId.set(oven.id, oven);
+  const ovens = ovensIn(builtInOvensDir, true).map((oven) => ({ ...oven, repoKey: null, repoRoot: null }));
+  for (const repo of ovenScopeRepos()) {
+    const customOvensDir = customOvensDirFor(repo.root);
+    for (const oven of ovensIn(customOvensDir, false, repo.root)) {
+      ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
+    }
   }
-  return [...byId.values()].sort((left, right) => Number(right.builtIn) - Number(left.builtIn) || left.name.localeCompare(right.name));
+  return ovens.sort((left, right) => Number(right.builtIn) - Number(left.builtIn)
+    || left.name.localeCompare(right.name) || String(left.repoKey).localeCompare(String(right.repoKey)));
+}
+
+function customOvensDirFor(repoRoot) {
+  return resolve(repoRoot) === launchRepoRoot ? launchCustomOvensDir : containedJoin(repoRoot, "ovens");
+}
+
+function selectedRepoKey(url) {
+  const repoKeys = url.searchParams.getAll("repoKey");
+  if (repoKeys.length > 1) throw Object.assign(new Error("repoKey must be supplied at most once"), { status: 400 });
+  return repoKeys[0] ?? null;
+}
+
+function findOven(id, selectedKey = null) {
+  const safeId = ovenId(id);
+  // Built-ins are global: resolve them by id regardless of repoKey (repoKey only selects a repo's
+  // DATA binding, not the oven's identity). Custom ovens are identified by (repoKey, id).
+  const builtin = readOven(builtInOvensDir, safeId, true);
+  if (builtin) return { ...builtin, repoKey: null, repoRoot: null };
+  if (selectedKey === null) return null;
+  const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
+  const oven = repo ? readOven(customOvensDirFor(repo.root), safeId, false, repo.root) : null;
+  return oven ? { ...oven, repoKey: repo.repoKey, repoRoot: repo.root } : null;
 }
 
 function ovenSummary(oven) {
@@ -610,6 +507,9 @@ function ovenSummary(oven) {
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
+    repoKey: oven.repoKey,
+    ovenRevision: oven.ovenRevision,
+    ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
     detail: {
       columns: oven.detail.columns,
       rows: oven.detail.rows,
@@ -618,44 +518,57 @@ function ovenSummary(oven) {
   };
 }
 
-function atomicDirectory(parent, id, files) {
-  mkdirSync(parent, { recursive: true });
-  const target = join(parent, id);
-  if (existsSync(target)) throw new Error(`${id} already exists.`);
-  const temporary = join(parent, `.${id}.${randomBytes(6).toString("hex")}`);
-  mkdirSync(temporary);
-  try {
-    for (const [name, contents] of Object.entries(files)) writeFileSync(join(temporary, name), contents);
-    renameSync(temporary, target);
-  } catch (error) {
-    rmSync(temporary, { recursive: true, force: true });
-    throw error;
-  }
-  return target;
+function assertOvenInput(value) {
+  assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
 }
 
 function createOven(value) {
-  assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
-  const id = ovenId(value.id);
-  if (discoverOvens().some((oven) => oven.id === id)) throw new Error(`Oven ${id} already exists.`);
-  const name = boundedText(value.name, "Oven name", 80);
-  let instructions = boundedText(value.instructions, "Markdown instructions", 65536);
+  const { repoKey: targetRepoKey, repoRoot: targetRepoRoot, ...ovenValue } = value;
+  assertOvenInput(ovenValue);
+  const hasRepoKey = targetRepoKey !== undefined;
+  const hasRepoRoot = targetRepoRoot !== undefined;
+  if (hasRepoKey && hasRepoRoot) throw new Error("Specify repoKey or repoRoot, not both.");
+  const repo = hasRepoKey
+    ? ovenScopeRepos().find((entry) => entry.repoKey === boundedText(targetRepoKey, "Repository key", 64))
+    : hasRepoRoot
+      ? ovenScopeRepos().find((entry) => entry.root === resolve(boundedText(targetRepoRoot, "Repository", 4096)))
+      : { root: launchRepoRoot, repoKey: repoKey(launchRepoRoot) };
+  if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
+  const customOvensDir = customOvensDirFor(repo.root);
+  const id = ovenId(ovenValue.id);
+  if (readOven(builtInOvensDir, id, true) || readOven(customOvensDir, id, false, repo.root)) {
+    throw new Error(`Oven ${id} already exists.`);
+  }
+  const name = boundedText(ovenValue.name, "Oven name", 80);
+  let instructions = boundedText(ovenValue.instructions, "Markdown instructions", 65536);
   const instructionLines = instructions.split(/\r?\n/u);
   const titleLine = instructionLines.findIndex((line) => /^#\s+\S/u.test(line.trim()));
   if (titleLine === -1) instructionLines.unshift(`# ${name}`, "");
   else instructionLines[titleLine] = `# ${name}`;
   instructions = instructionLines.join("\n");
-  const detail = normalizeOvenDetail(value.detail);
+  const detail = normalizeOvenDetail(ovenValue.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
-  const path = atomicDirectory(customOvensDir, id, {
-    "instructions.md": `${ovenPackage.instructions}\n`,
-    "detail.json": `${JSON.stringify(ovenPackage.detail, null, 2)}\n`,
-  });
-  return { ...readOven(customOvensDir, id, false), path };
+  const files = serializeOvenPackage(ovenPackage);
+  assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
+  assertGitIgnored(repo.root, customOvensDir);
+  const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, files, {
+    assertPath: () => {
+      assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
+      assertGitIgnored(repo.root, customOvensDir);
+    },
+  }));
+  return { ...readOven(customOvensDir, id, false, repo.root), repoKey: repo.repoKey, repoRoot: repo.root, path };
 }
 
 function discoveredRepos() {
   return candidateRepoRoots().map((root) => ({ name: basename(root), root, repoKey: repoKey(realpathSync(root)) }));
+}
+
+function ovenScopeRepos() {
+  const repos = new Map(discoveredRepos().map((repo) => [repo.repoKey, repo]));
+  const launchRepo = { name: basename(launchRepoRoot), root: launchRepoRoot, repoKey: repoKey(launchRepoRoot) };
+  if (!repos.has(launchRepo.repoKey)) repos.set(launchRepo.repoKey, launchRepo);
+  return [...repos.values()];
 }
 
 function repoMapSelection(url) {
@@ -692,22 +605,35 @@ function runId(date = new Date()) {
   ].join("");
 }
 
+function assertSnapshotSize(contents, maxBytes, label) {
+  const bytes = Buffer.byteLength(contents);
+  if (bytes > maxBytes) throw new Error(`${label} snapshot exceeds ${maxBytes} bytes.`);
+}
+
 function createBurnRun(value) {
-  assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
+  assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
-  const oven = discoverOvens().find((entry) => entry.id === selectedOvenId);
-  if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
+  if (!Object.hasOwn(value, "ovenRepoKey") || (value.ovenRepoKey !== null && typeof value.ovenRepoKey !== "string")) {
+    throw new Error("Burn run ovenRepoKey must be null or a repository key.");
+  }
+  const selectedOvenRepoKey = value.ovenRepoKey === null
+    ? null
+    : boundedText(value.ovenRepoKey, "Oven repository key", 64);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
-  const repo = discoveredRepos().find((entry) => entry.root === requestedRoot);
+  const repo = ovenScopeRepos().find((entry) => entry.root === requestedRoot);
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
+  const oven = findOven(selectedOvenId, selectedOvenRepoKey);
+  if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const title = boundedText(value.title, "Run title", 120);
   const objective = boundedText(value.objective, "Run objective", 12000);
   const id = runId();
   const createdAt = new Date().toISOString();
   const record = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id,
     ovenId: selectedOvenId,
+    ovenRepoKey: selectedOvenRepoKey,
+    ovenRevision: oven.ovenRevision,
     repoRoot: repo.root,
     repo: repo.name,
     title,
@@ -718,10 +644,14 @@ function createBurnRun(value) {
     summary: {},
     sections: [],
   };
+  const instructionsSnapshot = `${oven.instructions.trim()}\n`;
+  const detailSnapshot = `${JSON.stringify(oven.detail, null, 2)}\n`;
+  assertSnapshotSize(instructionsSnapshot, RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions");
+  assertSnapshotSize(detailSnapshot, RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template");
   const files = {
     "run.json": `${JSON.stringify(record, null, 2)}\n`,
-    "instructions.md": `${oven.instructions.trim()}\n`,
-    "detail.json": `${JSON.stringify(oven.detail, null, 2)}\n`,
+    "instructions.md": instructionsSnapshot,
+    "detail.json": detailSnapshot,
   };
   const path = withRepoStateLock(repo.root, () => {
     if (legacyRunsDir) return atomicDirectory(legacyRunsDir, id, files);
@@ -745,6 +675,8 @@ function readBurnRun(id) {
       "schemaVersion",
       "id",
       "ovenId",
+      "ovenRepoKey",
+      "ovenRevision",
       "repoRoot",
       "repo",
       "title",
@@ -756,7 +688,30 @@ function readBurnRun(id) {
       "sections",
     ]), "Burn run");
     ovenId(record.ovenId);
-    return record;
+    if (![3, 4].includes(record.schemaVersion)) {
+      throw new Error("Burn run schemaVersion must be 3 or 4.");
+    }
+    const runRoot = dirname(path);
+    const ovenPackage = normalizeOvenPackage({
+      id: record.ovenId,
+      instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template")),
+    });
+    const snapshotRevision = ovenRevision(ovenPackage);
+    if (record.schemaVersion === 4) {
+      if (Object.hasOwn(record, "ovenRepoKey") && record.ovenRepoKey !== null && typeof record.ovenRepoKey !== "string") {
+        throw new Error("Burn run ovenRepoKey must be null or a repository key.");
+      }
+      const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
+      if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
+        throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
+      }
+      if (ovenRevisionValue !== snapshotRevision) {
+        throw new Error(`Burn run ${safeId} revision does not match its snapshot.`);
+      }
+      return record;
+    }
+    return { ...record, ovenRevision: snapshotRevision };
   }
   return null;
 }
@@ -1099,12 +1054,12 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/projects") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, projectsSnapshot());
+      json(res, 200, projectsSnapshot(resolvedOvenDataBindings()));
       return;
     }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries() });
+      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries(resolvedOvenDataBindings()) });
       return;
     }
     if (url.pathname === "/api/progress") {
@@ -1137,7 +1092,7 @@ const server = createServer(async (req, res) => {
     const ovenRoute = url.pathname.match(/^\/api\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);
     if (ovenRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      const oven = discoverOvens().find((entry) => entry.id === ovenRoute[1]);
+      const oven = findOven(ovenRoute[1], selectedRepoKey(url));
       if (!oven) return json(res, 404, { error: "oven not found" });
       json(res, 200, { oven });
       return;
@@ -1146,33 +1101,17 @@ const server = createServer(async (req, res) => {
     if (ovenDataRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const id = ovenDataRoute[1];
-      const path = ovenDataBindings.get(id);
-      if (!path) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
+      const requestedRepoKey = selectedRepoKey(url);
+      const oven = findOven(id, requestedRepoKey);
+      const handler = oven?.builtIn || !oven ? getOvenHandler(id) : null;
+      const ovenDataBindings = resolvedOvenDataBindings();
+      const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
+      if (!handler && !oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
+      if (!binding) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
-        if (id === "differential-testing") {
-          const index = differentialTestingIndexCache(path);
-          const requestedScenarioIds = url.searchParams.getAll("scenario");
-          if (requestedScenarioIds.length > 1) return json(res, 400, { error: "scenario must be supplied at most once" });
-          const requestedScenarioId = requestedScenarioIds[0] ?? "";
-          if (!requestedScenarioId || requestedScenarioId === index.selectedScenarioId) {
-            const selected = index.kind === "bundle" && index.selectedScenarioId
-              ? differentialTestingBundleResponse(index, index.selectedScenarioId, url.searchParams)
-              : index;
-            sendDifferentialTestingData(req, res, selected);
-            return;
-          }
-          if (!/^[a-f0-9]{16}$/u.test(requestedScenarioId)) return json(res, 400, { error: "scenario must be a lowercase 16-character hexadecimal id" });
-          if (!index.scenarios.some((scenario) => scenario.id === requestedScenarioId)) return json(res, 404, { error: `scenario ${requestedScenarioId} is not in the published catalog` });
-          const selected = index.kind === "bundle"
-            ? differentialTestingBundleResponse(index, requestedScenarioId, url.searchParams)
-            : differentialTestingScenarioCache(index, requestedScenarioId);
-          sendDifferentialTestingData(req, res, selected);
-          return;
-        }
-        const readPath = path;
-        if (!safeStat(readPath)?.isFile()) return json(res, 404, { error: `configured data for Oven ${id} is missing` });
-        const indexPayload = JSON.parse(readTextFileWithLimit(readPath, maxOvenDataBytes, `Oven ${id} data`));
-        json(res, 200, { ovenId: id, path: readPath, payload: indexPayload });
+        const active = handler ?? genericJsonHandler;
+        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath: binding.path, ovenDataBindings }));
+        if (response !== undefined) json(res, 200, response);
       } catch (error) {
         json(res, Number.isInteger(error.status) ? error.status : 422, {
           error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
@@ -1194,7 +1133,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/repos") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { repos: discoveredRepos() });
+      json(res, 200, { repos: ovenScopeRepos() });
       return;
     }
     if (url.pathname === "/api/runs") {
@@ -1212,7 +1151,9 @@ const server = createServer(async (req, res) => {
       json(res, 200, { run });
       return;
     }
-    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    const ovenViewRoute = url.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
+    const isKnownOvenView = Boolean(ovenViewRoute && findOven(ovenViewRoute[1], selectedRepoKey(url)));
+    if (["/", "/index.html", "/ovens/new", "/runs/new"].includes(url.pathname) || isKnownOvenView || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;
@@ -1253,10 +1194,19 @@ function listen(port) {
   });
 }
 
-if (!reportMode && ovenDataBindings.has("differential-testing")) {
-  warmDifferentialTestingData();
-  const differentialTestingWarmTimer = setInterval(warmDifferentialTestingData, 1_000);
-  differentialTestingWarmTimer.unref();
+if (!reportMode) {
+  for (const handler of listOvenHandlers()) {
+    if (typeof handler.warm !== "function" || !handler.warmIntervalMs) continue;
+    if (!handler.id) continue;
+    const warm = () => warmOvenHandler(
+      handler,
+      resolvedOvenDataBindings,
+      (context) => ovenHandlerContext(context),
+    );
+    warm();
+    const warmTimer = setInterval(warm, handler.warmIntervalMs);
+    warmTimer.unref();
+  }
 }
 
 listen(initialPort);

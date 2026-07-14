@@ -1792,6 +1792,7 @@ export function startDifferentialTestingLiveUpdates(root, {
   locationImpl = globalThis.location,
   historyImpl = globalThis.history,
   mount = mountDifferentialTestingDashboard,
+  repoKey = null,
   refreshMs = DIFFERENTIAL_TESTING_REFRESH_MS,
   onError = (error, hasDashboard) => {
     if (!hasDashboard) root.innerHTML = `<div class="empty">${escapeHtml(String(error?.message || error))}</div>`;
@@ -1818,6 +1819,7 @@ export function startDifferentialTestingLiveUpdates(root, {
   const payloadUrl = (scenarioId) => {
     const searchParams = new URLSearchParams();
     if (scenarioId) searchParams.set("scenario", scenarioId);
+    if (repoKey) searchParams.set("repoKey", repoKey);
     if (fieldViewQuery) {
       searchParams.set("search", fieldViewQuery.search);
       searchParams.set("filter", fieldViewQuery.filter);

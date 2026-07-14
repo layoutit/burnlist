@@ -7,7 +7,7 @@ import type { Filter } from "@lib";
 
 export function App() {
   const section = currentSection();
-  const selected = useMemo(selectedBurnlist, [window.location.pathname]);
+  const selected = useMemo(selectedBurnlist, [window.location.pathname, window.location.search]);
   const [filter, setFilter] = useState(() => filterFromUrl(FILTERS));
   const { projects, progress, error, loading } = useDashboardData({ section, selected });
 

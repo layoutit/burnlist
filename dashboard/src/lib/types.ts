@@ -26,8 +26,9 @@ export type Burnlist = {
   repo: string;
   repoKey: string | null;
   repoRoot: string | null;
+  planPath: string | null;
   title: string;
-  planLabel: string;
+  planLabel: string | null;
   status: Exclude<Filter, "all">;
   statusLabel: string;
   total: number;
@@ -38,10 +39,12 @@ export type Burnlist = {
   warnings: number;
   updatedAt: string | null;
   lastCompletedAt: string | null;
-  ovenId: "checklist" | "differential-testing";
+  /** Server-validated Oven identifier. */
+  ovenId: string;
   ovenName: string;
   href: string;
   progressLabel: string;
+  blockers?: string;
 };
 
 export type Project = {
@@ -57,5 +60,15 @@ export type Project = {
   ambiguousIds: string[];
 };
 
-export type SelectedBurnlist = { repo?: string; repoKey?: string; id: string };
+export type OvenSummary = {
+  id: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  repoKey: string | null;
+};
+
+export type RepoSummary = { name: string; root: string; repoKey: string };
+
+export type SelectedBurnlist = { repo?: string; repoKey?: string; id?: string; plan?: string };
 export type ProgressData = ChecklistProgressData;

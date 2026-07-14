@@ -68,6 +68,12 @@ test("/api/projects reports ids duplicated across lifecycle folders", { timeout:
     assert.equal(response.status, 200);
     const [project] = JSON.parse(response.body).projects;
     assert.deepEqual(project.ambiguousIds, ["repeated"]);
+    assert.deepEqual(project.entries.map((entry) => entry.planPath).sort(), [...fixture.planPaths].sort());
+    for (const entry of project.entries) {
+      const progress = await httpGet(fixture.baseUrl, `/api/progress?plan=${encodeURIComponent(entry.planPath)}`);
+      assert.equal(progress.status, 200);
+      assert.equal(JSON.parse(progress.body).planPath, entry.planPath);
+    }
   });
 });
 
