@@ -163,6 +163,26 @@ test("Oven pointer swaps measure revision GC grace from retirement", () => {
   }
 });
 
+test("Oven publication runs its locked path guard before creating a revision", () => {
+  const context = fixture();
+  const target = join(context.root, "guarded");
+  try {
+    withOvenPackageLock(context.root, "guarded", () => atomicOvenPackage(context.root, "guarded", ovenFiles("old")));
+    const pointer = readFileSync(join(target, "current"), "utf8");
+    assert.throws(
+      () => withOvenPackageLock(context.root, "guarded", () => atomicOvenPackage(context.root, "guarded", ovenFiles("new"), {
+        replace: true,
+        assertPath: () => { throw new Error("custom storage changed"); },
+      })),
+      /custom storage changed/u,
+    );
+    assert.equal(readFileSync(join(target, "current"), "utf8"), pointer);
+    assert.equal(readFileSync(join(resolveOvenPackageDir(target), "instructions.md"), "utf8"), "# Oven old\n");
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("Oven readers only fall back for an absent current pointer", () => {
   const context = fixture();
   try {

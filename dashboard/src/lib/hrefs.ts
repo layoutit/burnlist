@@ -32,7 +32,7 @@ export function listHref(filter: Filter) {
 }
 
 export function burnlistHref(entry: Burnlist, filter: Filter, ambiguous = false) {
-  if (ambiguous) return `/?plan=${encodeURIComponent(entry.planPath)}&filter=${encodeURIComponent(filter)}`;
+  if (ambiguous) return `/?plan=${encodeURIComponent(entry.planPath ?? "")}&filter=${encodeURIComponent(filter)}`;
   const path = entry.repoKey
     ? `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}`
     : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`;

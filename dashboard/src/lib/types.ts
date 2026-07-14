@@ -26,9 +26,9 @@ export type Burnlist = {
   repo: string;
   repoKey: string | null;
   repoRoot: string | null;
-  planPath: string;
+  planPath: string | null;
   title: string;
-  planLabel: string;
+  planLabel: string | null;
   status: Exclude<Filter, "all">;
   statusLabel: string;
   total: number;
@@ -39,7 +39,8 @@ export type Burnlist = {
   warnings: number;
   updatedAt: string | null;
   lastCompletedAt: string | null;
-  ovenId: "checklist" | "differential-testing";
+  /** Server-validated Oven identifier. */
+  ovenId: string;
   ovenName: string;
   href: string;
   progressLabel: string;

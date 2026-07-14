@@ -188,6 +188,7 @@ export const differentialTestingHandler = Object.freeze({
           : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name ?? basename(binding.repoRoot);
         return index.scenarios.map((scenario) => ({
           id: scenario.id, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot, title: scenario.label,
+          planPath: null, planLabel: null,
           status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
           percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
           ovenId: "differential-testing", ovenName: "Differential Testing",
@@ -198,7 +199,7 @@ export const differentialTestingHandler = Object.freeze({
         const repo = binding.repoKey === null ? "differential-testing" : basename(binding.repoRoot);
         return [{
           id: `blocked-${binding.repoKey ?? "global"}`, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot,
-          title: "Differential Testing", planPath: "", planLabel: "Oven data binding",
+          title: "Differential Testing", planPath: null, planLabel: "Oven data binding",
           status: "active", statusLabel: "Blocked", total: 0, done: null, remaining: null, percent: null,
           errors: 1, warnings: 0, lastCompletedAt: null, updatedAt: null,
           ovenId: "differential-testing", ovenName: "Differential Testing", href: "/ovens/differential-testing/view",

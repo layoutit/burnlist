@@ -422,6 +422,8 @@ assertPublishablePackage();
 run(process.execPath, [
   "--test",
   "src/server/dashboard-routes.test.mjs",
+  "src/server/dashboard-entry-isolation.test.mjs",
+  "src/server/burnlist-discovery.test.mjs",
   "src/ovens/oven-contract.test.mjs",
   "src/ovens/oven-registry.test.mjs",
   "src/server/projects.test.mjs",
@@ -443,6 +445,7 @@ run(process.execPath, [
   "src/server/registry.test.mjs",
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",
+  "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
 ]);
 

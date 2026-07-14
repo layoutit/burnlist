@@ -99,3 +99,17 @@ test("effective bindings retain every repository binding and append global overr
     assert.equal(overridden.at(-1).repoKey, null);
   } finally { cleanup(); }
 });
+
+test("effective bindings skip an unreadable repository store without hiding healthy bindings", () => {
+  const { root, cleanup } = fixture();
+  const bad = join(root, "bad-repo");
+  const good = join(root, "good-repo");
+  try {
+    mkdirSync(bad);
+    mkdirSync(good);
+    mkdirSync(bindingStorePath(bad), { recursive: true });
+    writeBinding(good, "sample-oven", "good.json", BOUND_AT);
+    const bindings = quietly(() => effectiveBindings({ repoRoots: [bad, good] }));
+    assert.deepEqual(bindings.get("sample-oven").map((entry) => entry.repoRoot), [good]);
+  } finally { cleanup(); }
+});

@@ -11,7 +11,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
@@ -33,7 +33,18 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
+import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
+import { isolatedDashboardEntries } from "./dashboard-entry-isolation.mjs";
 import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
+import {
+  assertCustomOvensDir,
+  assertCustomOvenPath,
+  OVEN_DETAIL_MAX_BYTES,
+  OVEN_INSTRUCTIONS_MAX_BYTES,
+  OVEN_LINEAGE_MAX_BYTES,
+  resolveCustomOvensDir,
+  serializeOvenPackage,
+} from "./oven-storage.mjs";
 import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
@@ -44,7 +55,6 @@ import {
   lifecycleForPlan,
   localIsoTimestamp,
   parsePlan,
-  summaryForPlan,
   twoDigit,
   validatePlan,
 } from "./plan-model.mjs";
@@ -69,6 +79,7 @@ const allowedArgs = new Set([
   "stamp",
   "state-dir",
   "stop",
+  "unsafe-ovens-dir",
 ]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const arg = process.argv[index];
@@ -108,9 +119,16 @@ const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const umbrellaRoot = resolveUmbrella(launchCwd);
-const customOvensDir = args.has("ovens-dir")
-  ? resolve(umbrellaRoot, args.get("ovens-dir"))
-  : containedJoin(umbrellaRoot, "ovens");
+if (args.get("ovens-dir") === "true") {
+  console.error("--ovens-dir requires a path.");
+  process.exit(2);
+}
+const unsafeOvensDir = args.has("unsafe-ovens-dir");
+const customOvensDir = resolveCustomOvensDir(
+  umbrellaRoot,
+  args.has("ovens-dir") ? args.get("ovens-dir") : undefined,
+  { unsafe: unsafeOvensDir },
+);
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
@@ -251,7 +269,13 @@ function burnlistPathsFor(repoRoots) {
     for (const lifecycle of LIFECYCLES) {
       const lifecycleRoot = join(repoRoot, "notes", "burnlists", lifecycle.folder);
       if (!safeStat(lifecycleRoot)?.isDirectory()) continue;
-      for (const id of readdirSync(lifecycleRoot)) {
+      let ids;
+      try {
+        ids = readdirSync(lifecycleRoot);
+      } catch {
+        continue;
+      }
+      for (const id of ids) {
         if (id.startsWith(".")) continue;
         const planPath = join(lifecycleRoot, id, "burnlist.md");
         if (safeStat(planPath)?.isFile()) paths.push(planPath);
@@ -266,35 +290,22 @@ function burnlistPaths() {
 }
 
 function discoverBurnlists() {
-  return burnlistPaths().map((path) => summaryForPlan(path, maxPlanBytes));
+  return discoverBurnlistSummaries({ repoRoots: candidateRepoRoots(), maxPlanBytes });
 }
 
-function dashboardEntries(ovenDataBindings = resolvedOvenDataBindings()) {
-  const entries = [];
-  for (const handler of listOvenHandlers()) {
-    try {
-      entries.push(...(handler.dashboardEntries?.(ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings })) ?? []));
-    } catch (error) {
-      entries.push(blockedDashboardEntry(handler, error));
-    }
-  }
-  return entries
-    .map((entry) => {
-      let key = null;
-      try {
-        key = entry.repoRoot ? repoKey(realpathSync(entry.repoRoot)) : null;
-      } catch {
-        // Entries for unavailable roots remain visible without a route key.
-      }
-      return { ...entry, repoKey: key };
-    })
-    .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
+function dashboardEntries(ovenDataBindings) {
+  return isolatedDashboardEntries({
+    handlers: listOvenHandlers(),
+    contextForHandler: (handler) => ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings }),
+    repoKeyForRoot: (root) => repoKey(realpathSync(root)),
+    blockedEntry: blockedDashboardEntry,
+  });
 }
 
 function blockedDashboardEntry(handler, error) {
   const blockers = String(error?.message ?? error ?? "Oven dashboard data is unavailable.").slice(0, 200);
   return {
-    id: `blocked-${handler.id}`, repo: "Oven", repoKey: null, repoRoot: null, planPath: "",
+    id: `blocked-${handler.id}`, repo: "Oven", repoKey: null, repoRoot: null, planPath: null,
     title: handler.id, planLabel: "Oven dashboard", status: "active", statusLabel: "Blocked",
     total: 0, done: null, remaining: null, percent: null, errors: 1, warnings: 0,
     lastCompletedAt: null, updatedAt: null, ovenId: handler.id, ovenName: handler.id,
@@ -320,7 +331,7 @@ function ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBind
   };
 }
 
-function projectsSnapshot(ovenDataBindings = resolvedOvenDataBindings()) {
+function projectsSnapshot(ovenDataBindings) {
   const home = os.homedir();
   const hasScanRootOverride = Boolean(args.get("scan-root"));
   let registeredRoots = [];
@@ -387,7 +398,7 @@ function readOven(root, id, builtIn) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(root, safeId);
+    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(umbrellaRoot, root, safeId, { unsafe: unsafeOvensDir });
     ovenRoot = resolveOvenPackageDir(realpathSync(path));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
@@ -399,15 +410,15 @@ function readOven(root, id, builtIn) {
     if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
     const ovenPackage = normalizeOvenPackage({
       id: safeId,
-      instructions: readTextFileWithLimit(instructionsPath, 65536, "Oven instructions"),
-      detail: JSON.parse(readTextFileWithLimit(detailPath, 131072, "Oven detail template")),
+      instructions: readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template")),
     });
     const lineagePath = join(ovenRoot, "oven.json");
     let forkedFrom;
     if (safeStat(lineagePath)?.isFile()) {
       try {
         forkedFrom = normalizeOvenForkedFrom(
-          JSON.parse(readTextFileWithLimit(lineagePath, 131072, "Oven lineage sidecar")),
+          JSON.parse(readTextFileWithLimit(lineagePath, OVEN_LINEAGE_MAX_BYTES, "Oven lineage sidecar")),
         ).forkedFrom;
       } catch (error) {
         throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
@@ -430,6 +441,7 @@ function readOven(root, id, builtIn) {
 }
 
 function ovensIn(root, builtIn) {
+  if (!builtIn) assertCustomOvensDir(umbrellaRoot, root, { unsafe: unsafeOvensDir });
   let entries;
   try {
     entries = readdirSync(root, { withFileTypes: true });
@@ -449,24 +461,6 @@ function ovensIn(root, builtIn) {
       }
     })
     .filter(Boolean);
-}
-
-function isWithin(parent, child) {
-  const pathFromParent = relative(parent, child);
-  return pathFromParent === ""
-    || (pathFromParent !== ".." && !pathFromParent.startsWith(`..${sep}`) && !isAbsolute(pathFromParent));
-}
-
-function assertCustomOvenPath(root, id) {
-  const path = join(root, id);
-  try {
-    const ovensRoot = realpathSync(root);
-    const ovenRoot = realpathSync(path);
-    if (!isWithin(ovensRoot, ovenRoot)) throw new Error(`Custom Oven ${id} escapes ${root}.`);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-  return path;
 }
 
 function discoverOvens() {
@@ -512,10 +506,10 @@ function createOven(value) {
   instructions = instructionLines.join("\n");
   const detail = normalizeOvenDetail(value.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
-  assertCustomOvenPath(customOvensDir, id);
-  const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, {
-    "instructions.md": `${ovenPackage.instructions}\n`,
-    "detail.json": `${JSON.stringify(ovenPackage.detail, null, 2)}\n`,
+  const files = serializeOvenPackage(ovenPackage);
+  assertCustomOvenPath(umbrellaRoot, customOvensDir, id, { unsafe: unsafeOvensDir });
+  const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, files, {
+    assertPath: () => assertCustomOvenPath(umbrellaRoot, customOvensDir, id, { unsafe: unsafeOvensDir }),
   }));
   return { ...readOven(customOvensDir, id, false), path };
 }
@@ -985,7 +979,6 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
-    const ovenDataBindings = resolvedOvenDataBindings();
     const dashboardAsset = dashboardAssetPath(url.pathname);
     if (dashboardAsset) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
@@ -997,12 +990,12 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/projects") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, projectsSnapshot(ovenDataBindings));
+      json(res, 200, projectsSnapshot(resolvedOvenDataBindings()));
       return;
     }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries(ovenDataBindings) });
+      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries(resolvedOvenDataBindings()) });
       return;
     }
     if (url.pathname === "/api/progress") {
@@ -1045,6 +1038,7 @@ const server = createServer(async (req, res) => {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const id = ovenDataRoute[1];
       const handler = getOvenHandler(id);
+      const ovenDataBindings = resolvedOvenDataBindings();
       const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
       let oven = null;
       if (!handler) {

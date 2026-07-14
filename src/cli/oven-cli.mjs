@@ -8,17 +8,23 @@
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
 import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
-import { containedJoin } from "../server/repo-state.mjs";
+import {
+  assertCustomOvensDir,
+  assertCustomOvenPath,
+  OVEN_DETAIL_MAX_BYTES,
+  OVEN_INSTRUCTIONS_MAX_BYTES,
+  OVEN_LINEAGE_MAX_BYTES,
+  resolveCustomOvensDir,
+  serializeOvenPackage,
+} from "../server/oven-storage.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
-const MAX_INSTRUCTION_BYTES = 65536;
-const MAX_DETAIL_BYTES = 131072;
 // ── argv ────────────────────────────────────────────────────────────────────
 // process.argv is [node, bin/burnlist.mjs, "oven", <subcommand>, ...rest].
 const tokens = process.argv.slice(2);
@@ -61,27 +67,14 @@ function bindingRepo() {
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const launchCwd = process.cwd();
-const customOvensDir = flags.has("ovens-dir")
-  ? resolve(repoRoot(), flags.get("ovens-dir"))
-  : containedJoin(repoRoot(), "ovens");
-
-function isWithin(parent, child) {
-  const pathFromParent = relative(parent, child);
-  return pathFromParent === ""
-    || (pathFromParent !== ".." && !pathFromParent.startsWith(`..${sep}`) && !isAbsolute(pathFromParent));
-}
-
-function assertCustomOvenPath(root, id) {
-  const path = join(root, id);
-  try {
-    const ovensRoot = realpathSync(root);
-    const ovenRoot = realpathSync(path);
-    if (!isWithin(ovensRoot, ovenRoot)) throw new Error(`Custom Oven ${id} escapes ${root}.`);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
-  }
-  return path;
-}
+const customRepoRoot = repoRoot();
+if (flags.get("ovens-dir") === "true") fail("--ovens-dir requires a path.");
+const unsafeOvensDir = flags.has("unsafe-ovens-dir");
+const customOvensDir = resolveCustomOvensDir(
+  customRepoRoot,
+  flags.has("ovens-dir") ? flags.get("ovens-dir") : undefined,
+  { unsafe: unsafeOvensDir },
+);
 
 function safeStat(path) {
   try {
@@ -115,7 +108,7 @@ function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(root, safeId);
+    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(customRepoRoot, root, safeId, { unsafe: unsafeOvensDir });
     ovenRoot = resolveOvenPackageDir(realpathSync(path));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
@@ -127,15 +120,15 @@ function readOvenDir(root, id, builtIn) {
     if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
     const ovenPackage = normalizeOvenPackage({
       id: safeId,
-      instructions: readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions"),
-      detail: JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template")),
+      instructions: readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions"),
+      detail: JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template")),
     });
     const lineagePath = join(ovenRoot, "oven.json");
     let forkedFrom;
     if (safeStat(lineagePath)?.isFile()) {
       try {
         forkedFrom = normalizeOvenForkedFrom(
-          JSON.parse(readTextFileWithLimit(lineagePath, MAX_DETAIL_BYTES, "Oven lineage sidecar")),
+          JSON.parse(readTextFileWithLimit(lineagePath, OVEN_LINEAGE_MAX_BYTES, "Oven lineage sidecar")),
         ).forkedFrom;
       } catch (error) {
         throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
@@ -159,6 +152,7 @@ function readOvenDir(root, id, builtIn) {
 }
 
 function ovensIn(root, builtIn) {
+  if (!builtIn) assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
   let entries;
   try {
     entries = readdirSync(root, { withFileTypes: true });
@@ -169,7 +163,14 @@ function ovensIn(root, builtIn) {
   return entries
     .map((entry) => entry.name)
     .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
-    .map((id) => readOvenDir(root, id, builtIn))
+    .map((id) => {
+      try {
+        return readOvenDir(root, id, builtIn);
+      } catch (error) {
+        console.warn(`Ignoring malformed Oven ${id}: ${error.message}`);
+        return null;
+      }
+    })
     .filter(Boolean);
 }
 
@@ -217,17 +218,17 @@ function readInput(spec, maxBytes, label) {
 function resolvePackageInput() {
   const pkg = {};
   if (flags.has("package")) {
-    Object.assign(pkg, JSON.parse(readInput(flags.get("package"), MAX_DETAIL_BYTES, "Oven package")));
+    Object.assign(pkg, JSON.parse(readInput(flags.get("package"), OVEN_DETAIL_MAX_BYTES, "Oven package")));
   }
   if (flags.has("dir")) {
     const dir = resolve(flags.get("dir"));
     const instructionsPath = join(dir, "instructions.md");
     const detailPath = join(dir, "detail.json");
-    pkg.instructions = readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions");
-    pkg.detail = JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template"));
+    pkg.instructions = readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
+    pkg.detail = JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template"));
   }
-  if (flags.has("instructions")) pkg.instructions = readInput(flags.get("instructions"), MAX_INSTRUCTION_BYTES, "Oven instructions");
-  if (flags.has("detail")) pkg.detail = JSON.parse(readInput(flags.get("detail"), MAX_DETAIL_BYTES, "Oven detail template"));
+  if (flags.has("instructions")) pkg.instructions = readInput(flags.get("instructions"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
+  if (flags.has("detail")) pkg.detail = JSON.parse(readInput(flags.get("detail"), OVEN_DETAIL_MAX_BYTES, "Oven detail template"));
 
   const id = ovenId(positionals[0] ?? pkg.id ?? flags.get("id") ?? "");
   const name = flags.has("name") ? String(flags.get("name")).trim() : String(pkg.name ?? "").trim();
@@ -250,15 +251,14 @@ function resolvePackageInput() {
 }
 
 function persistOven(pkg, { allowReplace, sidecar }) {
-  const files = {
-    "instructions.md": `${pkg.instructions}\n`,
-    "detail.json": `${JSON.stringify(pkg.detail, null, 2)}\n`,
-    ...(sidecar ? { "oven.json": `${JSON.stringify(sidecar, null, 2)}\n` } : {}),
-  };
+  const files = serializeOvenPackage({ ...pkg, sidecar });
   try {
-    assertCustomOvenPath(customOvensDir, pkg.id);
+    assertCustomOvenPath(customRepoRoot, customOvensDir, pkg.id, { unsafe: unsafeOvensDir });
     return withOvenPackageLock(customOvensDir, pkg.id, () => (
-      atomicOvenPackage(customOvensDir, pkg.id, files, { replace: allowReplace })
+      atomicOvenPackage(customOvensDir, pkg.id, files, {
+        replace: allowReplace,
+        assertPath: () => assertCustomOvenPath(customRepoRoot, customOvensDir, pkg.id, { unsafe: unsafeOvensDir }),
+      })
     ));
   } catch (error) {
     if (!allowReplace && error.message === `${pkg.id} already exists.`) {
@@ -299,6 +299,7 @@ Options:
   --package <p>        JSON package file, or - for stdin.
   --repo <p>           Repository whose local Oven bindings to use.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
+  --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
   --force              On create, replace an existing custom Oven.
   --json               Machine-readable output for list/view.
 

@@ -80,6 +80,26 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
+test("unreadable binding stores do not affect unrelated routes and healthy Oven data", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{ repoPath: "bad" }, { repoPath: "good" }],
+    ovenData: [{ id: "checklist", payload: { source: "good" }, repoPath: "good", persisted: true, override: false }],
+    setup: async ({ fixtureRoot }) => {
+      await mkdir(join(fixtureRoot, "bad", ".local", "burnlist", "bindings.json"), { recursive: true });
+    },
+  }, async ({ baseUrl }) => {
+    assert.equal((await httpGet(baseUrl, "/")).status, 200);
+    assert.equal((await httpGet(baseUrl, "/favicon.svg")).status, 200);
+    assert.equal((await httpGet(baseUrl, "/api/progress?repo=bad&id=fixture")).status, 200);
+    const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
+    const good = entries.find((entry) => entry.ovenId === "checklist" && entry.repo === "good");
+    assert.ok(good);
+    const data = await httpGet(baseUrl, `/api/oven-data/checklist?repoKey=${good.repoKey}`);
+    assert.equal(data.status, 200);
+    assert.deepEqual(JSON.parse(data.body).payload, { source: "good" });
+  });
+});
+
 test("registered Oven routes and dashboard entries isolate malformed custom Oven packages", { timeout: 20_000 }, async () => {
   const timestamp = "2026-01-01T12:00:00.000Z";
   const differentialTestingPayload = buildPayload(
@@ -167,7 +187,11 @@ test("Differential Testing bindings remain distinct for each repository", { time
       .filter((entry) => entry.ovenId === "differential-testing");
     assert.equal(entries.length, 2);
     assert.equal(new Set(entries.map((entry) => entry.repoKey)).size, 2);
-    for (const entry of entries) assert.match(entry.href, new RegExp(`^/ovens/differential-testing/view\\?scenario=${entry.id}&repoKey=${entry.repoKey}$`, "u"));
+    for (const entry of entries) {
+      assert.equal(entry.planPath, null);
+      assert.equal(entry.planLabel, null);
+      assert.match(entry.href, new RegExp(`^/ovens/differential-testing/view\\?scenario=${entry.id}&repoKey=${entry.repoKey}$`, "u"));
+    }
 
     const firstEntry = entries.find((entry) => entry.title === "first-repo");
     const secondEntry = entries.find((entry) => entry.title === "second-repo");

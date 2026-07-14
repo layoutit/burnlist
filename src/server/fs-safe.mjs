@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import { assertOvenPackageFileLimits } from "./oven-storage.mjs";
 
 export const OVEN_REV_GRACE_MS = 60_000;
 
@@ -299,7 +300,9 @@ function gcOldRevisions(pkgRoot, current) {
 // replacing a small pointer file. A reader that resolved the old revision keeps
 // a stable path until grace-period GC makes it eligible for deletion. A reader
 // suspended beyond that grace period mid-read is out of scope for this localhost tool.
-export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
+export function atomicOvenPackage(parent, id, files, { replace = false, assertPath } = {}) {
+  assertOvenPackageFileLimits(files);
+  assertPath?.();
   mkdirSync(parent, { recursive: true });
   const pkgRoot = join(parent, id);
   mkdirSync(pkgRoot, { recursive: true });

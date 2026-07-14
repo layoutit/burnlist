@@ -130,10 +130,14 @@ function cachedStore(repoRoot, stat) {
 export function effectiveBindings({ repoRoots = [], override = new Map(), statFn = statSync } = {}) {
   const bindings = new Map();
   for (const repoRoot of [...new Set(repoRoots)].sort((left, right) => left.localeCompare(right))) {
-    for (const [id, binding] of Object.entries(cachedStore(repoRoot, statFn).bindings)) {
-      const entries = bindings.get(id) ?? [];
-      entries.push({ repoKey: repoKey(repoRoot), repoRoot, path: resolve(repoRoot, binding.path) });
-      bindings.set(id, entries);
+    try {
+      for (const [id, binding] of Object.entries(cachedStore(repoRoot, statFn).bindings)) {
+        const entries = bindings.get(id) ?? [];
+        entries.push({ repoKey: repoKey(repoRoot), repoRoot, path: resolve(repoRoot, binding.path) });
+        bindings.set(id, entries);
+      }
+    } catch (error) {
+      console.warn(`Ignoring unavailable Oven binding store: ${bindingStorePath(repoRoot)} (${error.message})`);
     }
   }
   for (const [id, path] of override) {
