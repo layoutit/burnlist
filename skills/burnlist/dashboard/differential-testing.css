@@ -920,8 +920,10 @@ body.driving-parity-view .dashboard-header {
 .chart .progress-dot { fill: var(--done); }
 .driving-parity-view .chart .progress-remaining-area { fill: var(--red-subtle); }
 .driving-parity-view .chart .progress-area { fill: rgba(97,211,148,.10); }
-.driving-parity-view .chart .progress-line { stroke: var(--status-green); }
-.driving-parity-view .chart .progress-dot { fill: var(--status-green); }
+.driving-parity-view .chart .progress-line { stroke: var(--status-red); stroke-width: 1.6; stroke-linecap: butt; stroke-linejoin: miter; opacity: .8; vector-effect: non-scaling-stroke; }
+.driving-parity-view .chart .progress-dot { fill: var(--status-red); opacity: .8; }
+.driving-parity-view .chart.goal-reached .progress-line { stroke: var(--status-green); stroke-width: 1.55; }
+.driving-parity-view .chart.goal-reached .progress-dot { fill: var(--status-green); }
 .chart .failed-fields-pass-area { fill: rgba(97,211,148,.08); }
 .chart .failed-fields-area { fill: var(--red-subtle); }
 .chart .failed-fields-line { fill: none; stroke: var(--red); stroke-width: 1.6; stroke-linecap: butt; stroke-linejoin: round; opacity: .8; }

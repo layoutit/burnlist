@@ -362,20 +362,20 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
     return segments.filter((candidate, index) =>
       index === segments.length - 1 || candidate.some((point) => failedFieldValueForPoint(point) > 0));
   };
-  const chartSegmentPath = (series, valueAccessor = valueForPoint, yAccessor = plotY) => {
+  const chartSegmentPath = (series, valueAccessor = valueForPoint, yAccessor = plotY, xAccessor = x) => {
     const [first, ...rest] = series;
-    const commands = ["M " + x(first.time).toFixed(1) + " " + yAccessor(valueAccessor(first)).toFixed(1)];
+    const commands = ["M " + xAccessor(first.time).toFixed(1) + " " + yAccessor(valueAccessor(first)).toFixed(1)];
     let previous = first;
     for (const point of rest) {
-      const pointX = x(point.time).toFixed(1);
+      const pointX = xAccessor(point.time).toFixed(1);
       commands.push("L " + pointX + " " + yAccessor(valueAccessor(previous)).toFixed(1));
       commands.push("L " + pointX + " " + yAccessor(valueAccessor(point)).toFixed(1));
       previous = point;
     }
     return commands.join(" ");
   };
-  const chartPath = (series, valueAccessor = valueForPoint, yAccessor = plotY) =>
-    chartSegments(series).map((segment) => chartSegmentPath(segment, valueAccessor, yAccessor)).join(" ");
+  const chartPath = (series, valueAccessor = valueForPoint, yAccessor = plotY, xAccessor = x) =>
+    chartSegments(series).map((segment) => chartSegmentPath(segment, valueAccessor, yAccessor, xAccessor)).join(" ");
   const chartAreaPath = (series, valueAccessor = valueForPoint) => {
     const baselineY = plotY(valueMin).toFixed(1);
     return chartSegments(series).map((segment) => {
@@ -400,7 +400,8 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
         "Z",
       ].join(" ");
     }).join(" ");
-  const path = isFailedChart ? "" : chartPath(fallback, progressValueForPoint);
+  const progressLineX = (time) => Math.min(width - seriesPad.right - 1, x(time));
+  const path = isFailedChart ? "" : chartPath(fallback, progressValueForPoint, plotY, progressLineX);
   const areaPath = isFailedChart ? "" : chartAreaPath(fallback);
   const last = fallback.at(-1);
   const failedFieldTitleForPoint = (point) => {
@@ -460,10 +461,11 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   svg.classList.toggle("delta-chart", isDeltaChart);
   svg.classList.toggle(
     "goal-reached",
-    isFailedChart &&
+    (isFailedChart &&
       !isDeltaChart &&
       failedFieldSeries.length > 0 &&
-      failedFieldValueForPoint(failedFieldSeries.at(-1)) <= 0,
+      failedFieldValueForPoint(failedFieldSeries.at(-1)) <= 0) ||
+      (!isFailedChart && progressValueForPoint(last) <= 0),
   );
   svg.dataset.plotLeft = String(seriesPad.left);
   svg.dataset.plotRight = String(width - seriesPad.right);
@@ -474,13 +476,14 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   svg.dataset.timeScale = compactTimeline ? "compact" : "all";
   svg.replaceChildren();
   if (!isFailedChart && isDrivingParityPage) {
-    const remainingArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    const remainingArea = document.createElementNS("http://www.w3.org/2000/svg", "path");
     remainingArea.setAttribute("class", "progress-remaining-area");
-    remainingArea.setAttribute("x", String(seriesPad.left));
-    remainingArea.setAttribute("y", String(pad.top));
-    remainingArea.setAttribute("width", String(innerWidth));
-    remainingArea.setAttribute("height", String(innerHeight));
+    remainingArea.setAttribute("d", areaPath);
     svg.append(remainingArea);
+    const completedArea = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    completedArea.setAttribute("class", "progress-area");
+    completedArea.setAttribute("d", chartCeilingAreaPath(fallback, progressValueForPoint));
+    svg.append(completedArea);
   }
   const yTicks = isDeltaChart
     ? [0, 1, 2, 3, 4].map((index) => valueMin + ((valueMax - valueMin) * index) / 4)
@@ -529,10 +532,12 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   axis.setAttribute("y2", String(height - pad.bottom));
   if (!isDrivingParityPage) svg.append(axis);
   if (!isFailedChart) {
-    const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    area.setAttribute("class", "progress-area");
-    area.setAttribute("d", isDrivingParityPage ? chartCeilingAreaPath(fallback, progressValueForPoint) : areaPath);
-    svg.append(area);
+    if (!isDrivingParityPage) {
+      const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      area.setAttribute("class", "progress-area");
+      area.setAttribute("d", areaPath);
+      svg.append(area);
+    }
     const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
     line.setAttribute("class", "progress-line");
     line.setAttribute("d", path);
@@ -794,7 +799,15 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   const measuredHeight = Math.round(svg.getBoundingClientRect().height || svg.clientHeight || parseFloat(getComputedStyle(svg).height) || 200);
   const height = Math.max(160, measuredHeight);
   svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-  svg.setAttribute("aria-label", "Largest signed candidate minus reference residual by frame; display capped at the 98th percentile with clipped values marked");
+  const valueLabel = typeof metrics?.valueLabel === "string" && metrics.valueLabel.trim()
+    ? metrics.valueLabel.trim()
+    : "signed residual";
+  svg.setAttribute(
+    "aria-label",
+    typeof metrics?.ariaLabel === "string" && metrics.ariaLabel.trim()
+      ? metrics.ariaLabel.trim()
+      : "Largest signed candidate minus reference residual by frame; display capped at the 98th percentile with clipped values marked",
+  );
   svg.classList.remove("range-zoomable", "failed-chart", "goal-reached");
   svg.classList.add("delta-chart");
   delete svg.dataset.domainMin;
@@ -956,7 +969,7 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
         : `M${(markerX - 3).toFixed(1)},${(markerY - 5).toFixed(1)}L${markerX.toFixed(1)},${markerY.toFixed(1)}L${(markerX + 3).toFixed(1)},${(markerY - 5).toFixed(1)}Z`,
     });
     const title = svgElement("title");
-    title.textContent = `${value > 0 ? "+" : ""}${formatRatio(value)} signed residual`;
+    title.textContent = `${value > 0 ? "+" : ""}${formatRatio(value)} ${valueLabel}`;
     marker.append(title);
     svg.append(marker);
   });

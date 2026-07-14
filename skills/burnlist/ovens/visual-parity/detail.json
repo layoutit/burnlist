@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 14,
+  "rowHeight": 64,
+  "cells": [
+    {
+      "id": "title",
+      "title": "Visual Parity",
+      "widget": "status",
+      "source": "/",
+      "format": "plain",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 4,
+      "rowSpan": 1
+    },
+    {
+      "id": "burns",
+      "title": "Results",
+      "widget": "pie-chart",
+      "source": "/differentialTesting/log",
+      "format": "plain",
+      "column": 5,
+      "row": 1,
+      "columnSpan": 2,
+      "rowSpan": 1
+    },
+    {
+      "id": "fields",
+      "title": "Fields",
+      "widget": "metric",
+      "source": "/differentialTesting/summary/fields",
+      "format": "plain",
+      "column": 7,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 1
+    },
+    {
+      "id": "frames",
+      "title": "Frames",
+      "widget": "metric",
+      "source": "/differentialTesting/summary/frames",
+      "format": "plain",
+      "column": 10,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 1
+    },
+    {
+      "id": "progress",
+      "title": "Parity Progress",
+      "widget": "line-chart",
+      "source": "/differentialTesting/progress",
+      "format": "number",
+      "column": 5,
+      "row": 2,
+      "columnSpan": 8,
+      "rowSpan": 5
+    },
+    {
+      "id": "log",
+      "title": "Parity Progress",
+      "widget": "log",
+      "source": "/differentialTesting/log",
+      "format": "plain",
+      "column": 1,
+      "row": 2,
+      "columnSpan": 4,
+      "rowSpan": 5
+    },
+    {
+      "id": "screenshot-comparison",
+      "title": "Frame Comparisons",
+      "widget": "comparison",
+      "source": "/comparisons",
+      "format": "plain",
+      "column": 1,
+      "row": 7,
+      "columnSpan": 12,
+      "rowSpan": 7
+    }
+  ]
+}
