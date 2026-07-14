@@ -7,12 +7,12 @@
 // own file plumbing so it never has to import the dashboard server (which
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
-import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
+import { atomicDirectory } from "../server/fs-safe.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
@@ -56,10 +56,8 @@ function bindingRepo() {
 // ── storage locations (mirror the dashboard server) ──────────────────────────
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
-const legacyBuiltInTypesDir = resolve(packageRoot, "types");
 const launchCwd = process.cwd();
 const customOvensDir = resolve(launchCwd, flags.get("ovens-dir") ?? ".local/burnlist/ovens");
-const legacyCustomTypesDir = resolve(launchCwd, flags.get("types-dir") ?? ".local/burnlist/types");
 
 function safeStat(path) {
   try {
@@ -89,17 +87,11 @@ function instructionsDescription(instructions) {
   );
 }
 
-// Read one Oven directory, tolerating the legacy definition.md/dashboard.json
-// filenames so `view`/`list` match what the dashboard discovers.
 function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
   const ovenRoot = join(root, safeId);
-  const instructionsPath = safeStat(join(ovenRoot, "instructions.md"))?.isFile()
-    ? join(ovenRoot, "instructions.md")
-    : join(ovenRoot, "definition.md");
-  const detailPath = safeStat(join(ovenRoot, "detail.json"))?.isFile()
-    ? join(ovenRoot, "detail.json")
-    : join(ovenRoot, "dashboard.json");
+  const instructionsPath = join(ovenRoot, "instructions.md");
+  const detailPath = join(ovenRoot, "detail.json");
   if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
   const ovenPackage = normalizeOvenPackage({
     id: safeId,
@@ -148,8 +140,6 @@ function ovensIn(root, builtIn) {
 function discoverOvens() {
   const byId = new Map();
   for (const oven of ovensIn(builtInOvensDir, true)) byId.set(oven.id, oven);
-  for (const oven of ovensIn(legacyBuiltInTypesDir, true)) if (!byId.has(oven.id)) byId.set(oven.id, oven);
-  for (const oven of ovensIn(legacyCustomTypesDir, false)) if (!byId.has(oven.id)) byId.set(oven.id, oven);
   for (const oven of ovensIn(customOvensDir, false)) if (!byId.get(oven.id)?.builtIn) byId.set(oven.id, oven);
   return [...byId.values()].sort(
     (left, right) => Number(right.builtIn) - Number(left.builtIn) || left.name.localeCompare(right.name),
@@ -195,10 +185,8 @@ function resolvePackageInput() {
   }
   if (flags.has("dir")) {
     const dir = resolve(flags.get("dir"));
-    const instructionsPath = safeStat(join(dir, "instructions.md"))?.isFile()
-      ? join(dir, "instructions.md")
-      : join(dir, "definition.md");
-    const detailPath = safeStat(join(dir, "detail.json"))?.isFile() ? join(dir, "detail.json") : join(dir, "dashboard.json");
+    const instructionsPath = join(dir, "instructions.md");
+    const detailPath = join(dir, "detail.json");
     pkg.instructions = readTextFileWithLimit(instructionsPath, MAX_INSTRUCTION_BYTES, "Oven instructions");
     pkg.detail = JSON.parse(readTextFileWithLimit(detailPath, MAX_DETAIL_BYTES, "Oven detail template"));
   }
@@ -225,40 +213,26 @@ function resolvePackageInput() {
   return normalized;
 }
 
-function writeFileAtomic(dir, name, contents) {
-  const temporary = join(dir, `.${name}.${randomBytes(6).toString("hex")}`);
-  writeFileSync(temporary, contents);
-  renameSync(temporary, join(dir, name));
-}
-
-function persistOven(pkg, { allowReplace }) {
+function persistOven(pkg, { allowReplace, sidecar }) {
   const files = {
     "instructions.md": `${pkg.instructions}\n`,
     "detail.json": `${JSON.stringify(pkg.detail, null, 2)}\n`,
+    ...(sidecar ? { "oven.json": `${JSON.stringify(sidecar, null, 2)}\n` } : {}),
   };
-  const target = join(customOvensDir, pkg.id);
-  if (existsSync(target)) {
-    if (!allowReplace) throw new Error(`Oven ${pkg.id} already exists. Use \`oven update ${pkg.id}\` or --force.`);
-    for (const [name, contents] of Object.entries(files)) writeFileAtomic(target, name, contents);
-    return target;
-  }
-  mkdirSync(customOvensDir, { recursive: true });
-  const temporary = join(customOvensDir, `.${pkg.id}.${randomBytes(6).toString("hex")}`);
-  mkdirSync(temporary);
   try {
-    for (const [name, contents] of Object.entries(files)) writeFileSync(join(temporary, name), contents);
-    renameSync(temporary, target);
+    return atomicDirectory(customOvensDir, pkg.id, files, { replace: allowReplace, preserveExisting: allowReplace });
   } catch (error) {
-    rmSync(temporary, { recursive: true, force: true });
+    if (!allowReplace && error.message === `${pkg.id} already exists.`) {
+      throw new Error(`Oven ${pkg.id} already exists. Use \`oven update ${pkg.id}\` or --force.`);
+    }
     throw error;
   }
-  return target;
 }
 
 function assertCustomTarget(id, verb) {
   const existing = findOven(id);
   if (existing?.builtIn) {
-    throw new Error(`Oven ${id} is built-in and read-only. Fork it: \`oven create <new-id> --dir ${existing.path}\`.`);
+    throw new Error(`Oven ${id} is built-in and read-only. Fork it: \`oven fork ${id} <new-id>\`.`);
   }
   if (verb === "update" && !existing) throw new Error(`Oven ${id} does not exist. Use \`oven create\` instead.`);
 }
@@ -276,6 +250,7 @@ Usage:
   burnlist oven create <id> --dir <dir>            (reads instructions.md + detail.json)
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, detail})
   burnlist oven update <id> [same inputs as create]
+  burnlist oven fork <id> <newId>
 
 Options:
   --name <text>        Set the Oven name (owns the level-one heading).
@@ -383,6 +358,22 @@ try {
     const saved = readOvenDir(customOvensDir, pkg.id, false);
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
     printOven(saved);
+    process.exit(0);
+  }
+
+  if (subcommand === "fork") {
+    const [sourceId, newId] = positionals;
+    if (!sourceId || !newId) fail("Usage: burnlist oven fork <id> <newId>");
+    const source = findOven(sourceId);
+    if (!source) fail(`Unknown Oven "${sourceId}". Run \`burnlist oven list\`.`);
+    const pkg = normalizeOvenPackage({ id: ovenId(newId), instructions: source.instructions, detail: source.detail });
+    const sourceRevision = ovenRevision(source);
+    if (findOven(pkg.id)) throw new Error(`Oven ${pkg.id} already exists.`);
+    const path = persistOven(pkg, {
+      allowReplace: false,
+      sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },
+    });
+    console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
     process.exit(0);
   }
 

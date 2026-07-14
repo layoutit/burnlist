@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 export function readTextFileWithLimit(path, maxBytes, label) {
@@ -16,16 +16,30 @@ export function safeStat(path) {
   }
 }
 
-export function atomicDirectory(parent, id, files) {
+export function atomicDirectory(parent, id, files, { replace = false, preserveExisting = false } = {}) {
   mkdirSync(parent, { recursive: true });
   const temporary = join(parent, `.${id}.${randomBytes(8).toString("hex")}`);
   const target = join(parent, id);
+  if (existsSync(target) && !replace) throw new Error(`${id} already exists.`);
   mkdirSync(temporary);
   try {
+    if (preserveExisting && existsSync(target)) cpSync(target, temporary, { recursive: true });
     for (const [name, contents] of Object.entries(files)) {
       writeFileSync(join(temporary, name), contents);
     }
-    renameSync(temporary, target);
+    if (!replace || !existsSync(target)) {
+      renameSync(temporary, target);
+      return target;
+    }
+    const previous = join(parent, `.${id}.old.${randomBytes(8).toString("hex")}`);
+    renameSync(target, previous);
+    try {
+      renameSync(temporary, target);
+    } catch (error) {
+      try { renameSync(previous, target); } catch { /* The caller receives the original failure. */ }
+      throw error;
+    }
+    try { rmSync(previous, { recursive: true, force: true }); } catch { /* Best-effort cleanup. */ }
   } catch (error) {
     rmSync(temporary, { recursive: true, force: true });
     throw error;
