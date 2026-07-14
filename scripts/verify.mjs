@@ -3,7 +3,8 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normalizeOvenPackage } from "../src/ovens/oven-contract.mjs";
+import { assertBuiltInOven, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
+import { verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
@@ -113,53 +114,6 @@ function assertSourceExcludes(path, needle, message) {
   }
 }
 
-function assertBuiltInOvenSet(expected) {
-  const ovensRoot = resolve(repoRoot, "ovens");
-  const actual = readdirSync(ovensRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  const wanted = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
-    console.error(`Default Oven ids must be exactly ${wanted.join(", ")}; found ${actual.join(", ") || "none"}.`);
-    process.exit(1);
-  }
-}
-
-function assertSkillSet(expected) {
-  const skillsRoot = resolve(repoRoot, "skills");
-  const actual = readdirSync(skillsRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-    .sort();
-  const wanted = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
-    console.error(`Published skill ids must be exactly ${wanted.join(", ")}; found ${actual.join(", ") || "none"}.`);
-    process.exit(1);
-  }
-}
-
-function assertBuiltInOven(id, expectedName) {
-  const root = resolve(repoRoot, "ovens", id);
-  const instructionsPath = resolve(root, "instructions.md");
-  const detailPath = resolve(root, "detail.json");
-  try {
-    const ovenPackage = normalizeOvenPackage({
-      id,
-      instructions: readFileSync(instructionsPath, "utf8"),
-      detail: JSON.parse(readFileSync(detailPath, "utf8")),
-    });
-    const heading = ovenPackage.instructions
-      .split(/\r?\n/u)
-      .find((line) => /^#\s+\S/u.test(line.trim()))
-      ?.trim()
-      .replace(/^#\s+/u, "");
-    if (heading !== expectedName) throw new Error(`expected heading "${expectedName}", found "${heading || "none"}"`);
-  } catch (error) {
-    console.error(`Default oven ${id} violates the Oven contract: ${error.message}`);
-    process.exit(1);
-  }
-}
 
 function assertDifferentialTestingContractAssets() {
   const schemaPath = resolve(repoRoot, "ovens/differential-testing/schema/differential-testing-data.schema.json");
@@ -412,42 +366,14 @@ assertSourceExcludes("README.md", "**Target**", "README still advertises the rem
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
-assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "differential-testing"]);
-assertBuiltInOven("checklist", "Checklist");
-assertBuiltInOven("differential-testing", "Differential Testing");
+assertSkillSet(repoRoot, ["burnlist"]);
+assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing"]);
+assertBuiltInOven(repoRoot, "checklist", "Checklist");
+assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
-run(process.execPath, [
-  "--test",
-  "src/server/dashboard-routes.test.mjs",
-  "src/server/dashboard-entry-isolation.test.mjs",
-  "src/server/burnlist-discovery.test.mjs",
-  "src/ovens/oven-contract.test.mjs",
-  "src/ovens/oven-registry.test.mjs",
-  "src/server/projects.test.mjs",
-  "src/server/projects-api.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-contract.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
-  "ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
-  "src/server/discovery.test.mjs",
-  "src/server/plan-model.test.mjs",
-  "src/server/fs-safe.test.mjs",
-  "src/cli/lifecycle-cli.test.mjs",
-  "src/cli/lifecycle-moves.test.mjs",
-  "src/cli/registry-cli.test.mjs",
-  "src/cli/oven-cli.test.mjs",
-  "src/cli/umbrella.test.mjs",
-  "src/server/oven-bindings.test.mjs",
-  "src/server/oven-warm.test.mjs",
-  "src/server/registry.test.mjs",
-  "src/server/repo-map.test.mjs",
-  "src/server/repo-state.test.mjs",
-  "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
-  "dashboard/src/lib/project-open.test.mjs",
-]);
+run(process.execPath, ["--test", ...verificationTestFiles]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
   env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },

@@ -221,7 +221,7 @@ test("oven publication rejects oversized stored bytes without replacing a readab
     const priorInstructions = readFileSync(join(resolveOvenPackageDir(ovenPath), "instructions.md"), "utf8");
     assert.equal(Buffer.byteLength(priorInstructions), 65_536);
 
-    writeFileSync(instructionsPath, `# ${"y".repeat(65_534)}`);
+    writeFileSync(instructionsPath, `# ${"\u0800".repeat(21_844)}xy`);
     assert.throws(
       () => run(context, "oven", "update", "sized-oven", "--instructions", instructionsPath, "--detail", detailPath),
       (error) => String(error.stderr).includes("instructions.md") && String(error.stderr).includes("65536 byte limit"),

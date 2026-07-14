@@ -1,7 +1,7 @@
 name: Publish
 
 # Manual-only. Bumps the package version (patch/minor/major), gates it, publishes to
-# npm, then commits the version bump and pushes a `v<X.Y.Z>` tag back to main.
+# npm after committing the version bump, then pushes a `v<X.Y.Z>` tag back to main.
 #
 # Trigger from the Actions tab ("Run workflow") or:
 #   gh workflow run publish.yml -f bump=patch
@@ -70,10 +70,9 @@ jobs:
           echo "version=${next}" >> "$GITHUB_OUTPUT"
           echo "Bumped to ${next}"
 
-      # Push the version bump to main BEFORE publishing: if the push fails, main and
-      # npm stay consistent (no npm release without a recorded commit/tag). The
-      # reverse order could publish to npm and then fail to record it on main.
-      - name: Commit, tag, and push
+      # Record the version bump on main before publishing. A failed publish is then
+      # rerunnable from the recorded intent, but has no release tag.
+      - name: Commit and push version bump
         env:
           NEXT_VERSION: ${{ steps.bump.outputs.version }}
           ACTOR: ${{ github.actor }}
@@ -84,10 +83,17 @@ jobs:
           git config user.email "${ACTOR_ID}+${ACTOR}@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "chore(release): ${NEXT_VERSION}"
-          git tag "${NEXT_VERSION}"
-          git push --atomic origin HEAD:main "${NEXT_VERSION}"
+          git push origin HEAD:main
 
       - name: Publish to npm
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag published release
+        env:
+          NEXT_VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          git tag "${NEXT_VERSION}"
+          git push --atomic origin "${NEXT_VERSION}"
