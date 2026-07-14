@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -51,6 +51,35 @@ function writeOven(root, id, ovenJson) {
   writeFileSync(join(ovenRoot, "instructions.md"), "# Forked Oven\n\nFollow the checklist.\n");
   writeFileSync(join(ovenRoot, "detail.json"), `${JSON.stringify(detailFixture())}\n`);
   if (ovenJson !== undefined) writeFileSync(join(ovenRoot, "oven.json"), ovenJson);
+}
+
+function pausedUpdate(context, ovensDir, packagePath) {
+  const script = [
+    'import fs, { readFileSync } from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'import { join } from "node:path";',
+    'const [bin, root] = process.argv.slice(1, 3);',
+    'const symlink = fs.symlinkSync;',
+    'fs.symlinkSync = (target, path, ...rest) => {',
+    '  if (path.startsWith(join(root, ".sample-oven.link."))) { process.stdout.write("staged\\n"); readFileSync(0, "utf8"); }',
+    '  return symlink(target, path, ...rest);',
+    '};',
+    'syncBuiltinESMExports();',
+    'process.argv = [process.argv[0], bin, ...process.argv.slice(3)];',
+    'await import(bin);',
+  ].join("\n");
+  return spawn(process.execPath, [
+    "--input-type=module", "--eval", script, binPath, ovensDir,
+    "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir,
+  ], { cwd: context.repo, stdio: ["pipe", "pipe", "pipe"] });
+}
+
+function waitForBarrier(child) {
+  return new Promise((resolve, reject) => {
+    child.stdout.on("data", (chunk) => { if (chunk.toString().includes("staged")) resolve(); });
+    child.on("error", reject);
+    child.on("close", (status) => reject(new Error(`update ended before reaching its publish barrier: ${status}`)));
+  });
 }
 
 test("oven bind, bindings, and unbind persist a logical repo-local binding", () => {
@@ -112,7 +141,24 @@ test("oven create and update swap the package while preserving sibling files", (
     assert.match(readFileSync(join(ovensDir, "sample-oven", "instructions.md"), "utf8"), /Updated checklist/u);
     assert.deepEqual(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "detail.json"), "utf8")), detailFixture());
     assert.equal(JSON.parse(readFileSync(join(ovensDir, "sample-oven", "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
-    assert.equal(readdirSync(ovensDir).some((name) => name.startsWith(".")), false);
+    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".")).length, 1);
+  } finally { context.cleanup(); }
+});
+
+test("oven update migrates a legacy plain directory to a symlink package", () => {
+  const context = fixture();
+  const ovensDir = join(context.repo, "ovens");
+  try {
+    writeOven(ovensDir, "legacy-oven", JSON.stringify({
+      forkedFrom: { ovenId: "source-oven", revision: `o1-sha256:${"a".repeat(64)}` },
+    }));
+    const packagePath = join(context.repo, "replacement.json");
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Updated Oven\n\nMigrated safely.", detail: detailFixture() }));
+    run(context, "oven", "update", "legacy-oven", "--package", packagePath, "--ovens-dir", ovensDir);
+    assert.equal(lstatSync(join(ovensDir, "legacy-oven")).isSymbolicLink(), true);
+    const oven = JSON.parse(run(context, "oven", "view", "legacy-oven", "--json", "--ovens-dir", ovensDir));
+    assert.match(oven.instructions, /Migrated safely/u);
+    assert.equal(oven.forkedFrom.ovenId, "source-oven");
   } finally { context.cleanup(); }
 });
 
@@ -134,7 +180,7 @@ test("oven storage follows the umbrella root when launched from a subdirectory",
   } finally { context.cleanup(); }
 });
 
-test("an oven reader waits for an update swap and receives a complete package", async () => {
+test("oven view and list read complete packages on both sides of a publish barrier", async () => {
   const context = fixture();
   const ovensDir = join(context.repo, "ovens");
   try {
@@ -146,41 +192,44 @@ test("an oven reader waits for an update swap and receives a complete package", 
     writeFileSync(packagePath, JSON.stringify({
       instructions: "# Updated Oven\n\nUpdated checklist.", detail: detailFixture(),
     }));
-    const script = [
-      'import fs from "node:fs";',
-      'import { syncBuiltinESMExports } from "node:module";',
-      'import { join } from "node:path";',
-      'const [bin, ovensDir, target] = process.argv.slice(1, 4);',
-      'const rename = fs.renameSync;',
-      'fs.renameSync = (from, to) => {',
-      '  const result = rename(from, to);',
-      '  if (from === target && to.startsWith(join(ovensDir, ".sample-oven.old."))) {',
-      '    process.stdout.write("target-hidden\\n");',
-      '    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 750);',
-      '  }',
-      '  return result;',
-      '};',
-      'syncBuiltinESMExports();',
-      'process.argv = [process.argv[0], bin, ...process.argv.slice(4)];',
-      'await import(bin);',
-    ].join("\n");
-    const writer = spawn(process.execPath, [
-      "--input-type=module", "--eval", script, binPath, ovensDir, join(ovensDir, "sample-oven"),
-      "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir,
-    ], { cwd: context.repo });
+    const writer = pausedUpdate(context, ovensDir, packagePath);
     const writerStatus = new Promise((resolve) => writer.on("close", resolve));
-    await new Promise((resolve, reject) => {
-      writer.stdout.on("data", (chunk) => {
-        if (chunk.toString().includes("target-hidden")) resolve();
-      });
-      writer.on("error", reject);
-      writer.on("close", (status) => reject(new Error(`update ended before the swap reader ran: ${status}`)));
-    });
-    const reader = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
-    assert.match(reader.instructions, /Updated checklist/u);
-    assert.deepEqual(reader.detail, detailFixture());
+    await waitForBarrier(writer);
+    const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+    const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+    assert.match(oldView.instructions, /Initial checklist/u);
+    assert.equal(oldList.name, "Initial Oven");
+    writer.stdin.end("publish\n");
     const status = await writerStatus;
     assert.equal(status, 0);
+    const newView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+    const newList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+    assert.match(newView.instructions, /Updated checklist/u);
+    assert.equal(newList.name, "Updated Oven");
+  } finally { context.cleanup(); }
+});
+
+test("a killed writer leaves the prior symlink package readable and cleans its staged revision", async () => {
+  const context = fixture();
+  const ovensDir = join(context.repo, "ovens");
+  try {
+    const packagePath = join(context.repo, "replacement.json");
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Initial Oven\n\nInitial checklist.", detail: detailFixture() }));
+    run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Interrupted Oven\n\nNever published.", detail: detailFixture() }));
+    const writer = pausedUpdate(context, ovensDir, packagePath);
+    await waitForBarrier(writer);
+    writer.kill("SIGKILL");
+    await new Promise((resolve) => writer.on("close", resolve));
+    const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
+    const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
+    assert.match(oldView.instructions, /Initial checklist/u);
+    assert.equal(oldList.name, "Initial Oven");
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Recovered Oven\n\nPublished after recovery.", detail: detailFixture() }));
+    run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
+    assert.match(JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir)).instructions, /Published after recovery/u);
+    assert.equal(lstatSync(join(ovensDir, "sample-oven")).isSymbolicLink(), true);
+    assert.equal(readdirSync(ovensDir).filter((name) => name.startsWith(".sample-oven.")).length, 1);
   } finally { context.cleanup(); }
 });
 

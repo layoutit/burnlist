@@ -32,7 +32,7 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
-import { ovenPackageLockRoot, readTextFileWithLimit, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
+import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
@@ -365,8 +365,14 @@ function instructionsDescription(instructions) {
 
 function readOven(root, id, builtIn) {
   const safeId = ovenId(id);
-  const readPackage = () => {
-    const ovenRoot = join(root, safeId);
+  let ovenRoot;
+  try {
+    ovenRoot = realpathSync(join(root, safeId));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+  try {
     const instructionsPath = join(ovenRoot, "instructions.md");
     const detailPath = join(ovenRoot, "detail.json");
     if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
@@ -396,19 +402,23 @@ function readOven(root, id, builtIn) {
       ovenRevision: ovenRevision(ovenPackage),
       ...(forkedFrom ? { forkedFrom } : {}),
     };
-  };
-  return builtIn ? readPackage() : withOvenPackageLock(root, safeId, readPackage, { wait: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 function ovensIn(root, builtIn) {
-  if (!safeStat(root)?.isDirectory()) return [];
-  const ids = new Set(readdirSync(root).filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)));
-  if (!builtIn && safeStat(ovenPackageLockRoot(root))?.isDirectory()) {
-    for (const id of readdirSync(ovenPackageLockRoot(root))) {
-      if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)) ids.add(id);
-    }
+  let entries;
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
   }
-  return [...ids]
+  return entries
+    .map((entry) => entry.name)
+    .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
     .map((id) => readOven(root, id, builtIn))
     .filter(Boolean);
 }
@@ -438,22 +448,6 @@ function ovenSummary(oven) {
   };
 }
 
-function atomicDirectory(parent, id, files) {
-  mkdirSync(parent, { recursive: true });
-  const target = join(parent, id);
-  if (existsSync(target)) throw new Error(`${id} already exists.`);
-  const temporary = join(parent, `.${id}.${randomBytes(6).toString("hex")}`);
-  mkdirSync(temporary);
-  try {
-    for (const [name, contents] of Object.entries(files)) writeFileSync(join(temporary, name), contents);
-    renameSync(temporary, target);
-  } catch (error) {
-    rmSync(temporary, { recursive: true, force: true });
-    throw error;
-  }
-  return target;
-}
-
 function createOven(value) {
   assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
   const id = ovenId(value.id);
@@ -467,7 +461,7 @@ function createOven(value) {
   instructions = instructionLines.join("\n");
   const detail = normalizeOvenDetail(value.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
-  const path = withOvenPackageLock(customOvensDir, id, () => atomicDirectory(customOvensDir, id, {
+  const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, {
     "instructions.md": `${ovenPackage.instructions}\n`,
     "detail.json": `${JSON.stringify(ovenPackage.detail, null, 2)}\n`,
   }));

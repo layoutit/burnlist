@@ -7,18 +7,17 @@
 // own file plumbing so it never has to import the dashboard server (which
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
-import { atomicDirectory, ovenPackageLockRoot, withOvenPackageLock } from "../server/fs-safe.mjs";
+import { atomicOvenPackage, withOvenPackageLock } from "../server/fs-safe.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
 const MAX_INSTRUCTION_BYTES = 65536;
 const MAX_DETAIL_BYTES = 131072;
-
 // ── argv ────────────────────────────────────────────────────────────────────
 // process.argv is [node, bin/burnlist.mjs, "oven", <subcommand>, ...rest].
 const tokens = process.argv.slice(2);
@@ -93,8 +92,14 @@ function instructionsDescription(instructions) {
 
 function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
-  const readPackage = () => {
-    const ovenRoot = join(root, safeId);
+  let ovenRoot;
+  try {
+    ovenRoot = realpathSync(join(root, safeId));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+  try {
     const instructionsPath = join(ovenRoot, "instructions.md");
     const detailPath = join(ovenRoot, "detail.json");
     if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
@@ -125,27 +130,24 @@ function readOvenDir(root, id, builtIn) {
       ovenRevision: ovenRevision(ovenPackage),
       ...(forkedFrom ? { forkedFrom } : {}),
     };
-  };
-  return builtIn ? readPackage() : withOvenPackageLock(root, safeId, readPackage, { wait: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 function ovensIn(root, builtIn) {
-  if (!safeStat(root)?.isDirectory()) return [];
-  const ids = new Set(readdirSync(root).filter((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)));
-  if (!builtIn && safeStat(ovenPackageLockRoot(root))?.isDirectory()) {
-    for (const id of readdirSync(ovenPackageLockRoot(root))) {
-      if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)) ids.add(id);
-    }
+  let entries;
+  try {
+    entries = readdirSync(root, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
   }
-  return [...ids]
-    .map((id) => {
-      try {
-        return readOvenDir(root, id, builtIn);
-      } catch (error) {
-        if (safeStat(join(root, id, "oven.json"))?.isFile()) throw error;
-        return null;
-      }
-    })
+  return entries
+    .map((entry) => entry.name)
+    .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
+    .map((id) => readOvenDir(root, id, builtIn))
     .filter(Boolean);
 }
 
@@ -233,7 +235,7 @@ function persistOven(pkg, { allowReplace, sidecar }) {
   };
   try {
     return withOvenPackageLock(customOvensDir, pkg.id, () => (
-      atomicDirectory(customOvensDir, pkg.id, files, { replace: allowReplace, preserveExisting: allowReplace })
+      atomicOvenPackage(customOvensDir, pkg.id, files, { replace: allowReplace })
     ));
   } catch (error) {
     if (!allowReplace && error.message === `${pkg.id} already exists.`) {
