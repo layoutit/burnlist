@@ -45,6 +45,14 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Refuse to publish from a non-main ref
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Publish must run from main; got ${GITHUB_REF}."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm ci
 
@@ -62,11 +70,9 @@ jobs:
           echo "version=${next}" >> "$GITHUB_OUTPUT"
           echo "Bumped to ${next}"
 
-      - name: Publish to npm
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+      # Push the version bump to main BEFORE publishing: if the push fails, main and
+      # npm stay consistent (no npm release without a recorded commit/tag). The
+      # reverse order could publish to npm and then fail to record it on main.
       - name: Commit, tag, and push
         env:
           NEXT_VERSION: ${{ steps.bump.outputs.version }}
@@ -80,3 +86,8 @@ jobs:
           git commit -m "chore(release): ${NEXT_VERSION}"
           git tag "${NEXT_VERSION}"
           git push origin HEAD:main "${NEXT_VERSION}"
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
