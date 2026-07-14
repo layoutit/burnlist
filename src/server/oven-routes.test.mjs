@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir, symlink } from "node:fs/promises";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import test from "node:test";
-import { httpGet, withServer } from "./dashboard-routes-fixtures.mjs";
+import { detailFixture, httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
 test("unreadable binding stores do not affect unrelated routes and healthy Oven data", { timeout: 20_000 }, async () => {
   await withServer({
     burnlists: [{ repoPath: "bad" }, { repoPath: "good" }],
@@ -84,6 +84,84 @@ test("a discovered custom Oven with a data binding is served as unvalidated JSON
     assert.equal(response.status, 200);
     assert.deepEqual(JSON.parse(response.body).payload, { source: "custom" });
     assert.equal(JSON.parse(response.body).validated, false);
+  });
+});
+
+test("a launched repository custom Oven is listed and served without burnlists", { timeout: 20_000 }, async () => {
+  await withServer({ ovens: [{ id: "launch-only" }] }, async ({ baseUrl }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
+    const launchOven = catalog.find((oven) => oven.id === "launch-only");
+    assert.ok(launchOven);
+    assert.notEqual(launchOven.repoKey, null);
+
+    const response = await httpGet(baseUrl, "/api/ovens/launch-only");
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).oven.repoKey, launchOven.repoKey);
+    assert.equal((await httpGet(baseUrl, `/api/ovens/launch-only?repoKey=${launchOven.repoKey}`)).status, 200);
+  });
+});
+
+test("custom Ovens are identified by repository while built-ins remain global", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{ repoPath: "a" }, { repoPath: "b" }],
+    scanRoots: ["a", "b"],
+    launchCwd: "a",
+    ovens: [
+      { id: "shared", repoPath: "a", instructions: "# Oven A\n\nA definition.\n" },
+      { id: "shared", repoPath: "b", instructions: "# Oven B\n\nB definition.\n" },
+    ],
+    ovenData: [
+      { id: "shared", payload: { source: "A" }, repoPath: "a", persisted: true, override: false },
+      { id: "shared", payload: { source: "B" }, repoPath: "b", persisted: true, override: false },
+    ],
+  }, async ({ baseUrl }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const shared = catalog.ovens.filter((oven) => oven.id === "shared");
+    assert.equal(shared.length, 2);
+    assert.equal(new Set(shared.map((oven) => oven.repoKey)).size, 2);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);
+
+    const [first, second] = shared;
+    const firstOven = await httpGet(baseUrl, `/api/ovens/shared?repoKey=${first.repoKey}`);
+    const secondOven = await httpGet(baseUrl, `/api/ovens/shared?repoKey=${second.repoKey}`);
+    assert.equal(firstOven.status, 200);
+    assert.equal(secondOven.status, 200);
+    assert.notEqual(JSON.parse(firstOven.body).oven.instructions, JSON.parse(secondOven.body).oven.instructions);
+    // A bare request (no repoKey) resolves the launch/umbrella repo's custom oven (launchCwd = "a").
+    const bare = await httpGet(baseUrl, "/api/ovens/shared");
+    assert.equal(bare.status, 200);
+    assert.match(JSON.parse(bare.body).oven.instructions, /A definition\./u);
+    assert.equal((await httpGet(baseUrl, "/api/ovens/shared?repoKey=missing")).status, 404);
+
+    const firstData = await httpGet(baseUrl, `/api/oven-data/shared?repoKey=${first.repoKey}`);
+    const secondData = await httpGet(baseUrl, `/api/oven-data/shared?repoKey=${second.repoKey}`);
+    assert.notEqual(JSON.parse(firstData.body).payload.source, JSON.parse(secondData.body).payload.source);
+
+    const repos = JSON.parse((await httpGet(baseUrl, "/api/repos")).body).repos;
+    const b = repos.find((repo) => repo.repoKey === second.repoKey);
+    assert.ok(b);
+    const authored = await httpRequest(baseUrl, "/api/ovens", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
+      body: JSON.stringify({
+        id: "b-authored", name: "B Authored", instructions: "# B Authored\n\nB only.\n", detail: detailFixture(), repoKey: b.repoKey,
+      }),
+    });
+    assert.equal(authored.status, 201);
+    assert.equal(JSON.parse(authored.body).oven.repoKey, b.repoKey);
+    assert.equal((await httpGet(baseUrl, `/api/ovens/b-authored?repoKey=${b.repoKey}`)).status, 200);
+    const created = await httpRequest(baseUrl, "/api/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
+      body: JSON.stringify({ ovenId: "shared", repoRoot: b.root, title: "B run", objective: "Use B's Oven." }),
+    });
+    assert.equal(created.status, 201);
+    const run = JSON.parse(created.body).run;
+    assert.equal(run.repoRoot, b.root);
+    const runDirectory = run.path;
+    const snapshot = await readFile(`${runDirectory}/instructions.md`, "utf8");
+    assert.match(snapshot, /Oven B/u);
   });
 });
 
@@ -262,5 +340,27 @@ test("dashboard custom Oven storage follows its umbrella root and rejects symlin
     const direct = await httpGet(baseUrl, "/api/ovens/escaped-oven");
     assert.equal(direct.status, 400);
     assert.match(JSON.parse(direct.body).error, /escapes/u);
+  });
+});
+
+test("--ovens-dir applies only to the launch repository custom Ovens", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{ repoPath: "a" }, { repoPath: "b" }],
+    scanRoots: ["a", "b"],
+    launchCwd: "a",
+    ovens: [{ id: "b-local", repoPath: "b" }],
+    serverArgs: ["--ovens-dir", ".local/burnlist/launch-ovens"],
+    setup: async ({ fixtureRoot }) => {
+      const ovenRoot = join(fixtureRoot, "a", ".local", "burnlist", "launch-ovens", "a-override");
+      await mkdir(ovenRoot, { recursive: true });
+      await Promise.all([
+        writeFile(join(ovenRoot, "instructions.md"), "# A Override\n\nLaunch only.\n"),
+        writeFile(join(ovenRoot, "detail.json"), JSON.stringify(detailFixture())),
+      ]);
+    },
+  }, async ({ baseUrl }) => {
+    const ovens = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
+    assert.equal(ovens.some((oven) => oven.id === "a-override"), true);
+    assert.equal(ovens.some((oven) => oven.id === "b-local"), true);
   });
 });

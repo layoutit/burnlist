@@ -124,11 +124,14 @@ if (args.get("ovens-dir") === "true") {
   process.exit(2);
 }
 const unsafeOvensDir = args.has("unsafe-ovens-dir");
-const customOvensDir = resolveCustomOvensDir(
+// --ovens-dir overrides custom Oven storage for the launch umbrella only.
+// Other observed repositories always use their own .local/burnlist/ovens.
+const launchCustomOvensDir = resolveCustomOvensDir(
   umbrellaRoot,
   args.has("ovens-dir") ? args.get("ovens-dir") : undefined,
   { unsafe: unsafeOvensDir },
 );
+const launchRepoRoot = realpathSync(umbrellaRoot);
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
@@ -394,11 +397,11 @@ function instructionsDescription(instructions) {
     .find((line) => line && !line.startsWith("#")) ?? "";
 }
 
-function readOven(root, id, builtIn) {
+function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(umbrellaRoot, root, safeId, { unsafe: unsafeOvensDir });
+    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(customRepoRoot, root, safeId, { unsafe: unsafeOvensDir });
     ovenRoot = resolveOvenPackageDir(realpathSync(path));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
@@ -440,8 +443,8 @@ function readOven(root, id, builtIn) {
   }
 }
 
-function ovensIn(root, builtIn) {
-  if (!builtIn) assertCustomOvensDir(umbrellaRoot, root, { unsafe: unsafeOvensDir });
+function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
+  if (!builtIn) assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
   let entries;
   try {
     entries = readdirSync(root, { withFileTypes: true });
@@ -454,7 +457,7 @@ function ovensIn(root, builtIn) {
     .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
     .map((id) => {
       try {
-        return readOven(root, id, builtIn);
+        return readOven(root, id, builtIn, customRepoRoot);
       } catch (error) {
         console.warn(`Ignoring malformed Oven ${id}: ${error.message}`);
         return null;
@@ -464,17 +467,38 @@ function ovensIn(root, builtIn) {
 }
 
 function discoverOvens() {
-  const byId = new Map();
-  for (const oven of ovensIn(builtInOvensDir, true)) byId.set(oven.id, oven);
-  for (const oven of ovensIn(customOvensDir, false)) {
-    if (!byId.get(oven.id)?.builtIn) byId.set(oven.id, oven);
+  const ovens = ovensIn(builtInOvensDir, true).map((oven) => ({ ...oven, repoKey: null, repoRoot: null }));
+  for (const repo of ovenScopeRepos()) {
+    const customOvensDir = customOvensDirFor(repo.root);
+    for (const oven of ovensIn(customOvensDir, false, repo.root)) {
+      ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
+    }
   }
-  return [...byId.values()].sort((left, right) => Number(right.builtIn) - Number(left.builtIn) || left.name.localeCompare(right.name));
+  return ovens.sort((left, right) => Number(right.builtIn) - Number(left.builtIn)
+    || left.name.localeCompare(right.name) || String(left.repoKey).localeCompare(String(right.repoKey)));
 }
 
-function findOven(id) {
+function customOvensDirFor(repoRoot) {
+  return resolve(repoRoot) === launchRepoRoot ? launchCustomOvensDir : containedJoin(repoRoot, "ovens");
+}
+
+function selectedRepoKey(url) {
+  const repoKeys = url.searchParams.getAll("repoKey");
+  if (repoKeys.length > 1) throw Object.assign(new Error("repoKey must be supplied at most once"), { status: 400 });
+  return repoKeys[0] ?? null;
+}
+
+function findOven(id, selectedKey = null) {
   const safeId = ovenId(id);
-  return readOven(builtInOvensDir, safeId, true) ?? readOven(customOvensDir, safeId, false);
+  if (selectedKey === null) {
+    const oven = readOven(builtInOvensDir, safeId, true);
+    if (oven) return { ...oven, repoKey: null, repoRoot: null };
+    const launchOven = readOven(launchCustomOvensDir, safeId, false, launchRepoRoot);
+    return launchOven ? { ...launchOven, repoKey: repoKey(launchRepoRoot), repoRoot: launchRepoRoot } : null;
+  }
+  const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
+  const oven = repo ? readOven(customOvensDirFor(repo.root), safeId, false, repo.root) : null;
+  return oven ? { ...oven, repoKey: repo.repoKey, repoRoot: repo.root } : null;
 }
 
 function ovenSummary(oven) {
@@ -483,6 +507,7 @@ function ovenSummary(oven) {
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
+    repoKey: oven.repoKey,
     ovenRevision: oven.ovenRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
     detail: {
@@ -493,29 +518,53 @@ function ovenSummary(oven) {
   };
 }
 
-function createOven(value) {
+function assertOvenInput(value) {
   assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
-  const id = ovenId(value.id);
-  if (findOven(id)) throw new Error(`Oven ${id} already exists.`);
-  const name = boundedText(value.name, "Oven name", 80);
-  let instructions = boundedText(value.instructions, "Markdown instructions", 65536);
+}
+
+function createOven(value) {
+  const { repoKey: targetRepoKey, repoRoot: targetRepoRoot, ...ovenValue } = value;
+  assertOvenInput(ovenValue);
+  const hasRepoKey = targetRepoKey !== undefined;
+  const hasRepoRoot = targetRepoRoot !== undefined;
+  if (hasRepoKey && hasRepoRoot) throw new Error("Specify repoKey or repoRoot, not both.");
+  const repo = hasRepoKey
+    ? discoveredRepos().find((entry) => entry.repoKey === boundedText(targetRepoKey, "Repository key", 64))
+    : hasRepoRoot
+      ? discoveredRepos().find((entry) => entry.root === resolve(boundedText(targetRepoRoot, "Repository", 4096)))
+      : { root: launchRepoRoot, repoKey: repoKey(launchRepoRoot) };
+  if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
+  const customOvensDir = customOvensDirFor(repo.root);
+  const id = ovenId(ovenValue.id);
+  if (readOven(builtInOvensDir, id, true) || readOven(customOvensDir, id, false, repo.root)) {
+    throw new Error(`Oven ${id} already exists.`);
+  }
+  const name = boundedText(ovenValue.name, "Oven name", 80);
+  let instructions = boundedText(ovenValue.instructions, "Markdown instructions", 65536);
   const instructionLines = instructions.split(/\r?\n/u);
   const titleLine = instructionLines.findIndex((line) => /^#\s+\S/u.test(line.trim()));
   if (titleLine === -1) instructionLines.unshift(`# ${name}`, "");
   else instructionLines[titleLine] = `# ${name}`;
   instructions = instructionLines.join("\n");
-  const detail = normalizeOvenDetail(value.detail);
+  const detail = normalizeOvenDetail(ovenValue.detail);
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
   const files = serializeOvenPackage(ovenPackage);
-  assertCustomOvenPath(umbrellaRoot, customOvensDir, id, { unsafe: unsafeOvensDir });
+  assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
   const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, files, {
-    assertPath: () => assertCustomOvenPath(umbrellaRoot, customOvensDir, id, { unsafe: unsafeOvensDir }),
+    assertPath: () => assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir }),
   }));
-  return { ...readOven(customOvensDir, id, false), path };
+  return { ...readOven(customOvensDir, id, false, repo.root), repoKey: repo.repoKey, repoRoot: repo.root, path };
 }
 
 function discoveredRepos() {
   return candidateRepoRoots().map((root) => ({ name: basename(root), root, repoKey: repoKey(realpathSync(root)) }));
+}
+
+function ovenScopeRepos() {
+  const repos = new Map(discoveredRepos().map((repo) => [repo.repoKey, repo]));
+  const launchRepo = { name: basename(launchRepoRoot), root: launchRepoRoot, repoKey: repoKey(launchRepoRoot) };
+  if (!repos.has(launchRepo.repoKey)) repos.set(launchRepo.repoKey, launchRepo);
+  return [...repos.values()];
 }
 
 function repoMapSelection(url) {
@@ -560,11 +609,12 @@ function assertSnapshotSize(contents, maxBytes, label) {
 function createBurnRun(value) {
   assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
-  const oven = discoverOvens().find((entry) => entry.id === selectedOvenId);
-  if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
   const repo = discoveredRepos().find((entry) => entry.root === requestedRoot);
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
+  const oven = readOven(builtInOvensDir, selectedOvenId, true)
+    ?? readOven(customOvensDirFor(repo.root), selectedOvenId, false, repo.root);
+  if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const title = boundedText(value.title, "Run title", 120);
   const objective = boundedText(value.objective, "Run objective", 12000);
   const id = runId();
@@ -1028,7 +1078,7 @@ const server = createServer(async (req, res) => {
     const ovenRoute = url.pathname.match(/^\/api\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);
     if (ovenRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      const oven = findOven(ovenRoute[1]);
+      const oven = findOven(ovenRoute[1], selectedRepoKey(url));
       if (!oven) return json(res, 404, { error: "oven not found" });
       json(res, 200, { oven });
       return;
@@ -1037,14 +1087,12 @@ const server = createServer(async (req, res) => {
     if (ovenDataRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const id = ovenDataRoute[1];
-      const handler = getOvenHandler(id);
+      const requestedRepoKey = selectedRepoKey(url);
+      const oven = findOven(id, requestedRepoKey);
+      const handler = oven?.builtIn || !oven ? getOvenHandler(id) : null;
       const ovenDataBindings = resolvedOvenDataBindings();
       const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
-      let oven = null;
-      if (!handler) {
-        oven = discoverOvens().find((entry) => entry.id === id) ?? null;
-        if (!oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
-      }
+      if (!handler && !oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
       if (!binding) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
         const active = handler ?? genericJsonHandler;
@@ -1090,7 +1138,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     const ovenViewRoute = url.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-    const isKnownOvenView = Boolean(ovenViewRoute && discoverOvens().some((oven) => oven.id === ovenViewRoute[1]));
+    const isKnownOvenView = Boolean(ovenViewRoute && findOven(ovenViewRoute[1], selectedRepoKey(url)));
     if (["/", "/index.html", "/ovens/new", "/runs/new"].includes(url.pathname) || isKnownOvenView || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);

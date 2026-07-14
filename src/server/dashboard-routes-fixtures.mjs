@@ -10,7 +10,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
 async function withServer({
   withBurnlist, burnlists, ovenData = [], ovens = [], runs = [], scanRoots,
-  launchCwd = ".", ovensRoot = ".", setup,
+  launchCwd = ".", ovensRoot = ".", setup, serverArgs = [],
 }, callback) {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-dashboard-routes-"));
   const homeRoot = join(fixtureRoot, "home");
@@ -49,7 +49,7 @@ async function withServer({
       await writeFile(storePath, JSON.stringify({ schemaVersion: 1, bindings }));
     }));
     if (setup) await setup({ fixtureRoot, homeRoot });
-    await Promise.all(ovens.map((oven) => writeOvenFixture(join(fixtureRoot, ovensRoot), oven)));
+    await Promise.all(ovens.map((oven) => writeOvenFixture(join(fixtureRoot, oven.repoPath ?? ovensRoot), oven)));
     await Promise.all(runs.map((run) => writeRunFixture(fixtureRoot, run)));
     await mkdir(join(fixtureRoot, launchCwd), { recursive: true });
     const port = await availablePort();
@@ -63,6 +63,7 @@ async function withServer({
       "--scan-root", rootPaths.map((path) => join(fixtureRoot, path)).join(","),
       "--state-dir", join(fixtureRoot, "state"),
       ...(ovenDataBindings ? ["--oven-data", ovenDataBindings] : []),
+      ...serverArgs,
     ], {
       cwd: join(fixtureRoot, launchCwd),
       env: { ...process.env, HOME: homeRoot },

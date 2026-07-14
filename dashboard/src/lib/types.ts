@@ -60,5 +60,15 @@ export type Project = {
   ambiguousIds: string[];
 };
 
+export type OvenSummary = {
+  id: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  repoKey: string | null;
+};
+
+export type RepoSummary = { name: string; root: string; repoKey: string };
+
 export type SelectedBurnlist = { repo?: string; repoKey?: string; id?: string; plan?: string };
 export type ProgressData = ChecklistProgressData;
