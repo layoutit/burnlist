@@ -31,6 +31,32 @@ function writePlan(root, lifecycle, id) {
   return { dir, planPath };
 }
 
+function writeClosablePlan(root, lifecycle, id) {
+  const result = writePlan(root, lifecycle, id);
+  writeFileSync(result.planPath, [
+    "# Test Burnlist",
+    "",
+    "## Active Checklist",
+    "",
+    "## Completed",
+    "- B1 | 2026-07-13T12:00:00+00:00 | Test staged burn",
+    "",
+  ].join("\n"));
+  return result;
+}
+
+function captureConsole(callback) {
+  const original = console.log;
+  let output = "";
+  console.log = (message) => { output += `${message}\n`; };
+  try {
+    const result = callback();
+    return { output, result };
+  } finally {
+    console.log = original;
+  }
+}
+
 test("withLock takes over a dead owner and preserves a replacement owner on release", () => {
   const context = fixture();
   try {
@@ -187,16 +213,7 @@ test("close leaves its source unchanged when a populated target prevents the ren
   const context = fixture();
   try {
     const id = "260713-001";
-    const { planPath } = writePlan(context.root, "inprogress", id);
-    writeFileSync(planPath, [
-      "# Test Burnlist",
-      "",
-      "## Active Checklist",
-      "",
-      "## Completed",
-      "- B1 | 2026-07-13T12:00:00+00:00 | Test staged burn",
-      "",
-    ].join("\n"));
+    const { planPath } = writeClosablePlan(context.root, "inprogress", id);
     const before = readFileSync(planPath, "utf8");
     const target = folder(context.root, "completed", id);
     mkdirSync(target, { recursive: true });
@@ -209,24 +226,55 @@ test("close leaves its source unchanged when a populated target prevents the ren
   }
 });
 
-test("close leaves its source unchanged when an empty target already exists", () => {
+test("close reclaims an empty stale target reservation", () => {
   const context = fixture();
   try {
     const id = "260713-001";
-    const { planPath } = writePlan(context.root, "inprogress", id);
-    writeFileSync(planPath, [
-      "# Test Burnlist",
-      "",
-      "## Active Checklist",
-      "",
-      "## Completed",
-      "- B1 | 2026-07-13T12:00:00+00:00 | Test staged burn",
-      "",
-    ].join("\n"));
-    const before = readFileSync(planPath, "utf8");
+    writeClosablePlan(context.root, "inprogress", id);
     mkdirSync(folder(context.root, "completed", id), { recursive: true });
-    assert.throws(() => closeLifecycle(context.root, id), /260713-001: target exists/u);
-    assert.equal(readFileSync(planPath, "utf8"), before);
+    closeLifecycle(context.root, id);
+    assert.equal(existsSync(folder(context.root, "inprogress", id)), false);
+    assert.equal(readFileSync(join(folder(context.root, "completed", id), "burnlist.md"), "utf8").includes("## Completion Digest"), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("close repairs a digest-less burnlist already in completed", () => {
+  const context = fixture();
+  try {
+    const id = "260713-001";
+    const { planPath } = writeClosablePlan(context.root, "completed", id);
+    const { output } = captureConsole(() => closeLifecycle(context.root, id));
+    assert.match(output, /260713-001 completed \(digest repaired\)/u);
+    assert.equal(readFileSync(planPath, "utf8").includes("## Completion Digest"), true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("close reports an already-completed burnlist with a digest", () => {
+  const context = fixture();
+  try {
+    const id = "260713-001";
+    const { planPath } = writeClosablePlan(context.root, "completed", id);
+    writeFileSync(planPath, `${readFileSync(planPath, "utf8")}\n## Completion Digest\n- Complete\n`);
+    const { output } = captureConsole(() => closeLifecycle(context.root, id));
+    assert.match(output, /260713-001 already completed/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("close normally moves an in-progress burnlist before writing its digest", () => {
+  const context = fixture();
+  try {
+    const id = "260713-001";
+    writeClosablePlan(context.root, "inprogress", id);
+    const { output } = captureConsole(() => closeLifecycle(context.root, id));
+    assert.match(output, /260713-001  inprogress -> completed/u);
+    assert.equal(existsSync(folder(context.root, "inprogress", id)), false);
+    assert.equal(readFileSync(join(folder(context.root, "completed", id), "burnlist.md"), "utf8").includes("## Completion Digest"), true);
   } finally {
     context.cleanup();
   }

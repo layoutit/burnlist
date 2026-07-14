@@ -193,14 +193,15 @@ test("lifecycle moves reject a populated target folder", () => {
   }
 });
 
-test("lifecycle moves reject an empty target folder", () => {
+test("lifecycle moves reclaim an empty target folder", () => {
   const context = fixture();
   try {
     const result = newPlan(context);
     addActiveItem(result.planPath, context.repo);
     mkdirSync(lifecycleFolder(context.repo, "ready", result.id), { recursive: true });
-    assert.match(runFailure(context, "ready", result.id), /target exists/u);
-    assert.equal(existsSync(lifecycleFolder(context.repo, "draft", result.id)), true);
+    assert.match(run(context, "ready", result.id), new RegExp(`${result.id}  draft -> ready`));
+    assert.equal(existsSync(lifecycleFolder(context.repo, "draft", result.id)), false);
+    assert.equal(existsSync(lifecycleFolder(context.repo, "ready", result.id)), true);
   } finally {
     context.cleanup();
   }

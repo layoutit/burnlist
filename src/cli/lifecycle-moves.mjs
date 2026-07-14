@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { linkSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -131,6 +131,40 @@ function appendCompletionDigestIfMissing(plan) {
   return true;
 }
 
+function targetExists(id) {
+  return new Error(`${id}: target exists`);
+}
+
+function reserveTarget(targetDir, id) {
+  try {
+    mkdirSync(targetDir);
+    return;
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+  }
+  let entries;
+  try {
+    entries = readdirSync(targetDir);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw targetExists(id);
+  }
+  if (entries?.length) throw targetExists(id);
+  if (entries) {
+    try {
+      rmdirSync(targetDir);
+    } catch (error) {
+      if (error?.code !== "ENOENT" && error?.code !== "ENOTEMPTY") throw error;
+      if (error?.code === "ENOTEMPTY") throw targetExists(id);
+    }
+  }
+  try {
+    mkdirSync(targetDir);
+  } catch (error) {
+    if (error?.code === "EEXIST") throw targetExists(id);
+    throw error;
+  }
+}
+
 export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
   assertValidBurnlistId(id);
   const sourceLifecycle = LIFECYCLES.find((lifecycle) => lifecycle.folder === from);
@@ -146,17 +180,12 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
     validateOrThrow(plan);
     gate(plan);
     mkdirSync(targetRoot, { recursive: true });
-    try {
-      mkdirSync(targetDir);
-    } catch (error) {
-      if (error?.code === "EEXIST") throw new Error(`${id}: target exists`);
-      throw error;
-    }
+    reserveTarget(targetDir, id);
     try {
       renameSync(sourceDir, targetDir);
     } catch (error) {
       rmSync(targetDir, { recursive: true, force: true });
-      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw new Error(`${id}: target exists`);
+      if (error?.code === "EEXIST" || error?.code === "ENOTEMPTY") throw targetExists(id);
       throw error;
     }
     try {
@@ -193,6 +222,16 @@ export function startLifecycle(repoRoot, id) {
 }
 
 export function closeLifecycle(repoRoot, id) {
+  assertValidBurnlistId(id);
+  const inprogressDir = join(repoRoot, "notes", "burnlists", "inprogress", id);
+  const completedDir = join(repoRoot, "notes", "burnlists", "completed", id);
+  if (!safeStat(inprogressDir)?.isDirectory() && safeStat(completedDir)?.isDirectory()) {
+    return withLock(completedDir, () => {
+      const repaired = appendCompletionDigestIfMissing(parsePlan(join(completedDir, "burnlist.md")));
+      console.log(repaired ? `${id} completed (digest repaired)` : `${id} already completed`);
+      return completedDir;
+    });
+  }
   return moveLifecycle({
     repoRoot,
     id,
