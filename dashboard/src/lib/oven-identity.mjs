@@ -7,7 +7,7 @@ export function ovenActionUrl({ id, repoKey }) {
   return repoKey === null ? path : `${path}?repoKey=${encodeURIComponent(repoKey)}`;
 }
 
-export function ovenTargetRepoRoot(oven, repos, fallback) {
-  if (oven.builtIn) return fallback;
-  return repos.find((repo) => repo.repoKey === oven.repoKey)?.root ?? fallback;
+export function ovenTargetRepoRoot(oven, repos) {
+  if (oven.repoKey === null) return null;
+  return repos.find((repo) => repo.repoKey === oven.repoKey)?.root ?? null;
 }

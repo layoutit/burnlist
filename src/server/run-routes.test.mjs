@@ -42,11 +42,12 @@ test("Burn runs read legacy v3 revisions and write/read v4 revisions", { timeout
         "content-type": "application/json",
         "x-burnlist-token": ovens.writeToken,
       },
-      body: JSON.stringify({ ovenId: "checklist", repoRoot, title: "Current run", objective: "Verify revision pinning." }),
+      body: JSON.stringify({ ovenId: "checklist", ovenRepoKey: null, repoRoot, title: "Current run", objective: "Verify revision pinning." }),
     });
     assert.equal(created.status, 201);
     const current = JSON.parse(created.body).run;
     assert.equal(current.schemaVersion, 4);
+    assert.equal(current.ovenRepoKey, null);
     assert.match(current.ovenRevision, /^o1-sha256:[a-f0-9]{64}$/u);
     const reread = JSON.parse((await httpGet(baseUrl, `/api/runs/${current.id}`)).body).run;
     assert.equal(reread.ovenRevision, current.ovenRevision);

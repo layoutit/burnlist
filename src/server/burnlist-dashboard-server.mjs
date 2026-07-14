@@ -252,7 +252,7 @@ function candidateRepoRoots() {
 }
 
 function resolvedOvenDataBindings() {
-  return effectiveBindings({ repoRoots: candidateRepoRoots(), override: ovenDataOverrides });
+  return effectiveBindings({ repoRoots: ovenScopeRepos().map((repo) => repo.root), override: ovenDataOverrides });
 }
 
 function selectedOvenDataBinding(ovenDataBindings, id, url) {
@@ -493,9 +493,7 @@ function findOven(id, selectedKey = null) {
   const safeId = ovenId(id);
   if (selectedKey === null) {
     const oven = readOven(builtInOvensDir, safeId, true);
-    if (oven) return { ...oven, repoKey: null, repoRoot: null };
-    const launchOven = readOven(launchCustomOvensDir, safeId, false, launchRepoRoot);
-    return launchOven ? { ...launchOven, repoKey: repoKey(launchRepoRoot), repoRoot: launchRepoRoot } : null;
+    return oven ? { ...oven, repoKey: null, repoRoot: null } : null;
   }
   const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
   const oven = repo ? readOven(customOvensDirFor(repo.root), safeId, false, repo.root) : null;
@@ -530,9 +528,9 @@ function createOven(value) {
   const hasRepoRoot = targetRepoRoot !== undefined;
   if (hasRepoKey && hasRepoRoot) throw new Error("Specify repoKey or repoRoot, not both.");
   const repo = hasRepoKey
-    ? discoveredRepos().find((entry) => entry.repoKey === boundedText(targetRepoKey, "Repository key", 64))
+    ? ovenScopeRepos().find((entry) => entry.repoKey === boundedText(targetRepoKey, "Repository key", 64))
     : hasRepoRoot
-      ? discoveredRepos().find((entry) => entry.root === resolve(boundedText(targetRepoRoot, "Repository", 4096)))
+      ? ovenScopeRepos().find((entry) => entry.root === resolve(boundedText(targetRepoRoot, "Repository", 4096)))
       : { root: launchRepoRoot, repoKey: repoKey(launchRepoRoot) };
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
   const customOvensDir = customOvensDirFor(repo.root);
@@ -612,13 +610,18 @@ function assertSnapshotSize(contents, maxBytes, label) {
 }
 
 function createBurnRun(value) {
-  assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
+  assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
+  if (!Object.hasOwn(value, "ovenRepoKey") || (value.ovenRepoKey !== null && typeof value.ovenRepoKey !== "string")) {
+    throw new Error("Burn run ovenRepoKey must be null or a repository key.");
+  }
+  const selectedOvenRepoKey = value.ovenRepoKey === null
+    ? null
+    : boundedText(value.ovenRepoKey, "Oven repository key", 64);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
-  const repo = discoveredRepos().find((entry) => entry.root === requestedRoot);
+  const repo = ovenScopeRepos().find((entry) => entry.root === requestedRoot);
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
-  const oven = readOven(builtInOvensDir, selectedOvenId, true)
-    ?? readOven(customOvensDirFor(repo.root), selectedOvenId, false, repo.root);
+  const oven = findOven(selectedOvenId, selectedOvenRepoKey);
   if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const title = boundedText(value.title, "Run title", 120);
   const objective = boundedText(value.objective, "Run objective", 12000);
@@ -628,6 +631,7 @@ function createBurnRun(value) {
     schemaVersion: 4,
     id,
     ovenId: selectedOvenId,
+    ovenRepoKey: selectedOvenRepoKey,
     ovenRevision: oven.ovenRevision,
     repoRoot: repo.root,
     repo: repo.name,
@@ -670,6 +674,7 @@ function readBurnRun(id) {
       "schemaVersion",
       "id",
       "ovenId",
+      "ovenRepoKey",
       "ovenRevision",
       "repoRoot",
       "repo",
@@ -693,6 +698,9 @@ function readBurnRun(id) {
     });
     const snapshotRevision = ovenRevision(ovenPackage);
     if (record.schemaVersion === 4) {
+      if (Object.hasOwn(record, "ovenRepoKey") && record.ovenRepoKey !== null && typeof record.ovenRepoKey !== "string") {
+        throw new Error("Burn run ovenRepoKey must be null or a repository key.");
+      }
       const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
       if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
         throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
@@ -1124,7 +1132,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/repos") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { repos: discoveredRepos() });
+      json(res, 200, { repos: ovenScopeRepos() });
       return;
     }
     if (url.pathname === "/api/runs") {

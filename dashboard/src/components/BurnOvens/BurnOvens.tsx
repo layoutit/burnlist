@@ -800,7 +800,13 @@ export function RunBurnPage() {
           "content-type": "application/json",
           "x-burnlist-token": writeToken,
         },
-        body: JSON.stringify({ ovenId: oven.id, repoRoot: ovenTargetRepoRoot(oven, repos, repoRoot), title, objective }),
+        body: JSON.stringify({
+          ovenId: oven.id,
+          ovenRepoKey: oven.repoKey,
+          repoRoot: ovenTargetRepoRoot(oven, repos) ?? repoRoot,
+          title,
+          objective,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -844,7 +850,8 @@ export function RunBurnPage() {
                 const oven = ovens.find((candidate) => ovenCatalogKey(candidate) === event.target.value);
                 setOvenId(oven?.id || "");
                 setOvenRepoKey(oven?.repoKey ?? null);
-                if (oven) setRepoRoot(ovenTargetRepoRoot(oven, repos, repoRoot));
+                const targetRepoRoot = oven ? ovenTargetRepoRoot(oven, repos) : null;
+                if (targetRepoRoot) setRepoRoot(targetRepoRoot);
               }}
               required
               value={ovenCatalogKey({ id: ovenId, repoKey: ovenRepoKey })}

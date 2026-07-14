@@ -51,9 +51,9 @@ function excludePath(dir) {
   return resolve(dir, result.stdout.trim());
 }
 
-function isIgnoreLine(line) {
+function isIgnoreLine(line, ignoredLines = IGNORE_LINES) {
   const trimmed = line.trim();
-  return IGNORE_LINES.some((ignore) => trimmed === ignore || trimmed === ignore.slice(1));
+  return ignoredLines.some((ignore) => trimmed === ignore || trimmed === ignore.slice(1));
 }
 
 function readExclude(path) {
@@ -75,10 +75,10 @@ function appendIgnoreLines(path, lines) {
   return true;
 }
 
-function removeIgnoreLines(path) {
+function removeIgnoreLines(path, ignoredLines) {
   const content = readExclude(path);
   const lines = content.split(/\r?\n/u);
-  const kept = lines.filter((line) => !isIgnoreLine(line));
+  const kept = lines.filter((line) => !isIgnoreLine(line, ignoredLines));
   if (kept.length === lines.length) return false;
   atomicWrite(path, kept.join("\n"));
   return true;
@@ -100,7 +100,8 @@ function configureIgnore(dir, track) {
   const path = excludePath(dir);
   if (!path) return "not a git repository";
   if (track) {
-    removeIgnoreLines(path);
+    removeIgnoreLines(path, ["/notes/burnlists/"]);
+    appendIgnoreLines(path, ["/.local/"]);
     return "tracked";
   }
   const missing = IGNORE_LINES.filter((line) => gitProbe(dir, ["check-ignore", "-q", "--", line.slice(1)]).status !== 0);

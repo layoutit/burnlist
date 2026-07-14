@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -100,7 +100,7 @@ test("init creates lifecycle folders, ignores them, and registers the repo", () 
   }
 });
 
-test("init --track writes gitkeep files and removes the local ignore", () => {
+test("init --track writes gitkeep files, tracks burnlists, and keeps local Oven storage ignored", () => {
   const { home, cleanup } = fixture();
   const repo = gitRepo(home, "tracked-repo");
   try {
@@ -110,7 +110,20 @@ test("init --track writes gitkeep files and removes the local ignore", () => {
       assert.equal(readFileSync(join(repo, "notes", "burnlists", folder, ".gitkeep"), "utf8"), "");
     }
     assert.doesNotMatch(exclude(repo), /^\/?notes\/burnlists\/$/mu);
-    assert.doesNotMatch(exclude(repo), /^\/?\.local\/$/mu);
+    assert.match(exclude(repo), /^\/?\.local\/$/mu);
+    const packagePath = join(repo, "oven.json");
+    writeFileSync(packagePath, JSON.stringify({
+      instructions: "# Tracked Oven\n\nKeep Oven state local.",
+      detail: {
+        version: 1, columns: 2, rows: 2, rowHeight: 48,
+        cells: [{
+          id: "summary", title: "Summary", description: "Current state.", widget: "metric", source: "/summary", format: "plain",
+          column: 1, row: 1, columnSpan: 2, rowSpan: 1,
+        }],
+      },
+    }));
+    run(home, "oven", "create", "tracked-oven", "--package", packagePath, "--repo", repo);
+    assert.equal(existsSync(join(repo, ".local", "burnlist", "ovens", "tracked-oven", "current")), true);
   } finally {
     cleanup();
   }

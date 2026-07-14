@@ -244,7 +244,9 @@ assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-da
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
 assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
+assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");

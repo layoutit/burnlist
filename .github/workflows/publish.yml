@@ -49,6 +49,12 @@ jobs:
             exit 1
           fi
 
+      - name: Refresh current main
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout --detach origin/main
+
       - name: Install dependencies
         run: npm ci
 
@@ -115,7 +121,7 @@ jobs:
           fi
           git cat-file -e "${artifact_commit}^{commit}"
           git merge-base --is-ancestor "$artifact_commit" origin/main
-          tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}")"
+          tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" "refs/tags/${VERSION}^{}")"
           tag_target="$(awk -v ref="refs/tags/${VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
           if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$artifact_commit" ]]; then
             echo "Remote tag ${VERSION} does not point to npm artifact ${artifact_commit}."
@@ -206,7 +212,7 @@ jobs:
         run: |
           set -euo pipefail
           git_error="$(mktemp)"
-          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" 2>"$git_error")"; then
+          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${VERSION}" "refs/tags/${VERSION}^{}" 2>"$git_error")"; then
             tag_target="$(awk -v ref="refs/tags/${VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
             if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$RELEASE_COMMIT" ]]; then
               echo "Remote tag ${VERSION} does not point to release commit ${RELEASE_COMMIT}."
@@ -272,7 +278,7 @@ jobs:
         run: |
           set -euo pipefail
           git_error="$(mktemp)"
-          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${NEXT_VERSION}" 2>"$git_error")"; then
+          if tag_refs="$(git ls-remote --exit-code --tags origin "refs/tags/${NEXT_VERSION}" "refs/tags/${NEXT_VERSION}^{}" 2>"$git_error")"; then
             tag_target="$(awk -v ref="refs/tags/${NEXT_VERSION}" '$2 == ref { direct = $1 } $2 == ref "^{}" { peeled = $1 } END { print peeled ? peeled : direct }' <<<"$tag_refs")"
             if [[ ! "$tag_target" =~ ^[0-9a-f]{40}$ || "$tag_target" != "$ARTIFACT_COMMIT" ]]; then
               echo "Remote tag ${NEXT_VERSION} does not point to npm artifact ${ARTIFACT_COMMIT}."

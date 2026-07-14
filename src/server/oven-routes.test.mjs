@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import test from "node:test";
+import { repoKey } from "./registry.mjs";
 import { detailFixture, httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
 
 test("POST /api/ovens refuses an unignored Git repository without writing an Oven", { timeout: 20_000 }, async () => {
@@ -59,7 +60,7 @@ test("registered Oven routes and dashboard entries isolate malformed custom Oven
   );
   await withServer({
     withBurnlist: true,
-    ovens: [{ id: "malformed-oven", ovenJson: "{" }],
+    ovens: [{ id: "malformed-oven", ovenJson: "{", repoPath: "fixture-repo" }],
     ovenData: [
       { id: "checklist", payload: { source: "generic" } },
       { id: "differential-testing", payload: differentialTestingPayload },
@@ -80,11 +81,12 @@ test("registered Oven routes and dashboard entries isolate malformed custom Oven
     const entries = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
     assert.equal(entries.some((entry) => entry.ovenId === "checklist"), true);
     assert.equal(entries.some((entry) => entry.ovenId === "differential-testing"), true);
+    const fixtureKey = entries.find((entry) => entry.ovenId === "checklist").repoKey;
 
     const ovens = await httpGet(baseUrl, "/api/ovens");
     assert.equal(ovens.status, 200);
     assert.equal(JSON.parse(ovens.body).ovens.some((oven) => oven.id === "checklist"), true);
-    const malformed = await httpGet(baseUrl, "/api/ovens/malformed-oven");
+    const malformed = await httpGet(baseUrl, `/api/ovens/malformed-oven?repoKey=${fixtureKey}`);
     assert.equal(malformed.status, 400);
     assert.match(JSON.parse(malformed.body).error, /lineage sidecar is invalid/u);
   });
@@ -103,14 +105,18 @@ test("a discovered custom Oven with a data binding is served as unvalidated JSON
     ovens: [{ id: "custom-oven" }],
     ovenData: [{ id: "custom-oven", payload: { source: "custom" } }],
   }, async ({ baseUrl }) => {
-    const response = await httpGet(baseUrl, "/api/oven-data/custom-oven");
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const oven = catalog.ovens.find((entry) => entry.id === "custom-oven");
+    assert.ok(oven);
+    assert.equal((await httpGet(baseUrl, "/api/oven-data/custom-oven")).status, 404);
+    const response = await httpGet(baseUrl, `/api/oven-data/custom-oven?repoKey=${oven.repoKey}`);
     assert.equal(response.status, 200);
     assert.deepEqual(JSON.parse(response.body).payload, { source: "custom" });
     assert.equal(JSON.parse(response.body).validated, false);
   });
 });
 
-test("a launched repository custom Oven is listed and served without burnlists", { timeout: 20_000 }, async () => {
+test("a launched repository custom Oven is listed and requires its umbrella repoKey", { timeout: 20_000 }, async () => {
   await withServer({ ovens: [{ id: "launch-only" }] }, async ({ baseUrl }) => {
     const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
     const launchOven = catalog.find((oven) => oven.id === "launch-only");
@@ -118,16 +124,17 @@ test("a launched repository custom Oven is listed and served without burnlists",
     assert.notEqual(launchOven.repoKey, null);
 
     const response = await httpGet(baseUrl, "/api/ovens/launch-only");
-    assert.equal(response.status, 200);
-    assert.equal(JSON.parse(response.body).oven.repoKey, launchOven.repoKey);
+    assert.equal(response.status, 404);
     assert.equal((await httpGet(baseUrl, `/api/ovens/launch-only?repoKey=${launchOven.repoKey}`)).status, 200);
+    const repos = JSON.parse((await httpGet(baseUrl, "/api/repos")).body).repos;
+    assert.equal(repos.some((repo) => repo.repoKey === launchOven.repoKey), true);
   });
 });
 
 test("custom Ovens are identified by repository while built-ins remain global", { timeout: 20_000 }, async () => {
   await withServer({
-    burnlists: [{ repoPath: "a" }, { repoPath: "b" }],
-    scanRoots: ["a", "b"],
+    burnlists: [{ repoPath: "a" }, { repoPath: "b" }, { repoPath: "c" }],
+    scanRoots: ["a", "b", "c"],
     launchCwd: "a",
     ovens: [
       { id: "shared", repoPath: "a", instructions: "# Oven A\n\nA definition.\n" },
@@ -151,10 +158,9 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     assert.equal(firstOven.status, 200);
     assert.equal(secondOven.status, 200);
     assert.notEqual(JSON.parse(firstOven.body).oven.instructions, JSON.parse(secondOven.body).oven.instructions);
-    // A bare request (no repoKey) resolves the launch/umbrella repo's custom oven (launchCwd = "a").
+    // Custom ovens never resolve without their own repository identity.
     const bare = await httpGet(baseUrl, "/api/ovens/shared");
-    assert.equal(bare.status, 200);
-    assert.match(JSON.parse(bare.body).oven.instructions, /A definition\./u);
+    assert.equal(bare.status, 404);
     assert.equal((await httpGet(baseUrl, "/api/ovens/shared?repoKey=missing")).status, 404);
 
     const firstData = await httpGet(baseUrl, `/api/oven-data/shared?repoKey=${first.repoKey}`);
@@ -162,8 +168,10 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     assert.notEqual(JSON.parse(firstData.body).payload.source, JSON.parse(secondData.body).payload.source);
 
     const repos = JSON.parse((await httpGet(baseUrl, "/api/repos")).body).repos;
-    const b = repos.find((repo) => repo.repoKey === second.repoKey);
+    const b = repos.find((repo) => repo.name === "b");
+    const c = repos.find((repo) => repo.name === "c");
     assert.ok(b);
+    assert.ok(c);
     const authored = await httpRequest(baseUrl, "/api/ovens", {
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
@@ -177,7 +185,7 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const created = await httpRequest(baseUrl, "/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
-      body: JSON.stringify({ ovenId: "shared", repoRoot: b.root, title: "B run", objective: "Use B's Oven." }),
+      body: JSON.stringify({ ovenId: "shared", ovenRepoKey: b.repoKey, repoRoot: b.root, title: "B run", objective: "Use B's Oven." }),
     });
     assert.equal(created.status, 201);
     const run = JSON.parse(created.body).run;
@@ -185,6 +193,13 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const runDirectory = run.path;
     const snapshot = await readFile(`${runDirectory}/instructions.md`, "utf8");
     assert.match(snapshot, /Oven B/u);
+    const wrongOvenRepo = await httpRequest(baseUrl, "/api/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
+      body: JSON.stringify({ ovenId: "shared", ovenRepoKey: c.repoKey, repoRoot: b.root, title: "Rejected run", objective: "Reject a missing Oven." }),
+    });
+    assert.equal(wrongOvenRepo.status, 400);
+    assert.match(JSON.parse(wrongOvenRepo.body).error, /Unknown oven shared/u);
   });
 });
 
@@ -311,16 +326,24 @@ test("Oven discovery exposes optional lineage, skips malformed catalog entries, 
       { id: "standalone-oven" },
     ],
   }, async ({ baseUrl }) => {
-    const forked = JSON.parse((await httpGet(baseUrl, "/api/ovens/forked-oven")).body).oven;
-    const standalone = JSON.parse((await httpGet(baseUrl, "/api/ovens/standalone-oven")).body).oven;
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
+    const forkedKey = catalog.find((oven) => oven.id === "forked-oven").repoKey;
+    const standaloneKey = catalog.find((oven) => oven.id === "standalone-oven").repoKey;
+    const forked = JSON.parse((await httpGet(baseUrl, `/api/ovens/forked-oven?repoKey=${forkedKey}`)).body).oven;
+    const standalone = JSON.parse((await httpGet(baseUrl, `/api/ovens/standalone-oven?repoKey=${standaloneKey}`)).body).oven;
     assert.deepEqual(forked.forkedFrom, forkedFrom);
     assert.equal(Object.hasOwn(standalone, "forkedFrom"), false);
   });
-  await withServer({ ovens: [{ id: "broken-oven", ovenJson: "{" }] }, async ({ baseUrl }) => {
+  await withServer({
+    withBurnlist: true,
+    ovens: [{ id: "broken-oven", ovenJson: "{", repoPath: "fixture-repo" }],
+  }, async ({ baseUrl }) => {
+    const brokenKey = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists
+      .find((entry) => entry.ovenId === "checklist").repoKey;
     const response = await httpGet(baseUrl, "/api/ovens");
     assert.equal(response.status, 200);
     assert.equal(JSON.parse(response.body).ovens.some((oven) => oven.id === "broken-oven"), false);
-    const direct = await httpGet(baseUrl, "/api/ovens/broken-oven");
+    const direct = await httpGet(baseUrl, `/api/ovens/broken-oven?repoKey=${brokenKey}`);
     assert.equal(direct.status, 400);
     assert.match(JSON.parse(direct.body).error, /lineage sidecar is invalid/u);
   });
@@ -359,8 +382,8 @@ test("dashboard custom Oven storage follows its umbrella root and rejects symlin
       await mkdir(outside);
       await symlink(outside, join(ovens, "escaped-oven"), "dir");
     },
-  }, async ({ baseUrl }) => {
-    const direct = await httpGet(baseUrl, "/api/ovens/escaped-oven");
+  }, async ({ baseUrl, repoRoot }) => {
+    const direct = await httpGet(baseUrl, `/api/ovens/escaped-oven?repoKey=${repoKey(realpathSync(repoRoot))}`);
     assert.equal(direct.status, 400);
     assert.match(JSON.parse(direct.body).error, /escapes/u);
   });
