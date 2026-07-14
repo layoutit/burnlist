@@ -51,21 +51,34 @@ function corruptStore(path) {
   return emptyStore();
 }
 
-export function readBindingStore(repoRoot) {
+function storedBindingStore(repoRoot) {
   const path = bindingStorePath(repoRoot);
   let text;
   try {
     text = readFileSync(path, "utf8");
   } catch (error) {
-    if (error?.code === "ENOENT") return emptyStore();
+    if (error?.code === "ENOENT") return { state: "missing", store: emptyStore() };
     throw error;
   }
   try {
     const store = JSON.parse(text);
-    return validateStore(store) ? store : corruptStore(path);
+    return validateStore(store) ? { state: "valid", store } : { state: "malformed", store: null };
   } catch {
-    return corruptStore(path);
+    return { state: "malformed", store: null };
   }
+}
+
+export function readBindingStore(repoRoot) {
+  const result = storedBindingStore(repoRoot);
+  return result.state === "malformed" ? corruptStore(bindingStorePath(repoRoot)) : result.store;
+}
+
+function mutableBindingStore(repoRoot) {
+  const result = storedBindingStore(repoRoot);
+  if (result.state === "malformed") {
+    throw new Error(`Refusing to modify malformed Oven binding store: ${bindingStorePath(repoRoot)}`);
+  }
+  return result.store;
 }
 
 function writeStore(repoRoot, store) {
@@ -87,7 +100,7 @@ export function writeBinding(repoRoot, id, logicalPath, boundAt) {
   if (typeof logicalPath !== "string" || logicalPath.length === 0) throw new Error("Oven binding path must be a non-empty string.");
   if (!isTimestamp(boundAt)) throw new Error("Oven binding timestamp must be a valid ISO timestamp.");
   return withRepoStateLock(repoRoot, () => {
-    const store = readBindingStore(repoRoot);
+    const store = mutableBindingStore(repoRoot);
     store.bindings[safeId] = { path: logicalPath, boundAt };
     writeStore(repoRoot, store);
     return { path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
@@ -97,7 +110,7 @@ export function writeBinding(repoRoot, id, logicalPath, boundAt) {
 export function removeBinding(repoRoot, id) {
   const safeId = ovenId(id);
   return withRepoStateLock(repoRoot, () => {
-    const store = readBindingStore(repoRoot);
+    const store = mutableBindingStore(repoRoot);
     if (!Object.hasOwn(store.bindings, safeId)) return false;
     delete store.bindings[safeId];
     writeStore(repoRoot, store);

@@ -20,11 +20,9 @@ function fixture() {
 function run(context, ...args) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd: context.repo, encoding: "utf8" });
 }
-
 function runFrom(cwd, ...args) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd, encoding: "utf8" });
 }
-
 function detailFixture() {
   return {
     version: 1,
@@ -83,6 +81,8 @@ function waitForBarrier(child, timeoutMs = 5_000) {
     child.on("close", (status) => { clearTimeout(timer); reject(new Error(`update ended before reaching its publish barrier: ${status}`)); });
   });
 }
+
+const childClose = (child, timeoutMs = 2_000) => new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error(`update did not close within ${timeoutMs}ms`)), timeoutMs); child.on("close", (status) => { clearTimeout(timer); resolve(status); }); });
 
 test("oven bind, bindings, and unbind persist a logical repo-local binding", () => {
   const context = fixture();
@@ -314,7 +314,7 @@ test("oven view and list read complete packages on both sides of a publish barri
     }));
     const writer = pausedUpdate(context, ovensDir, packagePath);
     try {
-      const writerStatus = new Promise((resolve) => writer.on("close", resolve));
+      const writerStatus = childClose(writer);
       await waitForBarrier(writer);
       const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
       const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
@@ -344,7 +344,7 @@ test("a killed writer leaves the prior pointer package readable", async () => {
       await waitForBarrier(writer);
       const priorCurrent = readFileSync(join(ovensDir, "sample-oven", "current"), "utf8");
       writer.kill("SIGKILL");
-      await new Promise((resolve) => writer.on("close", resolve));
+      await childClose(writer);
       const oldView = JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir));
       const oldList = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir)).find((oven) => oven.id === "sample-oven");
       assert.match(oldView.instructions, /Initial checklist/u);

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -51,6 +51,23 @@ test("missing, corrupt, and obsolete binding stores fail closed", () => {
     assert.deepEqual(quietly(() => readBindingStore(root)), { schemaVersion: 1, bindings: {} });
     writeFileSync(bindingStorePath(root), '{"schemaVersion":2,"bindings":{}}');
     assert.deepEqual(quietly(() => readBindingStore(root)), { schemaVersion: 1, bindings: {} });
+  } finally { cleanup(); }
+});
+
+test("binding mutations preserve malformed stores and create or update valid stores", () => {
+  const { root, cleanup } = fixture();
+  const path = bindingStorePath(root);
+  try {
+    const missing = writeBinding(root, "sample-oven", "created.json", BOUND_AT);
+    assert.deepEqual(missing.binding, { path: "created.json", boundAt: BOUND_AT });
+    writeBinding(root, "sample-oven", "updated.json", "2026-07-14T12:01:00.000Z");
+    assert.deepEqual(readBindingStore(root).bindings["sample-oven"], { path: "updated.json", boundAt: "2026-07-14T12:01:00.000Z" });
+    const malformed = '{"schemaVersion":1,"bindings":{"other-oven":';
+    writeFileSync(path, malformed);
+    assert.throws(() => writeBinding(root, "sample-oven", "lost.json", BOUND_AT), /Refusing to modify malformed Oven binding store/u);
+    assert.equal(readFileSync(path, "utf8"), malformed);
+    assert.throws(() => removeBinding(root, "sample-oven"), /Refusing to modify malformed Oven binding store/u);
+    assert.equal(readFileSync(path, "utf8"), malformed);
   } finally { cleanup(); }
 });
 

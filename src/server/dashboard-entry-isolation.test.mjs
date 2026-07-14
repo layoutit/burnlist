@@ -32,9 +32,9 @@ test("dashboard row normalization isolates malformed rows without hiding their h
     repoKeyForRoot: (root) => root,
     blockedEntry,
   });
-  assert.deepEqual(entries.map((entry) => entry.id), ["newer", "older", "blocked-mixed-1", "blocked-throws"]);
-  assert.equal(entries.find((entry) => entry.id === "blocked-mixed-1")?.blockers, "Dashboard handler returned a malformed row.");
-  assert.equal(entries.find((entry) => entry.id === "blocked-throws")?.blockers, "handler failed");
+  assert.deepEqual(entries.map((entry) => entry.id), ["newer", "older", "\u0000blocked:0:1", "\u0000blocked:1:-1"]);
+  assert.equal(entries.find((entry) => entry.id === "\u0000blocked:0:1")?.blockers, "Dashboard handler returned a malformed row.");
+  assert.equal(entries.find((entry) => entry.id === "\u0000blocked:1:-1")?.blockers, "handler failed");
 });
 
 test("dashboard row normalization blocks a non-slug oven id", () => {
@@ -44,6 +44,17 @@ test("dashboard row normalization blocks a non-slug oven id", () => {
     repoKeyForRoot: (root) => root,
     blockedEntry,
   });
-  assert.deepEqual(entries.map((entry) => entry.id), ["blocked-contract-0"]);
+  assert.deepEqual(entries.map((entry) => entry.id), ["\u0000blocked:0:0"]);
   assert.match(entries[0].blockers, /Oven id must be a lowercase slug/u);
+});
+
+test("blocked dashboard row ids cannot collide with valid handler row ids", () => {
+  const entries = isolatedDashboardEntries({
+    handlers: [{ id: "mixed", dashboardEntries: () => [validRow("blocked-mixed-1"), null] }],
+    contextForHandler: () => ({}),
+    repoKeyForRoot: (root) => root,
+    blockedEntry,
+  });
+  assert.deepEqual(entries.map((entry) => entry.id), ["blocked-mixed-1", "\u0000blocked:0:1"]);
+  assert.equal(new Set(entries.map((entry) => entry.id)).size, entries.length);
 });

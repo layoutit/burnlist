@@ -6,6 +6,7 @@ name: Publish
 # Trigger from the Actions tab ("Run workflow") or:
 #   gh workflow run publish.yml -f bump=patch
 # Requires an `NPM_TOKEN` repository secret with publish rights.
+# Recovery is version-bound: after a failed publish, a maintainer must verify HEAD is still the release bump commit before rerunning.
 on:
   workflow_dispatch:
     inputs:
