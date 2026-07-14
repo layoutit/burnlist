@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
 import { resolveOvenPackageDir } from "../server/fs-safe.mjs";
@@ -181,6 +181,41 @@ test("oven storage follows the umbrella root when launched from a subdirectory",
     const ovens = JSON.parse(runFrom(subdirectory, "oven", "list", "--json"));
     assert.equal(ovens.some((oven) => oven.id === "umbrella-oven"), true);
   } finally { context.cleanup(); }
+});
+
+test("oven storage rejects symlink escapes for its state directory and individual Oven ids", () => {
+  const context = fixture();
+  const packagePath = join(context.repo, "package.json");
+  const outside = join(dirname(context.repo), "outside");
+  try {
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", detail: detailFixture() }));
+    mkdirSync(outside);
+    symlinkSync(outside, join(context.repo, ".local"), "dir");
+    assert.throws(
+      () => run(context, "oven", "create", "unsafe-oven", "--package", packagePath),
+      (error) => String(error.stderr).includes("escapes"),
+    );
+    assert.equal(existsSync(join(outside, "burnlist", "ovens", "unsafe-oven")), false);
+  } finally { context.cleanup(); }
+
+  const second = fixture();
+  try {
+    const ovensDir = join(second.repo, ".local", "burnlist", "ovens");
+    const idOutside = join(second.repo, "id-outside");
+    const packagePath = join(second.repo, "package.json");
+    mkdirSync(ovensDir, { recursive: true });
+    mkdirSync(idOutside);
+    symlinkSync(idOutside, join(ovensDir, "escaped-oven"), "dir");
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Escaped Oven\n\nNope.", detail: detailFixture() }));
+    assert.throws(
+      () => run(second, "oven", "view", "escaped-oven", "--json"),
+      (error) => String(error.stderr).includes("escapes"),
+    );
+    assert.throws(
+      () => run(second, "oven", "create", "escaped-oven", "--package", packagePath),
+      (error) => String(error.stderr).includes("escapes"),
+    );
+  } finally { second.cleanup(); }
 });
 
 test("oven view and list read complete packages on both sides of a publish barrier", async () => {

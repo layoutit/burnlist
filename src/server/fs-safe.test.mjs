@@ -46,17 +46,16 @@ function swapFailure(mode, parent) {
     '};',
     'syncBuiltinESMExports();',
     'const { atomicDirectory } = await import(moduleUrl);',
-    'try { atomicDirectory(parent, "oven", { "instructions.md": "updated\\n" }, { replace: true, preserveExisting: true }); }',
-    'catch (error) {',
-    '  process.stdout.write(JSON.stringify({ name: error.name, message: error.message, errors: error.errors?.length ?? 0, old: readdirSync(parent).filter((name) => name.startsWith(".oven.old.")), target: existsSync(target) }));',
-    '}',
+    'let error = null;',
+    'try { atomicDirectory(parent, "oven", { "instructions.md": "updated\\n" }, { replace: true, preserveExisting: true }); } catch (caught) { error = caught; }',
+    'process.stdout.write(JSON.stringify({ name: error?.name, message: error?.message, errors: error?.errors?.length ?? 0, old: readdirSync(parent).filter((name) => name.startsWith(".oven.old.")), target: existsSync(target) }));',
   ].join("\n");
   const result = spawnSync(process.execPath, ["--input-type=module", "--eval", script, parent, mode, new URL("./fs-safe.mjs", import.meta.url).href], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
 
-test("atomicDirectory surfaces failed rollback and old-directory cleanup", () => {
+test("atomicDirectory surfaces failed rollback but keeps a successful replacement live after cleanup failure", () => {
   const rollback = fixture();
   const cleanup = fixture();
   try {
@@ -68,12 +67,54 @@ test("atomicDirectory surfaces failed rollback and old-directory cleanup", () =>
     assert.equal(rollbackResult.old.length, 1);
 
     const cleanupResult = swapFailure("cleanup", cleanup.root);
-    assert.match(cleanupResult.message, /could not clean up/u);
+    assert.equal(cleanupResult.message, undefined);
     assert.equal(cleanupResult.target, true);
     assert.equal(cleanupResult.old.length, 1);
   } finally {
     rollback.cleanup();
     cleanup.cleanup();
+  }
+});
+
+test("Oven package cleanup failures do not undo a published revision, while pre-swap failures throw", () => {
+  const context = fixture();
+  const script = [
+    'import fs, { existsSync, readFileSync } from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'const [root, moduleUrl] = process.argv.slice(1);',
+    'const { atomicOvenPackage, resolveOvenPackageDir } = await import(moduleUrl);',
+    'const files = (name) => ({ "instructions.md": "# " + name + "\\n", "detail.json": "{}\\n" });',
+    'atomicOvenPackage(root, "oven", files("first"));',
+    'const nativeReaddir = fs.readdirSync;',
+    'fs.readdirSync = (path, ...rest) => path === root + "/oven" ? (() => { throw new Error("gc blocked"); })() : nativeReaddir(path, ...rest);',
+    'syncBuiltinESMExports();',
+    'atomicOvenPackage(root, "oven", files("second"), { replace: true });',
+    'const current = resolveOvenPackageDir(root + "/oven");',
+    'process.stdout.write(JSON.stringify({ current, contents: readFileSync(current + "/instructions.md", "utf8"), exists: existsSync(current) }));',
+  ].join("\n");
+  const preSwapScript = [
+    'import fs from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'const [root, moduleUrl] = process.argv.slice(1);',
+    'const { atomicOvenPackage } = await import(moduleUrl);',
+    'const nativeWrite = fs.writeFileSync;',
+    'fs.writeFileSync = (path, ...rest) => { if (String(path).includes("instructions.md")) throw new Error("stage blocked"); return nativeWrite(path, ...rest); };',
+    'syncBuiltinESMExports();',
+    'try { atomicOvenPackage(root, "pre-swap", { "instructions.md": "# blocked\\n", "detail.json": "{}\\n" }); } catch (error) { process.stdout.write(error.message); }',
+  ].join("\n");
+  try {
+    const published = spawnSync(process.execPath, ["--input-type=module", "--eval", script, context.root, new URL("./fs-safe.mjs", import.meta.url).href], { encoding: "utf8" });
+    assert.equal(published.status, 0, published.stderr);
+    const result = JSON.parse(published.stdout);
+    assert.equal(result.exists, true);
+    assert.match(result.current, /rev-[a-f0-9]+$/u);
+    assert.match(result.contents, /second/u);
+
+    const failed = spawnSync(process.execPath, ["--input-type=module", "--eval", preSwapScript, context.root, new URL("./fs-safe.mjs", import.meta.url).href], { encoding: "utf8" });
+    assert.equal(failed.status, 0, failed.stderr);
+    assert.match(failed.stdout, /stage blocked/u);
+  } finally {
+    context.cleanup();
   }
 });
 

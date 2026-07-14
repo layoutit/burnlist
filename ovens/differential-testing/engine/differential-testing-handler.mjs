@@ -181,18 +181,30 @@ export const differentialTestingHandler = Object.freeze({
   dashboardEntries(ctx) {
     const bindings = ctx.ovenDataBindings.get("differential-testing") ?? [];
     return bindings.flatMap((binding) => {
-      const index = differentialTestingIndexCache(ctx, binding.path);
-      const repo = binding.repoKey === null
-        ? "differential-testing"
-        : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name ?? basename(binding.repoRoot);
-      return index.scenarios.map((scenario) => ({
-        id: scenario.id, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot, title: scenario.label,
-        status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
-        percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
-        ovenId: "differential-testing", ovenName: "Differential Testing",
-        href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}${binding.repoKey === null ? "" : `&repoKey=${encodeURIComponent(binding.repoKey)}`}`,
-        progressLabel: `${scenario.frameCount} frames`,
-      }));
+      try {
+        const index = differentialTestingIndexCache(ctx, binding.path);
+        const repo = binding.repoKey === null
+          ? "differential-testing"
+          : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name ?? basename(binding.repoRoot);
+        return index.scenarios.map((scenario) => ({
+          id: scenario.id, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot, title: scenario.label,
+          status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
+          percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
+          ovenId: "differential-testing", ovenName: "Differential Testing",
+          href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}${binding.repoKey === null ? "" : `&repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          progressLabel: `${scenario.frameCount} frames`,
+        }));
+      } catch (error) {
+        const repo = binding.repoKey === null ? "differential-testing" : basename(binding.repoRoot);
+        return [{
+          id: `blocked-${binding.repoKey ?? "global"}`, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot,
+          title: "Differential Testing", planPath: "", planLabel: "Oven data binding",
+          status: "active", statusLabel: "Blocked", total: 0, done: null, remaining: null, percent: null,
+          errors: 1, warnings: 0, lastCompletedAt: null, updatedAt: null,
+          ovenId: "differential-testing", ovenName: "Differential Testing", href: "/ovens/differential-testing/view",
+          progressLabel: "Blocked", blockers: String(error?.message ?? error ?? "Data binding is unavailable.").slice(0, 200),
+        }];
+      }
     });
   },
 

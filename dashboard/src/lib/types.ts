@@ -43,6 +43,7 @@ export type Burnlist = {
   ovenName: string;
   href: string;
   progressLabel: string;
+  blockers?: string;
 };
 
 export type Project = {

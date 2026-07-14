@@ -8,11 +8,12 @@
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
 import { readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
+import { containedJoin } from "../server/repo-state.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
@@ -60,7 +61,27 @@ function bindingRepo() {
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const launchCwd = process.cwd();
-const customOvensDir = resolve(repoRoot(), flags.get("ovens-dir") ?? ".local/burnlist/ovens");
+const customOvensDir = flags.has("ovens-dir")
+  ? resolve(repoRoot(), flags.get("ovens-dir"))
+  : containedJoin(repoRoot(), "ovens");
+
+function isWithin(parent, child) {
+  const pathFromParent = relative(parent, child);
+  return pathFromParent === ""
+    || (pathFromParent !== ".." && !pathFromParent.startsWith(`..${sep}`) && !isAbsolute(pathFromParent));
+}
+
+function assertCustomOvenPath(root, id) {
+  const path = join(root, id);
+  try {
+    const ovensRoot = realpathSync(root);
+    const ovenRoot = realpathSync(path);
+    if (!isWithin(ovensRoot, ovenRoot)) throw new Error(`Custom Oven ${id} escapes ${root}.`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  return path;
+}
 
 function safeStat(path) {
   try {
@@ -94,7 +115,8 @@ function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    ovenRoot = resolveOvenPackageDir(realpathSync(join(root, safeId)));
+    const path = builtIn ? join(root, safeId) : assertCustomOvenPath(root, safeId);
+    ovenRoot = resolveOvenPackageDir(realpathSync(path));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
     throw error;
@@ -234,6 +256,7 @@ function persistOven(pkg, { allowReplace, sidecar }) {
     ...(sidecar ? { "oven.json": `${JSON.stringify(sidecar, null, 2)}\n` } : {}),
   };
   try {
+    assertCustomOvenPath(customOvensDir, pkg.id);
     return withOvenPackageLock(customOvensDir, pkg.id, () => (
       atomicOvenPackage(customOvensDir, pkg.id, files, { replace: allowReplace })
     ));

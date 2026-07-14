@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer, get, request } from "node:http";
 import { existsSync, realpathSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,7 +80,7 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
-test("registered Oven routes and dashboard entries ignore malformed custom Oven packages", { timeout: 20_000 }, async () => {
+test("registered Oven routes and dashboard entries isolate malformed custom Oven packages", { timeout: 20_000 }, async () => {
   const timestamp = "2026-01-01T12:00:00.000Z";
   const differentialTestingPayload = buildPayload(
     {
@@ -115,8 +115,11 @@ test("registered Oven routes and dashboard entries ignore malformed custom Oven 
     assert.equal(entries.some((entry) => entry.ovenId === "differential-testing"), true);
 
     const ovens = await httpGet(baseUrl, "/api/ovens");
-    assert.equal(ovens.status, 400);
-    assert.match(JSON.parse(ovens.body).error, /lineage sidecar is invalid/u);
+    assert.equal(ovens.status, 200);
+    assert.equal(JSON.parse(ovens.body).ovens.some((oven) => oven.id === "checklist"), true);
+    const malformed = await httpGet(baseUrl, "/api/ovens/malformed-oven");
+    assert.equal(malformed.status, 400);
+    assert.match(JSON.parse(malformed.body).error, /lineage sidecar is invalid/u);
   });
 });
 
@@ -179,6 +182,36 @@ test("Differential Testing bindings remain distinct for each repository", { time
   });
 });
 
+test("invalid Differential Testing bindings render blocked rows without hiding valid bindings or Checklists", { timeout: 20_000 }, async () => {
+  const timestamp = "2026-01-01T12:00:00.000Z";
+  const valid = buildPayload(
+    {
+      captureId: "valid-repo", generatedAt: timestamp,
+      fields: [{ id: "position", label: "Position", sourceOwner: "fixture", meaning: "Position", unit: "units", tolerance: 0 }],
+      samples: [{ tick: 0, values: { position: 1 } }],
+    },
+    { captureId: "valid-repo-candidate", generatedAt: timestamp, samples: [{ tick: 0, values: { position: 1 } }] },
+  );
+  await withServer({
+    burnlists: [{ repoPath: "a/broken" }, { repoPath: "b/valid" }],
+    scanRoots: ["a", "b"],
+    ovenData: [
+      { id: "differential-testing", payload: {}, repoPath: "a/broken", persisted: true, override: false },
+      { id: "differential-testing", payload: valid, repoPath: "b/valid", persisted: true, override: false },
+    ],
+  }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/burnlists");
+    assert.equal(response.status, 200);
+    const entries = JSON.parse(response.body).burnlists;
+    assert.equal(entries.filter((entry) => entry.ovenId === "checklist").length, 2);
+    const blocked = entries.find((entry) => entry.ovenId === "differential-testing" && entry.statusLabel === "Blocked");
+    assert.ok(blocked);
+    assert.equal(blocked.status, "active");
+    assert.equal(typeof blocked.blockers, "string");
+    assert.equal(entries.some((entry) => entry.ovenId === "differential-testing" && entry.statusLabel === "Active"), true);
+  });
+});
+
 test("Oven data repo binding falls back to the global override", { timeout: 20_000 }, async () => {
   const timestamp = "2026-01-01T12:00:00.000Z";
   const payloadFor = (captureId) => buildPayload(
@@ -221,7 +254,7 @@ test("Oven data repo binding falls back to the global override", { timeout: 20_0
   });
 });
 
-test("Oven discovery exposes optional lineage and rejects malformed sidecars", { timeout: 20_000 }, async () => {
+test("Oven discovery exposes optional lineage, skips malformed catalog entries, and keeps direct reads closed", { timeout: 20_000 }, async () => {
   const forkedFrom = { ovenId: "source-oven", revision: `o1-sha256:${"a".repeat(64)}` };
   await withServer({
     ovens: [
@@ -236,8 +269,51 @@ test("Oven discovery exposes optional lineage and rejects malformed sidecars", {
   });
   await withServer({ ovens: [{ id: "broken-oven", ovenJson: "{" }] }, async ({ baseUrl }) => {
     const response = await httpGet(baseUrl, "/api/ovens");
-    assert.equal(response.status, 400);
-    assert.match(JSON.parse(response.body).error, /lineage sidecar is invalid/u);
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).ovens.some((oven) => oven.id === "broken-oven"), false);
+    const direct = await httpGet(baseUrl, "/api/ovens/broken-oven");
+    assert.equal(direct.status, 400);
+    assert.match(JSON.parse(direct.body).error, /lineage sidecar is invalid/u);
+  });
+});
+
+test("dashboard custom Oven storage follows its umbrella root and rejects symlink escapes", { timeout: 20_000 }, async () => {
+  await withServer({
+    withBurnlist: true,
+    launchCwd: "fixture-repo/work/nested",
+    ovensRoot: "fixture-repo",
+    ovens: [{ id: "umbrella-oven" }],
+  }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/ovens");
+    assert.equal(response.status, 200);
+    assert.equal(JSON.parse(response.body).ovens.some((oven) => oven.id === "umbrella-oven"), true);
+  });
+
+  await assert.rejects(() => withServer({
+    withBurnlist: true,
+    launchCwd: "fixture-repo",
+    setup: async ({ fixtureRoot }) => {
+      const repo = join(fixtureRoot, "fixture-repo");
+      const outside = join(fixtureRoot, "outside");
+      await mkdir(outside);
+      await symlink(outside, join(repo, ".local"), "dir");
+    },
+  }, async () => assert.fail("server must refuse an escaped custom Oven directory")), /escapes/u);
+
+  await withServer({
+    withBurnlist: true,
+    launchCwd: "fixture-repo",
+    setup: async ({ fixtureRoot }) => {
+      const ovens = join(fixtureRoot, "fixture-repo", ".local", "burnlist", "ovens");
+      const outside = join(fixtureRoot, "id-outside");
+      await mkdir(ovens, { recursive: true });
+      await mkdir(outside);
+      await symlink(outside, join(ovens, "escaped-oven"), "dir");
+    },
+  }, async ({ baseUrl }) => {
+    const direct = await httpGet(baseUrl, "/api/ovens/escaped-oven");
+    assert.equal(direct.status, 400);
+    assert.match(JSON.parse(direct.body).error, /escapes/u);
   });
 });
 
@@ -324,7 +400,10 @@ test("Burn runs read max-size normalized v4 Oven snapshots", { timeout: 20_000 }
   });
 });
 
-async function withServer({ withBurnlist, burnlists, ovenData = [], ovens = [], runs = [], scanRoots }, callback) {
+async function withServer({
+  withBurnlist, burnlists, ovenData = [], ovens = [], runs = [], scanRoots,
+  launchCwd = ".", ovensRoot = ".", setup,
+}, callback) {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-dashboard-routes-"));
   const homeRoot = join(fixtureRoot, "home");
   const fixtures = burnlists ?? (withBurnlist ? [{}] : []);
@@ -361,8 +440,10 @@ async function withServer({ withBurnlist, burnlists, ovenData = [], ovens = [], 
       await mkdir(dirname(storePath), { recursive: true });
       await writeFile(storePath, JSON.stringify({ schemaVersion: 1, bindings }));
     }));
-    await Promise.all(ovens.map((oven) => writeOvenFixture(fixtureRoot, oven)));
+    if (setup) await setup({ fixtureRoot, homeRoot });
+    await Promise.all(ovens.map((oven) => writeOvenFixture(join(fixtureRoot, ovensRoot), oven)));
     await Promise.all(runs.map((run) => writeRunFixture(fixtureRoot, run)));
+    await mkdir(join(fixtureRoot, launchCwd), { recursive: true });
     const port = await availablePort();
     const ovenDataBindings = writtenOvenData
       .filter((entry) => entry.override !== false)
@@ -375,7 +456,7 @@ async function withServer({ withBurnlist, burnlists, ovenData = [], ovens = [], 
       "--state-dir", join(fixtureRoot, "state"),
       ...(ovenDataBindings ? ["--oven-data", ovenDataBindings] : []),
     ], {
-      cwd: fixtureRoot,
+      cwd: join(fixtureRoot, launchCwd),
       env: { ...process.env, HOME: homeRoot },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -441,8 +522,8 @@ function detailFixture() {
   };
 }
 
-async function writeOvenFixture(fixtureRoot, fixture) {
-  const ovenRoot = join(fixtureRoot, ".local", "burnlist", "ovens", fixture.id);
+async function writeOvenFixture(root, fixture) {
+  const ovenRoot = join(root, ".local", "burnlist", "ovens", fixture.id);
   await mkdir(ovenRoot, { recursive: true });
   await Promise.all([
     writeFile(join(ovenRoot, "instructions.md"), fixture.instructions ?? "# Fixture Oven\n\nFollow the checklist.\n"),

@@ -161,7 +161,7 @@ export function atomicDirectory(parent, id, files, { replace = false, preserveEx
     try {
       rmSync(previous, { recursive: true, force: true });
     } catch (cleanupError) {
-      throw new Error(`Updated ${id}, but could not clean up ${previous}: ${cleanupError.message}`, { cause: cleanupError });
+      console.warn(`Updated ${id}, but could not clean up ${previous}: ${cleanupError.message}`);
     }
   } catch (error) {
     try {
@@ -264,8 +264,9 @@ function removeLegacyFiles(pkgRoot) {
   for (const name of ["instructions.md", "detail.json", "oven.json"]) {
     try {
       rmSync(join(pkgRoot, name), { force: true });
-    } catch {
+    } catch (error) {
       // The pointer is already durable; a later publish can retry this cleanup.
+      console.warn(`Could not remove legacy Oven file ${join(pkgRoot, name)}: ${error.message}`);
     }
   }
 }
@@ -328,7 +329,15 @@ export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
     }
     throw error;
   }
-  removeLegacyFiles(pkgRoot);
-  gcOldRevisions(pkgRoot, revision);
+  for (const cleanup of [
+    () => removeLegacyFiles(pkgRoot),
+    () => gcOldRevisions(pkgRoot, revision),
+  ]) {
+    try {
+      cleanup();
+    } catch (cleanupError) {
+      console.warn(`Published Oven ${id}, but cleanup failed: ${cleanupError.message}`);
+    }
+  }
   return pkgRoot;
 }
