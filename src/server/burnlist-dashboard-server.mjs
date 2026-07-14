@@ -32,7 +32,7 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
-import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
+import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import { warmOvenHandler } from "./oven-warm.mjs";
 import {
   LIFECYCLES,
@@ -367,7 +367,7 @@ function readOven(root, id, builtIn) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    ovenRoot = realpathSync(join(root, safeId));
+    ovenRoot = resolveOvenPackageDir(realpathSync(join(root, safeId)));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
     throw error;

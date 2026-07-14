@@ -12,7 +12,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
-import { atomicOvenPackage, withOvenPackageLock } from "../server/fs-safe.mjs";
+import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
 import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
@@ -94,7 +94,7 @@ function readOvenDir(root, id, builtIn) {
   const safeId = ovenId(id);
   let ovenRoot;
   try {
-    ovenRoot = realpathSync(join(root, safeId));
+    ovenRoot = resolveOvenPackageDir(realpathSync(join(root, safeId)));
   } catch (error) {
     if (error?.code === "ENOENT") return null;
     throw error;

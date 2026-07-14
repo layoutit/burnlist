@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { cpSync, existsSync, linkSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { cpSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
+
+export const OVEN_REV_GRACE_MS = 60_000;
 
 export function readTextFileWithLimit(path, maxBytes, label) {
   const stat = statSync(path);
@@ -181,7 +183,7 @@ function missing(error) {
 
 function entryAt(path) {
   try {
-    return lstatSync(path);
+    return statSync(path);
   } catch (error) {
     if (missing(error)) return null;
     throw error;
@@ -193,116 +195,111 @@ function cleanupError(errors, message) {
   return new AggregateError(errors, message);
 }
 
-function publishPackageLink(parent, id, revisionDir, target) {
-  const temporary = join(parent, `.${id}.link.${randomBytes(8).toString("hex")}`);
+function revisionName(value) {
+  return /^rev-[a-f0-9]+$/u.test(value) ? value : null;
+}
+
+// Readers resolve this once, then use the returned immutable path for every
+// file in their package read. ENOENT is deliberately left for callers to treat
+// as an ordinary concurrent disappearance.
+export function resolveOvenPackageDir(pkgRoot) {
+  const pointer = join(pkgRoot, "current");
+  let current;
   try {
-    if (process.platform === "win32") symlinkSync(resolve(revisionDir), temporary, "junction");
-    else symlinkSync(basename(revisionDir), temporary, "dir");
-    renameSync(temporary, target);
+    if (!statSync(pointer).isFile()) return pkgRoot;
+    current = readFileSync(pointer, "utf8").trim();
+  } catch (error) {
+    if (missing(error)) return pkgRoot;
+    throw error;
+  }
+  if (!revisionName(current)) throw new Error(`Invalid Oven current pointer at ${pointer}.`);
+  return join(pkgRoot, current);
+}
+
+function currentRevision(pkgRoot, id) {
+  const pointer = join(pkgRoot, "current");
+  const entry = entryAt(pointer);
+  if (!entry) return null;
+  if (!entry.isFile()) throw new Error(`Oven ${id} current pointer is not a file.`);
+  const revision = readFileSync(pointer, "utf8").trim();
+  if (!revisionName(revision)) throw new Error(`Oven ${id} current pointer is invalid.`);
+  const revisionDir = join(pkgRoot, revision);
+  if (!entryAt(revisionDir)?.isDirectory()) {
+    throw new Error(`Oven ${id} current pointer names missing revision ${revision}.`);
+  }
+  return revisionDir;
+}
+
+function legacyPackage(pkgRoot) {
+  return ["instructions.md", "detail.json"].every((name) => entryAt(join(pkgRoot, name))?.isFile());
+}
+
+function copyPackageFiles(from, to) {
+  for (const name of ["instructions.md", "detail.json", "oven.json"]) {
+    if (entryAt(join(from, name))?.isFile()) cpSync(join(from, name), join(to, name));
+  }
+}
+
+function publishCurrent(pkgRoot, id, revision) {
+  const temporary = join(pkgRoot, `.current.${randomBytes(8).toString("hex")}`);
+  try {
+    writeFileSync(temporary, `${revision}\n`);
+    renameSync(temporary, join(pkgRoot, "current"));
   } catch (error) {
     try {
       rmSync(temporary, { force: true });
     } catch (cleanupFailure) {
-      throw cleanupError([error, cleanupFailure], `Could not publish ${id}`);
+      throw cleanupError([error, cleanupFailure], `Could not publish Oven ${id}`);
     }
     throw error;
   }
 }
 
-function migrateLegacyPackage(parent, id, target) {
-  const revisionDir = join(parent, `.${id}.${randomBytes(8).toString("hex")}`);
-  const migrating = join(parent, `.${id}.migrating.${randomBytes(8).toString("hex")}`);
-  cpSync(target, revisionDir, { recursive: true });
-  renameSync(target, migrating);
-  try {
-    publishPackageLink(parent, id, revisionDir, target);
-  } catch (error) {
+function removeLegacyFiles(pkgRoot) {
+  for (const name of ["instructions.md", "detail.json", "oven.json"]) {
     try {
-      renameSync(migrating, target);
-    } catch (rollbackFailure) {
-      throw cleanupError([error, rollbackFailure], `Could not migrate legacy Oven ${id}; original remains at ${migrating}`);
+      rmSync(join(pkgRoot, name), { force: true });
+    } catch {
+      // The pointer is already durable; a later publish can retry this cleanup.
     }
-    throw error;
-  }
-  rmSync(migrating, { recursive: true, force: true });
-  return revisionDir;
-}
-
-function packageRevisionDirs(parent, id, requiredFiles) {
-  const prefix = `.${id}.`;
-  try {
-    return readdirSync(parent, { withFileTypes: true })
-      .filter((entry) => (
-        entry.isDirectory()
-        && entry.name.startsWith(prefix)
-        && !entry.name.startsWith(`${prefix}migrating.`)
-        && requiredFiles.every((name) => existsSync(join(parent, entry.name, name)))
-      ))
-      .map((entry) => join(parent, entry.name));
-  } catch (error) {
-    if (missing(error)) return [];
-    throw error;
   }
 }
 
-function recoverPackagePublish(parent, id, target, requiredFiles) {
-  if (entryAt(target)) return;
-  const prefix = `.${id}.migrating.`;
-  let migrating;
+function gcOldRevisions(pkgRoot, current) {
   try {
-    migrating = readdirSync(parent, { withFileTypes: true })
-      .find((entry) => entry.isDirectory() && entry.name.startsWith(prefix));
-  } catch (error) {
-    if (missing(error)) return;
-    throw error;
-  }
-  if (migrating) {
-    renameSync(join(parent, migrating.name), target);
-    return;
-  }
-  const revisions = packageRevisionDirs(parent, id, requiredFiles);
-  if (revisions.length) publishPackageLink(parent, id, revisions[revisions.length - 1], target);
-}
-
-function cleanupOldPackageDirs(parent, id, current, previous) {
-  const errors = [];
-  const prefix = `.${id}.`;
-  try {
-    for (const entry of readdirSync(parent, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name === basename(current) || !entry.name.startsWith(prefix)) continue;
-      const candidate = join(parent, entry.name);
+    for (const entry of readdirSync(pkgRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === current || !revisionName(entry.name)) continue;
+      const path = join(pkgRoot, entry.name);
       try {
-        if (!previous || entry.name !== basename(previous)) rmSync(candidate, { recursive: true, force: true });
+        if (Date.now() - statSync(path).mtimeMs >= OVEN_REV_GRACE_MS) rmSync(path, { recursive: true, force: true });
       } catch (error) {
-        if (!missing(error)) errors.push(error);
+        if (!missing(error)) throw error;
       }
     }
   } catch (error) {
-    if (!missing(error)) errors.push(error);
+    if (!missing(error)) throw error;
   }
-  if (errors.length) throw cleanupError(errors, `Published ${id}, but could not clean up old Oven revisions`);
 }
 
-// Custom Oven packages are immutable revision directories published through a
-// symlink pointer. The pointer rename leaves readers either on the old complete
-// package or the new complete package; readers never need the writer lock.
+// Custom Oven packages are immutable nested revisions published by atomically
+// replacing a small pointer file. A reader that resolved the old revision keeps
+// a stable path until grace-period GC makes it eligible for deletion.
 export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
   mkdirSync(parent, { recursive: true });
-  const target = join(parent, id);
-  recoverPackagePublish(parent, id, target, Object.keys(files));
-  const existing = entryAt(target);
-  if (existing && !replace) throw Object.assign(new Error(`${id} already exists.`), { code: "EEXIST" });
+  const pkgRoot = join(parent, id);
+  mkdirSync(pkgRoot, { recursive: true });
+  const previous = currentRevision(pkgRoot, id);
+  const legacy = !previous && legacyPackage(pkgRoot);
+  if ((previous || legacy) && !replace) throw Object.assign(new Error(`${id} already exists.`), { code: "EEXIST" });
 
-  let previous = null;
-  if (existing?.isDirectory() && !existing.isSymbolicLink()) {
-    previous = migrateLegacyPackage(parent, id, target);
-  } else if (existing) previous = realpathSync(target);
-  const revisionDir = join(parent, `.${id}.${randomBytes(8).toString("hex")}`);
+  const revision = `rev-${randomBytes(8).toString("hex")}`;
+  const revisionDir = join(pkgRoot, revision);
   mkdirSync(revisionDir);
   try {
-    if (previous) cpSync(previous, revisionDir, { recursive: true });
+    if (previous) copyPackageFiles(previous, revisionDir);
+    else if (legacy) copyPackageFiles(pkgRoot, revisionDir);
     for (const [name, contents] of Object.entries(files)) writeFileSync(join(revisionDir, name), contents);
-    publishPackageLink(parent, id, revisionDir, target);
+    publishCurrent(pkgRoot, id, revision);
   } catch (error) {
     try {
       rmSync(revisionDir, { recursive: true, force: true });
@@ -311,6 +308,7 @@ export function atomicOvenPackage(parent, id, files, { replace = false } = {}) {
     }
     throw error;
   }
-  cleanupOldPackageDirs(parent, id, revisionDir, previous);
-  return target;
+  removeLegacyFiles(pkgRoot);
+  gcOldRevisions(pkgRoot, revision);
+  return pkgRoot;
 }
