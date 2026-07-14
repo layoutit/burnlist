@@ -20,6 +20,7 @@ import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
 import { buildProjectsSnapshot } from "./projects.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
 import { resolveUmbrella } from "../cli/umbrella.mjs";
+import { assertGitIgnored } from "../cli/git-ignore.mjs";
 import {
   assertKnownKeys,
   boundedText,
@@ -550,8 +551,12 @@ function createOven(value) {
   const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
   const files = serializeOvenPackage(ovenPackage);
   assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
+  assertGitIgnored(repo.root, customOvensDir);
   const path = withOvenPackageLock(customOvensDir, id, () => atomicOvenPackage(customOvensDir, id, files, {
-    assertPath: () => assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir }),
+    assertPath: () => {
+      assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
+      assertGitIgnored(repo.root, customOvensDir);
+    },
   }));
   return { ...readOven(customOvensDir, id, false, repo.root), repoKey: repo.repoKey, repoRoot: repo.root, path };
 }

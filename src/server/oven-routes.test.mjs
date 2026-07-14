@@ -1,9 +1,32 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import test from "node:test";
 import { detailFixture, httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
+
+test("POST /api/ovens refuses an unignored Git repository without writing an Oven", { timeout: 20_000 }, async () => {
+  await withServer({
+    setup: async ({ fixtureRoot }) => {
+      // Git-init the launch umbrella (where the server writes the oven), not a nested repo.
+      execFileSync("git", ["init", "--quiet"], { cwd: fixtureRoot, stdio: "ignore" });
+    },
+  }, async ({ baseUrl, repoRoot }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const response = await httpRequest(baseUrl, "/api/ovens", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
+      body: JSON.stringify({
+        id: "unignored-oven", name: "Unignored Oven", instructions: "# Unignored Oven\n\nStay local.", detail: detailFixture(),
+      }),
+    });
+    assert.equal(response.status, 400);
+    assert.match(JSON.parse(response.body).error, /refusing to write \.local\/burnlist\/ovens: not git-ignored/u);
+    assert.equal(existsSync(join(repoRoot, ".local", "burnlist", "ovens", "unignored-oven")), false);
+  });
+});
 test("unreadable binding stores do not affect unrelated routes and healthy Oven data", { timeout: 20_000 }, async () => {
   await withServer({
     burnlists: [{ repoPath: "bad" }, { repoPath: "good" }],

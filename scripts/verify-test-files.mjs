@@ -18,6 +18,7 @@ export const verificationTestFiles = [
   "src/cli/lifecycle-cli.test.mjs",
   "src/cli/lifecycle-moves.test.mjs",
   "src/cli/registry-cli.test.mjs",
+  "src/cli/git-ignore.test.mjs",
   "src/cli/oven-cli.test.mjs",
   "src/cli/umbrella.test.mjs",
   "src/server/oven-bindings.test.mjs",

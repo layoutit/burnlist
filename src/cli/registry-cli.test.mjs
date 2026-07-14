@@ -89,10 +89,12 @@ test("init creates lifecycle folders, ignores them, and registers the repo", () 
       assert.equal(statSync(join(repo, "notes", "burnlists", folder)).isDirectory(), true);
     }
     assert.match(exclude(repo), /^\/notes\/burnlists\/$/mu);
+    assert.match(exclude(repo), /^\/\.local\/$/mu);
     assert.match(run(home, "roots"), new RegExp(`empty\\s+${canonicalRepo}`));
-    assert.match(first, /Ignored \/notes\/burnlists\/ locally\./u);
+    assert.match(first, /Ignored \/notes\/burnlists\/ and \/\.local\/ locally\./u);
     run(home, "init", repo);
     assert.equal(exclude(repo).split("\n").filter((line) => line === "/notes/burnlists/").length, 1);
+    assert.equal(exclude(repo).split("\n").filter((line) => line === "/.local/").length, 1);
   } finally {
     cleanup();
   }
@@ -108,6 +110,7 @@ test("init --track writes gitkeep files and removes the local ignore", () => {
       assert.equal(readFileSync(join(repo, "notes", "burnlists", folder, ".gitkeep"), "utf8"), "");
     }
     assert.doesNotMatch(exclude(repo), /^\/?notes\/burnlists\/$/mu);
+    assert.doesNotMatch(exclude(repo), /^\/?\.local\/$/mu);
   } finally {
     cleanup();
   }
@@ -121,7 +124,7 @@ test("init respects a tracked gitignore rule", () => {
   const before = exclude(repo);
   try {
     run(home, "init", repo);
-    assert.equal(exclude(repo), before);
+    assert.equal(exclude(repo), `${before}/.local/\n`);
   } finally {
     cleanup();
   }

@@ -10,6 +10,7 @@ import {
   OVEN_LINEAGE_MAX_BYTES,
   serializeOvenPackage,
 } from "../server/oven-storage.mjs";
+import { assertGitIgnored } from "./git-ignore.mjs";
 
 function safeStat(path) {
   try {
@@ -165,9 +166,13 @@ export function persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, 
   const files = serializeOvenPackage({ ...pkg, sidecar });
   try {
     assertCustomOvenPath(customRepoRoot, customOvensDir, pkg.id, { unsafe: unsafeOvensDir });
+    assertGitIgnored(customRepoRoot, customOvensDir);
     return withOvenPackageLock(customOvensDir, pkg.id, () => atomicOvenPackage(customOvensDir, pkg.id, files, {
       replace: allowReplace,
-      assertPath: () => assertCustomOvenPath(customRepoRoot, customOvensDir, pkg.id, { unsafe: unsafeOvensDir }),
+      assertPath: () => {
+        assertCustomOvenPath(customRepoRoot, customOvensDir, pkg.id, { unsafe: unsafeOvensDir });
+        assertGitIgnored(customRepoRoot, customOvensDir);
+      },
     }));
   } catch (error) {
     if (!allowReplace && error.message === `${pkg.id} already exists.`) {
