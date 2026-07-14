@@ -1,0 +1,4 @@
+Streaming Diff live test
+phase: updated
+status: visible without refresh
+hook: trusted automatic capture

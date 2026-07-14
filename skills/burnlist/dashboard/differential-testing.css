@@ -918,6 +918,10 @@ body.driving-parity-view .dashboard-header {
 .chart .progress-area { fill: rgba(67,196,107,.08); }
 .chart .progress-line { fill: none; stroke: var(--done); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .chart .progress-dot { fill: var(--done); }
+.driving-parity-view .chart .progress-remaining-area { fill: var(--red-subtle); }
+.driving-parity-view .chart .progress-area { fill: rgba(97,211,148,.10); }
+.driving-parity-view .chart .progress-line { stroke: var(--status-green); }
+.driving-parity-view .chart .progress-dot { fill: var(--status-green); }
 .chart .failed-fields-pass-area { fill: rgba(97,211,148,.08); }
 .chart .failed-fields-area { fill: var(--red-subtle); }
 .chart .failed-fields-line { fill: none; stroke: var(--red); stroke-width: 1.6; stroke-linecap: butt; stroke-linejoin: round; opacity: .8; }
@@ -926,6 +930,7 @@ body.driving-parity-view .dashboard-header {
 .chart .frame-delta-fail-band { fill: rgba(239,68,68,.14); }
 .chart .frame-delta-line-pass { fill: none; stroke: var(--status-green); stroke-width: 1.55; opacity: .8; vector-effect: non-scaling-stroke; }
 .chart .frame-delta-line-fail { fill: none; stroke: var(--status-red); stroke-width: 1.6; opacity: .8; vector-effect: non-scaling-stroke; }
+.chart .frame-delta-outlier { fill: var(--status-red); }
 .chart .failed-total-percent-line { fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: butt; stroke-linejoin: round; stroke-dasharray: 5 4; opacity: .46; }
 .chart.goal-reached .failed-fields-area { fill: rgba(97,211,148,.08); }
 .chart.goal-reached .failed-fields-line { stroke: var(--status-green); }
@@ -1165,6 +1170,7 @@ body.driving-parity-view .dashboard-header {
 .driving-parity-view .log-table-cell.failed { color: var(--muted); }
 .driving-parity-view .log-table-cell.failed.improved { color: var(--green); }
 .driving-parity-view .log-table-cell.failed.worsened { color: var(--red); }
+.driving-parity-view .log-frame-separator { font-size: 14px; }
 .driving-parity-view .log-table-cell.result.improved { color: var(--green); }
 .driving-parity-view .log-table-cell.result.worsened { color: var(--red); }
 .driving-parity-view .log-table-cell.delta.improved { color: var(--green); }

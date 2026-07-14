@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 12,
+  "rowHeight": 50,
+  "cells": [
+    {
+      "id": "status",
+      "title": "Connection",
+      "widget": "status",
+      "source": "/status",
+      "format": "plain",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 1
+    },
+    {
+      "id": "revision",
+      "title": "Revision",
+      "widget": "metric",
+      "source": "/revision",
+      "format": "number",
+      "column": 4,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 1
+    },
+    {
+      "id": "changes",
+      "title": "Timestamped Changes",
+      "widget": "log",
+      "source": "/changes",
+      "format": "plain",
+      "column": 1,
+      "row": 2,
+      "columnSpan": 12,
+      "rowSpan": 11
+    }
+  ]
+}

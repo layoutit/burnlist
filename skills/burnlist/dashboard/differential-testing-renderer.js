@@ -78,15 +78,18 @@ export function differentialProgressChartHistory(payload, { mode = "value" } = {
 
 export function differentialExactPrefixFrameDeltaMetrics(payload, metrics) {
   const ratios = metrics?.frameDeviationRatios;
+  const residuals = metrics?.frameSignedResiduals;
   const latest = Array.isArray(payload?.progress) ? payload.progress.at(-1) : null;
   const clearedFrame = Number(latest?.frame);
   const frameCount = Number(latest?.frames);
-  if (!Array.isArray(ratios) || !Number.isSafeInteger(clearedFrame) || !Number.isSafeInteger(frameCount)
-    || frameCount !== ratios.length || clearedFrame < 0 || clearedFrame > frameCount
-    || ratios.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) return null;
+  if (!Array.isArray(ratios) || !Array.isArray(residuals) || !Number.isSafeInteger(clearedFrame) || !Number.isSafeInteger(frameCount)
+    || frameCount !== ratios.length || frameCount !== residuals.length || clearedFrame < 0 || clearedFrame > frameCount
+    || ratios.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)
+    || residuals.some((value) => !Number.isFinite(Number(value)))) return null;
   return {
     ...metrics,
     frameDeviationRatios: ratios.map((value, frame) => frame < clearedFrame ? 0 : Number(value)),
+    frameSignedResiduals: residuals.map((value, frame) => frame < clearedFrame ? 0 : Number(value)),
     firstFailingFrame: clearedFrame < frameCount ? clearedFrame : -1,
   };
 }
@@ -166,7 +169,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   const RED = "#ef4444";
   const telemetryAvailability = differentialTelemetryAvailability(payload);
   const state = {
-    chart: "delta",
+    chart: "current",
     progressChart: "delta",
     sort: fieldPage?.sort ?? (telemetryAvailability.status === "comparable" ? "changed" : "default"),
     filter: fieldPage?.filter ?? "all",
@@ -383,12 +386,17 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       const marker = stateClass === "improved" ? "▲" : stateClass === "worsened" ? "▼" : "⦁";
       const deltaText = deltaPercent === null ? "—" : percent(deltaPercent);
       const resultText = frameDelta === null ? "—" : count(Math.abs(frameDelta));
-      const result = marker !== "⦁"
-        ? `<span class="log-delta-content"><span class="log-delta-indicator">${marker}</span><span>${resultText}</span></span>`
-        : resultText;
+      const result = frameDelta === null
+        ? "—"
+        : marker === "⦁"
+          ? resultText
+          : `<span class="log-delta-content"><span class="log-delta-indicator">${marker}</span><span>${resultText}</span></span>`;
       const frame = !Number.isSafeInteger(Number(entry.frame)) ? "—" : count(entry.frame);
+      const tick = entry.firstFailingTick == null || !Number.isSafeInteger(Number(entry.firstFailingTick))
+        ? "—"
+        : String(Number(entry.firstFailingTick));
       const done = !Number.isSafeInteger(Number(entry.frame)) || !Number(entry.frames) ? "—" : `${Math.round(Math.max(0, Math.min(1, Number(entry.frame) / Number(entry.frames))) * 100)}%`;
-      return `<article class="log-row ${escapeHtml(stateClass)} no-detail log-table-row"><span class="log-table-cell age">${escapeHtml(formatLogRelativeMinutes(entry.timestamp, now))}</span><span class="log-table-cell failed ${escapeHtml(stateClass)}">${frame}</span><span class="log-table-cell result ${escapeHtml(stateClass)}">${result}</span><span class="log-table-cell delta ${escapeHtml(stateClass)}">${deltaText}</span><span class="log-table-cell done">${done}</span></article>`;
+      return `<article class="log-row ${escapeHtml(stateClass)} no-detail log-table-row"><span class="log-table-cell age">${escapeHtml(formatLogRelativeMinutes(entry.timestamp, now))}</span><span class="log-table-cell failed ${escapeHtml(stateClass)}"><span>${frame}</span><span class="log-frame-separator">×</span><span class="log-frame-tick">${tick}</span></span><span class="log-table-cell result ${escapeHtml(stateClass)}">${result}</span><span class="log-table-cell delta ${escapeHtml(stateClass)}">${deltaText}</span><span class="log-table-cell done">${done}</span></article>`;
     }).join("");
     const placeholders = Array.from(
       { length: Math.max(0, 8 - visibleEntries.length) },
@@ -564,7 +572,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
             ? "No changed fields in this telemetry."
             : state.telemetryAvailability.reason
           : "No fields match the current view.";
-      return `<div class="empty">${escapeHtml(message)}</div>`;
+      return `<div class="empty hybrid-empty">${escapeHtml(message)}</div>`;
     }
     return `<div class="hybrid-list">${fields.map((field, index) => {
       const expanded = state.expanded.has(field.id);
@@ -755,9 +763,9 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
 	        <input id="driving-parity-field-search" type="search" placeholder="Search Fields..." aria-label="Differential Testing search fields">
 	        <span class="control-sep" aria-hidden="true">|</span>
 	        <div id="driving-parity-chart-toggle" class="chart-toggle differential-tabs" role="group" aria-label="Differential Testing chart mode">
-	          <button type="button" data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false">Value</button>
+	          <button type="button" data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="true">Value</button>
 	          <span class="sep" aria-hidden="true">·</span>
-	          <button type="button" data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true">Delta</button>
+	          <button type="button" data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="false">Delta</button>
 	        </div>
 	        <span class="control-sep" aria-hidden="true">|</span>
 	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle differential-tabs" role="group" aria-label="Differential Testing sort">
@@ -1499,6 +1507,12 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       border-radius: 1px;
       color: var(--muted);
     }
+    .hybrid-empty {
+      border: 0;
+      border-radius: 8px;
+      background: var(--card);
+      color: rgba(168,168,168,.76);
+    }
   </style>
   <main>
     <div class="legend">
@@ -1611,7 +1625,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const scenarioKpi = kpiItem({
       className: "driving-parity-kpi-scenario",
       title: subtitleParts.join(" · "),
-      visual: '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>',
+      visual: '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
       heading: "Scenario",
       headingClass: "differential-scenario-heading",
       value: scenarioSelector(),
@@ -1629,8 +1643,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace('<main id="driving-parity-page" class="driving-parity-page" hidden>', '<main id="driving-parity-page" class="driving-parity-page">')
       .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', `<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(${count(state.payload.summary?.fields?.total ?? state.payload.fields.length)})</span></h2>`)
       .replace('<div id="driving-parity-controls" class="driving-parity-controls" hidden>', '<div id="driving-parity-controls" class="driving-parity-controls">')
-      .replace('data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false"', `data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="${state.chart === "current"}"`)
-      .replace('data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true"', `data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="${state.chart === "delta"}"`)
+      .replace('data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="true"', `data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="${state.chart === "current"}"`)
+      .replace('data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="false"', `data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="${state.chart === "delta"}"`)
       .replace('<button type="button" data-driving-parity-sort="improved" aria-pressed="true">Changed</button>', `<button type="button" data-driving-parity-sort="improved" aria-pressed="${state.sort === "changed"}"${changedUnavailable ? ` disabled title="${escapeHtml(state.telemetryAvailability.reason)}"` : ""}>Changed</button>`)
       .replace('<button type="button" data-driving-parity-filter="failing" aria-pressed="true">Failed</button>', `<button type="button" data-driving-parity-filter="failing" aria-pressed="${state.filter === "failing"}">Failed</button>`)
       .replace('<button type="button" data-progress-chart-mode="failed">', `<button type="button" data-progress-chart-mode="failed" aria-pressed="${state.progressChart === "failed"}">`)

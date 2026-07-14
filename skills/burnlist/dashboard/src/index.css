@@ -225,7 +225,7 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 
 .dashboard-brand { display: flex; align-items: center; gap: 8px; min-width: 0; opacity: .55; transition: opacity 120ms ease; }
 .dashboard-brand:hover, .dashboard-brand:focus-visible { opacity: 1; }
-.dashboard-brand-logo { width: 24px; height: 24px; flex: 0 0 auto; transform: translateY(-2px); }
+.dashboard-brand-logo { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; color: #d4d4d8; font: 400 24px/1 var(--dashboard-font); transform: translateY(-1px); }
 .dashboard-brand-name { color: #d4d4d8; font: 400 14px/1 var(--dashboard-font); }
 
 .dashboard-primary-nav { display: flex; align-items: center; gap: 8px; height: 100%; font: 14px/1 var(--dashboard-title-font); }
@@ -406,4 +406,151 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
   .dashboard-index-header { align-items: flex-start; flex-direction: column; }
   .burnlist-table-heading, .burnlist-table-cell { padding-inline: 8px; }
   .oven-fields-row { grid-template-columns: 1fr; }
+}
+
+/* Checklist detail — reuse the Differential Testing visual system. */
+
+.dashboard-detail-time {
+  color: rgba(168, 168, 168, .76);
+  font: 400 14px/1.2 var(--dashboard-title-font);
+  white-space: nowrap;
+}
+
+body.checklist-detail-view .dashboard-oven-title {
+  max-width: calc(100% - 360px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checklist-detail-shell .checklist-overview-head {
+  display: flex !important;
+  justify-content: flex-end;
+}
+
+.checklist-detail-shell .checklist-overview-head .detail-tabs {
+  margin-left: auto;
+}
+
+.checklist-detail-shell .checklist-overview-head .detail-tabs button[aria-pressed="true"] {
+  color: var(--text);
+  opacity: 1;
+}
+
+.checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-ratio {
+  font-variant-numeric: tabular-nums;
+}
+
+.checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-progress-donut-segment {
+  transition: stroke-dasharray 160ms ease;
+}
+
+.checklist-detail-shell .checklist-progress-workspace .timeline-tab-tools {
+  display: none;
+}
+
+.checklist-detail-shell .checklist-progress-workspace .work-panel-body {
+  min-height: 200px;
+}
+
+.checklist-detail-shell .checklist-progress-workspace .timeline {
+  max-height: 240px;
+}
+
+.checklist-detail-shell .detail-repo-graph-panel {
+  display: flex !important;
+  width: 100%;
+  height: 500px;
+  margin-top: 12px;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(168, 168, 168, .15);
+  border-radius: 0;
+  background: transparent;
+}
+
+.checklist-detail-shell .detail-repo-graph-head {
+  min-height: 28px;
+  margin-bottom: 8px;
+}
+
+.checklist-detail-shell .detail-repo-graph-head h2 {
+  color: var(--muted);
+  font: 400 16px/1 var(--dashboard-title-font);
+}
+
+.checklist-detail-shell .detail-repo-graph-controls {
+  margin-left: auto;
+}
+
+.checklist-detail-shell .detail-repo-map {
+  min-height: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.checklist-detail-shell .proper-repo-graph .repo-folder-boundary {
+  fill: rgba(90, 162, 255, .018);
+  stroke: rgba(168, 168, 168, .14);
+  stroke-dasharray: 3 4;
+  pointer-events: none;
+}
+
+.checklist-detail-shell .proper-repo-graph .repo-folder-boundary.dirty {
+  fill: rgba(90, 162, 255, .028);
+  stroke: rgba(90, 162, 255, .2);
+}
+
+.checklist-detail-shell .proper-repo-graph .repo-folder-label {
+  fill: rgba(168, 168, 168, .68);
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.checklist-detail-shell .proper-repo-graph g[role="button"]:focus-visible .repo-node-file {
+  stroke: var(--text);
+  stroke-width: 2px;
+  outline: none;
+}
+
+.checklist-detail-shell .proper-repo-graph .repo-edge-import,
+.checklist-detail-shell .proper-repo-graph .repo-node-file {
+  transition: opacity 120ms ease, stroke 120ms ease, stroke-width 120ms ease;
+}
+
+.checklist-detail-shell .checklist-changes-workspace {
+  display: block;
+  height: auto;
+  min-height: 260px;
+  margin-top: 0;
+}
+
+.checklist-detail-shell .checklist-changes-workspace::before {
+  inset: 28px 0 0;
+}
+
+.checklist-detail-shell .checklist-changes-workspace .focused-functions-panel {
+  position: relative;
+  z-index: 1;
+  display: block !important;
+}
+
+@media (max-width: 760px) {
+  body.checklist-detail-view .dashboard-oven-title {
+    max-width: calc(100% - 190px);
+    font-size: 14px;
+  }
+
+  .dashboard-detail-time { display: none; }
+}
+
+@media (max-width: 640px) {
+  .checklist-detail-shell .checklist-progress-workspace {
+    grid-template-rows: minmax(260px, auto) minmax(240px, auto) !important;
+  }
+
+  .checklist-detail-shell .detail-repo-graph-panel {
+    height: 420px;
+  }
 }

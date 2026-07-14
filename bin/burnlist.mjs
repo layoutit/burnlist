@@ -128,6 +128,8 @@ Options:
   --ovens-dir <path>    Override custom Oven storage.
   --runs-dir <path>     Override Run snapshot storage.
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
+  --streaming-diff-dir <path>
+                        Read hook-attributed Streaming Diff thread feeds.
   --version, -v         Print the installed Burnlist version.
   --help, -h            Show this help.`);
   process.exit(0);

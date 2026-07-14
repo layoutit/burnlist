@@ -295,7 +295,10 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
     : null;
   const displayTimeSpan = compactTimeline ? compactTimeline.span : timeSpan;
   const displayTime = (time) => compactTimeline ? compactTimeline.project(time) : time - minTime;
-  const progressValueForPoint = (point) => Math.max(0, Math.min(100, point.percent));
+  const progressValueForPoint = (point) => {
+    const percent = Math.max(0, Math.min(100, point.percent));
+    return isDrivingParityPage ? 100 - percent : percent;
+  };
   const valueForPoint = isFailedChart ? failedFieldValueForPoint : progressValueForPoint;
   const failedVisibleDomainSource = isFailedChart && failedFieldSeries.length
     ? failedFieldSeries.filter((point) => point.time >= minTime && point.time <= maxTime)
@@ -450,7 +453,7 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
       : Math.round(value) + "%";
   svg.setAttribute(
     "aria-label",
-    isDeltaChart ? "Overall failed-sample deviation ratio over time" : isFailedChart ? "Failed state points over time" : "Completion percentage over time",
+    isDeltaChart ? "Overall failed-sample deviation ratio over time" : isFailedChart ? "Failed state points over time" : isDrivingParityPage ? "Remaining gap over time" : "Completion percentage over time",
   );
   svg.classList.toggle("range-zoomable", useRangeZoom);
   svg.classList.toggle("failed-chart", isFailedChart);
@@ -470,6 +473,15 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   svg.dataset.domainMax = String(maxTime);
   svg.dataset.timeScale = compactTimeline ? "compact" : "all";
   svg.replaceChildren();
+  if (!isFailedChart && isDrivingParityPage) {
+    const remainingArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    remainingArea.setAttribute("class", "progress-remaining-area");
+    remainingArea.setAttribute("x", String(seriesPad.left));
+    remainingArea.setAttribute("y", String(pad.top));
+    remainingArea.setAttribute("width", String(innerWidth));
+    remainingArea.setAttribute("height", String(innerHeight));
+    svg.append(remainingArea);
+  }
   const yTicks = isDeltaChart
     ? [0, 1, 2, 3, 4].map((index) => valueMin + ((valueMax - valueMin) * index) / 4)
     : isFailedChart
@@ -485,23 +497,23 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
     if (hideEdgeDrivingParityTick) continue;
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("class", "grid-line");
-    const rightValueLabelInset = isFailedChart && yAxisInsidePlot ? 36 : 0;
+    const rightValueLabelInset = yAxisInsidePlot ? 36 : 0;
     line.setAttribute("x1", String(seriesPad.left));
     line.setAttribute("x2", String(width - seriesPad.right - rightValueLabelInset));
     line.setAttribute("y1", String(tickY));
     line.setAttribute("y2", String(tickY));
     svg.append(line);
-    if (!isFailedChart && value === 0) continue;
+    if (!isFailedChart && (value === 0 || (isDrivingParityPage && value === 100))) continue;
     const backdrop = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     backdrop.setAttribute("class", "label-backdrop");
-    backdrop.setAttribute("x", "0");
+    const valueAxisOnRight = yAxisInsidePlot;
+    backdrop.setAttribute("x", String(valueAxisOnRight ? width - axisLabelWidth : 0));
     backdrop.setAttribute("y", String(labelY - 8));
     backdrop.setAttribute("width", String(axisLabelWidth));
     backdrop.setAttribute("height", "16");
     svg.append(backdrop);
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("class", "axis-label y-axis-label");
-    const valueAxisOnRight = isFailedChart && yAxisInsidePlot;
     text.setAttribute("x", String(valueAxisOnRight ? width - 4 : yAxisInsidePlot ? 4 : seriesPad.left - 8));
     text.setAttribute("y", String(labelY));
     text.setAttribute("text-anchor", valueAxisOnRight || !yAxisInsidePlot ? "end" : "start");
@@ -519,7 +531,7 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   if (!isFailedChart) {
     const area = document.createElementNS("http://www.w3.org/2000/svg", "path");
     area.setAttribute("class", "progress-area");
-    area.setAttribute("d", areaPath);
+    area.setAttribute("d", isDrivingParityPage ? chartCeilingAreaPath(fallback, progressValueForPoint) : areaPath);
     svg.append(area);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
     line.setAttribute("class", "progress-line");
@@ -663,7 +675,7 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   }
   if (failedRunTickMarkerLayer?.childElementCount) svg.append(failedRunTickMarkerLayer);
   if (failedFieldLine) svg.append(failedFieldLine);
-  if (!isFailedChart) for (let index = 1; index < fallback.length; index += 1) {
+  if (!isFailedChart && !isDrivingParityPage) for (let index = 1; index < fallback.length; index += 1) {
     const previous = fallback[index - 1];
     const point = fallback[index];
     const completed = Number.isFinite(previous.done) && Number.isFinite(point.done) && point.done > previous.done;
@@ -758,44 +770,41 @@ export function renderDifferentialTestingProgressChart(svg, history, { mode = "f
   }
 }
 
-export function rollingStandardDeviationScores(ratios, centeredRatios, activeStart, rollingRadius) {
-  return centeredRatios.map((residual, index) => {
-    if (!(ratios[index] > 0)) return 0;
-    const warmingUp = activeStart >= 0 && index < activeStart + rollingRadius;
-    const window = centeredRatios.slice(
-      warmingUp ? activeStart : Math.max(activeStart, index - rollingRadius),
-      warmingUp ? index + 1 : Math.min(centeredRatios.length, index + rollingRadius + 1),
-    );
-    if (window.length < 2) return 0;
-    const mean = window.reduce((sum, value) => sum + value, 0) / window.length;
-    const variance = window.reduce((sum, value) => sum + (value - mean) ** 2, 0) / window.length;
-    const standardDeviation = Math.sqrt(variance);
-    return standardDeviation > Number.EPSILON ? residual / standardDeviation : 0;
-  });
+export function percentileCappedFrameDeltaSeries(residuals, activeStart = 0, percentile = .98) {
+  const start = Math.max(0, Math.min(residuals.length, Number.isSafeInteger(activeStart) ? activeStart : 0));
+  const values = residuals.map((value, index) => index < start ? 0 : value);
+  const magnitudes = values.slice(start).map((value) => Math.abs(value)).sort((left, right) => left - right);
+  const normalizedPercentile = Math.max(0, Math.min(1, Number(percentile) || 0));
+  const percentileIndex = Math.floor(Math.max(0, magnitudes.length - 1) * normalizedPercentile);
+  const limit = Math.max(.00001, magnitudes[percentileIndex] || 0);
+  return {
+    values,
+    limit,
+    clippedCount: values.filter((value) => Math.abs(value) > limit).length,
+  };
 }
 
 export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   if (!svg || typeof svg.replaceChildren !== "function") return;
-  const ratios = Array.isArray(metrics?.frameDeviationRatios)
-    ? metrics.frameDeviationRatios.map((value) => Math.max(0, Number(value) || 0))
+  const residuals = Array.isArray(metrics?.frameSignedResiduals)
+    ? metrics.frameSignedResiduals.map((value) => Number(value) || 0)
     : [];
   const measuredWidth = Math.round(svg.getBoundingClientRect().width || svg.parentElement?.getBoundingClientRect().width || svg.clientWidth || 640);
   const width = Math.max(360, measuredWidth);
   const measuredHeight = Math.round(svg.getBoundingClientRect().height || svg.clientHeight || parseFloat(getComputedStyle(svg).height) || 200);
   const height = Math.max(160, measuredHeight);
   svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-  svg.setAttribute("aria-label", "Current-run overall frame deviation residual normalized by a 31-frame rolling standard deviation");
+  svg.setAttribute("aria-label", "Largest signed candidate minus reference residual by frame; display capped at the 98th percentile with clipped values marked");
   svg.classList.remove("range-zoomable", "failed-chart", "goal-reached");
   svg.classList.add("delta-chart");
   delete svg.dataset.domainMin;
   delete svg.dataset.domainMax;
   delete svg.dataset.timeScale;
   svg.replaceChildren();
-  if (ratios.length < 2) return;
+  if (residuals.length < 2) return;
 
-  const frameCount = ratios.length;
-  const rollingMedianRadius = 15;
-  const activeStart = ratios.findIndex((value) => value > 0);
+  const frameCount = residuals.length;
+  const activeStart = residuals.findIndex((value) => value !== 0);
   const hasMetricFirstFailingFrame = metrics?.firstFailingFrame !== null
     && metrics?.firstFailingFrame !== undefined
     && metrics?.firstFailingFrame !== "";
@@ -803,36 +812,18 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   const firstFailingFrame = hasMetricFirstFailingFrame && Number.isFinite(metricFirstFailingFrame)
     ? Math.max(-1, Math.min(frameCount - 1, Math.round(metricFirstFailingFrame)))
     : activeStart;
-  const centeredRatios = ratios.map((value, index) => {
-    if (!(value > 0)) return 0;
-    const warmingUp = activeStart >= 0 && index < activeStart + rollingMedianRadius;
-    const window = ratios
-      .slice(
-        warmingUp ? activeStart : Math.max(activeStart, index - rollingMedianRadius),
-        warmingUp ? index + 1 : Math.min(frameCount, index + rollingMedianRadius + 1),
-      )
-      .filter((candidate) => candidate > 0)
-      .sort((left, right) => left - right);
-    if (!window.length) return 0;
-    const middle = Math.floor(window.length / 2);
-    const rollingMedian = window.length % 2
-      ? window[middle]
-      : (window[middle - 1] + window[middle]) / 2;
-    return value - rollingMedian;
-  });
-  const standardizedRatios = rollingStandardDeviationScores(ratios, centeredRatios, activeStart, rollingMedianRadius);
-  const maxResidual = Math.max(0.00001, ...standardizedRatios.map((value) => Math.abs(value)));
-  const limit = maxResidual * 1.16;
+  const frameDeltas = percentileCappedFrameDeltaSeries(residuals, Math.max(0, firstFailingFrame));
+  const limit = frameDeltas.limit;
   const zeroY = height / 2;
   const x = (index) => index / Math.max(1, frameCount - 1) * width;
-  const y = (value) => zeroY - (value / limit) * (height * 0.44);
+  const y = (value) => zeroY - (Math.max(-limit, Math.min(limit, value)) / limit) * (height * 0.44);
   const svgElement = (name, attributes = {}) => {
     const element = document.createElementNS("http://www.w3.org/2000/svg", name);
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, String(value));
     return element;
   };
   const formatRatio = (value) => {
-    const digits = Math.abs(value) >= 1 ? 4 : 5;
+    const digits = Math.abs(value) >= 1 ? 2 : 3;
     return Number(value).toFixed(digits).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1");
   };
 
@@ -854,7 +845,7 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
     appendBand(firstFailingFrame, frameCount - 1, true);
   }
 
-  const horizontalTicks = [-limit / 2, 0, limit / 2];
+  const horizontalTicks = [-limit, 0, limit];
   for (const value of horizontalTicks) {
     const tickY = y(value);
     if (value !== 0) {
@@ -939,8 +930,8 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   const passSegments = [];
   const failSegments = [];
   for (let index = 0; index < frameCount - 1; index += 1) {
-    const startValue = standardizedRatios[index];
-    const endValue = standardizedRatios[index + 1];
+    const startValue = frameDeltas.values[index];
+    const endValue = frameDeltas.values[index + 1];
     const startX = x(index);
     const endX = x(index + 1);
     const appendSegment = (segments, x1, value1, x2, value2) => {
@@ -954,6 +945,21 @@ export function renderDifferentialTestingFrameDeltaChart(svg, metrics) {
   }
   if (passSegments.length) svg.append(svgElement("path", { class: "frame-delta-line-pass", d: passSegments.join(" ") }));
   if (failSegments.length) svg.append(svgElement("path", { class: "frame-delta-line-fail", d: failSegments.join(" ") }));
+  frameDeltas.values.forEach((value, index) => {
+    if (Math.abs(value) <= limit) return;
+    const markerX = x(index);
+    const markerY = y(value);
+    const marker = svgElement("path", {
+      class: "frame-delta-outlier",
+      d: value > 0
+        ? `M${(markerX - 3).toFixed(1)},${(markerY + 5).toFixed(1)}L${markerX.toFixed(1)},${markerY.toFixed(1)}L${(markerX + 3).toFixed(1)},${(markerY + 5).toFixed(1)}Z`
+        : `M${(markerX - 3).toFixed(1)},${(markerY - 5).toFixed(1)}L${markerX.toFixed(1)},${markerY.toFixed(1)}L${(markerX + 3).toFixed(1)},${(markerY - 5).toFixed(1)}Z`,
+    });
+    const title = svgElement("title");
+    title.textContent = `${value > 0 ? "+" : ""}${formatRatio(value)} signed residual`;
+    marker.append(title);
+    svg.append(marker);
+  });
   if (firstFailingFramePercentLabel) svg.append(firstFailingFramePercentLabel);
   if (firstFailingFrameLabel) svg.append(firstFailingFrameLabel);
 }

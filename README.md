@@ -1,4 +1,4 @@
-# <img src="skills/burnlist/dashboard/public/favicon.svg" width="30" height="30" alt="Burnlist logo" /> Burnlist
+# ⟁ Burnlist
 
 A real-time, non-invasive tracker for agents. A Burnlist stores work in a repo-local, shrinking Markdown checklist and renders progress in a local observer dashboard. Burnlist owns task state, not implementation, testing, or delivery.
 

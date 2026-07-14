@@ -1,4 +1,9 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
+// @ts-expect-error The checklist chart model is plain ESM so the dashboard and Node tests share it.
+import { buildChecklistProgressChart } from "../checklist-progress-chart.js";
+// @ts-expect-error The deterministic graph layout is plain ESM so the dashboard and Node tests share it.
+import { layoutRepoGraph } from "../repo-graph-layout.js";
 
 type ChecklistItem = { id: string; title: string; fields: Record<string, string> };
 type CompletedItem = { id: string; title: string; completedAt: string; detail: string };
@@ -36,6 +41,9 @@ type RepoMapData = {
   workingAllEdges: RepoEdge[];
   importScan?: { bounded?: boolean; availableResolvedEdges?: number };
 };
+type RepoGraphNode = RepoFile & { group: string; x: number; y: number; r: number; color: string };
+type RepoGraphGroup = { id: string; label: string; cx: number; cy: number; r: number; dirty: boolean; count: number };
+type RepoGraphLayout = { nodes: RepoGraphNode[]; edges: RepoEdge[]; groups: RepoGraphGroup[] };
 
 function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
@@ -72,38 +80,75 @@ function timing(data: ChecklistProgressData) {
   return { elapsed: end - start, pace, timeLeft };
 }
 
-function useElementWidth() {
+function ProgressDonut({ percent }: { percent: number }) {
+  const value = Math.max(0, Math.min(100, percent));
+  return (
+    <svg aria-hidden="true" className="driving-parity-kpi-progress-donut" viewBox="0 0 40 40">
+      <circle className="driving-parity-kpi-progress-donut-track" cx="20" cy="20" r="15.9155" />
+      <circle className="driving-parity-kpi-progress-donut-segment" cx="20" cy="20" r="15.9155" pathLength="100" strokeDasharray={`${value} ${100 - value}`} transform="rotate(-90 20 20)" />
+    </svg>
+  );
+}
+
+function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
+  const durations = timing(data);
+  const current = data.active[0];
+  const metrics = [
+    { icon: Clock3, heading: "Elapsed", value: formatDuration(durations.elapsed) },
+    { icon: Gauge, heading: "Avg pace", value: formatDuration(durations.pace) },
+    { icon: TimerReset, heading: "Time left", value: formatDuration(durations.timeLeft) },
+  ];
+  return (
+    <div aria-label="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
+      <div className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"}>
+        <ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />
+        <div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Current</div><div className="driving-parity-kpi-ratio">{current ? `${current.id} · Active` : "Complete"}</div></div>
+      </div>
+      <div className="driving-parity-kpi-item driving-parity-kpi-section" title={`${data.done} of ${data.total} tasks complete`}>
+        <ProgressDonut percent={data.percent} />
+        <div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Progress</div><div className="driving-parity-kpi-ratio"><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></div></div>
+      </div>
+      {metrics.map(({ icon: Icon, heading, value }) => (
+        <div className="driving-parity-kpi-item driving-parity-kpi-section" key={heading}>
+          <Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />
+          <div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">{heading}</div><div className="driving-parity-kpi-ratio">{value}</div></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function useElementSize() {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(640);
+  const [height, setHeight] = useState(180);
   useEffect(() => {
     if (!ref.current) return;
-    const resize = () => setWidth(Math.max(320, Math.round(ref.current?.clientWidth ?? 640)));
+    const resize = () => {
+      setWidth(Math.max(320, Math.round(ref.current?.clientWidth ?? 640)));
+      setHeight(Math.max(160, Math.round(ref.current?.clientHeight ?? 180)));
+    };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
-  return { ref, width };
+  return { ref, width, height };
 }
 
 function ProgressChart({ history, mode }: { history: HistoryPoint[]; mode: "done" | "burn" }) {
-  const { ref, width } = useElementWidth();
-  const height = 180;
-  const plot = { left: 34, top: 14, right: width - 10, bottom: height - 24 };
-  const points = history.length ? history : [{ time: new Date().toISOString(), done: 0, remaining: 0, total: 0, percent: 0 }];
-  const values = points.map((point) => mode === "done" ? point.percent : 100 - point.percent);
-  const x = (index: number) => plot.left + (index / Math.max(1, points.length - 1)) * (plot.right - plot.left);
-  const y = (value: number) => plot.bottom - (value / 100) * (plot.bottom - plot.top);
-  let path = `M ${x(0)} ${y(values[0])}`;
-  for (let index = 1; index < points.length; index += 1) path += ` H ${x(index)} V ${y(values[index])}`;
-  const area = `${path} L ${x(points.length - 1)} ${plot.bottom} L ${x(0)} ${plot.bottom} Z`;
+  const { ref, width, height } = useElementSize();
+  const chart = useMemo(() => buildChecklistProgressChart(history, mode, { width, height }), [height, history, mode, width]);
+  const formatTick = (time: number) => new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   return (
     <div className="chart-wrap" ref={ref}>
-      <svg aria-label={`${mode === "done" ? "Done" : "Burn"} percentage over time`} className="chart" role="img" viewBox={`0 0 ${width} ${height}`}>
-        {[0, 25, 50, 75, 100].map((tick) => <g key={tick}><line className="grid-line" x1={plot.left} x2={plot.right} y1={y(tick)} y2={y(tick)} /><text className="axis-label" x={plot.left - 7} y={y(tick) + 4}>{tick}</text></g>)}
-        <path className="progress-area" d={area} />
-        <path className="progress-line" d={path} />
-        {points.map((point, index) => <circle className="progress-dot" cx={x(index)} cy={y(values[index])} key={`${point.time}/${index}`} r="3" />)}
+      <svg aria-label={mode === "done" ? "Completion percentage over time" : "Remaining items over time"} className="chart checklist-progress-chart" data-chart-mode={mode} data-plot-bottom={chart.plot.bottom} data-plot-left={chart.plot.left} data-plot-right={chart.plot.right} data-plot-top={chart.plot.top} data-time-scale={chart.timeScale} role="img" viewBox={`0 0 ${chart.width} ${chart.height}`}>
+        {chart.yTicks.map((tick) => <g key={tick.value}><line className="grid-line" x1={chart.plot.left} x2={chart.plot.right} y1={tick.y} y2={tick.y} />{tick.value > 0 && <><rect className="label-backdrop" height="16" width="44" x={chart.width - 44} y={Math.max(0, Math.min(chart.height - 16, tick.y - 8))} /><text className="axis-label y-axis-label" dominantBaseline="central" textAnchor="end" x={chart.width - 4} y={Math.max(8, Math.min(chart.height - 8, tick.y))}>{tick.label}</text></>}</g>)}
+        {chart.xTicks.map((tick, index) => index > 0 && index < chart.xTicks.length - 1 ? <g key={`${tick.time}/${index}`}><line className="grid-line x-grid-line" x1={tick.x} x2={tick.x} y1={chart.plot.top} y2={chart.height - 22} /><text className="axis-label x-axis-label" textAnchor="middle" x={tick.x} y={chart.height - 6}>{formatTick(tick.time)}</text></g> : null)}
+        <path className="progress-area" d={chart.area} />
+        <path className="progress-line" d={chart.path} />
+        {chart.markers.map((marker, index) => <text className={marker.type === "split" ? "split-marker" : "completion-marker"} key={`${marker.type}/${marker.x}/${index}`} x={marker.x} y={marker.y}>{marker.type === "split" ? "▲" : "▼"}<title>{marker.title}</title></text>)}
+        <circle className="progress-dot" cx={chart.last.x} cy={chart.last.y} r="4"><title>{mode === "done" ? `${Math.round(chart.last.value)}% complete` : `${Math.round(chart.last.value)} items remaining`}</title></circle>
       </svg>
     </div>
   );
@@ -115,7 +160,6 @@ function ProgressPanel({ data }: { data: ChecklistProgressData }) {
   return (
     <section className="panel progress-panel">
       <div className="panel-title-row">
-        <h2>Progress</h2>
         <div className="label-toggle" aria-label="Burnlist progress chart view">
           <button className={mode === "done" ? "selected" : ""} onClick={() => setMode("done")}>Done</button><span className="sep">·</span>
           <button className={mode === "burn" ? "selected" : ""} onClick={() => setMode("burn")}>Burn</button>
@@ -181,21 +225,13 @@ function Log({ data }: { data: ChecklistProgressData }) {
 
 function WorkPanel({ data }: { data: ChecklistProgressData }) {
   const [tab, setTab] = useState<"timeline" | "target" | "log">("timeline");
-  return <section className="panel work-panel" data-work-tab={tab}><div className="work-panel-head"><div className="label-toggle work-panel-tabs"><button className={tab === "timeline" ? "selected" : ""} onClick={() => setTab("timeline")}>Timeline</button><span className="sep">·</span><button className={tab === "target" ? "selected" : ""} onClick={() => setTab("target")}>Target</button><span className="sep">·</span><button className={tab === "log" ? "selected" : ""} onClick={() => setTab("log")}>Log</button></div></div><div className="work-panel-body">{tab === "timeline" ? <Timeline data={data} /> : tab === "target" ? <Target data={data} /> : <Log data={data} />}</div></section>;
-}
-
-function fileColor(path: string) {
-  const extension = path.split(".").at(-1)?.toLowerCase();
-  if (["ts", "tsx"].includes(extension ?? "")) return "#5aa2ff";
-  if (["js", "mjs", "jsx"].includes(extension ?? "")) return "#cb9d4a";
-  if (extension === "css") return "#c66ed8";
-  if (extension === "json") return "#61d394";
-  if (extension === "md") return "#a8a8a8";
-  return "#657080";
+  return <section className="panel work-panel" data-work-tab={tab}><div className="work-panel-head"><div className="work-panel-title">Progress</div><div className="label-toggle work-panel-tabs"><button className={tab === "timeline" ? "selected" : ""} onClick={() => setTab("timeline")}>Timeline</button><span className="sep">·</span><button className={tab === "target" ? "selected" : ""} onClick={() => setTab("target")}>Target</button><span className="sep">·</span><button className={tab === "log" ? "selected" : ""} onClick={() => setTab("log")}>Log</button></div></div><div className="work-panel-body">{tab === "timeline" ? <Timeline data={data} /> : tab === "target" ? <Target data={data} /> : <Log data={data} />}</div></section>;
 }
 
 function RepoGraph({ repo, data, onData }: { repo: string; data: RepoMapData | null; onData: (data: RepoMapData) => void }) {
   const [scope, setScope] = useState("src");
+  const [selectedPath, setSelectedPath] = useState("");
+  const [showLabels, setShowLabels] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/repo-map?repo=${encodeURIComponent(repo)}`, { cache: "no-store" }).then((response) => response.json()).then((payload) => { if (!cancelled) onData(payload); });
@@ -203,11 +239,18 @@ function RepoGraph({ repo, data, onData }: { repo: string; data: RepoMapData | n
   }, [onData, repo]);
   const files = data?.workingFiles ?? [];
   const folders = useMemo(() => [...new Set(files.map((file) => file.path.split("/").slice(0, -1).join("/")).filter(Boolean))].sort((left, right) => left.localeCompare(right)).filter((folder) => folder === "src" || folder.startsWith("src/")), [files]);
-  const visible = files.filter((file) => scope ? file.path.startsWith(`${scope}/`) : true);
-  const columns = Math.max(1, Math.ceil(Math.sqrt(visible.length * 1.8)));
-  const positions = new Map(visible.map((file, index) => [file.path, { x: 28 + (index % columns) * (944 / Math.max(1, columns - 1)), y: 36 + Math.floor(index / columns) * (440 / Math.max(1, Math.ceil(visible.length / columns) - 1)) }]));
-  const edges = (data?.workingAllEdges ?? []).filter((edge) => positions.has(edge.source) && positions.has(edge.target));
-  return <aside className="panel detail-repo-graph-panel"><div className="detail-repo-graph-head"><h2>Repo Graph</h2><div className="detail-repo-graph-controls"><select aria-label="Repo Graph folder" className="repo-map-scope" onChange={(event) => setScope(event.target.value)} value={scope}>{folders.map((folder) => <option key={folder} value={folder}>{folder}</option>)}</select></div><div className="repo-map-meta">{visible.length} files</div></div>{data?.available === false ? <p className="target-empty">Repo Graph unavailable.</p> : <svg aria-label={`Repository graph for ${scope}`} className="repo-map detail-repo-map" role="img" viewBox="0 0 1000 500">{edges.map((edge, index) => { const source = positions.get(edge.source)!; const target = positions.get(edge.target)!; return <line className="repo-edge-import" key={`${edge.source}/${edge.target}/${index}`} x1={source.x} x2={target.x} y1={source.y} y2={target.y} />; })}{visible.map((file) => { const position = positions.get(file.path)!; const radius = 3 + Math.min(7, Math.log10(Math.max(10, file.size))); return <g key={file.path}><title>{file.path}</title><circle className={`repo-node-file ${file.dirty ? "active" : ""}`} cx={position.x} cy={position.y} fill={fileColor(file.path)} r={radius} style={{ "--repo-file-fill": fileColor(file.path) } as CSSProperties} />{file.recentlyEdited && <path className="repo-node-file-recent-symbol" d={`M ${position.x} ${position.y - 2.5} l 2.5 2.5 -2.5 2.5 -2.5 -2.5 Z`} />}</g>; })}</svg>}</aside>;
+  const graph = useMemo(() => layoutRepoGraph(files, data?.workingAllEdges ?? [], scope, { width: 1000, height: 500 }) as RepoGraphLayout, [data?.workingAllEdges, files, scope]);
+  const nodesByPath = useMemo(() => new Map(graph.nodes.map((node) => [node.path, node])), [graph.nodes]);
+  const connectedPaths = useMemo(() => {
+    const connected = new Set(selectedPath ? [selectedPath] : []);
+    for (const edge of graph.edges) {
+      if (edge.source === selectedPath) connected.add(edge.target);
+      if (edge.target === selectedPath) connected.add(edge.source);
+    }
+    return connected;
+  }, [graph.edges, selectedPath]);
+  const selectScope = (nextScope: string) => { setScope(nextScope); setSelectedPath(""); };
+  return <aside className="panel detail-repo-graph-panel"><div className="detail-repo-graph-head"><h2>Repo Graph</h2><div className="detail-repo-graph-controls"><select aria-label="Repo Graph folder" className="repo-map-scope" onChange={(event) => selectScope(event.target.value)} value={scope}>{folders.map((folder) => <option key={folder} value={folder}>{folder}</option>)}</select></div><label className="repo-map-label-toggle"><input checked={showLabels} onChange={(event) => setShowLabels(event.target.checked)} type="checkbox" />Labels</label><div className="repo-map-meta">{graph.nodes.length} files · {graph.edges.length} links</div></div>{data?.available === false ? <p className="target-empty">Repo Graph unavailable.</p> : <svg aria-label={`Repository graph for ${scope}`} className="repo-map detail-repo-map proper-repo-graph" onClick={() => setSelectedPath("")} role="img" viewBox="0 0 1000 500">{graph.groups.map((group) => <g key={group.id}><circle className={`repo-folder-boundary ${group.dirty ? "dirty" : ""}`} cx={group.cx} cy={group.cy} r={group.r}><title>{group.id}: {group.count} files</title></circle><text className="repo-label repo-folder-label" textAnchor="middle" x={group.cx} y={group.cy + group.r + 18}>{group.label}</text></g>)}{graph.edges.map((edge, index) => { const source = nodesByPath.get(edge.source); const target = nodesByPath.get(edge.target); if (!source || !target) return null; const connected = selectedPath && (edge.source === selectedPath || edge.target === selectedPath); return <line className={`repo-edge-import ${connected ? "connected" : ""}`} key={`${edge.source}/${edge.target}/${index}`} x1={source.x} x2={target.x} y1={source.y} y2={target.y}><title>{edge.source} imports {edge.target}</title></line>; })}{graph.nodes.map((node) => { const selected = node.path === selectedPath; const connected = !selected && connectedPaths.has(node.path); const label = node.path.split("/").at(-1); return <g aria-label={node.path} key={node.path} onClick={(event) => { event.stopPropagation(); setSelectedPath(selected ? "" : node.path); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedPath(selected ? "" : node.path); } }} role="button" tabIndex={0}><title>{node.status ? `${node.status} ` : ""}{node.path}</title><circle className={`repo-node-file ${node.dirty ? "active" : ""} ${selected ? "selected" : connected ? "connected" : ""}`} cx={node.x} cy={node.y} r={node.r} style={{ "--repo-file-fill": node.color } as CSSProperties} />{node.recentlyEdited && <path className="repo-node-file-recent-symbol" d={`M ${node.x} ${node.y - 2.5} l 2.5 2.5 -2.5 2.5 -2.5 -2.5 Z`} />}{(showLabels || selected) && <text className="repo-file-label" textAnchor="middle" x={node.x} y={node.y + node.r + 14}>{label}</text>}</g>; })}</svg>}</aside>;
 }
 
 function Changes({ data }: { data: RepoMapData | null }) {
@@ -215,8 +258,12 @@ function Changes({ data }: { data: RepoMapData | null }) {
   return <section className="panel focused-functions-panel"><div className="focused-functions-head"><h2>Changes</h2><div className="focused-functions-meta">{changed.length} changed files</div></div><div className="focused-functions-list">{changed.length ? changed.map((file) => <article className="diff-file" key={file.path}><div className="diff-file-head"><span className="diff-file-icon">M</span><span className="diff-file-path">{file.path}</span><span className="diff-file-stats">{file.status || "modified"}</span></div></article>) : <p className="target-empty">No working tree changes.</p>}</div></section>;
 }
 
-export function ChecklistDashboard({ data, backHref }: { data: ChecklistProgressData; backHref: string }) {
+export function ChecklistDashboard({ data }: { data: ChecklistProgressData }) {
   const [view, setView] = useState<"dashboard" | "changes">("dashboard");
   const [repoData, setRepoData] = useState<RepoMapData | null>(null);
-  return <div className={`shell detail-view-shell ${view === "changes" ? "changes-tab-shell" : ""}`}><header><div className="title-row"><h1>{data.title}</h1><a aria-label="Back to Burnlists" className="back-link visible" href={backHref}>⌂</a></div><nav className="detail-tabs"><button className={view === "dashboard" ? "selected" : ""} onClick={() => setView("dashboard")}>Dashboard</button><span className="sep">·</span><button className={view === "changes" ? "selected" : ""} onClick={() => setView("changes")}>Changes</button></nav><div className="meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></div></header><main className="detail-view">{view === "changes" ? <div className="detail-workspace" data-detail-tab="changes"><Changes data={repoData} /></div> : <div className="detail-workspace" data-detail-tab="dashboard"><div className="detail-report-column"><section className="top"><ProgressPanel data={data} /><WorkPanel data={data} /></section></div><RepoGraph data={repoData} onData={setRepoData} repo={data.repo} /></div>}</main><footer className="detail-meta-footer meta-row plan-meta-row"><code>{data.repo}/{data.planLabel}</code><span className="last-read-inline">Last read: {new Date(data.generatedAt).toLocaleString()}</span></footer></div>;
+  useEffect(() => {
+    document.body.classList.add("driving-parity-view", "checklist-detail-view");
+    return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
+  }, []);
+  return <div className={`shell detail-view-shell driving-parity-view checklist-detail-shell ${view === "changes" ? "changes-tab-shell" : ""}`}><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><div className="work-panel-head differential-overview-head checklist-overview-head"><nav aria-label="Burnlist detail view" className="label-toggle differential-tabs detail-tabs"><button aria-pressed={view === "dashboard"} onClick={() => setView("dashboard")}>Dashboard</button><span className="sep">·</span><button aria-pressed={view === "changes"} onClick={() => setView("changes")}>Changes</button></nav></div><ChecklistKpis data={data} /></section>{view === "changes" ? <div className="detail-workspace checklist-changes-workspace" data-detail-tab="changes"><Changes data={repoData} /></div> : <><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><div className="detail-report-column"><section className="top"><ProgressPanel data={data} /><WorkPanel data={data} /></section></div></div><RepoGraph data={repoData} onData={setRepoData} repo={data.repo} /></>}</main></div>;
 }

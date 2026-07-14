@@ -229,6 +229,7 @@ function validateRecords({ id, data, fieldIndex, frameDelta, recordsPath, record
   baselineStateHash.update("[");
   const activeCounts = Array(frameDelta.ticks.length).fill(0);
   const nonPassCounts = Array(frameDelta.ticks.length).fill(0);
+  const frameSignedResiduals = Array(frameDelta.ticks.length).fill(0);
 
   for (const [index, entry] of fieldIndex.entries()) {
     const label = `scenario ${id}.fieldIndex[${index}]`;
@@ -266,6 +267,8 @@ function validateRecords({ id, data, fieldIndex, frameDelta, recordsPath, record
       if (state === 4) return;
       activeCounts[sampleIndex] += 1;
       if (state !== 0) nonPassCounts[sampleIndex] += 1;
+      const residual = fieldResult.signedResiduals[sampleIndex];
+      if (Math.abs(residual) > Math.abs(frameSignedResiduals[sampleIndex])) frameSignedResiduals[sampleIndex] = residual;
     });
     candidateStateHash.update(index ? "," : "");
     candidateStateHash.update(canonicalJson({ id: entry.id, samples: fieldResult.ticks.map((tick, sampleIndex) => [tick, fieldResult.states[sampleIndex]]) }));
@@ -294,7 +297,7 @@ function validateRecords({ id, data, fieldIndex, frameDelta, recordsPath, record
   const frameDeviationRatios = nonPassCounts.map((value, index) => activeCounts[index] ? value / activeCounts[index] : 0);
   return {
     fieldIndex: indexes,
-    frameDeltaMetrics: { frameDeviationRatios, firstFailingFrame: nonPassCounts.findIndex((value) => value > 0) },
+    frameDeltaMetrics: { frameDeviationRatios, frameSignedResiduals, firstFailingFrame: nonPassCounts.findIndex((value) => value > 0) },
   };
 }
 
@@ -355,6 +358,7 @@ function validateField(field, label) {
   if (!Array.isArray(field.samples) || field.samples.length !== field.sampleCount) fail(`${label}.samples must match sampleCount`);
   const ticks = [];
   const states = [];
+  const signedResiduals = [];
   let previous = -Infinity;
   let failed = 0;
   let missing = 0;
@@ -380,10 +384,11 @@ function validateField(field, label) {
     if (state !== 0 && first === null) first = tick;
     ticks.push(tick);
     states.push(state);
+    signedResiduals.push(state <= 1 && typeof reference === "number" && typeof candidate === "number" ? candidate - reference : 0);
   }
   if (field.failedSampleCount !== failed || field.missingSampleCount !== missing || field.firstFailingTick !== first || !nearlyEqual(field.maxDelta, maxDelta)) fail(`${label} summary does not reconcile with samples`);
   if (missing > 0 && field.trustStatus !== "blocked") fail(`${label}.trustStatus must be blocked for missing samples`);
-  return { ticks, states, failed, missing, passed: field.samples.length - failed - missing, blocked: field.trustStatus === "blocked" || missing > 0 };
+  return { ticks, states, signedResiduals, failed, missing, passed: field.samples.length - failed - missing, blocked: field.trustStatus === "blocked" || missing > 0 };
 }
 
 function validateTelemetryField(entry, field, label) {

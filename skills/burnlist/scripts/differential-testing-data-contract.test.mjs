@@ -21,7 +21,7 @@ import {
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
 } from "../dashboard/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../dashboard/differential-testing-progress-chart.js";
+import { percentileCappedFrameDeltaSeries } from "../dashboard/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
@@ -33,25 +33,18 @@ import {
 
 const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../examples/differential-testing");
 
-test("frame delta residuals normalize against their rolling standard deviation", () => {
-  const scores = rollingStandardDeviationScores(
-    [0, 1, 1, 1, 1],
-    [0, -2, -1, 1, 2],
-    1,
-    1,
-  );
-  assert.equal(scores[0], 0);
-  assert.equal(scores[1], 0);
-  assert.equal(Number(scores[2].toFixed(6)), -0.801784);
-  assert.equal(Number(scores[3].toFixed(6)), 0.801784);
-  assert.equal(Number(scores[4].toFixed(6)), 4);
+test("frame delta uses direct signed residuals with a percentile display cap", () => {
+  const series = percentileCappedFrameDeltaSeries([0, -.1, .1, -.1, .2, .4], 1, .75);
+  assert.deepEqual(series.values.map((value) => Number(value.toFixed(6))), [0, -.1, .1, -.1, .2, .4]);
+  assert.equal(Number(series.limit.toFixed(6)), .2);
+  assert.equal(series.clippedCount, 1);
 });
 
-test("frame delta normalization stays finite for locally flat residuals", () => {
-  assert.deepEqual(
-    rollingStandardDeviationScores([0, 1, 1, 1], [0, 0, 0, 0], 1, 15),
-    [0, 0, 0, 0],
-  );
+test("frame delta display cap stays finite for a flat series", () => {
+  const series = percentileCappedFrameDeltaSeries([0, 0, 0, 0], 1);
+  assert.deepEqual(series.values, [0, 0, 0, 0]);
+  assert.equal(series.limit, .00001);
+  assert.equal(series.clippedCount, 0);
 });
 
 function emptyCaptures() {
@@ -423,9 +416,10 @@ test("Differential Testing loading state mirrors the generic Oven layout", () =>
   assert.match(html, /data-progress-chart-mode="failed" aria-pressed="false"/u);
   assert.match(html, /data-progress-chart-mode="delta" aria-pressed="true"/u);
   assert.match(html, /id="driving-parity-page" class="driving-parity-page"/u);
-  assert.match(html, /data-driving-parity-chart="current"[^>]+aria-pressed="false"/u);
-  assert.match(html, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
+  assert.match(html, /data-driving-parity-chart="current"[^>]+aria-pressed="true"/u);
+  assert.match(html, /data-driving-parity-chart="delta"[^>]+aria-pressed="false"/u);
   assert.equal((html.match(/class="hybrid-row"/gu) || []).length, 0);
+  assert.match(html, /\.hybrid-empty\s*\{[^}]*border: 0;[^}]*border-radius: 8px;[^}]*background: var\(--card\);[^}]*color: rgba\(168,168,168,\.76\);[^}]*\}/su);
   assert.match(html, />Fields List</u);
   assert.doesNotMatch(html, /differential-loading-(?:placeholder|waffle)|driving-parity-kpi-gauge|checklist-log-table-header/u);
   assert.doesNotMatch(html, /(?:^|\n)\s*header\s*\{/u);
@@ -1123,9 +1117,11 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
 
   const exactMetrics = differentialExactPrefixFrameDeltaMetrics(framePayload, {
     frameDeviationRatios: Array(1_000).fill(0.2),
+    frameSignedResiduals: Array(1_000).fill(-0.25),
     firstFailingFrame: 0,
   });
   assert.deepEqual(exactMetrics.frameDeviationRatios.slice(236, 240), [0, 0, 0.2, 0.2]);
+  assert.deepEqual(exactMetrics.frameSignedResiduals.slice(236, 240), [0, 0, -0.25, -0.25]);
   assert.equal(exactMetrics.firstFailingFrame, 238);
   assert.equal(differentialExactPrefixFrameDeltaMetrics(framePayload, null), null);
 
@@ -1243,9 +1239,9 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   const payload = buildPayload(...populatedCaptures());
   const baselineLog = payload.log[0];
   payload.log = [
-    { ...baselineLog, timestamp: "2026-01-01T12:00:04.000Z", result: "improved", value: 845_738, delta: -801, frames: 1_000, frame: 238, frameDelta: 41 },
-    { ...baselineLog, timestamp: "2026-01-01T12:00:02.000Z", result: "worsened", value: 846_539, delta: 801, frames: 1_000, frame: 197, frameDelta: -41 },
-    { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 845_738, delta: null, frames: 1_000, frame: 238, frameDelta: null },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:04.000Z", result: "improved", value: 845_738, delta: -801, frames: 1_000, frame: 238, frameDelta: 41, firstFailingTick: 3_754 },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:02.000Z", result: "worsened", value: 846_539, delta: 801, frames: 1_000, frame: 197, frameDelta: -41, firstFailingTick: 3 },
+    { ...baselineLog, timestamp: "2026-01-01T12:00:00.000Z", result: "unchanged", value: 845_738, delta: null, frames: 1_000, frame: 238, frameDelta: null, firstFailingTick: null },
   ];
   payload.progress = [...payload.log].reverse();
   assert.deepEqual(
@@ -1292,13 +1288,11 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.match(root.innerHTML, /class="hybrid-value-delta">0\.1000<\/span>/u);
   assert.match(root.innerHTML, /class="hybrid-value-delta">0<\/span>/u);
   assert.match(root.innerHTML, /class="checklist-log-table-header"><span>Age<\/span><span>Frame<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell failed improved">238<\/span>/u);
-  assert.match(root.innerHTML, /class="log-delta-indicator">▲<\/span><span>41<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell delta improved">4\.1%<\/span><span class="log-table-cell done">24%<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell failed worsened">197<\/span>/u);
-  assert.match(root.innerHTML, /class="log-delta-indicator">▼<\/span><span>41<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell delta worsened">4\.1%<\/span><span class="log-table-cell done">20%<\/span>/u);
-  assert.match(root.innerHTML, /class="log-table-cell failed unchanged">238<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed improved"><span>238<\/span><span class="log-frame-separator">×<\/span><span class="log-frame-tick">3754<\/span><\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell result improved"><span class="log-delta-content"><span class="log-delta-indicator">▲<\/span><span>41<\/span><\/span><\/span><span class="log-table-cell delta improved">4\.1%<\/span><span class="log-table-cell done">24%<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed worsened"><span>197<\/span><span class="log-frame-separator">×<\/span><span class="log-frame-tick">3<\/span><\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell result worsened"><span class="log-delta-content"><span class="log-delta-indicator">▼<\/span><span>41<\/span><\/span><\/span><span class="log-table-cell delta worsened">4\.1%<\/span><span class="log-table-cell done">20%<\/span>/u);
+  assert.match(root.innerHTML, /class="log-table-cell failed unchanged"><span>238<\/span><span class="log-frame-separator">×<\/span><span class="log-frame-tick">—<\/span><\/span>/u);
   assert.match(root.innerHTML, /class="log-table-cell result unchanged">—<\/span><span class="log-table-cell delta unchanged">—<\/span><span class="log-table-cell done">24%<\/span>/u);
   assert.equal((root.innerHTML.match(/class="log-row no-detail log-table-row log-placeholder-row"/gu) || []).length, 5);
   assert.match(root.innerHTML, /log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">\.<\/span>(?:<span class="log-table-cell">\.<\/span>){4}/u);
@@ -1308,7 +1302,8 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
   assert.match(root.innerHTML, /id="driving-parity-chart-toggle" class="chart-toggle differential-tabs"/u);
   assert.match(root.innerHTML, /data-progress-chart-mode="failed" aria-pressed="false"/u);
   assert.match(root.innerHTML, /data-progress-chart-mode="delta" aria-pressed="true"/u);
-  assert.match(root.innerHTML, /data-driving-parity-chart="delta"[^>]+aria-pressed="true"/u);
+  assert.match(root.innerHTML, /data-driving-parity-chart="current"[^>]+aria-pressed="true"/u);
+  assert.match(root.innerHTML, /data-driving-parity-chart="delta"[^>]+aria-pressed="false"/u);
   assert.doesNotMatch(root.innerHTML, /differential-(?:page|workspace|toolbar|controls|kpi-strip)/u);
   assert.equal((renderedHtml.match(/class="frame-tick-label"/gu) || []).length, 1);
 });

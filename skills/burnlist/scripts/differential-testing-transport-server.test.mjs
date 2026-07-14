@@ -53,6 +53,7 @@ test("the Differential Testing data route serves bounded bundle pages with stabl
     assert.equal(current.payload.scenarioCatalog.selectedScenarioId, fixture.scenarioId);
     assert.deepEqual(current.frameDeltaMetrics, {
       frameDeviationRatios: [0, 0, 0.5],
+      frameSignedResiduals: [0, 0.004999999999999893, 0.10000000000000009],
       firstFailingFrame: 2,
     });
     assert.deepEqual(

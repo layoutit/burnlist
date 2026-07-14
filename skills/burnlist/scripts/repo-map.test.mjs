@@ -6,9 +6,51 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { layoutRepoGraph } from "../dashboard/repo-graph-layout.js";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
+
+test("repo graph uses a deterministic force layout with real links and folder halos", () => {
+  const files = [
+    ["src/app.mjs", 800],
+    ["src/geddon/client.mjs", 1_800],
+    ["src/geddon/scene/world.mjs", 3_200],
+    ["src/geddon/scene/camera.mjs", 1_200],
+    ["src/geddon/map/cells.mjs", 2_400],
+    ["src/prepare/scene.mjs", 4_800],
+    ["src/prepare/assets.mjs", 2_100],
+    ["src/assets/types.ts", 900],
+  ].map(([path, size], index) => ({ path, size, dirty: index < 2, active: index === 0, recentlyEdited: false, status: index < 2 ? "M" : "" }));
+  const edges = [
+    ["src/app.mjs", "src/geddon/client.mjs"],
+    ["src/geddon/client.mjs", "src/geddon/scene/world.mjs"],
+    ["src/geddon/client.mjs", "src/geddon/scene/camera.mjs"],
+    ["src/geddon/scene/world.mjs", "src/geddon/map/cells.mjs"],
+    ["src/prepare/scene.mjs", "src/prepare/assets.mjs"],
+  ].map(([source, target]) => ({ source, target, type: "import" }));
+  const first = layoutRepoGraph(files, edges, "src");
+  const second = layoutRepoGraph(files, edges, "src");
+  const positions = (layout) => layout.nodes.map(({ path, x, y }) => ({ path, x: Number(x.toFixed(4)), y: Number(y.toFixed(4)) }));
+  assert.deepEqual(positions(first), positions(second));
+  assert.equal(first.nodes.length, files.length);
+  assert.equal(first.edges.length, edges.length);
+  assert.ok(first.groups.length >= 3);
+  assert.ok(new Set(first.nodes.map((node) => Math.round(node.y))).size > 4, "nodes should not collapse into grid rows");
+  for (const node of first.nodes) {
+    assert.ok(Number.isFinite(node.x) && Number.isFinite(node.y));
+    assert.ok(node.x >= 0 && node.x <= 1000);
+    assert.ok(node.y >= 0 && node.y <= 500);
+  }
+  for (const group of first.groups) assert.ok(group.r > 0 && group.label.endsWith("/"));
+  for (let leftIndex = 0; leftIndex < first.groups.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < first.groups.length; rightIndex += 1) {
+      const left = first.groups[leftIndex];
+      const right = first.groups[rightIndex];
+      assert.ok(Math.hypot(right.cx - left.cx, right.cy - left.cy) >= left.r + right.r - 1, `${left.id} and ${right.id} overlap`);
+    }
+  }
+});
 
 test("repo-map endpoint is strict, bounded, and read-only", { timeout: 20_000 }, async () => {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "burnlist-repo-map-"));

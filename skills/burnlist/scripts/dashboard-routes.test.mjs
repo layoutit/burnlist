@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer, get } from "node:http";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,7 @@ import test from "node:test";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
+const dashboardDirectory = resolve(scriptDirectory, "../dashboard");
 
 // Upstream serves the built dashboard app for shell routes and exposes read-only JSON APIs
 // (/api/progress, /api/burnlists). These tests characterize the JSON data routes our PR-1
@@ -19,6 +20,27 @@ test("root serves the dashboard shell", { timeout: 20_000 }, async () => {
     const response = await httpGet(baseUrl, "/");
     assert.equal(response.status, 200);
   });
+});
+
+test("checklist detail reuses the Differential Testing visual shell", async () => {
+  const [component, app, styles] = await Promise.all([
+    readFile(resolve(dashboardDirectory, "src/checklist-dashboard.tsx"), "utf8"),
+    readFile(resolve(dashboardDirectory, "src/app.tsx"), "utf8"),
+    readFile(resolve(dashboardDirectory, "src/index.css"), "utf8"),
+  ]);
+  assert.match(component, /className="driving-parity-kpi-strip has-burns checklist-kpi-strip"/u);
+  assert.ok(component.includes("className={`shell detail-view-shell driving-parity-view checklist-detail-shell"));
+  assert.match(component, /className="detail-view" id="burnlist-detail"/u);
+  assert.match(component, /className="work-panel-title">Progress<\/div>/u);
+  assert.doesNotMatch(component, /<h2>Progress<\/h2>/u);
+  assert.match(component, /clientHeight/u);
+  assert.match(component, /data-plot-bottom=/u);
+  assert.match(component, /className="axis-label y-axis-label" dominantBaseline="central" textAnchor="end" x=\{chart\.width - 4\}/u);
+  assert.match(component, /document\.body\.classList\.add\("driving-parity-view", "checklist-detail-view"\)/u);
+  assert.ok(app.includes("title && <div className=\"dashboard-oven-title\">{title}</div>"));
+  assert.match(app, /className="dashboard-detail-time"/u);
+  assert.match(styles, /Checklist detail — reuse the Differential Testing visual system\./u);
+  assert.match(styles, /\.checklist-detail-shell \.detail-repo-graph-panel/u);
 });
 
 test("/api/progress requires an explicit selection when one Burnlist is active", { timeout: 20_000 }, async () => {
@@ -40,6 +62,25 @@ test("/api/progress?plan= resolves a Burnlist by its (non-canonical) absolute pa
     const payload = JSON.parse(response.body);
     for (const key of ["percent", "done", "remaining"]) assert.equal(typeof payload[key], "number");
     assert.equal(Array.isArray(payload.history), true);
+  });
+});
+
+test("/api/progress numbers completed history in timestamp order", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{
+      completed: [
+        "- B3 | 2026-07-13T20:15:00-03:00 | Third completion",
+        "- B2 | 2026-07-13T20:10:00-03:00 | Second completion",
+        "- B1 | 2026-07-13T20:05:00-03:00 | First completion",
+      ],
+    }],
+  }, async ({ baseUrl, planPath }) => {
+    const response = await httpGet(baseUrl, `/api/progress?plan=${encodeURIComponent(planPath)}`);
+    assert.equal(response.status, 200);
+    const payload = JSON.parse(response.body);
+    assert.deepEqual(payload.history.slice(0, -1).map((point) => point.done), [1, 2, 3]);
+    assert.deepEqual(payload.history.slice(0, -1).map((point) => point.remaining), [3, 2, 1]);
+    assert.deepEqual(payload.completed.map((item) => item.id), ["B3", "B2", "B1"]);
   });
 });
 
@@ -90,7 +131,7 @@ async function withServer({ withBurnlist, burnlists, scanRoots }, callback) {
       const planPath = planPaths[index];
       await mkdir(dirname(planPath), { recursive: true });
       await Promise.all([
-        writeFile(planPath, burnlistMarkdown(fixture.title ?? "Fixture Burnlist")),
+        writeFile(planPath, burnlistMarkdown(fixture.title ?? "Fixture Burnlist", fixture.completed)),
         writeFile(join(dirname(planPath), "goal.md"), "# Fixture Goal\n\n## Goal\n\nRoute behavior fixture.\n"),
       ]);
     }));
@@ -126,7 +167,7 @@ function fixturePlanPath(fixtureRoot, fixture) {
   );
 }
 
-function burnlistMarkdown(title) {
+function burnlistMarkdown(title, completed = []) {
   return [
     `# ${title}`,
     "",
@@ -139,6 +180,8 @@ function burnlistMarkdown(title) {
     "  Validate: Run the route characterization tests.",
     "",
     "## Completed",
+    "",
+    ...completed,
     "",
   ].join("\n");
 }

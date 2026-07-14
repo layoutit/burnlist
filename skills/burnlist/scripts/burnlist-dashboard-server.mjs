@@ -10,6 +10,8 @@ import {
   renameSync,
   rmSync,
   statSync,
+  unwatchFile,
+  watchFile,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, normalize, relative, resolve } from "node:path";
@@ -33,6 +35,7 @@ import {
   readDifferentialTestingBundleScenario,
 } from "./differential-testing-transport.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
+import { assertStreamingDiffData } from "./streaming-diff-contract.mjs";
 
 const args = new Map();
 const allowedArgs = new Set([
@@ -54,6 +57,7 @@ const allowedArgs = new Set([
   "stamp",
   "state-dir",
   "stop",
+  "streaming-diff-dir",
 ]);
 for (let index = 2; index < process.argv.length; index += 1) {
   const arg = process.argv[index];
@@ -94,10 +98,17 @@ const builtInOvensDir = resolve(skillDir, "ovens");
 const customOvensDir = resolve(launchCwd, args.get("ovens-dir") ?? ".local/burnlist/ovens");
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataBindings = parseOvenDataBindings(args.get("oven-data") ?? "");
+if (ovenDataBindings.has("streaming-diff")) {
+  console.error("Streaming Diff only accepts hook-attributed thread feeds; remove its --oven-data binding.");
+  process.exit(2);
+}
+const streamingDiffDir = resolve(launchCwd, args.get("streaming-diff-dir") ?? ".local/burnlist/streaming-diff");
 const writeToken = randomBytes(24).toString("hex");
 const repoMapCache = new Map();
+const viewerBindings = new Map();
 let differentialTestingDataCache = null;
 const REPO_MAP_CACHE_MS = 2_000;
+const STREAMING_DIFF_ACTIVE_MS = 24 * 60 * 60 * 1_000;
 
 function cachedRepoMap(repo) {
   const key = repo.root;
@@ -787,8 +798,82 @@ function differentialTestingDashboardEntries() {
   }));
 }
 
+function readStreamingDiffData(path, threadId) {
+  const readPath = resolve(path);
+  if (!safeStat(readPath)?.isFile()) {
+    const error = new Error("the selected task has not published a Streaming Diff feed");
+    error.status = 404;
+    throw error;
+  }
+  const payload = assertStreamingDiffData(JSON.parse(readTextFileWithLimit(readPath, maxOvenDataBytes, "Streaming Diff data")));
+  if (payload.thread.id !== threadId) {
+    const error = new Error("Streaming Diff feed identity does not match the selected task.");
+    error.status = 409;
+    throw error;
+  }
+  return { readPath, payload };
+}
+
+function serveStreamingDiffEvents(req, res, viewerId, binding) {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-store",
+    connection: "keep-alive",
+    "x-accel-buffering": "no",
+  });
+  if (!binding) {
+    res.end(`event: detached\ndata: ${JSON.stringify({ viewerId })}\n\n`);
+    return;
+  }
+  const path = join(streamingDiffDir, "threads", binding.threadId, "current.json");
+  let lastRevision = -1;
+  const send = () => {
+    if (res.destroyed) return;
+    try {
+      const { payload } = readStreamingDiffData(path, binding.threadId);
+      if (payload.revision === lastRevision) return;
+      lastRevision = payload.revision;
+      res.write(`id: ${payload.revision}\nevent: snapshot\ndata: ${JSON.stringify({ viewerId, payload })}\n\n`);
+    } catch (error) {
+      res.write(`event: stream-error\ndata: ${JSON.stringify({ error: error.message })}\n\n`);
+    }
+  };
+  const changed = () => send();
+  send();
+  watchFile(path, { interval: 150 }, changed);
+  const keepAlive = setInterval(() => {
+    if (!res.destroyed) res.write(": keep-alive\n\n");
+  }, 15_000);
+  keepAlive.unref();
+  req.once("close", () => {
+    clearInterval(keepAlive);
+    unwatchFile(path, changed);
+  });
+}
+
+function streamingDiffDashboardEntries() {
+  return [{
+    id: "thread-feed",
+    repo: "local",
+    title: "Thread-isolated changes",
+    status: "active",
+    statusLabel: "Available",
+    total: 0,
+    done: null,
+    remaining: null,
+    percent: null,
+    errors: 0,
+    warnings: 0,
+    updatedAt: null,
+    ovenId: "streaming-diff",
+    ovenName: "Streaming Diff",
+    href: "/ovens/streaming-diff/view",
+    progressLabel: "Manual attachment",
+  }];
+}
+
 function dashboardEntries() {
-  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries()]
+  return [...checklistDashboardEntries(), ...differentialTestingDashboardEntries(), ...streamingDiffDashboardEntries()]
     .sort((left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")));
 }
 
@@ -1048,6 +1133,83 @@ function assertWriteRequest(req) {
   }
 }
 
+function viewerSessionId(value) {
+  const id = boundedText(value, "Viewer session id", 64);
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u.test(id)) {
+    const error = new Error("Viewer session id must be a lowercase UUID v4.");
+    error.status = 400;
+    throw error;
+  }
+  return id;
+}
+
+function threadSessionId(value) {
+  const id = boundedText(value, "Thread session id", 64);
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u.test(id)) {
+    const error = new Error("Thread session id must be a lowercase UUID.");
+    error.status = 400;
+    throw error;
+  }
+  return id;
+}
+
+function streamingDiffFeedPath(threadId) {
+  return join(streamingDiffDir, "threads", threadId, "current.json");
+}
+
+function streamingDiffThreads() {
+  const threadsDir = join(streamingDiffDir, "threads");
+  if (!safeStat(threadsDir)?.isDirectory()) return [];
+  const cutoff = Date.now() - STREAMING_DIFF_ACTIVE_MS;
+  return readdirSync(threadsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      try {
+        const threadId = threadSessionId(entry.name);
+        const { payload } = readStreamingDiffData(streamingDiffFeedPath(threadId), threadId);
+        if (Date.parse(payload.thread.lastActiveAt) < cutoff) return [];
+        return [{
+          id: threadId,
+          label: payload.thread.label,
+          lastActiveAt: payload.thread.lastActiveAt,
+          revision: payload.revision,
+          changeCount: payload.changes.length,
+          lastFile: payload.changes[0]?.sourcePath ?? null,
+        }];
+      } catch {
+        return [];
+      }
+    })
+    .sort((left, right) => right.lastActiveAt.localeCompare(left.lastActiveAt));
+}
+
+function attachViewer(value) {
+  assertKnownKeys(value, new Set(["viewerId", "threadId"]), "Streaming Diff attachment");
+  const viewerId = viewerSessionId(value.viewerId);
+  const threadId = threadSessionId(value.threadId);
+  readStreamingDiffData(streamingDiffFeedPath(threadId), threadId);
+  const binding = { viewerId, threadId, attachedAt: new Date().toISOString() };
+  viewerBindings.set(viewerId, binding);
+  return binding;
+}
+
+function detachViewer(value) {
+  assertKnownKeys(value, new Set(["viewerId"]), "Streaming Diff detachment");
+  const viewerId = viewerSessionId(value.viewerId);
+  const detached = viewerBindings.delete(viewerId);
+  return { viewerId, detached, detachedAt: new Date().toISOString() };
+}
+
+function viewerFromUrl(url) {
+  const values = url.searchParams.getAll("viewer");
+  if (values.length !== 1) {
+    const error = new Error("Streaming Diff requires exactly one viewer session id.");
+    error.status = 400;
+    throw error;
+  }
+  return viewerSessionId(values[0]);
+}
+
 function routeSelection(url) {
   const parts = url.pathname.split("/").filter(Boolean).map((part) => {
     try {
@@ -1104,7 +1266,9 @@ function payloadForPlan(selection) {
   const percent = total ? Math.round((done / total) * 100) : 0;
   const generatedAt = new Date().toISOString();
   const current = { time: generatedAt, planPath: selection.planPath, done, remaining, total, percent };
-  const ledgerHistory = plan.completed
+  const ledgerHistory = [...plan.completed]
+    .filter((entry) => Number.isFinite(Date.parse(entry.completedAt)))
+    .sort((left, right) => Date.parse(left.completedAt) - Date.parse(right.completedAt))
     .map((entry, index) => {
       const itemDone = index + 1;
       return {
@@ -1114,8 +1278,7 @@ function payloadForPlan(selection) {
         total,
         percent: total ? Math.round((itemDone / total) * 100) : 100,
       };
-    })
-    .filter((entry) => Number.isFinite(Date.parse(entry.time)));
+    });
   const history = [...ledgerHistory, current].sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
   return {
     generatedAt,
@@ -1317,6 +1480,26 @@ const server = createServer(async (req, res) => {
       json(res, 200, { oven });
       return;
     }
+    if (url.pathname === "/api/streaming-diff/threads") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      assertWriteRequest(req);
+      json(res, 200, { threads: streamingDiffThreads() });
+      return;
+    }
+    if (url.pathname === "/api/streaming-diff/attachments") {
+      if (!new Set(["POST", "DELETE"]).has(method)) return json(res, 405, { error: "method not allowed" });
+      assertWriteRequest(req);
+      const value = await readJsonRequest(req);
+      if (method === "DELETE") json(res, 200, { detachment: detachViewer(value) });
+      else json(res, 201, { binding: attachViewer(value) });
+      return;
+    }
+    if (url.pathname === "/api/streaming-diff/events") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      const viewerId = viewerFromUrl(url);
+      serveStreamingDiffEvents(req, res, viewerId, viewerBindings.get(viewerId) ?? null);
+      return;
+    }
     const ovenDataRoute = url.pathname.match(/^\/api\/oven-data\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);
     if (ovenDataRoute) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
@@ -1387,7 +1570,7 @@ const server = createServer(async (req, res) => {
       json(res, 200, { run });
       return;
     }
-    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens/new", "/ovens/differential-testing/view", "/ovens/streaming-diff/view", "/runs/new"].includes(url.pathname) || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;

@@ -87,7 +87,7 @@ test("live updates preserve field-page metadata and issue server-side view queri
             : {
                 payload: compactPayload(),
                 transport: { schema: "burnlist-differential-testing-page@1" },
-                frameDeltaMetrics: { frameDeviationRatios: [0, 1], firstFailingFrame: 1 },
+                frameDeltaMetrics: { frameDeviationRatios: [0, 1], frameSignedResiduals: [0, -1], firstFailingFrame: 1 },
                 fieldPage: page,
               };
         },
@@ -129,6 +129,7 @@ test("live updates preserve field-page metadata and issue server-side view queri
   assert.equal(updates[0].nextOptions.fieldPage, page);
   assert.deepEqual(updates[0].nextOptions.frameDeltaMetrics, {
     frameDeviationRatios: [0, 1],
+    frameSignedResiduals: [0, -1],
     firstFailingFrame: 1,
   });
   controller.stop();

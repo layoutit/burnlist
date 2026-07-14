@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { NewOvenPage, RunBurnPage } from "@/burn-ovens";
 import { ChecklistDashboard, type ChecklistProgressData } from "@/checklist-dashboard";
 import { DifferentialTestingPage } from "@/differential-testing";
+import { StreamingDiffPage, type StreamingDiffConnection } from "@/streaming-diff";
 
 type Filter = "active" | "draft" | "ready" | "complete" | "all";
 
@@ -29,7 +30,7 @@ type Burnlist = {
   errors: number;
   warnings: number;
   updatedAt: string | null;
-  ovenId: "checklist" | "differential-testing";
+  ovenId: "checklist" | "differential-testing" | "streaming-diff";
   ovenName: string;
   href: string;
   progressLabel: string;
@@ -54,6 +55,7 @@ const HEADER_LINKS = [
 function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
+  if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
@@ -64,17 +66,24 @@ function selectedBurnlist() {
   return parts.length === 2 ? { repo: parts[0], id: parts[1] } : null;
 }
 
-function AppHeader({ section }: { section: string }) {
+function AppHeader({ detail, onStreamingDisconnect, section, streamingConnection, streamingTimestamp }: { detail: ProgressData | null; onStreamingDisconnect: () => void; section: string; streamingConnection: StreamingDiffConnection; streamingTimestamp: string | null }) {
+  const title = section === "differential-testing" ? "Differential Testing" : section === "streaming-diff" ? "Streaming Diff" : detail?.title;
+  const connectionLabel = streamingConnection[0].toUpperCase() + streamingConnection.slice(1);
   return (
     <header className="dashboard-header">
       <div className="dashboard-header-inner">
         <a aria-label="Burnlist home" className="dashboard-brand" href="/">
-          <img alt="" className="dashboard-brand-logo" src="/favicon.svg" />
+          <span aria-hidden="true" className="dashboard-brand-logo">⟁</span>
           <span className="dashboard-brand-name">Burnlist</span>
         </a>
-        {section === "differential-testing" && <div className="dashboard-oven-title">Differential Testing</div>}
+        {title && <div className="dashboard-oven-title">{title}</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
-          {section !== "differential-testing" && HEADER_LINKS.map((link, index) => (
+          {detail ? <time className="dashboard-detail-time" dateTime={detail.generatedAt}>{formatTime(detail.generatedAt)}</time> : section === "streaming-diff" ? (
+            <div className="dashboard-stream-meta">
+              {streamingConnection === "connected" ? <button aria-label="Disconnect agent" className="dashboard-stream-status" data-status="connected" onClick={onStreamingDisconnect} type="button"><span aria-hidden="true" className="dashboard-stream-status-dot" /><span className="dashboard-stream-connected-label">Connected</span><span className="dashboard-stream-disconnect-label">Disconnect</span></button> : <span aria-live="polite" className="dashboard-stream-status" data-status={streamingConnection} role="status"><span aria-hidden="true" className="dashboard-stream-status-dot" />{connectionLabel}</span>}
+              {streamingTimestamp ? <><span aria-hidden="true" className="dashboard-stream-separator">·</span><time dateTime={streamingTimestamp}>{formatStreamingTime(streamingTimestamp)}</time></> : null}
+            </div>
+          ) : section !== "differential-testing" && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a
@@ -129,6 +138,10 @@ function formatTime(value: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+function formatStreamingTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
 }
 
 function EmptyState({ title, detail, icon: Icon = CircleDotDashed }: { title: string; detail: string; icon?: typeof CircleDotDashed }) {
@@ -254,6 +267,9 @@ export function App() {
   const [page, setPage] = useState(pageFromUrl);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [streamingConnection, setStreamingConnection] = useState<StreamingDiffConnection>("disconnected");
+  const [streamingTimestamp, setStreamingTimestamp] = useState<string | null>(null);
+  const [streamingDisconnectRequest, setStreamingDisconnectRequest] = useState(0);
   const section = currentSection();
   const selected = useMemo(selectedBurnlist, [window.location.pathname]);
 
@@ -308,14 +324,16 @@ export function App() {
 
   return (
     <div className="dashboard-app">
-      <AppHeader section={section} />
+      <AppHeader detail={selected ? progress : null} onStreamingDisconnect={() => setStreamingDisconnectRequest((request) => request + 1)} section={section} streamingConnection={streamingConnection} streamingTimestamp={streamingTimestamp} />
       <main
         className="dashboard-main"
-        data-layout={section === "differential-testing" || selected ? "full" : "index"}
+        data-layout={section === "differential-testing" || section === "streaming-diff" || selected ? "full" : "index"}
         data-section={section}
       >
         {section === "differential-testing" ? (
           <DifferentialTestingPage />
+        ) : section === "streaming-diff" ? (
+          <StreamingDiffPage disconnectRequest={streamingDisconnectRequest} onConnectionChange={setStreamingConnection} onTimestampChange={setStreamingTimestamp} />
         ) : section === "new-oven" ? (
           <NewOvenPage />
         ) : section === "run-burn" ? (
@@ -326,7 +344,7 @@ export function App() {
           ) : loading && !progress ? (
             <EmptyState title="Loading progress" detail="Reading the selected Burnlist." />
           ) : progress ? (
-            <ChecklistDashboard backHref={listHref(filter, page)} data={progress} />
+            <ChecklistDashboard data={progress} />
           ) : (
             <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
           )

@@ -406,9 +406,10 @@ assertSourceExcludes("skills/burnlist/scripts/burnlist-dashboard-server.mjs", '"
 assertSourceExcludes("skills/burnlist/dashboard/src/app.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("skills/burnlist/scripts/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(["burnlist"]);
-assertBuiltInOvenSet(["checklist", "differential-testing"]);
+assertBuiltInOvenSet(["checklist", "differential-testing", "streaming-diff"]);
 assertBuiltInOven("checklist", "Checklist");
 assertBuiltInOven("differential-testing", "Differential Testing");
+assertBuiltInOven("streaming-diff", "Streaming Diff");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
@@ -423,6 +424,8 @@ run(process.execPath, [
   "skills/burnlist/scripts/registry.test.mjs",
   "skills/burnlist/scripts/repo-map.test.mjs",
   "skills/burnlist/scripts/repo-state.test.mjs",
+  "skills/burnlist/scripts/streaming-diff-contract.test.mjs",
+  "skills/burnlist/scripts/streaming-diff-server.test.mjs",
 ]);
 
 run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
