@@ -160,6 +160,24 @@ test("recent feeds reads only bounded manifests and never card payloads", () => 
   } finally { cleanup(); }
 });
 
+test("recent feed listings budget their response envelope and truncate instead of returning 413", () => {
+  const { context, cleanup } = fixture();
+  try {
+    appendCard(context.identity.feedDir, card(1), { identity: feedIdentity(context.identity) });
+    const url = new URL(`http://localhost/?list&repoKey=${context.identity.logicalRepoKey}`);
+    const full = streamingDiffHandler.serveData(handlerContext(context, { url }));
+    const entryBytes = Buffer.byteLength(JSON.stringify(full.feeds[0]), "utf8");
+    const fullBytes = Buffer.byteLength(JSON.stringify(full), "utf8");
+    const maxOvenDataBytes = Math.floor((entryBytes + fullBytes) / 2);
+
+    assert.ok(entryBytes < maxOvenDataBytes && maxOvenDataBytes < fullBytes);
+    const response = streamingDiffHandler.serveData(handlerContext(context, { url, maxOvenDataBytes }));
+    assert.equal(response.truncated, true);
+    assert.deepEqual(response.feeds, []);
+    assert.ok(Buffer.byteLength(JSON.stringify(response), "utf8") <= maxOvenDataBytes);
+  } finally { cleanup(); }
+});
+
 test("SSE contains post-header errors and clears both timers on every completion path", () => {
   const { context, cleanup } = fixture();
   try {

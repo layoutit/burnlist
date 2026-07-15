@@ -41,6 +41,15 @@ test("revision grouping replaces a repeated revision without changing manifest o
   assert.deepEqual(groupStreamingDiffCard(cards, replacement), [replacement, second]);
 });
 
+test("a terminal card supersedes its same-tool pre-hook attempt even with a new revision", () => {
+  const attempt = { ...first, status: "partial", partialReason: "attempt in progress", files: [] };
+  const terminal = { ...first, revId: "r-terminal", status: "captured", files: [{ path: "done.txt", kind: "modified", diff: "" }] };
+  const cards = groupStreamingDiffCard(groupStreamingDiffCard([], attempt), second);
+
+  assert.deepEqual(groupStreamingDiffCard(cards, terminal), [terminal, second]);
+  assert.equal(groupStreamingDiffCard(cards, terminal).filter((card) => card.toolUseId === first.toolUseId).length, 1);
+});
+
 test("a reset clears retained cards before the server replays them", () => {
   assert.deepEqual(applyStreamingDiffUpdate([first, second], { type: "reset" }), []);
   assert.deepEqual(applyStreamingDiffUpdate([], { type: "card", card: first }), [first]);

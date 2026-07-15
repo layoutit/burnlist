@@ -44,7 +44,7 @@ function FileDiff({ file }: { file: StreamingDiffFile }) {
   }
   return <section className="streaming-diff-file">
     <div className="streaming-diff-file-head"><code>{file.path}</code><Badge variant="secondary">{file.kind}</Badge></div>
-    {isTextFileKind(file.kind) && file.diff ? <pre className="streaming-diff-unified">{file.diff}</pre> : <p className="streaming-diff-file-meta">Diff content is unavailable.</p>}
+    {isTextFileKind(file.kind) && file.diff !== undefined ? <pre className="streaming-diff-unified">{file.diff}</pre> : <p className="streaming-diff-file-meta">Diff content is unavailable.</p>}
   </section>;
 }
 

@@ -176,6 +176,18 @@ test("containment and deny gates run before bounded untracked discovery", () => 
   assert.equal(card.status, "partial");
 });
 
+test("withheld file entries always make the capture partial", () => {
+  const denied = capture({ hintedPaths: [".env"], preSnapshot: new Map([[".env", "before"]]), readPost: () => "after" });
+  const redacted = capture({ readPost: () => "Authorization: Bearer secret" });
+
+  for (const card of [denied, redacted]) {
+    assert.equal(card.status, "partial");
+    assert.match(card.partialReason, /content withheld\/incomplete/u);
+  }
+  assert.equal(denied.files[0].kind, "denied");
+  assert.equal(redacted.files[0].kind, "redacted");
+});
+
 test("authorization credentials always produce a redacted card entry", () => {
   for (const [header, expected] of [
     ["Authorization: Bearer bearer-secret-value", "Authorization: Bearer [REDACTED]"],

@@ -208,7 +208,7 @@ export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.ke
         } else if (changed) writeDurableJson(path, next);
         if (created.delete(key)) provenanceChanged = true;
       }
-      if (install && !tracked) addLocalExclude(root, path);
+      if (install && (!tracked || untracked)) addLocalExclude(root, path);
       if (!install) removeLocalExclude(root, path);
       const resulting = install ? next : Object.keys(next).length === 0 ? {} : next;
       return { agent, path, installed: hasOwnedEntries(resulting, agent), state: ownershipState(resulting, agent), mode: tracked ? "tracked" : "untracked", excluded: locallyExcluded(root, path), forcedUntracked: untracked && tracked };

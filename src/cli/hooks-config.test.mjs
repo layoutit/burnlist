@@ -107,7 +107,7 @@ test("a fatal Git preflight fails before a config write", () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("tracked config stays honestly tracked even when --untracked is requested", () => {
+test("--untracked forces a tracked config into the local exclusion list", () => {
   const context = fixture();
   try {
     const path = join(context.root, ".codex", "hooks.json");
@@ -118,7 +118,8 @@ test("tracked config stays honestly tracked even when --untracked is requested",
     const [result] = updateHookConfigs({ repoRoot: context.root, agents: ["codex"], install: true, untracked: true });
     assert.equal(result.mode, "tracked");
     assert.equal(result.forcedUntracked, true);
-    assert.equal(existsSync(join(context.root, ".git", "info", "exclude")) && readFileSync(join(context.root, ".git", "info", "exclude"), "utf8").includes(".codex/hooks.json"), false);
+    assert.equal(result.excluded, true);
+    assert.match(readFileSync(join(context.root, ".git", "info", "exclude"), "utf8"), /\.codex\/hooks\.json/u);
   } finally { context.cleanup(); }
 });
 

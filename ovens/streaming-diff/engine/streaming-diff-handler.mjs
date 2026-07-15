@@ -52,7 +52,7 @@ function feedRoot(ctx) {
     throw error;
   }
   const canonicalExpected = realpathSync(expected);
-  if (root !== canonicalExpected || !isWithin(canonicalExpected, root)) {
+  if (root !== canonicalExpected) {
     throw httpError("configured Streaming Diff feed root escapes its repository");
   }
   return { root, repoRoot: ctx.binding.repoRoot };
@@ -160,6 +160,14 @@ function bounded(value, maxBytes) {
   return value;
 }
 
+function boundedList(value, maxBytes) {
+  while (Buffer.byteLength(JSON.stringify(value), "utf8") > maxBytes && value.feeds.length) {
+    value.feeds.pop();
+    value.truncated = true;
+  }
+  return bounded(value, maxBytes);
+}
+
 function wantsSse(req) {
   return String(req.headers.accept ?? "").split(",").some((value) => value.trim().startsWith("text/event-stream"));
 }
@@ -210,7 +218,7 @@ function startSse(ctx, feed) {
   const initial = reconnect(feed.path, since);
   if (!reserveSubscriber(feed.path, options)) throw httpError("Streaming Diff subscriber limit reached", 503);
   const res = ctx.res;
-  const state = { closed: false, pending: false, drain: null, poll: null, heartbeat: null, lastId: since, subscribed: true };
+  const state = { closed: false, pending: false, drain: null, poll: null, heartbeat: null, lastId: since };
   const cleanup = () => {
     if (state.closed) return;
     state.closed = true;
@@ -220,10 +228,7 @@ function startSse(ctx, feed) {
     res.removeListener("close", cleanup);
     res.removeListener("error", cleanup);
     res.removeListener("finish", cleanup);
-    if (state.subscribed) {
-      state.subscribed = false;
-      releaseSubscriber(feed.path);
-    }
+    releaseSubscriber(feed.path);
   };
   const endStream = () => {
     cleanup();
@@ -285,7 +290,7 @@ export const streamingDiffHandler = Object.freeze({
     if (ctx.url.searchParams.has("list")) {
       const repoKey = listRepoKey(ctx);
       const limit = Math.min(ctx.maxOvenDataBytes, STREAMING_DIFF_LIST_LIMITS.maxBytes);
-      return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, ...recentFeeds(root.root, repoKey, limit, ctx.readManifest) }, ctx.maxOvenDataBytes);
+      return boundedList({ ovenId: STREAMING_DIFF_OVEN_ID, ...recentFeeds(root.root, repoKey, limit, ctx.readManifest) }, ctx.maxOvenDataBytes);
     }
     const feed = selectedFeed(ctx, root);
     if (!feed) return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, feeds: [] }, ctx.maxOvenDataBytes);

@@ -4,6 +4,7 @@ export const STREAMING_DIFF_CONTRACT_LIMITS = Object.freeze({ maxRevs: 128, maxF
 const cardStatuses = new Set(["captured", "partial"]);
 const fileKinds = new Set(["modified", "added", "deleted", "binary", "denied", "redacted", "truncated", "unavailable"]);
 const textKinds = new Set(["modified", "added", "deleted"]);
+const incompleteFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
 const opaqueRevision = /^r-[a-f0-9]{16,64}$/u;
 
 export class StreamingDiffDataValidationError extends Error {
@@ -86,6 +87,9 @@ function validate(value, kind) {
           if (!plainObject(file.meta) || !Object.hasOwn(file.meta, "reason")) issue(`${path}.meta.reason`, "is required for a redacted file");
         }
       });
+      if (value.status === "captured" && value.files.some((file) => incompleteFileKinds.has(file?.kind))) {
+        issue("$.status", "must be partial when file content is withheld or incomplete");
+      }
     }
   } else {
     keys(value, "$", new Set(["contract", "identity", "updatedAt", "revs"]));

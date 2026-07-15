@@ -97,10 +97,11 @@ export function parseStreamingDiffCard(value) {
   };
 }
 
-// Revisions are emitted in the manifest's ordered sequence. Replacements are
-// possible after a reconnect race, so retain the existing position by revId.
+// Revisions are emitted in the manifest's ordered sequence. A pre-hook attempt
+// is superseded by its terminal card using the common tool use id; a reconnect
+// replay can still replace a card by its revision id without moving it.
 export function groupStreamingDiffCard(cards, card) {
-  const index = cards.findIndex((entry) => entry.revId === card.revId);
+  const index = cards.findIndex((entry) => entry.toolUseId === card.toolUseId || entry.revId === card.revId);
   if (index < 0) return [...cards, card];
   const next = [...cards];
   next[index] = card;

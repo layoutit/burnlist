@@ -142,6 +142,22 @@ try {
     console.log(HELP);
     return;
   }
+  if (subcommand === "hook") {
+    const flags = parseHookFlags(tokens);
+    const agent = flags?.get("agent");
+    const event = flags?.get("event");
+    if (!agent || !event || [...flags.keys()].some((key) => !["agent", "event"].includes(key))) return;
+    try {
+      const input = await hookPayload();
+      const mapped = input.degradedReason
+        ? incompleteHookCapture(event, input.degradedReason)
+        : mapStreamingDiffHook({ agent, event, payload: input.payload, cwd: process.cwd() });
+      if (mapped?.action === "ensure-feed" || mapped?.action === "capture") {
+        await runHookCapture(withTerminalReason(mapped.args, mapped.degraded ? mapped.degradedReason ?? "hook adapter mapping was incomplete" : undefined));
+      }
+    } catch { /* Hooks are advisory and must never block their host agent. */ }
+    return;
+  }
   const flags = parseFlags(tokens);
   if (subcommand === "ensure-feed") {
     const session = one(flags, "session", { required: true });
@@ -168,22 +184,6 @@ try {
     if ([...flags.keys()].some((key) => key !== "session")) fail("url accepts only --session.", 2);
     const identity = resolveStreamingDiffIdentity({ session });
     console.log(`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(identity.logicalRepoKey)}&worktreeKey=${encodeURIComponent(identity.worktreeKey)}&session=${encodeURIComponent(identity.session)}`);
-    return;
-  }
-  if (subcommand === "hook") {
-    const flags = parseHookFlags(tokens);
-    const agent = flags?.get("agent");
-    const event = flags?.get("event");
-    if (!agent || !event || [...flags.keys()].some((key) => !["agent", "event"].includes(key))) return;
-    try {
-      const input = await hookPayload();
-      const mapped = input.degradedReason
-        ? incompleteHookCapture(event, input.degradedReason)
-        : mapStreamingDiffHook({ agent, event, payload: input.payload, cwd: process.cwd() });
-      if (mapped?.action === "ensure-feed" || mapped?.action === "capture") {
-        await runHookCapture(withTerminalReason(mapped.args, mapped.degraded ? mapped.degradedReason ?? "hook adapter mapping was incomplete" : undefined));
-      }
-    } catch { /* Hooks are advisory and must never block their host agent. */ }
     return;
   }
   fail(`unknown subcommand "${subcommand}". Run \`burnlist streaming-diff help\`.`, 2);

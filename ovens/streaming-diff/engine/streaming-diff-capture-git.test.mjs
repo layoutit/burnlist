@@ -108,7 +108,7 @@ test("descriptor reader bounds reads and rejects a file that grows after fstat",
       toolUseId: "tool-fixture",
       ts: "2026-07-15T09:00:00.000Z",
       status: "partial",
-      partialReason: "post-capture unavailable",
+      partialReason: "post-capture unavailable; content withheld/incomplete",
       files: [{ path: "growing.txt", kind: "unavailable", meta: { reason: "post-capture unavailable" } }],
     });
   } finally {

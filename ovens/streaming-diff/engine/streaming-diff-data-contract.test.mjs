@@ -40,10 +40,20 @@ test("the @2 contract rejects version negotiation, unknown fields, and oversized
 
 test("redacted metadata entries require both redacted truth and a reason", () => {
   const redacted = { path: "safe.txt", kind: "redacted", meta: { redacted: true, reason: "secret-looking value" } };
-  assert.equal(validateCard({ ...card, files: [redacted] }).ok, true);
+  const partial = { ...card, status: "partial", partialReason: "content withheld/incomplete", files: [redacted] };
+  assert.equal(validateCard(partial).ok, true);
   assert.ok(validateCard({ ...card, files: [{ ...redacted, meta: { reason: "secret-looking value" } }] }).issues.some((issue) => issue.path.endsWith(".redacted")));
   assert.ok(validateCard({ ...card, files: [{ ...redacted, meta: { redacted: true } }] }).issues.some((issue) => issue.path.endsWith(".reason")));
   assert.ok(validateCard({ ...card, files: [{ path: "src\\escape.mjs", kind: "modified", diff: "x" }] }).issues.some((issue) => issue.path.endsWith(".path")));
+});
+
+test("captured cards cannot contain denied or otherwise incomplete file entries", () => {
+  const denied = { ...card, files: [{ path: "private.env", kind: "denied" }] };
+  const result = validateCard(denied);
+
+  assert.equal(result.ok, false);
+  assert.ok(result.issues.some((issue) => issue.path === "$.status" && /partial/u.test(issue.message)));
+  assert.throws(() => assertCard(denied), StreamingDiffDataValidationError);
 });
 
 test("a pre-hook attempt marker is a valid empty partial card", () => {

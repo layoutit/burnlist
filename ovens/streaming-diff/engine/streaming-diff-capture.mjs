@@ -14,6 +14,7 @@ export const STREAMING_DIFF_CAPTURE_LIMITS = Object.freeze({
   maxHunkBytes: 96 * 1024,
   maxCardBytes: 512 * 1024,
 });
+const incompleteFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
 
 function pathIsSafe(path, maxPathLength) {
   return typeof path === "string" && path.length > 0 && path.length <= maxPathLength
@@ -233,6 +234,7 @@ export function captureCard({
     files.push({ path, kind: before.absent ? "added" : after.absent ? "deleted" : "modified", diff });
   }
   if (opaqueReason) reasons.push(String(opaqueReason));
+  if (files.some((file) => incompleteFileKinds.has(file.kind))) reasons.push("content withheld/incomplete");
   const card = { revId, toolUseId, ts: now(), status: reasons.length ? "partial" : "captured", ...(reasons.length ? { partialReason: partialReason(reasons) } : {}), files };
   if (Buffer.byteLength(JSON.stringify(card), "utf8") > limits.maxCardBytes) {
     card.status = "partial";

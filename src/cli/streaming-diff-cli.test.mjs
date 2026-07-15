@@ -106,6 +106,15 @@ test("hook entrypoint accepts malformed or non-mutating payloads without failing
   } finally { context.cleanup(); }
 });
 
+test("malformed hook flags still exit zero without using the regular flag parser", () => {
+  const context = fixture();
+  try {
+    assert.doesNotThrow(() => execFileSync(process.execPath, [binPath, "streaming-diff", "hook", "--agent"], {
+      cwd: context.root, stdio: "pipe", timeout: 5_000,
+    }));
+  } finally { context.cleanup(); }
+});
+
 test("hook stdin stops at its byte cap and timeout instead of waiting for EOF", { timeout: 4_000 }, async () => {
   const context = fixture();
   try {
