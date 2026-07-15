@@ -31,6 +31,18 @@ test("journal makes a durable card visible before its durable manifest and ignor
   }
 });
 
+test("an established feed rejects a card carrying a different immutable identity", () => {
+  const context = fixture();
+  try {
+    appendCard(context.root, card(1), { identity });
+    assert.throws(
+      () => appendCard(context.root, card(2), { identity: { ...identity, session: "other-session" } }),
+      /identity does not match/u,
+    );
+    assert.deepEqual(readJournal(context.root).manifest.identity, identity);
+  } finally { context.cleanup(); }
+});
+
 test("retention keeps a contiguous newest suffix when a large middle card no longer fits", () => {
   const context = fixture();
   try {

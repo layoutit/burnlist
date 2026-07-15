@@ -77,7 +77,7 @@ export function createGitCaptureIo(worktreeRoot, limits = {}) {
       return readContainedFile(root, file, maxFileBytes);
     },
     isIgnored(path) {
-      const result = spawnSync("git", ["check-ignore", "--no-index", "--quiet", "--", path], { cwd: root, shell: false, ...bounded });
+      const result = spawnSync("git", ["check-ignore", "--quiet", "--", path], { cwd: root, shell: false, ...bounded });
       if (result.error) throw result.error;
       if (result.status === 0) return true;
       if (result.status === 1) return false;
@@ -87,6 +87,14 @@ export function createGitCaptureIo(worktreeRoot, limits = {}) {
       if (paths.length === 0) return [];
       return git(root, ["ls-files", "--others", "--exclude-standard", "-z", "--", ...paths], bounded)
         .toString("utf8").split("\0").filter(Boolean);
+    },
+    listTracked(paths) {
+      if (paths.length === 0) return [];
+      return git(root, ["ls-files", "-z", "--", ...paths], bounded)
+        .toString("utf8").split("\0").filter(Boolean);
+    },
+    isTracked(path) {
+      return this.listTracked([path]).includes(path);
     },
   };
 }

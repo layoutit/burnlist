@@ -143,7 +143,13 @@ function pruneUnreferencedCards(feedDir, revs) {
   if (removed) fsyncDirectory(feedDir);
 }
 
-export function appendCard(feedDir, card, { identity, now = () => new Date().toISOString(), limits, beforeManifestSwap } = {}) {
+function sameIdentity(left, right) {
+  return left?.logicalRepoKey === right?.logicalRepoKey
+    && left?.worktreeKey === right?.worktreeKey
+    && left?.session === right?.session;
+}
+
+export function appendCard(feedDir, card, { identity, now = () => new Date().toISOString(), limits, beforeManifestSwap, dedupeToolUseId = false } = {}) {
   assertCard(card);
   const bounded = retention(limits);
   mkdirSync(feedDir, { recursive: true });
@@ -151,6 +157,11 @@ export function appendCard(feedDir, card, { identity, now = () => new Date().toI
     const healed = healManifestUnsafe(feedDir);
     const previous = healed.manifest;
     if (!previous && !identity) throw new Error("new streaming feed requires an identity");
+    if (previous && identity && !sameIdentity(previous.identity, identity)) throw new Error("streaming diff feed identity does not match its immutable manifest identity");
+    if (dedupeToolUseId) {
+      const existing = healed.cards.find((entry) => entry.toolUseId === card.toolUseId);
+      if (existing) return { card: existing, manifest: previous, existing: true };
+    }
     let published = card;
     if (cardBytes(published) > bounded.maxBytes) published = limitedCard(card);
     assertCard(published);

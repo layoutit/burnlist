@@ -97,11 +97,13 @@ function metadata(path, kind, reason, bytes) {
 }
 
 // This synchronous core deliberately has no filesystem writes. IO is injected as
-// inspect(path), readPost(path), isIgnored(path), and listUntracked(hintedPaths).
+// inspect(path), readPost(path), listTracked(paths), isIgnored(path), and
+// listUntracked(hintedPaths). Ignore rules apply only after tracked status.
 export function captureCard({
   hintedPaths,
   preSnapshot = new Map(),
   readPost,
+  listTracked = () => [],
   listUntracked = () => [],
   inspect = () => ({ type: "file", contained: true }),
   isIgnored = () => false,
@@ -143,9 +145,16 @@ export function captureCard({
     }
   }
   const readable = [];
+  let tracked = new Set();
+  try {
+    tracked = new Set([...new Set(listTracked(eligible))].filter((path) => eligible.includes(path)));
+  } catch {
+    reasons.push("tracked eligibility was unavailable");
+  }
   for (const path of eligible) {
     try {
-      if (isIgnored(path)) files.push({ path, kind: "denied" });
+      if (tracked.has(path)) readable.push(path);
+      else if (isIgnored(path)) files.push({ path, kind: "denied" });
       else readable.push(path);
     } catch {
       reasons.push(`could not determine whether ${path} is ignored`);
@@ -179,7 +188,7 @@ export function captureCard({
       continue;
     }
     if (before.absent && after.absent) continue;
-    if (before.absent && !untracked.has(path)) {
+    if (before.absent && !tracked.has(path) && !untracked.has(path)) {
       reasons.push(`new path ${path} was not eligible untracked content`);
       continue;
     }

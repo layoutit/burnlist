@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -9,6 +10,7 @@ import {
   readBindingStore,
   removeBinding,
   writeBinding,
+  writeBindingIfAbsent,
 } from "./oven-bindings.mjs";
 
 const BOUND_AT = "2026-07-14T12:00:00.000Z";
@@ -42,6 +44,46 @@ test("binding stores round-trip logical paths atomically", () => {
   } finally { cleanup(); }
 });
 
+test("writeBindingIfAbsent preserves the first binding", () => {
+  const { root, cleanup } = fixture();
+  try {
+    const first = writeBindingIfAbsent(root, "sample-oven", "first.json", BOUND_AT);
+    const second = writeBindingIfAbsent(root, "sample-oven", "second.json", "2026-07-14T12:01:00.000Z");
+    assert.equal(first.created, true);
+    assert.equal(second.created, false);
+    assert.deepEqual(readBindingStore(root).bindings["sample-oven"], { path: "first.json", boundAt: BOUND_AT });
+  } finally { cleanup(); }
+});
+
+test("barrier-synchronized first writers create exactly one binding and preserve its path", async () => {
+  const { root, cleanup } = fixture();
+  const ready = join(root, "ready");
+  const go = join(root, "go");
+  const moduleUrl = new URL("./oven-bindings.mjs", import.meta.url).href;
+  const child = (logicalPath) => new Promise((resolveChild, reject) => {
+    const source = `import { existsSync, writeFileSync } from "node:fs"; import { writeBindingIfAbsent } from ${JSON.stringify(moduleUrl)}; const [root, path, ready, go] = process.argv.slice(1); writeFileSync(ready + "-" + process.pid, ""); while (!existsSync(go)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10); process.stdout.write(JSON.stringify(writeBindingIfAbsent(root, "sample-oven", path, "${BOUND_AT}")));`;
+    const processChild = spawn(process.execPath, ["--input-type=module", "--eval", source, root, logicalPath, ready, go], { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    processChild.stdout.on("data", (chunk) => { stdout += chunk; });
+    processChild.stderr.on("data", (chunk) => { stderr += chunk; });
+    processChild.on("error", reject);
+    processChild.on("exit", (status) => status === 0 ? resolveChild(JSON.parse(stdout)) : reject(new Error(stderr)));
+  });
+  try {
+    const first = child("first.json");
+    const second = child("second.json");
+    for (let attempt = 0; attempt < 100 && readdirSync(root).filter((name) => name.startsWith("ready-")).length < 2; attempt += 1) await new Promise((resolveWait) => setTimeout(resolveWait, 5));
+    assert.equal(readdirSync(root).filter((name) => name.startsWith("ready-")).length, 2);
+    // Both children are waiting at the same barrier before either can write.
+    await new Promise((resolveWait) => setTimeout(resolveWait, 20));
+    writeFileSync(go, "go");
+    const results = await Promise.all([first, second]);
+    assert.equal(results.filter((result) => result.created).length, 1);
+    assert.equal(readBindingStore(root).bindings["sample-oven"].path, results.find((result) => result.created).binding.path);
+  } finally { cleanup(); }
+});
+
 test("missing, corrupt, and obsolete binding stores fail closed", () => {
   const { root, cleanup } = fixture();
   try {
@@ -68,6 +110,9 @@ test("binding mutations preserve malformed stores and create or update valid sto
     assert.equal(readFileSync(path, "utf8"), malformed);
     assert.throws(() => removeBinding(root, "sample-oven"), /Refusing to modify malformed Oven binding store/u);
     assert.equal(readFileSync(path, "utf8"), malformed);
+    assert.throws(() => writeBindingIfAbsent(root, "sample-oven", "lost.json", BOUND_AT), /Refusing to modify malformed Oven binding store/u);
+    writeFileSync(path, '{"schemaVersion":2,"bindings":{}}');
+    assert.throws(() => writeBindingIfAbsent(root, "sample-oven", "lost.json", BOUND_AT), /Refusing to modify malformed Oven binding store/u);
   } finally { cleanup(); }
 });
 

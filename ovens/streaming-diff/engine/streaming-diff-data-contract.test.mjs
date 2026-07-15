@@ -45,3 +45,8 @@ test("redacted metadata entries require both redacted truth and a reason", () =>
   assert.ok(validateCard({ ...card, files: [{ ...redacted, meta: { redacted: true } }] }).issues.some((issue) => issue.path.endsWith(".reason")));
   assert.ok(validateCard({ ...card, files: [{ path: "src\\escape.mjs", kind: "modified", diff: "x" }] }).issues.some((issue) => issue.path.endsWith(".path")));
 });
+
+test("a pre-hook attempt marker is a valid empty partial card", () => {
+  const attempt = { ...card, status: "partial", partialReason: "attempt in progress / unterminated", files: [] };
+  assert.equal(validateCard(attempt).ok, true);
+});

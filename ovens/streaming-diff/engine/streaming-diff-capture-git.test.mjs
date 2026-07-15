@@ -21,19 +21,23 @@ function fixture() {
   return { root, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
 
-test("git checks ignore rules with --no-index and limits discovery to literal supplied hints", () => {
+test("git captures tracked ignored paths but denies ignored untracked paths", () => {
   const context = fixture();
   try {
     writeFileSync(join(context.root, ".gitignore"), "ignored.txt\n");
     writeFileSync(join(context.root, "ignored.txt"), "tracked ignored\n");
-    writeFileSync(join(context.root, "inside.txt"), "inside\n");
+    writeFileSync(join(context.root, "untracked-ignored.txt"), "inside\n");
+    writeFileSync(join(context.root, ".gitignore"), "ignored.txt\nuntracked-ignored.txt\n");
     writeFileSync(join(context.root, "outside.txt"), "outside\n");
     git(context.root, ["add", ".gitignore"]);
     git(context.root, ["add", "-f", "ignored.txt"]);
     git(context.root, ["commit", "--quiet", "-m", "fixture"]);
     const io = createGitCaptureIo(context.root);
-    assert.equal(io.isIgnored("ignored.txt"), true, "tracked ignored paths must still be denied");
-    assert.deepEqual(io.listUntracked(["inside.txt"]), ["inside.txt"]);
+    assert.equal(io.isTracked("ignored.txt"), true);
+    assert.equal(io.isIgnored("ignored.txt"), false, "Git does not ignore a tracked path for capture");
+    assert.equal(io.isTracked("untracked-ignored.txt"), false);
+    assert.equal(io.isIgnored("untracked-ignored.txt"), true);
+    assert.deepEqual(io.listUntracked(["untracked-ignored.txt"]), []);
     const notGit = mkdtempSync(join(tmpdir(), "not-a-git-"));
     try {
       assert.throws(() => createGitCaptureIo(notGit).isIgnored("x"), /not a git repository/u);

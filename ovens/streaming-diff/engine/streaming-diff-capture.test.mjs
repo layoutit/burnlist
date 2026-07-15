@@ -123,6 +123,7 @@ test("deny/redaction happens before every journal write and cannot disclose prot
       git(context.root, ["add", ".gitignore"]);
       git(context.root, ["add", "-f", "ignored.txt"]);
       git(context.root, ["commit", "--quiet", "-m", "tracked ignored fixture"]);
+      writeFileSync(join(context.root, "ignored.txt"), "tracked change\n");
       const ignored = captureGitCard({
         worktreeRoot: context.root,
         hintedPaths: ["ignored.txt"],
@@ -130,8 +131,20 @@ test("deny/redaction happens before every journal write and cannot disclose prot
         ...fixed,
         revId: "r-0123456789abcdef01234569",
       });
-      assert.deepEqual(ignored.files, [{ path: "ignored.txt", kind: "denied" }]);
+      assert.equal(ignored.files[0].path, "ignored.txt");
+      assert.equal(ignored.files[0].kind, "modified");
       appendCard(feed, ignored, { identity });
+
+      writeFileSync(join(context.root, "untracked-ignored.txt"), "ignored\n");
+      writeFileSync(join(context.root, ".gitignore"), "ignored.txt\nuntracked-ignored.txt\n");
+      const untrackedIgnored = captureGitCard({
+        worktreeRoot: context.root,
+        hintedPaths: ["untracked-ignored.txt"],
+        preSnapshot: new Map([["untracked-ignored.txt", STREAMING_DIFF_ABSENT]]),
+        ...fixed,
+        revId: "r-0123456789abcdef01234570",
+      });
+      assert.deepEqual(untrackedIgnored.files, [{ path: "untracked-ignored.txt", kind: "denied" }]);
     } finally {
       context.cleanup();
     }
@@ -140,7 +153,7 @@ test("deny/redaction happens before every journal write and cannot disclose prot
       .filter((name) => name.startsWith("rev-") && name.endsWith(".json"))
       .map((name) => readFileSync(join(feed, name), "utf8"));
     assert.equal(persisted.length, 3);
-    for (const forbidden of [raw[".env"], "material", "hunter2", "short-value", "bearer-value", "token-value", "outside bytes", "do not publish"]) {
+    for (const forbidden of [raw[".env"], "material", "hunter2", "short-value", "bearer-value", "token-value", "outside bytes"]) {
       assert.equal(persisted.some((contents) => contents.includes(forbidden)), false, forbidden);
     }
   } finally {
