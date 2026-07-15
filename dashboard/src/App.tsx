@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Clock3, ListChecks } from "lucide-react";
-import { AppHeader, ChecklistDashboard, DashboardError, DifferentialTestingPage, EmptyState, FILTERS, Filters, NewOvenPage, ProjectGroup, RunBurnPage } from "@components";
+import { AppHeader, ChecklistDashboard, DashboardError, DifferentialTestingPage, EmptyState, FILTERS, Filters, NewOvenPage, ProjectGroup, RunBurnPage, StreamingDiff } from "@components";
 import { useDashboardData } from "@hooks";
 import { currentSection, filterFromUrl, listHref, selectedBurnlist } from "@lib";
 import type { Filter } from "@lib";
@@ -9,7 +9,8 @@ export function App() {
   const section = currentSection();
   const selected = useMemo(selectedBurnlist, [window.location.pathname, window.location.search]);
   const [filter, setFilter] = useState(() => filterFromUrl(FILTERS));
-  const { projects, progress, error, loading } = useDashboardData({ section, selected });
+  const dashboardSection = section === "streaming-diff" ? "burnlists" : section;
+  const { projects, progress, error, loading } = useDashboardData({ section: dashboardSection, selected });
 
   const updateFilter = (nextFilter: Filter) => {
     const url = new URL(window.location.href);
@@ -23,8 +24,8 @@ export function App() {
   return (
     <div className="dashboard-app">
       <AppHeader section={section} />
-      <main className="dashboard-main" data-layout={section === "differential-testing" || selected ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <DifferentialTestingPage /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
+      <main className="dashboard-main" data-layout={section === "differential-testing" || section === "streaming-diff" || selected ? "full" : "index"} data-section={section}>
+        {section === "differential-testing" ? <DifferentialTestingPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <ChecklistDashboard backHref={listHref(filter)} data={progress} />
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />

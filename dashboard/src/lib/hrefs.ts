@@ -3,14 +3,24 @@ import type { Burnlist, Filter, SelectedBurnlist } from "./types";
 export function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
+  if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
 
 export function ovenRepoKey() {
-  return currentSection() === "differential-testing"
+  return ["differential-testing", "streaming-diff"].includes(currentSection())
     ? new URLSearchParams(window.location.search).get("repoKey")
     : null;
+}
+
+export function streamingDiffSelection() {
+  if (currentSection() !== "streaming-diff") return null;
+  const params = new URLSearchParams(window.location.search);
+  const repoKey = params.get("repoKey");
+  const worktreeKey = params.get("worktreeKey");
+  const session = params.get("session");
+  return repoKey && worktreeKey && session ? { repoKey, worktreeKey, session } : null;
 }
 
 export function selectedBurnlist(): SelectedBurnlist | null {
