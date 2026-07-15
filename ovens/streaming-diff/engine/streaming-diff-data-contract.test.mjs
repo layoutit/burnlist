@@ -14,6 +14,7 @@ const card = Object.freeze({
 const manifest = Object.freeze({
   contract: STREAMING_DIFF_DATA_CONTRACT,
   identity: { logicalRepoKey: "logical-fixture", worktreeKey: "worktree-fixture", session: "session-fixture" },
+  generation: "g-0123456789abcdef01234567",
   updatedAt: "2026-07-15T09:01:00.000Z",
   revs: [card.revId],
 });

@@ -5,9 +5,17 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { STREAMING_DIFF_ABSENT, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
+import { captureCard, STREAMING_DIFF_ABSENT, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
 import { resolveStreamingDiffIdentity, snapshotDirectory } from "./streaming-diff-feed.mjs";
-import { removePreSnapshot, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
+import {
+  closeActiveWindows,
+  registerActiveWindows,
+  removePreSnapshot,
+  STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES,
+  STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES,
+  takePreSnapshot,
+  writePreSnapshot,
+} from "./streaming-diff-snapshot-store.mjs";
 
 function git(cwd, ...args) {
   execFileSync("git", ["-C", cwd, ...args], { stdio: "ignore" });
@@ -64,15 +72,39 @@ test("snapshot storage never writes denied, ignored, binary, or secret-looking s
     assert.equal(Object.hasOwn(stored.entries, "private.pem"), false);
     assert.equal(Object.hasOwn(stored.entries, "ignored.txt"), false);
     assert.equal(Object.hasOwn(stored.entries, "escape.txt"), false);
-    assert.deepEqual(stored.hintedPaths, ["safe.txt", "binary.bin"]);
+    assert.deepEqual(stored.hintedPaths, [".env", "private.pem", "ignored.txt", "safe.txt", "binary.bin", "escape.txt"]);
     const taken = takePreSnapshot({ identity: context.identity, toolUseId: "tool-2" });
     assert.equal(taken.preSnapshot.get("safe.txt"), STREAMING_DIFF_MISSING);
-    assert.equal(taken.preSnapshot.get("binary.bin"), STREAMING_DIFF_MISSING);
-    assert.equal(taken.preSnapshot.has(".env"), false);
-    assert.equal(taken.preSnapshot.has("private.pem"), false);
-    assert.equal(taken.preSnapshot.has("ignored.txt"), false);
-    assert.equal(taken.preSnapshot.has("escape.txt"), false);
+    assert.deepEqual(taken.preSnapshot.get("binary.bin"), { binary: true, bytes: 3 });
+    for (const path of [".env", "private.pem", "ignored.txt", "escape.txt"]) {
+      assert.equal(taken.preSnapshot.get(path), STREAMING_DIFF_MISSING);
+    }
     rmSync(outside, { recursive: true, force: true });
+  } finally { context.cleanup(); }
+});
+
+test("an invalid UTF-8 pre-snapshot stays binary metadata after a valid-text post", () => {
+  const context = fixture();
+  try {
+    const path = join(context.root, "invalid.txt");
+    writeFileSync(path, Buffer.from([0xc3, 0x28]));
+    const written = writePreSnapshot({ identity: context.identity, toolUseId: "invalid-utf8", hintedPaths: ["invalid.txt"] });
+    const stored = JSON.parse(readFileSync(written.path, "utf8"));
+    assert.deepEqual(stored.entries["invalid.txt"], { kind: "binary", bytes: 2 });
+    writeFileSync(path, "valid text\n");
+    const { preSnapshot } = takePreSnapshot({ identity: context.identity, toolUseId: "invalid-utf8" });
+    const card = captureCard({
+      hintedPaths: ["invalid.txt"],
+      preSnapshot,
+      readPost: () => readFileSync(path),
+      listUntracked: () => ["invalid.txt"],
+      toolUseId: "invalid-utf8",
+      revId: "r-0123456789abcdef01234567",
+      now: () => "2026-07-15T09:00:00.000Z",
+    });
+    assert.deepEqual(card.files, [{ path: "invalid.txt", kind: "binary", meta: { bytes: 11 } }]);
+    assert.equal(card.status, "partial");
+    assert.equal(card.files[0].diff, undefined);
   } finally { context.cleanup(); }
 });
 
@@ -91,5 +123,30 @@ test("snapshot records enforce a serialized byte cap before write and before par
     writeFileSync(written.path, "x".repeat(600 * 1024));
     assert.equal(statSync(written.path).size > 512 * 1024, true);
     assert.throws(() => takePreSnapshot({ identity: context.identity, toolUseId: "small" }), /snapshot exceeds/u);
+  } finally { context.cleanup(); }
+});
+
+test("active-window registry preserves normal overlaps and flags overflow without evicting live windows", () => {
+  const context = fixture();
+  try {
+    const openedAt = Date.now();
+    const first = resolveStreamingDiffIdentity({ cwd: context.root, session: "overlap-first" });
+    const second = resolveStreamingDiffIdentity({ cwd: context.root, session: "overlap-second" });
+    registerActiveWindows({ identity: first, toolUseId: "overlap-a", hintedPaths: ["shared.txt"], openedAt });
+    registerActiveWindows({ identity: second, toolUseId: "overlap-b", hintedPaths: ["shared.txt"], openedAt: openedAt + 1 });
+    assert.deepEqual(closeActiveWindows({ identity: first, toolUseId: "overlap-a", closedAt: openedAt + 2 }).paths, ["shared.txt"]);
+    assert.deepEqual(closeActiveWindows({ identity: second, toolUseId: "overlap-b", closedAt: openedAt + 3 }).paths, ["shared.txt"]);
+
+    for (let index = 0; index < STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES; index += 1) {
+      const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: `session-${index}` });
+      registerActiveWindows({ identity, toolUseId: `tool-${index}`, hintedPaths: [`unique-${index}.txt`], openedAt: openedAt + index });
+    }
+    const overflow = resolveStreamingDiffIdentity({ cwd: context.root, session: "overflow" });
+    registerActiveWindows({ identity: overflow, toolUseId: "overflow-tool", hintedPaths: ["overflow.txt"], openedAt: openedAt + 1_000 });
+    const path = join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json");
+    const serialized = readFileSync(path, "utf8");
+    assert.ok(JSON.parse(serialized).windows.length <= STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES);
+    assert.ok(Buffer.byteLength(serialized, "utf8") <= STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES);
+    assert.equal(closeActiveWindows({ identity: overflow, toolUseId: "overflow-tool", closedAt: openedAt + 1_001 }).attributionUnavailable, true);
   } finally { context.cleanup(); }
 });

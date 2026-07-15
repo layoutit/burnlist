@@ -4,7 +4,7 @@ import { join, relative, sep } from "node:path";
 import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
 import { containedJoin } from "../../../src/server/repo-state.mjs";
 import { STREAMING_DIFF_FEED_VERSION, STREAMING_DIFF_OVEN_ID, identifierPathComponent, streamingDiffIdentifier } from "./streaming-diff-feed.mjs";
-import { readJournal, readManifestPure, reconnectFeedPure } from "./streaming-diff-journal.mjs";
+import { readJournal, readManifestPure, resolveReconnect } from "./streaming-diff-journal.mjs";
 
 export const STREAMING_DIFF_SSE_DEFAULTS = Object.freeze({
   pollMs: 300, heartbeatMs: 15_000, maxGlobalSubscribers: 128, maxSubscribersPerFeed: 32,
@@ -19,7 +19,7 @@ const subscribers = new Map();
 let subscriberTotal = 0;
 
 function httpError(message, status = 400) {
-  return Object.assign(new Error(message), { status });
+  return Object.assign(new Error(message), { status, streamingDiffPublic: true });
 }
 
 function isWithin(parent, child) {
@@ -58,6 +58,25 @@ function feedRoot(ctx) {
   return { root, repoRoot: ctx.binding.repoRoot };
 }
 
+function verifyFeed(ctx, rootInfo, feed) {
+  if (realpathSync(ctx.bindingPath) !== rootInfo.root) throw httpError("configured Streaming Diff feed root changed during read");
+  let resolved;
+  try {
+    resolved = realpathSync(feed.path);
+  } catch (error) {
+    if (error?.code === "ENOENT") throw httpError("Streaming Diff session feed is not available", 404);
+    throw error;
+  }
+  if (!isWithin(rootInfo.root, resolved)) throw httpError("Streaming Diff session feed escapes its feed root");
+  const journal = (ctx.readJournal ?? readJournal)(resolved);
+  if (!journal.manifest) throw httpError("Streaming Diff session feed has no published manifest", 404);
+  const identity = journal.manifest.identity;
+  if (identity.logicalRepoKey !== feed.repoKey || identity.worktreeKey !== feed.worktreeKey || identity.session !== feed.session) {
+    throw httpError("Streaming Diff session identity does not match its feed path");
+  }
+  return { ...feed, path: resolved, identity, journal };
+}
+
 function selectedFeed(ctx, rootInfo) {
   if (ctx.url.searchParams.has("list")) return null;
   const repoKey = queryValue(ctx.url, "repoKey");
@@ -69,21 +88,7 @@ function selectedFeed(ctx, rootInfo) {
   }
   const safeSession = streamingDiffIdentifier(session, "session");
   const path = containedJoin(rootInfo.repoRoot, "streaming-diff", STREAMING_DIFF_FEED_VERSION, repoKey, worktreeKey, identifierPathComponent(safeSession));
-  let resolved;
-  try {
-    resolved = realpathSync(path);
-  } catch (error) {
-    if (error?.code === "ENOENT") throw httpError("Streaming Diff session feed is not available", 404);
-    throw error;
-  }
-  if (!isWithin(rootInfo.root, resolved)) throw httpError("Streaming Diff session feed escapes its feed root");
-  const journal = (ctx.readJournal ?? readJournal)(resolved);
-  if (!journal.manifest) throw httpError("Streaming Diff session feed has no published manifest", 404);
-  const identity = journal.manifest.identity;
-  if (identity.logicalRepoKey !== repoKey || identity.worktreeKey !== worktreeKey || identity.session !== safeSession) {
-    throw httpError("Streaming Diff session identity does not match its feed path");
-  }
-  return { path: resolved, identity, journal };
+  return verifyFeed(ctx, rootInfo, { path, repoKey, worktreeKey, session: safeSession });
 }
 
 function safeUpdatedAt(value, now = Date.now()) {
@@ -172,15 +177,19 @@ function wantsSse(req) {
   return String(req.headers.accept ?? "").split(",").some((value) => value.trim().startsWith("text/event-stream"));
 }
 
-function reconnectSince(ctx) {
+function cursor(feed, revId) {
+  return `${SSE_WIRE_PREFIX}${feed.identity.logicalRepoKey}:${feed.identity.worktreeKey}:${identifierPathComponent(feed.identity.session)}:${feed.journal.manifest.generation}:${revId}`;
+}
+
+function reconnectSince(ctx, feed) {
   const since = queryValue(ctx.url, "since");
   const header = ctx.req.headers["last-event-id"];
   const lastEventId = Array.isArray(header) ? header[0] : header;
   if (since && lastEventId && since !== lastEventId) throw httpError("since and Last-Event-ID must match when both are supplied");
   const value = since ?? lastEventId ?? null;
   if (value === null) return null;
-  if (!value.startsWith(SSE_WIRE_PREFIX)) throw httpError(`Last-Event-ID must use the ${STREAMING_DIFF_FEED_VERSION} wire format`);
-  return value.slice(SSE_WIRE_PREFIX.length);
+  const prefix = cursor(feed, "");
+  return value.startsWith(prefix) ? value.slice(prefix.length) : "";
 }
 
 function reserveSubscriber(path, options) {
@@ -211,14 +220,22 @@ function sseWrite(res, state, text) {
 function startSse(ctx, feed) {
   const options = { ...STREAMING_DIFF_SSE_DEFAULTS, ...(ctx.sseOptions ?? {}) };
   const timers = ctx.timers ?? { setInterval, clearInterval };
-  const since = reconnectSince(ctx);
-  const reconnect = ctx.reconnectFeed ?? reconnectFeedPure;
+  const since = reconnectSince(ctx, feed);
+  const reconnect = (lastId) => {
+    if (ctx.reconnectFeed) return { result: ctx.reconnectFeed(feed.path, lastId), feed };
+    const current = verifyFeed(ctx, ctx.rootInfo, feed);
+    const reconnectId = current.journal.manifest.generation === feed.journal.manifest.generation ? lastId : "";
+    const result = !current.journal.manifest || current.journal.race
+      ? { type: "reset", cards: current.journal.cards }
+      : resolveReconnect(current.journal.manifest, current.journal.cards, reconnectId);
+    return { result, feed: current };
+  };
   // The only fallible initial read happens before writeHead, allowing the
   // route to return a normal JSON error rather than double-sending headers.
-  const initial = reconnect(feed.path, since);
+  const initial = reconnect(since);
   if (!reserveSubscriber(feed.path, options)) throw httpError("Streaming Diff subscriber limit reached", 503);
   const res = ctx.res;
-  const state = { closed: false, pending: false, drain: null, poll: null, heartbeat: null, lastId: since };
+  const state = { closed: false, pending: false, drain: null, poll: null, heartbeat: null, lastId: since, feed: initial.feed };
   const cleanup = () => {
     if (state.closed) return;
     state.closed = true;
@@ -241,11 +258,12 @@ function startSse(ctx, feed) {
   const event = (card) => {
     const payload = JSON.stringify(card);
     if (Buffer.byteLength(payload, "utf8") > ctx.maxOvenDataBytes) return closeSlow();
-    if (!sseWrite(res, state, `id: ${SSE_WIRE_PREFIX}${card.revId}\ndata: ${payload}\n\n`)) closeSlow();
+    if (!sseWrite(res, state, `id: ${cursor(state.feed, card.revId)}\ndata: ${payload}\n\n`)) closeSlow();
     else state.lastId = card.revId;
   };
-  const publish = (result) => {
+  const publish = ({ result, feed: current }) => {
     if (state.closed) return;
+    state.feed = current;
     if (result.type === "reset" && !sseWrite(res, state, "event: reset\ndata: {\"type\":\"reset\"}\n\n")) return closeSlow();
     for (const card of result.cards) {
       if (state.closed) return;
@@ -254,7 +272,7 @@ function startSse(ctx, feed) {
   };
   const poll = () => {
     try {
-      publish(reconnect(feed.path, state.lastId));
+      publish(reconnect(state.lastId));
     } catch {
       endStream();
     }
@@ -286,17 +304,22 @@ export const streamingDiffHandler = Object.freeze({
   id: STREAMING_DIFF_OVEN_ID,
 
   serveData(ctx) {
-    const root = feedRoot(ctx);
-    if (ctx.url.searchParams.has("list")) {
-      const repoKey = listRepoKey(ctx);
-      const limit = Math.min(ctx.maxOvenDataBytes, STREAMING_DIFF_LIST_LIMITS.maxBytes);
-      return boundedList({ ovenId: STREAMING_DIFF_OVEN_ID, ...recentFeeds(root.root, repoKey, limit, ctx.readManifest) }, ctx.maxOvenDataBytes);
+    try {
+      const root = feedRoot(ctx);
+      if (ctx.url.searchParams.has("list")) {
+        const repoKey = listRepoKey(ctx);
+        const limit = Math.min(ctx.maxOvenDataBytes, STREAMING_DIFF_LIST_LIMITS.maxBytes);
+        return boundedList({ ovenId: STREAMING_DIFF_OVEN_ID, ...recentFeeds(root.root, repoKey, limit, ctx.readManifest) }, ctx.maxOvenDataBytes);
+      }
+      const feed = selectedFeed(ctx, root);
+      if (!feed) return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, feeds: [] }, ctx.maxOvenDataBytes);
+      if (!wantsSse(ctx.req)) return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, identity: feed.identity, updatedAt: feed.journal.manifest.updatedAt, cards: feed.journal.cards, reset: feed.journal.race }, ctx.maxOvenDataBytes);
+      startSse({ ...ctx, rootInfo: root }, feed);
+      return undefined;
+    } catch (error) {
+      if (error?.streamingDiffPublic) throw error;
+      throw httpError("Streaming Diff feed is unavailable", Number.isInteger(error?.status) ? error.status : 422);
     }
-    const feed = selectedFeed(ctx, root);
-    if (!feed) return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, feeds: [] }, ctx.maxOvenDataBytes);
-    if (!wantsSse(ctx.req)) return bounded({ ovenId: STREAMING_DIFF_OVEN_ID, identity: feed.identity, updatedAt: feed.journal.manifest.updatedAt, cards: feed.journal.cards, reset: feed.journal.race }, ctx.maxOvenDataBytes);
-    startSse(ctx, feed);
-    return undefined;
   },
 });
 

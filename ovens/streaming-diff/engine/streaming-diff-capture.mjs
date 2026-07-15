@@ -14,7 +14,21 @@ export const STREAMING_DIFF_CAPTURE_LIMITS = Object.freeze({
   maxHunkBytes: 96 * 1024,
   maxCardBytes: 512 * 1024,
 });
-const incompleteFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
+const incompleteFileKinds = new Set(["binary", "denied", "redacted", "truncated", "unavailable"]);
+const terminalReasons = new Set(["tool failed", "path hints truncated", "hook adapter mapping was incomplete", "hook payload exceeded byte limit", "hook payload read timed out"]);
+
+export function captureLimits(policy = {}) {
+  const limits = {};
+  for (const [key, maximum] of Object.entries(STREAMING_DIFF_CAPTURE_LIMITS)) {
+    const value = policy[key];
+    if (value === undefined) limits[key] = maximum;
+    else {
+      if (!Number.isSafeInteger(value)) throw new Error(`capture ${key} must be a finite integer`);
+      limits[key] = Math.max(1, Math.min(maximum, value));
+    }
+  }
+  return limits;
+}
 
 function pathIsSafe(path, maxPathLength) {
   return typeof path === "string" && path.length > 0 && path.length <= maxPathLength
@@ -25,7 +39,7 @@ function pathIsSafe(path, maxPathLength) {
 function hardDenied(path) {
   return path.split("/").some((part) => {
     const name = part.toLowerCase();
-    return name.startsWith(".env")
+    return name === ".git" || name.startsWith(".env")
       || /(?:^|[._-])(?:key|keys|cert|certificate|credential|credentials|secret|secrets|password|token)(?:[._-]|$)/u.test(name)
       || /^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$/u.test(name)
       || /\.(?:pem|p12|pfx|key|crt)$/u.test(name);
@@ -38,6 +52,7 @@ function contentOf(value) {
   if (typeof value === "string" || Buffer.isBuffer(value)) return { content: value };
   if (typeof value === "object" && value !== null) {
     if (value.truncated === true) return { truncated: true, bytes: value.bytes };
+    if (value.binary === true && Number.isSafeInteger(value.bytes) && value.bytes >= 0) return { binary: true, bytes: value.bytes };
     if (value.content === STREAMING_DIFF_ABSENT) return { absent: true };
     if (typeof value.content === "string" || Buffer.isBuffer(value.content)) return value;
   }
@@ -48,8 +63,15 @@ function bytesOf(value) {
   return Buffer.isBuffer(value) ? value.length : Buffer.byteLength(value, "utf8");
 }
 
-function binary(value) {
-  return Buffer.isBuffer(value) && value.includes(0);
+export function isBinaryContent(value) {
+  if (!Buffer.isBuffer(value)) return false;
+  if (value.includes(0)) return true;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(value);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 export function redact(value) {
@@ -114,7 +136,7 @@ export function captureCard({
   revId = revisionId(),
   opaqueReason = null,
 } = {}) {
-  const limits = { ...STREAMING_DIFF_CAPTURE_LIMITS, ...policy };
+  const limits = captureLimits(policy);
   const reasons = [];
   const files = [];
   if (typeof readPost !== "function") throw new Error("capture requires a post-content reader");
@@ -128,6 +150,10 @@ export function captureCard({
       reasons.push("unsafe path hint");
       continue;
     }
+    if (hardDenied(path)) {
+      files.push({ path, kind: "denied" });
+      continue;
+    }
     let info;
     try {
       info = inspect(path) ?? {};
@@ -135,9 +161,7 @@ export function captureCard({
       reasons.push(`could not inspect ${path}`);
       continue;
     }
-    if (hardDenied(path)) {
-      files.push({ path, kind: "denied" });
-    } else if (info.type && info.type !== "file") {
+    if (info.type && info.type !== "file") {
       files.push(metadata(path, "denied", "not a regular contained file"));
     } else if (info.contained === false || info.symlinkEscape === true) {
       files.push(metadata(path, "denied", "path escapes the worktree"));
@@ -193,14 +217,14 @@ export function captureCard({
       reasons.push(`new path ${path} was not eligible untracked content`);
       continue;
     }
-    const known = [before, after].filter((entry) => !entry.absent && !entry.truncated);
+    const known = [before, after].filter((entry) => !entry.absent && !entry.truncated && !entry.binary);
     const largest = Math.max(0, ...known.map((entry) => bytesOf(entry.content)), before.bytes ?? 0, after.bytes ?? 0);
     if (before.truncated || after.truncated || largest > limits.maxFileBytes) {
       files.push(metadata(path, "truncated", "file byte limit exceeded", largest));
       reasons.push("file byte limit exceeded");
       continue;
     }
-    if (known.some((entry) => binary(entry.content))) {
+    if (before.binary || after.binary || known.some((entry) => isBinaryContent(entry.content))) {
       files.push(metadata(path, "binary", undefined, largest));
       continue;
     }
@@ -233,7 +257,9 @@ export function captureCard({
     }
     files.push({ path, kind: before.absent ? "added" : after.absent ? "deleted" : "modified", diff });
   }
-  if (opaqueReason) reasons.push(String(opaqueReason));
+  for (const reason of typeof opaqueReason === "string" ? opaqueReason.split("; ") : []) {
+    if (terminalReasons.has(reason)) reasons.push(reason);
+  }
   if (files.some((file) => incompleteFileKinds.has(file.kind))) reasons.push("content withheld/incomplete");
   const card = { revId, toolUseId, ts: now(), status: reasons.length ? "partial" : "captured", ...(reasons.length ? { partialReason: partialReason(reasons) } : {}), files };
   if (Buffer.byteLength(JSON.stringify(card), "utf8") > limits.maxCardBytes) {

@@ -8,7 +8,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { withServer } from "../../../src/server/dashboard-routes-fixtures.mjs";
-import { appendCard } from "./streaming-diff-journal.mjs";
+import { appendCard, readJournal } from "./streaming-diff-journal.mjs";
 import { ensureStreamingDiffFeed } from "./streaming-diff-ensure-feed.mjs";
 import { feedIdentity } from "./streaming-diff-feed.mjs";
 import { STREAMING_DIFF_LIST_LIMITS, streamingDiffHandler } from "./streaming-diff-handler.mjs";
@@ -183,7 +183,7 @@ test("SSE contains post-header errors and clears both timers on every completion
   try {
     appendCard(context.identity.feedDir, card(1), { identity: feedIdentity(context.identity) });
     const before = new FakeResponse();
-    assert.throws(() => streamingDiffHandler.serveData(handlerContext(context, { res: before, req: { headers: { accept: "text/event-stream" } }, reconnectFeed: () => { throw new Error("before headers"); } })), /before headers/u);
+    assert.throws(() => streamingDiffHandler.serveData(handlerContext(context, { res: before, req: { headers: { accept: "text/event-stream" } }, reconnectFeed: () => { throw new Error("before headers"); } })), /Streaming Diff feed is unavailable/u);
     assert.equal(before.headers, null);
 
     for (const completion of ["close", "error", "finish"]) {
@@ -219,8 +219,47 @@ test("SSE subscriber caps reject before headers while an allowed stream works", 
     const rejected = new FakeResponse();
     assert.throws(() => streamingDiffHandler.serveData(handlerContext(context, { res: rejected, req: { headers: { accept: "text/event-stream" } }, sseOptions: { maxGlobalSubscribers: 1, maxSubscribersPerFeed: 1 } })), (error) => error.status === 503);
     assert.equal(rejected.headers, null);
-    assert.match(first.writes.join(""), /id: v2:r-/u);
+    assert.match(first.writes.join(""), /id: v2:[a-f0-9]{12}:[a-f0-9]{12}:[a-f0-9]{32}:g-[a-f0-9]+:r-/u);
     first.emit("close");
+  } finally { cleanup(); }
+});
+
+test("foreign cursors reset and malformed feed errors are sanitized", () => {
+  const { context, cleanup } = fixture();
+  try {
+    appendCard(context.identity.feedDir, card(1), { identity: feedIdentity(context.identity) });
+    const res = new FakeResponse();
+    streamingDiffHandler.serveData(handlerContext(context, {
+      res, req: { headers: { accept: "text/event-stream", "last-event-id": "v2:foreign-feed:r-aaaaaaaaaaaaaaaaaaaaaaaa" } },
+      timers: { setInterval: () => null, clearInterval: () => {} },
+    }));
+    assert.match(res.writes.join(""), /event: reset/u);
+    res.emit("close");
+    const raw = "/private/feed/secret-content";
+    assert.throws(
+      () => streamingDiffHandler.serveData(handlerContext(context, { readJournal: () => { throw new Error(raw); } })),
+      (error) => error.message === "Streaming Diff feed is unavailable" && !error.message.includes(raw),
+    );
+  } finally { cleanup(); }
+});
+
+test("SSE rechecks feed containment and identity before every poll", () => {
+  const { context, cleanup } = fixture();
+  try {
+    appendCard(context.identity.feedDir, card(1), { identity: feedIdentity(context.identity) });
+    const timers = timerHarness();
+    let reads = 0;
+    const res = new FakeResponse();
+    streamingDiffHandler.serveData(handlerContext(context, {
+      res, timers: timers.timers, req: { headers: { accept: "text/event-stream" } },
+      readJournal(path) {
+        const journal = readJournal(path);
+        reads += 1;
+        return reads < 3 ? journal : { ...journal, manifest: { ...journal.manifest, identity: { ...journal.manifest.identity, session: "other" } } };
+      },
+    }));
+    [...timers.active].find((handle) => handle.delay === 300).fn();
+    assert.equal(res.ended, true);
   } finally { cleanup(); }
 });
 
@@ -249,16 +288,18 @@ test("server lists only its repo binding and streams retained replay/reset cards
 
     const stream = await requestSse(baseUrl, `/api/oven-data/streaming-diff?${query}`);
     await waitFor(() => { if (stream.error) throw stream.error; return stream.events.filter((entry) => entry.id).length === 2; }, "initial cards");
-    assert.deepEqual(stream.events.filter((entry) => entry.id).map((entry) => entry.id), [`v2:${card(1).revId}`, `v2:${card(2).revId}`]);
+    const initialIds = stream.events.filter((entry) => entry.id).map((entry) => entry.id);
+    assert.equal(initialIds[0].endsWith(`:${card(1).revId}`), true);
+    assert.equal(initialIds[1].endsWith(`:${card(2).revId}`), true);
     stream.close();
 
-    const replay = await requestSse(baseUrl, `/api/oven-data/streaming-diff?${query}`, { "last-event-id": `v2:${card(1).revId}` });
-    await waitFor(() => { if (replay.error) throw replay.error; return replay.events.some((entry) => entry.id === `v2:${card(2).revId}`); }, "replay suffix");
+    const replay = await requestSse(baseUrl, `/api/oven-data/streaming-diff?${query}`, { "last-event-id": initialIds[0] });
+    await waitFor(() => { if (replay.error) throw replay.error; return replay.events.some((entry) => entry.id?.endsWith(`:${card(2).revId}`)); }, "replay suffix");
     replay.close();
 
     appendCard(state.first.feedDir, card(4), { identity: feedIdentity(state.first), limits: { maxRevs: 1, maxBytes: 1024 } });
-    const reset = await requestSse(baseUrl, `/api/oven-data/streaming-diff?${query}`, { "last-event-id": `v2:${card(1).revId}` });
-    await waitFor(() => { if (reset.error) throw reset.error; return reset.events.some((entry) => entry.id === `v2:${card(4).revId}`); }, "pruned reset");
+    const reset = await requestSse(baseUrl, `/api/oven-data/streaming-diff?${query}`, { "last-event-id": initialIds[0] });
+    await waitFor(() => { if (reset.error) throw reset.error; return reset.events.some((entry) => entry.id?.endsWith(`:${card(4).revId}`)); }, "pruned reset");
     assert.equal(reset.events.some((entry) => entry.type === "reset"), true);
     reset.close();
 

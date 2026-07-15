@@ -40,7 +40,9 @@ export function mapClaudeHook(payload = {}, event, env = process.env, options) {
   try {
     event ??= EVENTS[payload.hook_event_name];
     if (event === "ensure") return hookCapture({ event, session: payload.session_id ?? env.CLAUDE_SESSION_ID });
-    if (!MUTATING_TOOLS.has(payload.tool_name)) return hookNoop();
+    const tool = hookText(payload.tool_name);
+    if (!tool) return hookCapture({ event, session: payload.session_id ?? env.CLAUDE_SESSION_ID });
+    if (!MUTATING_TOOLS.has(tool)) return hookNoop();
     const input = payload.tool_input && typeof payload.tool_input === "object" ? payload.tool_input : {};
     const absolutePath = hookText(input.file_path) ?? hookText(input.notebook_path);
     const path = absolutePath ? claudeRepoRelativePath(absolutePath, options) : null;

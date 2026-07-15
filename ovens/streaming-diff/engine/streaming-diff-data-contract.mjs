@@ -6,6 +6,7 @@ const fileKinds = new Set(["modified", "added", "deleted", "binary", "denied", "
 const textKinds = new Set(["modified", "added", "deleted"]);
 const incompleteFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
 const opaqueRevision = /^r-[a-f0-9]{16,64}$/u;
+const opaqueGeneration = /^g-[a-f0-9]{16,64}$/u;
 
 export class StreamingDiffDataValidationError extends Error {
   constructor(issues) {
@@ -92,7 +93,7 @@ function validate(value, kind) {
       }
     }
   } else {
-    keys(value, "$", new Set(["contract", "identity", "updatedAt", "revs"]));
+    keys(value, "$", new Set(["contract", "identity", "generation", "updatedAt", "revs"]));
     if (value.contract !== STREAMING_DIFF_DATA_CONTRACT) issue("$.contract", `must equal ${STREAMING_DIFF_DATA_CONTRACT}; upgrade or restart this feed`);
     if (!plainObject(value.identity)) issue("$.identity", "must be an object");
     else {
@@ -100,6 +101,7 @@ function validate(value, kind) {
       for (const key of ["logicalRepoKey", "worktreeKey", "session"]) text(value.identity[key], `$.identity.${key}`, 256);
     }
     if (!timestamp(value.updatedAt)) issue("$.updatedAt", "must be a parseable activity timestamp");
+    if (typeof value.generation !== "string" || !opaqueGeneration.test(value.generation)) issue("$.generation", "must be an opaque g- hexadecimal feed generation");
     if (!Array.isArray(value.revs)) issue("$.revs", "must be an ordered array");
     else {
       if (value.revs.length > STREAMING_DIFF_CONTRACT_LIMITS.maxRevs) issue("$.revs", `must contain at most ${STREAMING_DIFF_CONTRACT_LIMITS.maxRevs} revisions`);

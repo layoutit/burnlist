@@ -21,7 +21,9 @@ function parseFlags(values) {
     if (!token.startsWith("--")) fail(`unexpected argument: ${token}`, 2);
     const name = token.slice(2);
     const value = values[index + 1];
-    if (!value || value.startsWith("--")) fail(`${token} requires a value.`, 2);
+    // Values occupy the slot immediately following their flag, so a filename
+    // such as --path is data, never a second flag.
+    if (value === undefined || value === "") fail(`${token} requires a value.`, 2);
     const entries = flags.get(name) ?? [];
     entries.push(value);
     flags.set(name, entries);
@@ -94,7 +96,11 @@ async function hookPayload() {
   if (text === null) return { payload: {}, degradedReason: input.degradedReason ?? "hook payload was incomplete" };
   if (Buffer.byteLength(text, "utf8") > MAX_HOOK_PAYLOAD_BYTES) return { payload: {}, degradedReason: "hook payload exceeded byte limit" };
   if (!text?.trim()) return { payload: {}, degradedReason: "missing hook payload" };
-  try { return { payload: JSON.parse(text) }; } catch { return { payload: {}, degradedReason: "hook payload was invalid" }; }
+  try {
+    const payload = JSON.parse(text);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return { payload: {}, degradedReason: "hook payload was not an object" };
+    return { payload };
+  } catch { return { payload: {}, degradedReason: "hook payload was invalid" }; }
 }
 
 function parseHookFlags(values) {
@@ -123,15 +129,15 @@ function runHookCapture(args) {
 function withTerminalReason(args, reason) {
   if (!reason) return args;
   const index = args.indexOf("--terminal-reason");
-  if (index === -1) return [...args, "--terminal-reason", reason];
-  return [...args.slice(0, index + 1), `${args[index + 1]}; ${reason}`, ...args.slice(index + 2)];
+  if (index === -1) return [...args, "--terminal-reason", "adapter-incomplete"];
+  return args;
 }
 
 function incompleteHookCapture(event, reason) {
   if (!["pre", "post", "failure"].includes(event)) return null;
   return {
     action: "capture",
-    args: ["capture", "--session", "unknown-session", "--tool-use-id", "unknown-tool-use", "--phase", event === "pre" ? "pre" : "post", "--terminal-reason", reason],
+    args: ["capture", "--session", "unknown-session", "--tool-use-id", "unknown-tool-use", "--phase", event === "pre" ? "pre" : "post", "--terminal-reason", reason.includes("byte limit") ? "payload-too-large" : reason.includes("timed out") ? "payload-read-timed-out" : "adapter-incomplete"],
     degraded: true,
   };
 }
@@ -153,7 +159,7 @@ try {
         ? incompleteHookCapture(event, input.degradedReason)
         : mapStreamingDiffHook({ agent, event, payload: input.payload, cwd: process.cwd() });
       if (mapped?.action === "ensure-feed" || mapped?.action === "capture") {
-        await runHookCapture(withTerminalReason(mapped.args, mapped.degraded ? mapped.degradedReason ?? "hook adapter mapping was incomplete" : undefined));
+        await runHookCapture(withTerminalReason(mapped.args, mapped.degraded ? mapped.terminalReason ?? "adapter-incomplete" : undefined));
       }
     } catch { /* Hooks are advisory and must never block their host agent. */ }
     return;

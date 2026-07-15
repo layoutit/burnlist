@@ -1,4 +1,5 @@
 const textFileKinds = new Set(["modified", "added", "deleted"]);
+const withheldFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
 
 const metadataKindLabels = Object.freeze({
   binary: "binary",
@@ -34,10 +35,11 @@ function parseFile(value) {
     ...(string(value.meta.reason) ? { reason: value.meta.reason } : {}),
     ...(value.meta.redacted === true ? { redacted: true } : {}),
   } : undefined;
+  const withheld = meta?.redacted === true || withheldFileKinds.has(kind);
   return {
     path,
     kind,
-    ...(typeof value.diff === "string" ? { diff: value.diff } : {}),
+    ...(!withheld && typeof value.diff === "string" ? { diff: value.diff } : {}),
     ...(meta ? { meta } : {}),
   };
 }
@@ -70,8 +72,14 @@ export function streamingDiffRepositories(projects) {
 
 export function mapStreamingDiffLandingFeeds(results) {
   return results.flatMap(({ repository, payload }) => mapStreamingDiffFeeds(payload)
+    .filter((feed) => feed.identity.logicalRepoKey === repository.repoKey)
     .map((feed) => ({ ...feed, repoLabel: repository.label })))
     .sort((left, right) => (Date.parse(right.updatedAt ?? "") || 0) - (Date.parse(left.updatedAt ?? "") || 0));
+}
+
+export function streamingDiffFeedKey(feed) {
+  const { logicalRepoKey, worktreeKey, session } = feed.identity;
+  return `${logicalRepoKey}/${worktreeKey}/${session}`;
 }
 
 export function streamingDiffAutoOpenHref(feeds) {
@@ -87,12 +95,14 @@ export function parseStreamingDiffCard(value) {
   if (!revId || !toolUseId || !ts || !status) return null;
   const files = value.files.map(parseFile).filter(Boolean);
   if (files.length !== value.files.length) return null;
+  const withheld = files.some((file) => file.meta?.redacted === true || withheldFileKinds.has(file.kind));
+  const partialReason = string(value.partialReason);
   return {
     revId,
     toolUseId,
     ts,
-    status,
-    ...(status === "partial" && string(value.partialReason) ? { partialReason: value.partialReason } : {}),
+    status: status === "partial" || withheld ? "partial" : "captured",
+    ...(partialReason ? { partialReason } : withheld ? { partialReason: "One or more file diffs were withheld." } : {}),
     files,
   };
 }
@@ -103,9 +113,15 @@ export function parseStreamingDiffCard(value) {
 export function groupStreamingDiffCard(cards, card) {
   const index = cards.findIndex((entry) => entry.toolUseId === card.toolUseId || entry.revId === card.revId);
   if (index < 0) return [...cards, card];
-  const next = [...cards];
-  next[index] = card;
-  return next;
+  const matches = (entry) => entry.toolUseId === card.toolUseId || entry.revId === card.revId;
+  const existingTerminal = cards.find((entry) => entry.toolUseId === card.toolUseId && !isAttemptCard(entry));
+  const replacement = isAttemptCard(card) && existingTerminal ? existingTerminal : card;
+  const next = cards.filter((entry) => !matches(entry));
+  return [...next.slice(0, index), replacement, ...next.slice(index)];
+}
+
+function isAttemptCard(card) {
+  return card.status === "partial" && card.files.length === 0 && card.partialReason?.startsWith("attempt in progress") === true;
 }
 
 export function applyStreamingDiffUpdate(cards, update) {
@@ -114,8 +130,8 @@ export function applyStreamingDiffUpdate(cards, update) {
     : cards;
 }
 
-export function fileKindChip(kind) {
-  return metadataKindLabels[kind] ?? null;
+export function fileKindChip(kind, meta) {
+  return meta?.redacted === true ? "redacted" : metadataKindLabels[kind] ?? null;
 }
 
 export function isTextFileKind(kind) {

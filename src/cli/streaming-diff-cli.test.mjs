@@ -159,7 +159,32 @@ test("missing hook fields record a partial terminal card instead of a captured f
     const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "unknown-session" });
     const card = readJournal(identity.feedDir).cards.find((entry) => entry.toolUseId === "unknown-tool-use");
     assert.equal(card.status, "partial");
-    assert.match(card.partialReason, /missing session; missing tool use id; missing path hints/u);
+    assert.match(card.partialReason, /hook adapter mapping was incomplete/u);
+  } finally { context.cleanup(); }
+});
+
+test("hook payloads with dash-prefixed hints and missing fields remain partial", () => {
+  const context = fixture();
+  try {
+    hook(context, "codex", "post", { tool_name: "write_file", tool_use_id: "dash-call", tool_input: { file_path: "--phase" } });
+    hook(context, "codex", "post", {});
+    const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "unknown-session" });
+    const cards = readJournal(identity.feedDir).cards;
+    assert.equal(cards.some((card) => card.toolUseId === "dash-call" && card.status === "partial" && /hook adapter mapping/u.test(card.partialReason)), true);
+    assert.equal(cards.some((card) => card.toolUseId === "unknown-tool-use" && card.status === "partial"), true);
+  } finally { context.cleanup(); }
+});
+
+test("JSON-valid non-object hook payloads produce partial cards and exit zero", () => {
+  const context = fixture();
+  try {
+    assert.doesNotThrow(() => execFileSync(process.execPath, [binPath, "streaming-diff", "hook", "--agent", "codex", "--event", "post"], {
+      cwd: context.root, input: "[]", stdio: "pipe", timeout: 5_000,
+    }));
+    const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "unknown-session" });
+    const card = readJournal(identity.feedDir).cards.find((entry) => entry.toolUseId === "unknown-tool-use");
+    assert.equal(card.status, "partial");
+    assert.match(card.partialReason, /hook adapter mapping was incomplete/u);
   } finally { context.cleanup(); }
 });
 

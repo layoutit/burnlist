@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@layout";
 import { useStreamingDiffCards, useStreamingDiffFeeds } from "@hooks";
-import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffRepositories, streamingDiffSelection } from "@lib";
+import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffFeedKey, streamingDiffRepositories, streamingDiffSelection } from "@lib";
 import { fileKindChip, isTextFileKind } from "@lib";
 import type { Project, StreamingDiffCard, StreamingDiffFeed, StreamingDiffFile } from "@lib";
 import "../../../../ovens/streaming-diff/renderer/streaming-diff.css";
@@ -21,7 +21,7 @@ function FeedList({ feeds, error, loading, showRepository }: { feeds: StreamingD
       {error ? <p className="streaming-diff-message is-error">{error}</p> : loading ? <p className="streaming-diff-message">Loading recent feeds.</p> : !feeds.length ? <p className="streaming-diff-message">No recent feeds.</p> : (
         <div className="streaming-diff-feed-list">
           {feeds.map((feed) => (
-            <a className="streaming-diff-feed" href={feed.href} key={`${feed.identity.worktreeKey}/${feed.identity.session}`}>
+            <a className="streaming-diff-feed" href={feed.href} key={streamingDiffFeedKey(feed)}>
               <span className="streaming-diff-feed-session">{feed.identity.session}</span>
               {showRepository && <span className="streaming-diff-feed-worktree">repository {feed.repoLabel}</span>}
               <span className="streaming-diff-feed-worktree">worktree {feed.identity.worktreeKey}</span>
@@ -35,7 +35,7 @@ function FeedList({ feeds, error, loading, showRepository }: { feeds: StreamingD
 }
 
 function FileDiff({ file }: { file: StreamingDiffFile }) {
-  const chip = fileKindChip(file.kind);
+  const chip = fileKindChip(file.kind, file.meta);
   if (chip) {
     return <section className="streaming-diff-file">
       <div className="streaming-diff-file-head"><code>{file.path}</code><Badge variant="outline">{chip}</Badge></div>

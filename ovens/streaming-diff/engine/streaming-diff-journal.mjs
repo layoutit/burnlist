@@ -1,8 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { closeSync, constants, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { realpathSync } from "node:fs";
 
 import { withLock } from "../../../src/server/fs-safe.mjs";
+import { readContainedFile } from "./streaming-diff-capture-git.mjs";
+import { STREAMING_DIFF_ABSENT } from "./streaming-diff-capture.mjs";
 import { assertCard, assertManifest, STREAMING_DIFF_CONTRACT_LIMITS, STREAMING_DIFF_DATA_CONTRACT } from "./streaming-diff-data-contract.mjs";
 
 export const STREAMING_DIFF_RETENTION = Object.freeze({ maxRevs: 128, maxBytes: 4 * 1024 * 1024 });
@@ -60,9 +63,15 @@ function retention(value) {
 }
 
 function readBoundedJson(path, maxBytes, label) {
-  const stat = statSync(path);
-  if (!stat.isFile() || stat.size > maxBytes) throw new Error(`${label} exceeds its ${maxBytes}-byte limit`);
-  return JSON.parse(readFileSync(path, "utf8"));
+  const root = realpathSync(dirname(path));
+  const contents = readContainedFile(root, path, maxBytes);
+  if (contents === STREAMING_DIFF_ABSENT) {
+    const error = new Error(`${label} is unavailable`);
+    error.code = "ENOENT";
+    throw error;
+  }
+  if (!Buffer.isBuffer(contents)) throw new Error(`${label} is unavailable or exceeds its ${maxBytes}-byte limit`);
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(contents));
 }
 
 function loadManifest(feedDir) {
@@ -179,7 +188,7 @@ export function appendCard(feedDir, card, { identity, now = () => new Date().toI
     if (existsSync(revision)) throw new Error(`streaming diff revision already exists: ${published.revId}`);
     writeDurableAtomic(revision, JSON.stringify(published));
     const revs = retained(feedDir, [...(previous?.revs ?? []), published.revId], bounded);
-    const manifest = assertManifest({ contract: STREAMING_DIFF_DATA_CONTRACT, identity: previous?.identity ?? identity, updatedAt: now(), revs });
+    const manifest = assertManifest({ contract: STREAMING_DIFF_DATA_CONTRACT, identity: previous?.identity ?? identity, generation: previous?.generation ?? `g-${randomBytes(12).toString("hex")}`, updatedAt: now(), revs });
     beforeManifestSwap?.({ feedDir, card: published, manifest });
     writeDurableAtomic(manifestPath(feedDir), JSON.stringify(manifest));
     pruneUnreferencedCards(feedDir, manifest.revs);

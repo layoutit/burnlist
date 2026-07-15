@@ -34,6 +34,7 @@ export function mapCodexHook(payload = {}, event, env = process.env) {
     event ??= EVENTS[payload.hook_event_name ?? payload.hookEventName ?? payload.event];
     if (event === "ensure") return hookCapture({ event, session: payload.session_id ?? payload.sessionId ?? env.CODEX_SESSION_ID });
     const tool = hookText(payload.tool_name) ?? hookText(payload.toolName) ?? hookText(payload.name);
+    if (!tool) return hookCapture({ event, session: payload.session_id ?? payload.sessionId ?? env.CODEX_SESSION_ID });
     if (!tool || !MUTATING_TOOLS.has(tool.replace(/^functions\./u, ""))) return hookNoop();
     const input = object(payload.tool_input ?? payload.toolInput ?? payload.input ?? payload.arguments);
     return hookCapture({
@@ -43,6 +44,6 @@ export function mapCodexHook(payload = {}, event, env = process.env) {
       hintedPaths: paths(input),
     });
   } catch {
-    return hookNoop();
+    return hookCapture({ event });
   }
 }

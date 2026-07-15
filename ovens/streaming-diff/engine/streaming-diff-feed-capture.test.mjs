@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { captureStreamingDiff } from "./streaming-diff-feed-capture.mjs";
+import { resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
+import { registerActiveWindows, STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES } from "./streaming-diff-snapshot-store.mjs";
 import { readJournal } from "./streaming-diff-journal.mjs";
 
 function git(cwd, ...args) {
@@ -33,10 +35,67 @@ test("pre/post capture appends a Wave 1-readable self-contained journal card", (
     writeFileSync(join(context.root, "target.txt"), "after\n");
     const result = captureStreamingDiff({ cwd: context.root, session: "session-a", toolUseId: "tool-a", phase: "post", hintedPaths: ["target.txt"] });
     const journal = readJournal(result.identity.feedDir);
+    assert.equal(result.card.status, "captured");
     assert.equal(journal.manifest.identity.session, "session-a");
     assert.equal(journal.cards.length, 2);
     assert.equal(journal.cards[1].toolUseId, "tool-a");
     assert.match(journal.cards[1].files[0].diff, /-before\n\+after/u);
+  } finally { context.cleanup(); }
+});
+
+test("overlapping sessions on one worktree are unattributed, while isolated worktrees are captured", () => {
+  const context = fixture();
+  const otherWorktree = mkdtempSync(join(tmpdir(), "burnlist-streaming-worktree-"));
+  rmSync(otherWorktree, { recursive: true, force: true });
+  try {
+    captureStreamingDiff({ cwd: context.root, session: "session-one", toolUseId: "tool-one", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: context.root, session: "session-two", toolUseId: "tool-two", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const first = captureStreamingDiff({ cwd: context.root, session: "session-one", toolUseId: "tool-one", phase: "post", hintedPaths: ["target.txt"] });
+    const second = captureStreamingDiff({ cwd: context.root, session: "session-two", toolUseId: "tool-two", phase: "post", hintedPaths: ["target.txt"] });
+    for (const result of [first, second]) {
+      assert.equal(result.card.status, "partial");
+      assert.match(result.card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+      assert.deepEqual(result.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "overlapping concurrent edit (unattributed)" } }]);
+    }
+
+    git(context.root, "worktree", "add", "--detach", otherWorktree, "HEAD");
+    captureStreamingDiff({ cwd: context.root, session: "session-root", toolUseId: "tool-root", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: otherWorktree, session: "session-other", toolUseId: "tool-other", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "root-after\n");
+    writeFileSync(join(otherWorktree, "target.txt"), "other-after\n");
+    const rootResult = captureStreamingDiff({ cwd: context.root, session: "session-root", toolUseId: "tool-root", phase: "post", hintedPaths: ["target.txt"] });
+    const otherResult = captureStreamingDiff({ cwd: otherWorktree, session: "session-other", toolUseId: "tool-other", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(rootResult.card.status, "captured");
+    assert.equal(otherResult.card.status, "captured");
+  } finally {
+    try { git(context.root, "worktree", "remove", "--force", otherWorktree); } catch {}
+    rmSync(otherWorktree, { recursive: true, force: true });
+    context.cleanup();
+  }
+});
+
+test("an active-window registry overflow makes the current capture unattributed", () => {
+  const context = fixture();
+  try {
+    const openedAt = Date.now();
+    for (let index = 0; index < STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES; index += 1) {
+      registerActiveWindows({
+        identity: resolveStreamingDiffIdentity({ cwd: context.root, session: `live-${index}` }),
+        toolUseId: `live-tool-${index}`,
+        hintedPaths: [`live-${index}.txt`],
+        openedAt,
+      });
+    }
+    const target = join(context.root, "target.txt");
+    writeFileSync(target, "before\n");
+    captureStreamingDiff({ cwd: context.root, session: "overflow", toolUseId: "overflow-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(target, "after\n");
+    const result = captureStreamingDiff({ cwd: context.root, session: "overflow", toolUseId: "overflow-tool", phase: "post", hintedPaths: ["target.txt"] });
+
+    assert.equal(result.card.status, "partial");
+    assert.match(result.card.partialReason, /attribution unavailable: too many concurrent windows/u);
+    assert.deepEqual(result.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "attribution unavailable: too many concurrent windows" } }]);
   } finally { context.cleanup(); }
 });
 
@@ -103,7 +162,7 @@ test("a degraded pre-hook reason survives to force its terminal card partial", (
   try {
     captureStreamingDiff({
       cwd: context.root, session: "session-degraded", toolUseId: "tool-degraded", phase: "pre",
-      hintedPaths: ["target.txt"], terminalReason: "path hints truncated",
+      hintedPaths: ["target.txt"], terminalReason: "path-hints-truncated",
     });
     writeFileSync(join(context.root, "target.txt"), "after\n");
     const result = captureStreamingDiff({
@@ -111,5 +170,20 @@ test("a degraded pre-hook reason survives to force its terminal card partial", (
     });
     assert.equal(result.card.status, "partial");
     assert.match(result.card.partialReason, /path hints truncated/u);
+  } finally { context.cleanup(); }
+});
+
+test("a denied-only snapshot stays visible and adapter text never reaches feed bytes", () => {
+  const context = fixture();
+  try {
+    const secret = "token=not-for-the-feed";
+    captureStreamingDiff({ cwd: context.root, session: "session-denied", toolUseId: "tool-denied", phase: "pre", hintedPaths: [".env"], terminalReason: secret });
+    writeFileSync(join(context.root, ".env"), "after\n");
+    const result = captureStreamingDiff({ cwd: context.root, session: "session-denied", toolUseId: "tool-denied", phase: "post", hintedPaths: [".env"], terminalReason: secret });
+    const bytes = readFileSync(join(result.identity.feedDir, `rev-${result.card.revId}.json`), "utf8");
+    assert.equal(result.card.status, "partial");
+    assert.deepEqual(result.card.files, [{ path: ".env", kind: "denied" }]);
+    assert.equal(bytes.includes(secret), false);
+    assert.equal(result.card.partialReason.includes(secret), false);
   } finally { context.cleanup(); }
 });

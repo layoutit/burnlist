@@ -2,9 +2,22 @@ import { spawnSync } from "node:child_process";
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync, realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
-import { captureCard, STREAMING_DIFF_ABSENT, STREAMING_DIFF_CAPTURE_LIMITS, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
+import { captureCard, captureLimits, STREAMING_DIFF_ABSENT, STREAMING_DIFF_CAPTURE_LIMITS, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
 
 export const STREAMING_DIFF_GIT_LIMITS = Object.freeze({ timeout: 2_000, maxBuffer: 8 * 1024 * 1024 });
+
+export function gitCaptureLimits(policy = {}) {
+  const result = {};
+  for (const [key, maximum] of Object.entries(STREAMING_DIFF_GIT_LIMITS)) {
+    const value = policy[key];
+    if (value === undefined) result[key] = maximum;
+    else {
+      if (!Number.isSafeInteger(value)) throw new Error(`git ${key} must be a finite integer`);
+      result[key] = Math.max(1, Math.min(maximum, value));
+    }
+  }
+  return result;
+}
 
 function within(root, target) {
   const path = relative(root, target);
@@ -55,8 +68,8 @@ export function readContainedFile(root, file, maxFileBytes, {
 // `git diff`, so Git external diff drivers and text conversions cannot run.
 export function createGitCaptureIo(worktreeRoot, limits = {}) {
   const root = realpathSync(worktreeRoot);
-  const bounded = { ...STREAMING_DIFF_GIT_LIMITS, ...limits };
-  const maxFileBytes = limits.maxFileBytes ?? STREAMING_DIFF_CAPTURE_LIMITS.maxFileBytes;
+  const bounded = gitCaptureLimits(limits);
+  const maxFileBytes = captureLimits(limits).maxFileBytes;
   const target = (path) => resolve(root, path);
   return {
     inspect(path) {

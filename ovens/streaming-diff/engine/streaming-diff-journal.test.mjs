@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -90,7 +90,7 @@ test("bounded readers reject oversized manifests and report oversized referenced
   try {
     appendCard(context.root, card(1), { identity });
     writeFileSync(join(context.root, "manifest.json"), "x".repeat(70 * 1024));
-    assert.throws(() => readJournal(context.root), /manifest exceeds/u);
+    assert.throws(() => readJournal(context.root), /manifest is unavailable or exceeds/u);
     rmSync(join(context.root, "manifest.json"));
     appendCard(context.root, card(2), { identity });
     writeFileSync(join(context.root, `rev-${card(2).revId}.json`), "x".repeat(600 * 1024));
@@ -99,6 +99,25 @@ test("bounded readers reject oversized manifests and report oversized referenced
     assert.equal(journal.cards.some((entry) => entry.revId === card(2).revId), false);
   } finally {
     context.cleanup();
+  }
+});
+
+test("descriptor journal reads reject a symlinked revision instead of following it", () => {
+  const context = fixture();
+  const outside = mkdtempSync(join(tmpdir(), "burnlist-streaming-outside-"));
+  try {
+    appendCard(context.root, card(1), { identity });
+    const revision = join(context.root, `rev-${card(1).revId}.json`);
+    const secret = join(outside, "secret.json");
+    writeFileSync(secret, JSON.stringify(card(1)));
+    unlinkSync(revision);
+    symlinkSync(secret, revision);
+    const journal = readJournal(context.root);
+    assert.equal(journal.race, true);
+    assert.deepEqual(journal.cards, []);
+  } finally {
+    context.cleanup();
+    rmSync(outside, { recursive: true, force: true });
   }
 });
 

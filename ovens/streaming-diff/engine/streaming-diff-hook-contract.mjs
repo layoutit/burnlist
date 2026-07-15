@@ -41,11 +41,12 @@ export function hookCapture({ event, session, toolUseId, hintedPaths = [] } = {}
     return { action: "ensure-feed", args: ["ensure-feed", "--session", safeSession], degraded: !text(session), ...(!text(session) ? { degradedReason: "missing session" } : {}) };
   }
   if (!["pre", "post", "failure"].includes(event)) return { action: "noop", args: [], degraded: true };
-  const terminalReason = event === "failure" ? ["--terminal-reason", "tool failed"] : [];
+  const terminalReason = event === "failure" ? "tool-failed" : bounded.truncated ? "path-hints-truncated" : null;
   return {
     action: "capture",
-    args: ["capture", "--session", safeSession, "--tool-use-id", safeToolUseId, "--phase", event === "pre" ? "pre" : "post", ...terminalReason, ...bounded.paths.flatMap((path) => ["--path", path])],
+    args: ["capture", "--session", safeSession, "--tool-use-id", safeToolUseId, "--phase", event === "pre" ? "pre" : "post", ...(terminalReason ? ["--terminal-reason", terminalReason] : []), ...bounded.paths.flatMap((path) => ["--path", path])],
     degraded,
+    ...(terminalReason ? { terminalReason } : {}),
     ...(degraded ? { degradedReason: reasons.join("; ") } : {}),
   };
 }

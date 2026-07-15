@@ -6,8 +6,8 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import { appendCard } from "./streaming-diff-journal.mjs";
-import { captureCard, redact, STREAMING_DIFF_ABSENT, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
-import { captureGitCard, createGitCaptureIo } from "./streaming-diff-capture-git.mjs";
+import { captureCard, captureLimits, redact, STREAMING_DIFF_ABSENT, STREAMING_DIFF_CAPTURE_LIMITS, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
+import { captureGitCard, createGitCaptureIo, gitCaptureLimits, STREAMING_DIFF_GIT_LIMITS } from "./streaming-diff-capture-git.mjs";
 
 const identity = { logicalRepoKey: "logical", worktreeKey: "worktree", session: "session" };
 const fixed = { toolUseId: "tool-fixture", revId: "r-0123456789abcdef01234567", now: () => "2026-07-15T09:00:00.000Z" };
@@ -186,6 +186,35 @@ test("withheld file entries always make the capture partial", () => {
   }
   assert.equal(denied.files[0].kind, "denied");
   assert.equal(redacted.files[0].kind, "redacted");
+});
+
+test("denied .git hints and invalid UTF-8 are metadata-only partial captures", () => {
+  let read = false;
+  let inspected = false;
+  const denied = capture({
+    hintedPaths: [".git/config"], preSnapshot: new Map([[".git/config", "before"]]),
+    readPost() { read = true; return "after"; },
+    inspect() { inspected = true; return { type: "file", contained: true }; },
+  });
+  const invalid = Buffer.from([0xc3, 0x28]);
+  const binary = capture({ preSnapshot: new Map([["foo.ts", invalid]]), readPost: () => Buffer.from([0xc3, 0x29]) });
+
+  assert.equal(read, false);
+  assert.equal(inspected, false);
+  assert.deepEqual(denied.files, [{ path: ".git/config", kind: "denied" }]);
+  assert.equal(denied.status, "partial");
+  assert.deepEqual(binary.files, [{ path: "foo.ts", kind: "binary", meta: { bytes: 2 } }]);
+  assert.equal(binary.files[0].diff, undefined);
+});
+
+test("capture policy overrides can narrow but never enlarge hard ceilings", () => {
+  const capture = captureLimits({ maxPaths: 9_999, maxFileBytes: 9_999_999, maxHunkBytes: 0 });
+  const git = gitCaptureLimits({ timeout: 0, maxBuffer: 99_999_999 });
+  assert.equal(capture.maxPaths, STREAMING_DIFF_CAPTURE_LIMITS.maxPaths);
+  assert.equal(capture.maxFileBytes, STREAMING_DIFF_CAPTURE_LIMITS.maxFileBytes);
+  assert.equal(capture.maxHunkBytes, 1);
+  assert.equal(git.timeout, 1);
+  assert.equal(git.maxBuffer, STREAMING_DIFF_GIT_LIMITS.maxBuffer);
 });
 
 test("authorization credentials always produce a redacted card entry", () => {

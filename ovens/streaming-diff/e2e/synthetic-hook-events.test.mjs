@@ -20,6 +20,13 @@ function parseCards(text) {
   })).filter((entry) => entry.id);
 }
 
+function assertStreamedRevisionOrder(cards) {
+  assert.deepEqual(
+    cards.map((entry) => entry.id.match(/:(r-.+)$/u)?.[1] ?? null),
+    cards.map((entry) => entry.card.revId),
+  );
+}
+
 class MockResponse extends EventEmitter {
   constructor() { super(); this.headers = null; this.writes = []; }
   writeHead(status, headers) { this.headers = { status, headers }; }
@@ -109,7 +116,7 @@ test("socketless synthetic hook capture streams the exact card sequence", () => 
     assert.equal(res.headers.status, 200);
     const cards = parseCards(res.writes.join(""));
     assert.equal(cards.length, 2);
-    assert.deepEqual(cards.map((entry) => entry.id), cards.map((entry) => `v2:${entry.card.revId}`));
+    assertStreamedRevisionOrder(cards);
     assert.deepEqual(cards.map((entry) => entry.card.status), ["partial", "captured"]);
     assert.equal(cards[1].card.files[0].path, "note.txt");
     assert.match(cards[1].card.files[0].diff, /-before\n\+after/u);
@@ -136,7 +143,7 @@ test("synthetic hook capture reaches the real HTTP SSE reader", { timeout: 20_00
     const identity = resolveStreamingDiffIdentity({ cwd: repoRoot, session: "synthetic" });
     const query = `repoKey=${identity.logicalRepoKey}&worktreeKey=${identity.worktreeKey}&session=synthetic`;
     const cards = await readCards(baseUrl, `/api/oven-data/streaming-diff?${query}`, 2);
-    assert.deepEqual(cards.map((entry) => entry.id), cards.map((entry) => `v2:${entry.card.revId}`));
+    assertStreamedRevisionOrder(cards);
     assert.deepEqual(cards.map((entry) => entry.card.status), ["partial", "captured"]);
     assert.equal(cards[1].card.files[0].path, "note.txt");
     assert.match(cards[1].card.files[0].diff, /-before\n\+after/u);
