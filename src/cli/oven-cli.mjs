@@ -129,21 +129,22 @@ Options:
 Custom Ovens live under ignored local state and only affect future Runs.
 Built-in Ovens are read-only; this command never executes Oven instructions.`;
 
+function main() {
 try {
   if (subcommand === "help" || flags.has("help")) {
     console.log(HELP);
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "list") {
     const ovens = discoverOvens();
     if (flags.has("json")) {
       console.log(JSON.stringify(ovens.map(({ instructions, ...rest }) => rest), null, 2));
-      process.exit(0);
+      return;
     }
     if (ovens.length === 0) {
       console.log("No Ovens found.");
-      process.exit(0);
+      return;
     }
     const rows = ovens.map((oven) => [
       oven.id,
@@ -159,7 +160,7 @@ try {
     console.log(line(header));
     console.log(line(widths.map((width) => "─".repeat(width))));
     for (const row of rows) console.log(line(row));
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "view") {
@@ -177,10 +178,10 @@ try {
         ovenRevision: oven.ovenRevision,
         ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
       }, null, 2));
-      process.exit(0);
+      return;
     }
     printOven(oven);
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "bind") {
@@ -189,7 +190,7 @@ try {
     const repoRoot = bindingRepo();
     const result = writeBinding(repoRoot, id, logicalPath, new Date().toISOString());
     console.log(`Bound Oven ${ovenId(id)} to ${logicalPath}\nStore: ${result.path}`);
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "unbind") {
@@ -198,7 +199,7 @@ try {
     const repoRoot = bindingRepo();
     if (removeBinding(repoRoot, id)) console.log(`Unbound Oven ${ovenId(id)} from ${bindingStorePath(repoRoot)}`);
     else console.log(`No binding exists for Oven ${ovenId(id)} in ${bindingStorePath(repoRoot)}.`);
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "bindings") {
@@ -210,7 +211,7 @@ try {
       console.log(`Oven bindings: ${bindingStorePath(repoRoot)}`);
       for (const [id, binding] of entries) console.log(`${id}  ${binding.path}  ${binding.boundAt}`);
     }
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "create" || subcommand === "update") {
@@ -221,7 +222,7 @@ try {
     const saved = readOvenDir(customOvensDir, pkg.id, false);
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
     printOven(saved);
-    process.exit(0);
+    return;
   }
 
   if (subcommand === "fork") {
@@ -237,10 +238,13 @@ try {
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },
     });
     console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
-    process.exit(0);
+    return;
   }
 
   fail(`Unknown subcommand "${subcommand}". Run \`burnlist oven help\`.`);
 } catch (error) {
   fail(error.message);
 }
+}
+
+main();

@@ -370,9 +370,10 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
-assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing"]);
+assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "streaming-diff"]);
 assertBuiltInOven(repoRoot, "checklist", "Checklist");
 assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
+assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 

@@ -75,22 +75,32 @@ function loadManifest(feedDir) {
   }
 }
 
+// Dashboard readers use this manifest-only entrypoint. It must remain pure:
+// no lock acquisition, recovery, pruning, or write is permitted on this path.
+export function readManifestPure(feedDir) {
+  return loadManifest(feedDir);
+}
+
 function loadCard(feedDir, revId) {
   return assertCard(readBoundedJson(cardPath(feedDir, revId), STREAMING_DIFF_JOURNAL_LIMITS.maxCardBytes, "card"));
 }
 
 function cardsForManifest(feedDir, manifest) {
   const cards = [];
+  let invalid = false;
   for (const revId of manifest.revs) {
     try {
       const card = loadCard(feedDir, revId);
-      if (card.revId !== revId) return { cards: [], invalid: true };
+      if (card.revId !== revId) {
+        invalid = true;
+        continue;
+      }
       cards.push(card);
     } catch {
-      return { cards: [], invalid: true };
+      invalid = true;
     }
   }
-  return { cards, invalid: false };
+  return { cards, invalid };
 }
 
 function healManifestUnsafe(feedDir) {
@@ -177,15 +187,13 @@ export function appendCard(feedDir, card, { identity, now = () => new Date().toI
   });
 }
 
-// Readers enumerate the manifest only, so temp files and card-first crash
-// orphans are invisible. A referenced-card fault is repaired before reconnect.
+// This is the dashboard-safe reader. A referenced-card fault is reported as a
+// race/reset with the readable cards, but is never repaired by an observer.
 export function readJournal(feedDir) {
   const manifest = loadManifest(feedDir);
   if (!manifest) return { manifest: null, cards: [], race: false };
   const initial = cardsForManifest(feedDir, manifest);
-  if (!initial.invalid) return { manifest, cards: initial.cards, race: false };
-  const healed = withLock(feedDir, () => healManifestUnsafe(feedDir));
-  return { manifest: healed.manifest, cards: healed.cards, race: true };
+  return { manifest, cards: initial.cards, race: initial.invalid };
 }
 
 export function resolveReconnect(manifest, availableRevs, since = null) {
@@ -205,9 +213,16 @@ export function reconnectFeed(feedDir, since = null) {
   let journal = readJournal(feedDir);
   if (!journal.manifest) return { type: "reset", cards: [] };
   if (journal.race) {
-    journal = readJournal(feedDir);
-    return { type: "reset", cards: journal.cards };
+    // Recovery belongs exclusively to the CLI append/reconnect writer path.
+    const healed = withLock(feedDir, () => healManifestUnsafe(feedDir));
+    return { type: "reset", cards: healed.cards };
   }
+  return resolveReconnect(journal.manifest, journal.cards, since);
+}
+
+export function reconnectFeedPure(feedDir, since = null) {
+  const journal = readJournal(feedDir);
+  if (!journal.manifest || journal.race) return { type: "reset", cards: journal.cards };
   return resolveReconnect(journal.manifest, journal.cards, since);
 }
 

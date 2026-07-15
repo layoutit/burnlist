@@ -45,10 +45,11 @@ Usage:
 The producer writes only under the logical repository's ignored .local state.
 Capture is intentionally hook-adapter-neutral; agent hook installation lands later.`;
 
+function main() {
 try {
   if (subcommand === "help" || tokens.includes("--help") || tokens.includes("-h")) {
     console.log(HELP);
-    process.exit(0);
+    return;
   }
   const flags = parseFlags(tokens);
   if (subcommand === "ensure-feed") {
@@ -57,7 +58,7 @@ try {
     const result = ensureStreamingDiffFeed({ session });
     console.log(`Feed: ${result.identity.feedDir}`);
     console.log(`Binding: ${result.binding.created ? "created" : "existing"} (${result.binding.binding.path})`);
-    process.exit(0);
+    return;
   }
   if (subcommand === "capture") {
     const session = one(flags, "session", { required: true });
@@ -69,16 +70,19 @@ try {
     if (result.error) fail(result.error.message);
     if (phase === "pre") console.log(`Snapshot: ${result.snapshot.path}`);
     else console.log(`Card: ${result.card.revId} (${result.card.status})`);
-    process.exit(0);
+    return;
   }
   if (subcommand === "url") {
     const session = one(flags, "session", { required: true });
     if ([...flags.keys()].some((key) => key !== "session")) fail("url accepts only --session.", 2);
     const identity = resolveStreamingDiffIdentity({ session });
     console.log(`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(identity.logicalRepoKey)}&worktreeKey=${encodeURIComponent(identity.worktreeKey)}&session=${encodeURIComponent(identity.session)}`);
-    process.exit(0);
+    return;
   }
   fail(`unknown subcommand "${subcommand}". Run \`burnlist streaming-diff help\`.`, 2);
 } catch (error) {
   fail(error.message);
 }
+}
+
+main();

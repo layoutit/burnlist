@@ -85,7 +85,7 @@ test("append and reconnect self-heal manifest entries whose card vanished or mis
   }
 });
 
-test("bounded readers reject oversized manifests and prune oversized referenced cards", () => {
+test("bounded readers reject oversized manifests and report oversized referenced cards as races", () => {
   const context = fixture();
   try {
     appendCard(context.root, card(1), { identity });
