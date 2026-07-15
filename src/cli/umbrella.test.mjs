@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import test from "node:test";
-import { resolveUmbrella } from "./umbrella.mjs";
+import { gitProbe, resolveUmbrella } from "./umbrella.mjs";
 
 function git(cwd, ...args) {
   execFileSync("git", ["-C", cwd, ...args], { stdio: "ignore" });
@@ -55,6 +55,25 @@ test("resolveUmbrella resolves a primary worktree with a separate git directory"
   try {
     assert.equal(resolveUmbrella(root), realpathSync(root));
   } finally {
+    cleanup();
+  }
+});
+
+test("gitProbe times out rather than indefinitely blocking hook identity resolution", { timeout: 3_000 }, () => {
+  const { root, cleanup } = fixture();
+  const originalPath = process.env.PATH;
+  try {
+    const bin = join(root, "slow-bin");
+    mkdirSync(bin);
+    const gitPath = join(bin, "git");
+    writeFileSync(gitPath, "#!/bin/sh\nsleep 3\n");
+    chmodSync(gitPath, 0o755);
+    process.env.PATH = `${bin}${delimiter}${originalPath}`;
+    const started = Date.now();
+    assert.equal(gitProbe(root, ["rev-parse", "--show-toplevel"]), null);
+    assert.ok(Date.now() - started < 2_500);
+  } finally {
+    process.env.PATH = originalPath;
     cleanup();
   }
 });

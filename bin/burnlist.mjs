@@ -10,6 +10,7 @@ const knownSubcommands = new Set([
   "uninstall",
   "differential-testing",
   "streaming-diff",
+  "hooks",
   "oven",
   "new",
   "show",
@@ -123,7 +124,8 @@ Usage:
   burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
-  burnlist streaming-diff <ensure-feed|capture|url> ...
+  burnlist streaming-diff <ensure-feed|capture|url|hook> ...
+  burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
   burnlist oven <list|view|bind|unbind|bindings|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
@@ -159,6 +161,8 @@ if (args[0] === "oven") {
   await import("../src/cli/oven-cli.mjs");
 } else if (args[0] === "streaming-diff") {
   await import("../src/cli/streaming-diff-cli.mjs");
+} else if (args[0] === "hooks") {
+  await import("../src/cli/hooks-cli.mjs");
 } else if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])) {
   await import("../src/cli/lifecycle-cli.mjs");
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {

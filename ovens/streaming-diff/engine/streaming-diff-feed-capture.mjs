@@ -6,13 +6,13 @@ import { ensureStreamingDiffFeed } from "./streaming-diff-ensure-feed.mjs";
 import { feedIdentity, resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
 import { removePreSnapshot, streamingDiffToolUseId, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
 
-function attemptCard(toolUseId) {
+function attemptCard(toolUseId, terminalReason) {
   return {
     revId: `r-${randomBytes(12).toString("hex")}`,
     toolUseId,
     ts: new Date().toISOString(),
     status: "partial",
-    partialReason: "attempt in progress / unterminated",
+    partialReason: ["attempt in progress / unterminated", terminalReason].filter(Boolean).join("; ").slice(0, 500),
     files: [],
   };
 }
@@ -29,15 +29,15 @@ function appendWithRetry(append, feedDir, card, options) {
   throw new Error("streaming diff journal retry unexpectedly exhausted");
 }
 
-export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: rawToolUseId, phase, hintedPaths = [], policy, append = appendCard } = {}) {
+export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: rawToolUseId, phase, hintedPaths = [], terminalReason, policy, append = appendCard } = {}) {
   if (phase !== "pre" && phase !== "post") throw new Error("streaming diff capture phase must be pre or post");
   const identity = resolveStreamingDiffIdentity({ cwd, session });
   const safeToolUseId = streamingDiffToolUseId(rawToolUseId);
   const journalOptions = { identity: feedIdentity(identity) };
   if (phase === "pre") {
     ensureStreamingDiffFeed({ cwd, session });
-    const marker = appendWithRetry(append, identity.feedDir, attemptCard(safeToolUseId), { ...journalOptions, dedupeToolUseId: true });
-    const snapshot = writePreSnapshot({ identity, toolUseId: safeToolUseId, hintedPaths, policy });
+    const marker = appendWithRetry(append, identity.feedDir, attemptCard(safeToolUseId, terminalReason), { ...journalOptions, dedupeToolUseId: true });
+    const snapshot = writePreSnapshot({ identity, toolUseId: safeToolUseId, hintedPaths, terminalReason, policy });
     return { phase, identity, marker, snapshot };
   }
   const snapshot = takePreSnapshot({ identity, toolUseId: safeToolUseId });
@@ -48,6 +48,7 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
     preSnapshot: snapshot.preSnapshot,
     toolUseId: safeToolUseId,
     policy,
+    opaqueReason: [snapshot.terminalReason, terminalReason].filter(Boolean).join("; ") || undefined,
   });
   // A direct post invocation remains safe and useful: it establishes the
   // immutable binding/feed before the journal's first manifest append.

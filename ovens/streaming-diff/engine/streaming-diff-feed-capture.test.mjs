@@ -97,3 +97,19 @@ test("missing pre-state is an honest partial card rather than a fabricated basel
     assert.equal(result.card.files[0].kind, "unavailable");
   } finally { context.cleanup(); }
 });
+
+test("a degraded pre-hook reason survives to force its terminal card partial", () => {
+  const context = fixture();
+  try {
+    captureStreamingDiff({
+      cwd: context.root, session: "session-degraded", toolUseId: "tool-degraded", phase: "pre",
+      hintedPaths: ["target.txt"], terminalReason: "path hints truncated",
+    });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const result = captureStreamingDiff({
+      cwd: context.root, session: "session-degraded", toolUseId: "tool-degraded", phase: "post", hintedPaths: ["target.txt"],
+    });
+    assert.equal(result.card.status, "partial");
+    assert.match(result.card.partialReason, /path hints truncated/u);
+  } finally { context.cleanup(); }
+});

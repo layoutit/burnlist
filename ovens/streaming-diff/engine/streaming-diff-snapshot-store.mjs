@@ -85,10 +85,11 @@ function validStoredSnapshot(value, toolUseId) {
   return value && typeof value === "object" && !Array.isArray(value)
     && value.schemaVersion === SNAPSHOT_SCHEMA && value.toolUseId === toolUseId
     && Array.isArray(value.hintedPaths) && value.hintedPaths.every((path) => typeof path === "string")
+    && (!Object.hasOwn(value, "terminalReason") || typeof value.terminalReason === "string")
     && value.entries && typeof value.entries === "object" && !Array.isArray(value.entries);
 }
 
-export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], policy = {} } = {}) {
+export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], terminalReason, policy = {} } = {}) {
   const limits = { ...STREAMING_DIFF_CAPTURE_LIMITS, ...policy };
   const safeId = streamingDiffToolUseId(toolUseId);
   const unique = [...new Set(Array.isArray(hintedPaths) ? hintedPaths : [])].slice(0, limits.maxPaths);
@@ -112,7 +113,13 @@ export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], policy
       entries[path] = { kind: "missing" };
     }
   }
-  const record = { schemaVersion: SNAPSHOT_SCHEMA, toolUseId: safeId, hintedPaths: Object.keys(entries), entries };
+  const record = {
+    schemaVersion: SNAPSHOT_SCHEMA,
+    toolUseId: safeId,
+    hintedPaths: Object.keys(entries),
+    ...(typeof terminalReason === "string" && terminalReason ? { terminalReason: terminalReason.slice(0, 500) } : {}),
+    entries,
+  };
   const serialized = JSON.stringify(record);
   if (Buffer.byteLength(serialized, "utf8") > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
   return withRepoStateLock(identity.logicalRepoRoot, () => {
@@ -143,6 +150,7 @@ export function takePreSnapshot({ identity, toolUseId } = {}) {
     return {
       found: true,
       hintedPaths: parsed.hintedPaths,
+      terminalReason: parsed.terminalReason,
       preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
     };
   });

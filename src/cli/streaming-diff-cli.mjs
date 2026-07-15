@@ -2,6 +2,8 @@
 import { captureStreamingDiff } from "../../ovens/streaming-diff/engine/streaming-diff-feed-capture.mjs";
 import { ensureStreamingDiffFeed } from "../../ovens/streaming-diff/engine/streaming-diff-ensure-feed.mjs";
 import { resolveStreamingDiffIdentity } from "../../ovens/streaming-diff/engine/streaming-diff-feed.mjs";
+import { mapStreamingDiffHook } from "../../ovens/streaming-diff/engine/streaming-diff-hook-adapters.mjs";
+import { execFile } from "node:child_process";
 
 const tokens = process.argv.slice(2);
 if (tokens[0] === "streaming-diff") tokens.shift();
@@ -39,13 +41,102 @@ const HELP = `burnlist streaming-diff — write a bounded, session-scoped diff f
 
 Usage:
   burnlist streaming-diff ensure-feed --session <id>
-  burnlist streaming-diff capture --session <id> --tool-use-id <id> --phase <pre|post> [--path <repo-path> ...]
+  burnlist streaming-diff capture --session <id> --tool-use-id <id> --phase <pre|post> [--terminal-reason <reason>] [--path <repo-path> ...]
   burnlist streaming-diff url --session <id>
+  burnlist streaming-diff hook --agent <codex|claude> --event <ensure|pre|post|failure>
 
 The producer writes only under the logical repository's ignored .local state.
-Capture is intentionally hook-adapter-neutral; agent hook installation lands later.`;
+Hook adapters always return success so an agent hook cannot block the agent.`;
 
-function main() {
+const MAX_HOOK_PAYLOAD_BYTES = 256 * 1024;
+const HOOK_CAPTURE_TIMEOUT_MS = 2_000;
+const HOOK_STDIN_TIMEOUT_MS = 750;
+
+function readStdinCapped(limit) {
+  return new Promise((resolveRead) => {
+    const chunks = [];
+    let bytes = 0;
+    let settled = false;
+    const finish = (text, degradedReason) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      process.stdin.off("data", onData);
+      process.stdin.off("end", onEnd);
+      process.stdin.off("error", onError);
+      resolveRead({ text, degradedReason });
+    };
+    const stop = (reason) => {
+      finish(null, reason);
+      try { process.stdin.destroy(); } catch { /* The hook must remain advisory. */ }
+    };
+    const onData = (chunk) => {
+      bytes += chunk.length;
+      if (bytes > limit) return stop("hook payload exceeded byte limit");
+      chunks.push(Buffer.from(chunk));
+    };
+    const onEnd = () => finish(Buffer.concat(chunks, bytes).toString("utf8"));
+    const onError = () => finish(null, "hook payload was incomplete");
+    const timer = setTimeout(() => stop("hook payload read timed out"), HOOK_STDIN_TIMEOUT_MS);
+    process.stdin.on("data", onData);
+    process.stdin.once("end", onEnd);
+    process.stdin.once("error", onError);
+    process.stdin.resume();
+  });
+}
+
+async function hookPayload() {
+  const fromEnvironment = process.env.BURNLIST_HOOK_PAYLOAD ?? process.env.CODEX_HOOK_PAYLOAD ?? process.env.CLAUDE_HOOK_PAYLOAD;
+  const input = fromEnvironment === undefined
+    ? await readStdinCapped(MAX_HOOK_PAYLOAD_BYTES).catch(() => ({ text: null, degradedReason: "hook payload was incomplete" }))
+    : { text: fromEnvironment };
+  const { text } = input;
+  if (text === null) return { payload: {}, degradedReason: input.degradedReason ?? "hook payload was incomplete" };
+  if (Buffer.byteLength(text, "utf8") > MAX_HOOK_PAYLOAD_BYTES) return { payload: {}, degradedReason: "hook payload exceeded byte limit" };
+  if (!text?.trim()) return { payload: {}, degradedReason: "missing hook payload" };
+  try { return { payload: JSON.parse(text) }; } catch { return { payload: {}, degradedReason: "hook payload was invalid" }; }
+}
+
+function parseHookFlags(values) {
+  const flags = new Map();
+  for (let index = 0; index < values.length; index += 2) {
+    const token = values[index];
+    const value = values[index + 1];
+    if (!token?.startsWith("--") || !value || value.startsWith("--")) return null;
+    flags.set(token.slice(2), value);
+  }
+  return flags;
+}
+
+function runHookCapture(args) {
+  return new Promise((resolve) => {
+    execFile(process.execPath, [process.argv[1], "streaming-diff", ...args], {
+      cwd: process.cwd(),
+      env: process.env,
+      shell: false,
+      timeout: HOOK_CAPTURE_TIMEOUT_MS,
+      maxBuffer: 64 * 1024,
+    }, () => resolve());
+  });
+}
+
+function withTerminalReason(args, reason) {
+  if (!reason) return args;
+  const index = args.indexOf("--terminal-reason");
+  if (index === -1) return [...args, "--terminal-reason", reason];
+  return [...args.slice(0, index + 1), `${args[index + 1]}; ${reason}`, ...args.slice(index + 2)];
+}
+
+function incompleteHookCapture(event, reason) {
+  if (!["pre", "post", "failure"].includes(event)) return null;
+  return {
+    action: "capture",
+    args: ["capture", "--session", "unknown-session", "--tool-use-id", "unknown-tool-use", "--phase", event === "pre" ? "pre" : "post", "--terminal-reason", reason],
+    degraded: true,
+  };
+}
+
+async function main() {
 try {
   if (subcommand === "help" || tokens.includes("--help") || tokens.includes("-h")) {
     console.log(HELP);
@@ -64,9 +155,9 @@ try {
     const session = one(flags, "session", { required: true });
     const toolUseId = one(flags, "tool-use-id", { required: true });
     const phase = one(flags, "phase", { required: true });
-    if ([...flags.keys()].some((key) => !["session", "tool-use-id", "phase", "path"].includes(key))) fail("capture received an unsupported option.", 2);
+    if ([...flags.keys()].some((key) => !["session", "tool-use-id", "phase", "path", "terminal-reason"].includes(key))) fail("capture received an unsupported option.", 2);
     if (phase !== "pre" && phase !== "post") fail("--phase must be pre or post.", 2);
-    const result = captureStreamingDiff({ session, toolUseId, phase, hintedPaths: flags.get("path") ?? [] });
+    const result = captureStreamingDiff({ session, toolUseId, phase, hintedPaths: flags.get("path") ?? [], terminalReason: one(flags, "terminal-reason") });
     if (result.error) fail(result.error.message);
     if (phase === "pre") console.log(`Snapshot: ${result.snapshot.path}`);
     else console.log(`Card: ${result.card.revId} (${result.card.status})`);
@@ -79,10 +170,26 @@ try {
     console.log(`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(identity.logicalRepoKey)}&worktreeKey=${encodeURIComponent(identity.worktreeKey)}&session=${encodeURIComponent(identity.session)}`);
     return;
   }
+  if (subcommand === "hook") {
+    const flags = parseHookFlags(tokens);
+    const agent = flags?.get("agent");
+    const event = flags?.get("event");
+    if (!agent || !event || [...flags.keys()].some((key) => !["agent", "event"].includes(key))) return;
+    try {
+      const input = await hookPayload();
+      const mapped = input.degradedReason
+        ? incompleteHookCapture(event, input.degradedReason)
+        : mapStreamingDiffHook({ agent, event, payload: input.payload, cwd: process.cwd() });
+      if (mapped?.action === "ensure-feed" || mapped?.action === "capture") {
+        await runHookCapture(withTerminalReason(mapped.args, mapped.degraded ? mapped.degradedReason ?? "hook adapter mapping was incomplete" : undefined));
+      }
+    } catch { /* Hooks are advisory and must never block their host agent. */ }
+    return;
+  }
   fail(`unknown subcommand "${subcommand}". Run \`burnlist streaming-diff help\`.`, 2);
 } catch (error) {
   fail(error.message);
 }
 }
 
-main();
+await main();
