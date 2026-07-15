@@ -63,15 +63,28 @@ test("withRepoStateLock steals a fresh lock whose holder is dead", (t) => {
   assert.equal(existsSync(lock), false);
 });
 
-test("withRepoStateLock steals an aged lock and releases its own lock", (t) => {
+test("withRepoStateLock steals an aged lock whose holder is dead", (t) => {
+  const repo = tempDir(t);
+  const lock = join(repoStateDir(repo), ".lock");
+  mkdirSync(dirname(lock), { recursive: true });
+  const dead = spawnSync(process.execPath, ["-e", ""]);
+  assert.equal(dead.status, 0);
+  writeFileSync(lock, JSON.stringify({ pid: dead.pid, token: "aged", createdAt: Date.now() - 120_000 }));
+  const old = new Date(Date.now() - 61_000);
+  utimesSync(lock, old, old);
+  assert.equal(withRepoStateLock(repo, () => 42), 42);
+  assert.equal(existsSync(lock), false);
+});
+
+test("withRepoStateLock does not steal an aged lock held by a live process", (t) => {
   const repo = tempDir(t);
   const lock = join(repoStateDir(repo), ".lock");
   mkdirSync(dirname(lock), { recursive: true });
   writeFileSync(lock, JSON.stringify({ pid: process.pid, token: "aged", createdAt: Date.now() - 120_000 }));
   const old = new Date(Date.now() - 61_000);
   utimesSync(lock, old, old);
-  assert.equal(withRepoStateLock(repo, () => 42), 42);
-  assert.equal(existsSync(lock), false);
+  assert.throws(() => withRepoStateLock(repo, () => assert.fail("lock must not be acquired")), /locked by pid/u);
+  assert.equal(existsSync(lock), true);
 });
 
 function completedChild(child) {

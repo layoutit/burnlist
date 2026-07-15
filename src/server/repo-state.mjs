@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import {
+  existsSync,
   linkSync,
   mkdirSync,
   readFileSync,
@@ -10,8 +11,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-
-const LOCK_STALE_MS = 60_000;
 
 export function repoStateDir(repoRoot) {
   return join(resolve(repoRoot), ".local", "burnlist");
@@ -79,12 +78,33 @@ function isAlive(pid) {
 
 function lockIsStealable(lock) {
   try {
-    if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS) return true;
+    statSync(lock);
   } catch (error) {
     if (error?.code === "ENOENT") return true;
     throw error;
   }
   return !isAlive(lockHolder(lock));
+}
+
+function tryAcquireLock(lock, temp, contents) {
+  writeFileSync(temp, contents, { flag: "wx" });
+  try {
+    linkSync(temp, lock);
+    return true;
+  } catch (error) {
+    if (error?.code === "EEXIST") return false;
+    throw error;
+  } finally {
+    rmSync(temp, { force: true });
+  }
+}
+
+function releaseLock(lock, token) {
+  try {
+    if (JSON.parse(readFileSync(lock, "utf8")).token === token) rmSync(lock, { force: true });
+  } catch {
+    // A replaced or removed lock must not be released by this owner.
+  }
 }
 
 export function withRepoStateLock(repoRoot, fn) {
@@ -93,48 +113,69 @@ export function withRepoStateLock(repoRoot, fn) {
   const lock = containedJoin(repoRoot, ".lock");
   const token = randomBytes(12).toString("hex");
   const temp = containedJoin(repoRoot, `.lock.${token}`);
+  const recovery = containedJoin(repoRoot, ".lock.recovery");
+  const recoveryTemp = containedJoin(repoRoot, `.lock.recovery.${token}`);
   const stale = containedJoin(repoRoot, `.stale.${token}`);
+  const contents = JSON.stringify({ pid: process.pid, token, createdAt: Date.now() });
   let holderPid = null;
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    let acquired = false;
     try {
-      writeFileSync(temp, JSON.stringify({ pid: process.pid, token, createdAt: Date.now() }), { flag: "wx" });
-      try {
-        linkSync(temp, lock);
-        acquired = true;
-      } catch (error) {
-        if (error?.code !== "EEXIST") throw error;
-      } finally {
-        rmSync(temp, { force: true });
+      if (tryAcquireLock(lock, temp, contents)) {
+        if (existsSync(recovery)) {
+          releaseLock(lock, token);
+          sleep(20);
+          continue;
+        }
+        try {
+          return fn();
+        } finally {
+          releaseLock(lock, token);
+        }
       }
     } catch (error) {
       rmSync(temp, { force: true });
       throw error;
     }
-    if (!acquired) {
-      holderPid = lockHolder(lock);
-      if (lockIsStealable(lock)) {
-        try {
-          renameSync(lock, stale);
-        } catch (error) {
-          if (error?.code === "ENOENT") continue;
-          throw error;
-        }
-        rmSync(stale, { force: true });
-        continue;
-      }
-      sleep(20);
-      continue;
-    }
-    try {
-      return fn();
-    } finally {
+    holderPid = lockHolder(lock);
+    if (lockIsStealable(lock)) {
+      let recovering = false;
       try {
-        if (JSON.parse(readFileSync(lock, "utf8")).token === token) rmSync(lock, { force: true });
-      } catch {
-        // A replaced or removed lock must not be released by this owner.
+        recovering = tryAcquireLock(recovery, recoveryTemp, contents);
+        if (!recovering) {
+          sleep(20);
+          continue;
+        }
+        // The recovery claim is a compare-and-swap guard: contenders may create a
+        // lock while it exists, but release it before entering their callback.
+        // That leaves this claimant as the only process allowed to replace a dead
+        // holder, so the rename cannot displace a newly-entered live holder.
+        for (let recoveryAttempt = 0; recoveryAttempt < 50; recoveryAttempt += 1) {
+          if (tryAcquireLock(lock, temp, contents)) {
+            releaseLock(recovery, token);
+            recovering = false;
+            try {
+              return fn();
+            } finally {
+              releaseLock(lock, token);
+            }
+          }
+          if (lockIsStealable(lock)) {
+            try {
+              renameSync(lock, stale);
+            } catch (error) {
+              if (error?.code === "ENOENT") continue;
+              throw error;
+            }
+            rmSync(stale, { force: true });
+          }
+          sleep(20);
+        }
+      } finally {
+        if (recovering) releaseLock(recovery, token);
       }
+      if (recovering) continue;
     }
+    sleep(20);
   }
   throw new Error(`Repo state is locked by pid ${holderPid ?? "unknown"}: ${lock}`);
 }

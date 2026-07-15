@@ -172,7 +172,7 @@ test("a live, fresh lock is not stolen", () => {
   } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
 });
 
-test("an old lock with a live pid can be stolen", () => {
+test("an old lock with a live pid is not stolen", () => {
   const { home, cleanup } = fixture();
   const root = mkdtempSync(join(tmpdir(), "burnlist-old-lock-"));
   try {
@@ -181,7 +181,7 @@ test("an old lock with a live pid can be stolen", () => {
     writeFileSync(lock, JSON.stringify({ pid: process.pid, token: "old" }));
     const oldDate = new Date(Date.now() - 61_000);
     utimesSync(lock, oldDate, oldDate);
-    assert.equal(registerRoot(root, { home }).added, true);
+    assert.throws(() => registerRoot(root, { home }), { code: "ELOCKED" });
   } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
 });
 
