@@ -9,7 +9,7 @@ import { containedJoin, withRepoStateLock } from "../server/repo-state.mjs";
 export const HOOK_MARKER = "burnlist-managed:streaming-diff-hooks@1";
 const PROVENANCE_SCHEMA = 1;
 const AGENTS = { codex: { file: ".codex/hooks.json" }, claude: { file: ".claude/settings.json" } };
-const CODEX_HOOKS_MINIMUM_VERSION = "0.114.0";
+const CODEX_HOOKS_MINIMUM_VERSION = "0.124.0";
 const EVENTS = {
   // Codex supports SessionStart, PreToolUse, and PostToolUse. It does not
   // expose Claude's PostToolUseFailure event.

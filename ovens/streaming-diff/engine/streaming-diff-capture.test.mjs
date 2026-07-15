@@ -188,7 +188,7 @@ test("withheld file entries always make the capture partial", () => {
   assert.equal(redacted.files[0].kind, "redacted");
 });
 
-test("denied .git hints and invalid UTF-8 are metadata-only partial captures", () => {
+test("denied .git hints are partial while binary changes are captured metadata", () => {
   let read = false;
   let inspected = false;
   const denied = capture({
@@ -204,6 +204,7 @@ test("denied .git hints and invalid UTF-8 are metadata-only partial captures", (
   assert.deepEqual(denied.files, [{ path: ".git/config", kind: "denied" }]);
   assert.equal(denied.status, "partial");
   assert.deepEqual(binary.files, [{ path: "foo.ts", kind: "binary", meta: { bytes: 2 } }]);
+  assert.equal(binary.status, "captured");
   assert.equal(binary.files[0].diff, undefined);
 });
 

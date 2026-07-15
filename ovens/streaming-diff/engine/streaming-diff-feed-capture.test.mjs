@@ -75,6 +75,66 @@ test("overlapping sessions on one worktree are unattributed, while isolated work
   }
 });
 
+test("a failed overlapping post stays unattributed when its publication is retried", () => {
+  const context = fixture();
+  try {
+    captureStreamingDiff({ cwd: context.root, session: "retry-one", toolUseId: "retry-tool-one", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: context.root, session: "retry-two", toolUseId: "retry-tool-two", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const failed = captureStreamingDiff({
+      cwd: context.root, session: "retry-one", toolUseId: "retry-tool-one", phase: "post", hintedPaths: ["target.txt"],
+      append: () => { throw new Error("simulated append failure"); },
+    });
+    const retried = captureStreamingDiff({ cwd: context.root, session: "retry-one", toolUseId: "retry-tool-one", phase: "post", hintedPaths: ["target.txt"] });
+
+    assert.match(failed.error.message, /simulated append failure/u);
+    for (const card of [failed.card, retried.card]) {
+      assert.equal(card.status, "partial");
+      assert.match(card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+      assert.deepEqual(card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "overlapping concurrent edit (unattributed)" } }]);
+    }
+  } finally { context.cleanup(); }
+});
+
+test("a failed overlapping post remains unattributed after its live windows expire", () => {
+  const context = fixture();
+  try {
+    const pre = captureStreamingDiff({ cwd: context.root, session: "expired-one", toolUseId: "expired-tool-one", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: context.root, session: "expired-two", toolUseId: "expired-tool-two", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const failed = captureStreamingDiff({
+      cwd: context.root, session: "expired-one", toolUseId: "expired-tool-one", phase: "post", hintedPaths: ["target.txt"],
+      append: () => { throw new Error("simulated append failure"); },
+    });
+    assert.match(failed.error.message, /simulated append failure/u);
+    assert.equal(JSON.parse(readFileSync(pre.snapshot.path, "utf8")).overlapped, true);
+    rmSync(join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json"));
+
+    const retried = captureStreamingDiff({ cwd: context.root, session: "expired-one", toolUseId: "expired-tool-one", phase: "post", hintedPaths: ["target.txt"] });
+
+    assert.equal(retried.card.status, "partial");
+    assert.match(retried.card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+    assert.deepEqual(retried.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "overlapping concurrent edit (unattributed)" } }]);
+  } finally { context.cleanup(); }
+});
+
+test("overlapping calls in one session are unattributed by tool-use id", () => {
+  const context = fixture();
+  try {
+    captureStreamingDiff({ cwd: context.root, session: "shared-session", toolUseId: "first-call", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: context.root, session: "shared-session", toolUseId: "second-call", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const first = captureStreamingDiff({ cwd: context.root, session: "shared-session", toolUseId: "first-call", phase: "post", hintedPaths: ["target.txt"] });
+    const second = captureStreamingDiff({ cwd: context.root, session: "shared-session", toolUseId: "second-call", phase: "post", hintedPaths: ["target.txt"] });
+
+    for (const result of [first, second]) {
+      assert.equal(result.card.status, "partial");
+      assert.match(result.card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+      assert.deepEqual(result.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "overlapping concurrent edit (unattributed)" } }]);
+    }
+  } finally { context.cleanup(); }
+});
+
 test("an active-window registry overflow makes the current capture unattributed", () => {
   const context = fixture();
   try {

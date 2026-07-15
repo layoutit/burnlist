@@ -14,7 +14,7 @@ export const STREAMING_DIFF_CAPTURE_LIMITS = Object.freeze({
   maxHunkBytes: 96 * 1024,
   maxCardBytes: 512 * 1024,
 });
-const incompleteFileKinds = new Set(["binary", "denied", "redacted", "truncated", "unavailable"]);
+const incompleteFileKinds = new Set(["denied", "redacted", "truncated", "unavailable"]);
 const terminalReasons = new Set(["tool failed", "path hints truncated", "hook adapter mapping was incomplete", "hook payload exceeded byte limit", "hook payload read timed out"]);
 
 export function captureLimits(policy = {}) {

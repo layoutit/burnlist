@@ -136,18 +136,37 @@ export function registerActiveWindows({ identity, toolUseId, hintedPaths = [], o
   });
 }
 
+function activeWindowOverlap(windows, identity, toolUseId) {
+  const mine = windows.filter((window) => window.session === identity.session && window.toolUseId === toolUseId);
+  const paths = new Set(mine.flatMap((window) => window.overlappedPaths ?? []));
+  for (const window of mine) {
+    for (const other of windows) {
+      if ((other.session === identity.session && other.toolUseId === toolUseId) || other.path !== window.path) continue;
+      paths.add(window.path);
+    }
+  }
+  return { mine, paths };
+}
+
+export function inspectActiveWindowOverlap({ identity, toolUseId, inspectedAt = Date.now() } = {}) {
+  const safeId = streamingDiffToolUseId(toolUseId);
+  return withRepoStateLock(identity.worktreeRoot, () => {
+    const registry = readActiveWindows(activeWindowPath(identity), inspectedAt);
+    const overlap = activeWindowOverlap(registry.windows, identity, safeId);
+    return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > inspectedAt };
+  });
+}
+
 export function closeActiveWindows({ identity, toolUseId, closedAt = Date.now() } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   return withRepoStateLock(identity.worktreeRoot, () => {
     const path = activeWindowPath(identity);
     const registry = readActiveWindows(path, closedAt);
     const windows = registry.windows;
-    const mine = windows.filter((window) => window.session === identity.session && window.toolUseId === safeId);
-    const unattributed = new Set(mine.flatMap((window) => window.overlappedPaths ?? []));
-    for (const window of mine) {
+    const overlap = activeWindowOverlap(windows, identity, safeId);
+    for (const window of overlap.mine) {
       for (const other of windows) {
-        if (other.session === identity.session || other.path !== window.path) continue;
-        unattributed.add(window.path);
+        if ((other.session === identity.session && other.toolUseId === safeId) || other.path !== window.path) continue;
         const overlaps = new Set(other.overlappedPaths ?? []);
         overlaps.add(other.path);
         other.overlappedPaths = [...overlaps];
@@ -155,7 +174,7 @@ export function closeActiveWindows({ identity, toolUseId, closedAt = Date.now() 
     }
     const remaining = windows.filter((window) => window.session !== identity.session || window.toolUseId !== safeId);
     saveActiveWindows(path, remaining, closedAt, registry.attributionUnavailableUntil);
-    return { paths: [...unattributed], attributionUnavailable: registry.attributionUnavailableUntil > closedAt };
+    return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > closedAt };
   });
 }
 
@@ -189,6 +208,7 @@ function validStoredSnapshot(value, toolUseId) {
   return value && typeof value === "object" && !Array.isArray(value)
     && value.schemaVersion === SNAPSHOT_SCHEMA && value.toolUseId === toolUseId
     && Array.isArray(value.hintedPaths) && value.hintedPaths.every((path) => typeof path === "string")
+    && (!Object.hasOwn(value, "overlapped") || typeof value.overlapped === "boolean")
     && (!Object.hasOwn(value, "terminalReason") || typeof value.terminalReason === "string")
     && value.entries && typeof value.entries === "object" && !Array.isArray(value.entries);
 }
@@ -222,6 +242,7 @@ export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], termin
     schemaVersion: SNAPSHOT_SCHEMA,
     toolUseId: safeId,
     hintedPaths: safeHints,
+    overlapped: false,
     ...(terminalReasons.has(terminalReason) ? { terminalReason } : {}),
     entries,
   };
@@ -255,9 +276,29 @@ export function takePreSnapshot({ identity, toolUseId } = {}) {
     return {
       found: true,
       hintedPaths: parsed.hintedPaths,
+      overlapped: parsed.overlapped === true,
       terminalReason: parsed.terminalReason,
       preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
     };
+  });
+}
+
+export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
+  const safeId = streamingDiffToolUseId(toolUseId);
+  return withRepoStateLock(identity.logicalRepoRoot, () => {
+    const path = snapshotPath(identity, safeId);
+    let parsed = null;
+    try {
+      const stat = statSync(path);
+      if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
+      parsed = JSON.parse(readFileSync(path, "utf8"));
+    } catch (error) {
+      if (error?.code === "ENOENT") return { found: false, overlapped: false };
+      if (/snapshot exceeds/u.test(error?.message)) throw error;
+    }
+    if (!validStoredSnapshot(parsed, safeId)) return { found: false, overlapped: false };
+    if (parsed.overlapped !== true) writeDurableAtomic(path, JSON.stringify({ ...parsed, overlapped: true }));
+    return { found: true, overlapped: true };
   });
 }
 

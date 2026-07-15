@@ -83,7 +83,7 @@ test("snapshot storage never writes denied, ignored, binary, or secret-looking s
   } finally { context.cleanup(); }
 });
 
-test("an invalid UTF-8 pre-snapshot stays binary metadata after a valid-text post", () => {
+test("an invalid UTF-8 pre-snapshot stays captured binary metadata after a valid-text post", () => {
   const context = fixture();
   try {
     const path = join(context.root, "invalid.txt");
@@ -103,7 +103,7 @@ test("an invalid UTF-8 pre-snapshot stays binary metadata after a valid-text pos
       now: () => "2026-07-15T09:00:00.000Z",
     });
     assert.deepEqual(card.files, [{ path: "invalid.txt", kind: "binary", meta: { bytes: 11 } }]);
-    assert.equal(card.status, "partial");
+    assert.equal(card.status, "captured");
     assert.equal(card.files[0].diff, undefined);
   } finally { context.cleanup(); }
 });

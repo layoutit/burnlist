@@ -206,10 +206,21 @@ test("status distinguishes an old Codex from an absent Claude CLI", () => {
     });
     const status = hookConfigStatus({ repoRoot: context.root, agents: ["codex", "claude"], capability });
     assert.deepEqual(status.map(({ agent, capability: result }) => [agent, result.state, result.minimumVersion]), [
-      ["codex", "installed-but-hooks-unsupported", "0.114.0"],
+      ["codex", "installed-but-hooks-unsupported", "0.124.0"],
       ["claude", "not-installed", undefined],
     ]);
   } finally { context.cleanup(); }
+});
+
+test("Codex apply_patch hooks require version 0.124.0", () => {
+  const capability = (version) => hookCapability("codex", {
+    spawn: () => ({ status: 0, stdout: `codex-cli ${version}\n`, stderr: "" }),
+  });
+
+  assert.deepEqual(capability("0.123.9"), {
+    state: "installed-but-hooks-unsupported", version: "0.123.9", minimumVersion: "0.124.0",
+  });
+  assert.deepEqual(capability("0.124.0"), { state: "installed+hooks-supported", version: "0.124.0" });
 });
 
 test("multi-agent install preflights every config before writing either one", () => {

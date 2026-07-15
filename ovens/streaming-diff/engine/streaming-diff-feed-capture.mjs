@@ -4,7 +4,7 @@ import { captureGitCard } from "./streaming-diff-capture-git.mjs";
 import { appendCard } from "./streaming-diff-journal.mjs";
 import { ensureStreamingDiffFeed } from "./streaming-diff-ensure-feed.mjs";
 import { feedIdentity, resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
-import { closeActiveWindows, registerActiveWindows, removePreSnapshot, streamingDiffToolUseId, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
+import { closeActiveWindows, inspectActiveWindowOverlap, markPreSnapshotOverlapped, registerActiveWindows, removePreSnapshot, streamingDiffToolUseId, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
 
 const TERMINAL_REASONS = Object.freeze({
   "adapter-incomplete": "hook adapter mapping was incomplete",
@@ -42,8 +42,8 @@ function appendWithRetry(append, feedDir, card, options) {
   throw new Error("streaming diff journal retry unexpectedly exhausted");
 }
 
-function markUnattributedOverlap(card, paths, attributionUnavailable) {
-  if (!paths.length && !attributionUnavailable) return card;
+function markUnattributedOverlap(card, paths, attributionUnavailable, overlapDetected) {
+  if (!paths.length && !attributionUnavailable && !overlapDetected) return card;
   const reason = attributionUnavailable ? "attribution unavailable: too many concurrent windows" : "overlapping concurrent edit (unattributed)";
   const overlapped = new Set(attributionUnavailable ? card.files.map((file) => file.path) : paths);
   return {
@@ -78,14 +78,23 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
     policy,
     opaqueReason: [snapshot.terminalReason, terminalReason(terminalReasonCode)].find(Boolean),
   });
-  const overlap = closeActiveWindows({ identity, toolUseId: safeToolUseId });
-  card = markUnattributedOverlap(card, overlap.paths, overlap.attributionUnavailable);
+  const overlap = inspectActiveWindowOverlap({ identity, toolUseId: safeToolUseId });
+  const liveOverlap = overlap.paths.length > 0 || overlap.attributionUnavailable;
+  if (liveOverlap) markPreSnapshotOverlapped({ identity, toolUseId: safeToolUseId });
+  const durableOverlap = snapshot.overlapped || liveOverlap;
+  card = markUnattributedOverlap(
+    card,
+    overlap.paths.length ? overlap.paths : durableOverlap ? card.files.map((file) => file.path) : [],
+    overlap.attributionUnavailable,
+    durableOverlap,
+  );
   // A direct post invocation remains safe and useful: it establishes the
   // immutable binding/feed before the journal's first manifest append.
   ensureStreamingDiffFeed({ cwd, session });
   try {
     const appended = appendWithRetry(append, identity.feedDir, card, journalOptions);
     try {
+      closeActiveWindows({ identity, toolUseId: safeToolUseId });
       removePreSnapshot({ identity, toolUseId: safeToolUseId });
       return { phase, identity, snapshot, ...appended };
     } catch (cleanupError) {

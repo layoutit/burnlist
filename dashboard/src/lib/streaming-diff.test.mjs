@@ -92,6 +92,15 @@ test("redacted and withheld files force a partial card and never retain diff tex
   });
 });
 
+test("binary metadata cards remain captured", () => {
+  const card = parseStreamingDiffCard({
+    ...first,
+    files: [{ path: "image.png", kind: "binary", meta: { bytes: 12 } }],
+  });
+
+  assert.deepEqual(card, { ...first, files: [{ path: "image.png", kind: "binary", meta: { bytes: 12 } }] });
+});
+
 test("a reset clears retained cards before the server replays them", () => {
   assert.deepEqual(applyStreamingDiffUpdate([first, second], { type: "reset" }), []);
   assert.deepEqual(applyStreamingDiffUpdate([], { type: "card", card: first }), [first]);

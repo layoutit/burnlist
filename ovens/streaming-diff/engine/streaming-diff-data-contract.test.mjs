@@ -57,6 +57,12 @@ test("captured cards cannot contain denied or otherwise incomplete file entries"
   assert.throws(() => assertCard(denied), StreamingDiffDataValidationError);
 });
 
+test("a captured binary metadata entry is complete", () => {
+  const binary = { ...card, files: [{ path: "image.png", kind: "binary", meta: { bytes: 12 } }] };
+
+  assert.equal(validateCard(binary).ok, true);
+});
+
 test("a pre-hook attempt marker is a valid empty partial card", () => {
   const attempt = { ...card, status: "partial", partialReason: "attempt in progress / unterminated", files: [] };
   assert.equal(validateCard(attempt).ok, true);
