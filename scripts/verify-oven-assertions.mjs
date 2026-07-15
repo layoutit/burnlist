@@ -1,11 +1,12 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { normalizeOvenPackage } from "../src/ovens/oven-contract.mjs";
 
 export function assertBuiltInOvenSet(repoRoot, expected) {
   const ovensRoot = resolve(repoRoot, "ovens");
   const actual = readdirSync(ovensRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
+    .filter((entry) => ["instructions.md", "detail.json"].every((name) => existsSync(join(ovensRoot, entry.name, name))))
     .map((entry) => entry.name)
     .sort();
   const wanted = [...expected].sort();

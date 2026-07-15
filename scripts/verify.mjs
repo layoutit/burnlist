@@ -219,6 +219,7 @@ const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "ovens/streaming-diff/engine"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "src/ovens/oven-registry.mjs"),
   resolve(repoRoot, "src/ovens/built-in-handlers.mjs"),
   resolve(repoRoot, "src/ovens/handlers/generic-json-handler.mjs"),
