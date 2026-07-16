@@ -20,6 +20,8 @@ export const verificationTestFiles = [
   "ovens/streaming-diff/engine/streaming-diff-snapshot-store.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-ensure-feed.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-feed-capture.test.mjs",
+  "ovens/streaming-diff/engine/streaming-diff-racefix.test.mjs",
+  "ovens/streaming-diff/engine/streaming-diff-journal-lock-race.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-handler.test.mjs",
   "ovens/streaming-diff/e2e/synthetic-hook-events.test.mjs",
   "src/server/discovery.test.mjs",
