@@ -157,6 +157,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   onFieldViewChange = () => {},
   fieldPage = null,
   frameDeltaMetrics = null,
+  initialChart = "delta",
+  initialProgressChart = "delta",
   templateOnly = false,
 } = {}) {
   if (templateOnly) return templateHtml();
@@ -166,8 +168,8 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   const RED = "#ef4444";
   const telemetryAvailability = differentialTelemetryAvailability(payload);
   const state = {
-    chart: "delta",
-    progressChart: "delta",
+    chart: initialChart === "current" ? "current" : "delta",
+    progressChart: initialProgressChart,
     sort: fieldPage?.sort ?? (telemetryAvailability.status === "comparable" ? "changed" : "default"),
     filter: fieldPage?.filter ?? "all",
     search: fieldPage?.search ?? "",
@@ -413,7 +415,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     if (current) result.push(current);
     return result;
   }
-  function chart(field, showFrameLabels = false) {
+  function chart(field, showFrameLabels = false, chartMode = state.chart) {
     const categories = new Map();
     const rows = field.samples.map(([tick, reference, candidate, sampleState]) => ({ tick, reference: plotValue(reference, categories), candidate: plotValue(candidate, categories), state: sampleState }));
     const x = (index) => rows.length <= 1 ? 0 : index / (rows.length - 1) * WIDTH;
@@ -437,7 +439,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     for (let index = frameStep; index < rows.length - 1; index += frameStep * 2) tickIndexes.push(index);
     const tickMarks = tickIndexes.map((index) => `<line class="frame-tick" x1="${x(index).toFixed(1)}" x2="${x(index).toFixed(1)}" y1="${showFrameLabels ? 13 : 0}" y2="${HEIGHT}" stroke="rgba(168, 168, 168, 0.075)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`).join("");
     const tickLabels = showFrameLabels
-      ? tickIndexes.map((index) => `<span class="frame-tick-label" style="left:${(index / Math.max(1, rows.length - 1) * 100).toFixed(4)}%">${escapeHtml(Math.round(rows[index].tick))}</span>`).join("")
+      ? tickIndexes.map((index) => `<span class="frame-tick-label" style="left:${(index / Math.max(1, rows.length - 1) * 100).toFixed(4)}%">${escapeHtml(field.sampleLabels?.[index] || Math.round(rows[index].tick))}</span>`).join("")
       : "";
     const segment = (start, end, trimStart = 0, trimEnd = 0) => {
       let [x1, y1] = start, [x2, y2] = end;
@@ -457,7 +459,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       }
       return result.join("");
     };
-    if (state.chart === "delta") {
+    if (chartMode === "delta") {
       const values = rows.map((row) => row.reference === null || row.candidate === null ? null : row.candidate - row.reference);
       const finite = values.filter(Number.isFinite);
       if (!finite.length) return '<div class="plot"></div>';
@@ -581,6 +583,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   function renderProgressChart() {
     const progressChart = root.querySelector("#progress-chart");
     if (!progressChart) return;
+    if (state.payload.primaryChartField) return;
     if (state.progressChart === "delta") {
       const exactMetrics = differentialExactPrefixFrameDeltaMetrics(state.payload, state.frameDeltaMetrics);
       if (!exactMetrics) {
@@ -1617,14 +1620,21 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       value: scenarioSelector(),
     });
     const kpiHtml = `${scenarioKpi}${progressDonut(state.payload.progress)}${burnDonut(state.payload.log)}${waffleMetric(state.payload.summary.fields, "Fields")}${waffleMetric(state.payload.summary.frames, "Frames")}`;
+    const primaryChartField = state.payload.primaryChartField;
+    const primaryChartTitle = String(state.payload.primaryChartTitle || "Parity Progress");
+    const historyTitle = String(state.payload.historyTitle || "Parity Progress");
+    const primaryChartMarkup = primaryChartField
+      ? `<div class="chart hybrid-chart" id="progress-chart" role="img" aria-label="${escapeHtml(primaryChartTitle)} over time">${chart(primaryChartField, true, state.progressChart === "delta" ? "delta" : "value")}</div>`
+      : progress(state.payload.progress);
     let html = templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
       .replace('<section class="differential-overview" id="differential-overview" hidden>', '<section class="differential-overview" id="differential-overview">')
       .replace('<span id="differential-refresh-status" class="differential-refresh-status" hidden></span>', refreshStatus())
       .replace('<time id="differential-overview-time"></time>', `<time id="differential-overview-time" class="label-toggle differential-tabs" datetime="${escapeHtml(state.payload.publishedAt)}">${overviewTime(state.payload.publishedAt)}</time>`)
       .replace('<div class="driving-parity-kpi-strip" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"></div>', `<div class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs">${kpiHtml}</div>`)
-      .replace('<h2 id="progress-panel-title">Progress</h2>', '<h2 id="progress-panel-title">Parity Progress</h2>')
-      .replace('<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>', progress(state.payload.progress))
+      .replace('<h2 id="progress-panel-title">Progress</h2>', `<h2 id="progress-panel-title">${escapeHtml(primaryChartTitle)}</h2>`)
+      .replace('<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>', primaryChartMarkup)
+      .replace('<div class="work-panel-title">Parity Progress</div>', `<div class="work-panel-title">${escapeHtml(historyTitle)}</div>`)
       .replace('<div class="checklist-log" id="checklist-log"></div>', `<div class="checklist-log" id="checklist-log">${log(state.payload.log)}</div>`)
       .replace('<main id="driving-parity-page" class="driving-parity-page" hidden>', '<main id="driving-parity-page" class="driving-parity-page">')
       .replace('<h2 id="driving-parity-summary" class="driving-parity-summary" hidden></h2>', `<h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(${count(state.payload.summary?.fields?.total ?? state.payload.fields.length)})</span></h2>`)
@@ -1793,6 +1803,10 @@ export function startDifferentialTestingLiveUpdates(root, {
   historyImpl = globalThis.history,
   mount = mountDifferentialTestingDashboard,
   repoKey = null,
+  dataOvenId = "differential-testing",
+  adaptOven = (value) => value,
+  adaptPayload = (value) => value,
+  mountOptions = {},
   refreshMs = DIFFERENTIAL_TESTING_REFRESH_MS,
   onError = (error, hasDashboard) => {
     if (!hasDashboard) root.innerHTML = `<div class="empty">${escapeHtml(String(error?.message || error))}</div>`;
@@ -1828,7 +1842,7 @@ export function startDifferentialTestingLiveUpdates(root, {
       searchParams.set("pageSize", String(fieldViewQuery.pageSize));
     }
     const query = searchParams.toString();
-    return `/api/oven-data/differential-testing${query ? `?${query}` : ""}`;
+    return `/api/oven-data/${encodeURIComponent(dataOvenId)}${query ? `?${query}` : ""}`;
   };
 
   const read = async (url, key, fallbackMessage) => {
@@ -1851,7 +1865,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     const json = await response.json();
     if (!response.ok) throw new Error(json.error || "Could not load Differential Testing data.");
     const result = {
-      payload: differentialPagedPayload(json.payload, json.fieldPage),
+      payload: differentialPagedPayload(adaptPayload(json.payload), json.fieldPage),
       transport: json.transport ?? null,
       fieldPage: json.fieldPage ?? null,
       frameDeltaMetrics: json.frameDeltaMetrics ?? null,
@@ -1878,7 +1892,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     const requestPayloadUrl = payloadUrl(requestScenarioId);
     try {
       const [nextOven, payloadResult] = await Promise.all([
-        oven ?? read("/api/ovens/differential-testing", "oven", "Could not load Differential Testing Oven."),
+        oven ?? read(`/api/ovens/${encodeURIComponent(dataOvenId)}`, "oven", `Could not load ${dataOvenId} Oven.`),
         readPayload(requestPayloadUrl),
       ]);
       if (stopped || requestGeneration !== scenarioGeneration) return;
@@ -1888,9 +1902,10 @@ export function startDifferentialTestingLiveUpdates(root, {
         return;
       }
       const nextRevision = payloadResult.etag || differentialPayloadRevision(payload);
-      oven = nextOven;
+      oven = adaptOven(nextOven);
       if (!dashboard) {
         dashboard = mount(root, oven, payload, {
+          ...mountOptions,
           onScenarioChange: selectScenario,
           onFieldViewChange: selectFieldView,
           fieldPage: payloadResult.fieldPage,

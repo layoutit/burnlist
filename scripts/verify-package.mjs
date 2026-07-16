@@ -54,6 +54,10 @@ const required = [
   "ovens/differential-testing/renderer/differential-testing.css",
   "ovens/differential-testing/renderer/differential-testing-progress-chart.js",
   "ovens/differential-testing/renderer/differential-testing-renderer.js",
+  "ovens/performance-tracing/instructions.md",
+  "ovens/performance-tracing/detail.json",
+  "ovens/performance-tracing/engine/performance-tracing-contract.mjs",
+  "ovens/performance-tracing/engine/performance-tracing-handler.mjs",
   "dashboard/dist/index.html",
 ];
 

@@ -24,8 +24,8 @@ export function App() {
   return (
     <div className="dashboard-app">
       <AppHeader section={section} />
-      <main className="dashboard-main" data-layout={section === "differential-testing" || section === "streaming-diff" || selected ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <DifferentialTestingPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
+      <main className="dashboard-main" data-layout={section === "differential-testing" || section === "performance-tracing" || section === "streaming-diff" || selected ? "full" : "index"} data-section={section}>
+        {section === "differential-testing" ? <DifferentialTestingPage /> : section === "performance-tracing" ? <DifferentialTestingPage ovenId="performance-tracing" /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <ChecklistDashboard backHref={listHref(filter)} data={progress} />
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
