@@ -13,6 +13,7 @@ const ACTIVE_WINDOW_MAX_AGE_MS = 5 * 60_000;
 export const STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES = 128;
 export const STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES = 64 * 1024;
 const ACTIVE_WINDOW_OVERFLOW_REASON = "attribution unavailable: too many concurrent windows";
+const ACTIVE_WINDOW_READ_ERROR_REASON = "attribution unavailable: active-window registry unreadable";
 export const STREAMING_DIFF_SNAPSHOT_MAX_BYTES = 512 * 1024;
 const terminalReasons = new Set(["tool failed", "path hints truncated", "hook adapter mapping was incomplete", "hook payload exceeded byte limit", "hook payload read timed out"]);
 
@@ -69,18 +70,24 @@ function activeWindowPath(identity) {
 function readActiveWindows(path, now) {
   try {
     const stored = JSON.parse(readFileSync(path, "utf8"));
-    if (stored?.schemaVersion !== ACTIVE_WINDOW_SCHEMA || !Array.isArray(stored.windows)) return { windows: [], attributionUnavailableUntil: 0 };
-    return {
-      windows: stored.windows.filter((window) => window && typeof window === "object"
+    if (stored?.schemaVersion !== ACTIVE_WINDOW_SCHEMA || !Array.isArray(stored.windows)) {
+      return { windows: [], attributionUnavailableUntil: 0, unavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_READ_ERROR_REASON };
+    }
+    const validWindow = (window) => window && typeof window === "object"
       && typeof window.session === "string" && typeof window.toolUseId === "string" && typeof window.path === "string"
-      && Number.isFinite(window.openedAt) && window.openedAt <= now && window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS
-      && (!Object.hasOwn(window, "overlappedPaths") || Array.isArray(window.overlappedPaths))),
+      && Number.isFinite(window.openedAt)
+      && (!Object.hasOwn(window, "overlappedPaths") || Array.isArray(window.overlappedPaths));
+    if (!stored.windows.every(validWindow)) {
+      return { windows: [], attributionUnavailableUntil: 0, unavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_READ_ERROR_REASON };
+    }
+    return {
+      windows: stored.windows.filter((window) => window.openedAt <= now && window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS),
       attributionUnavailableUntil: Number.isFinite(stored.attributionUnavailableUntil) && stored.attributionUnavailableUntil > now
         ? stored.attributionUnavailableUntil : 0,
     };
   } catch (error) {
     if (error?.code === "ENOENT") return { windows: [], attributionUnavailableUntil: 0 };
-    return { windows: [], attributionUnavailableUntil: 0 };
+    return { windows: [], attributionUnavailableUntil: 0, unavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_READ_ERROR_REASON };
   }
 }
 
@@ -122,6 +129,9 @@ export function registerActiveWindows({ identity, toolUseId, hintedPaths = [], o
   return withRepoStateLock(identity.worktreeRoot, () => {
     const path = activeWindowPath(identity);
     const registry = readActiveWindows(path, openedAt);
+    if (registry.unavailable) {
+      return { path, openedAt, attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
+    }
     const windows = registry.windows;
     let attributionUnavailableUntil = registry.attributionUnavailableUntil;
     for (const hintedPath of paths) {
@@ -152,6 +162,9 @@ export function inspectActiveWindowOverlap({ identity, toolUseId, inspectedAt = 
   const safeId = streamingDiffToolUseId(toolUseId);
   return withRepoStateLock(identity.worktreeRoot, () => {
     const registry = readActiveWindows(activeWindowPath(identity), inspectedAt);
+    if (registry.unavailable) {
+      return { paths: [], attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
+    }
     const overlap = activeWindowOverlap(registry.windows, identity, safeId);
     return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > inspectedAt };
   });
@@ -162,19 +175,38 @@ export function closeActiveWindows({ identity, toolUseId, closedAt = Date.now() 
   return withRepoStateLock(identity.worktreeRoot, () => {
     const path = activeWindowPath(identity);
     const registry = readActiveWindows(path, closedAt);
+    if (registry.unavailable) {
+      return { paths: [], attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
+    }
     const windows = registry.windows;
     const overlap = activeWindowOverlap(windows, identity, safeId);
+    const peers = new Map();
     for (const window of overlap.mine) {
       for (const other of windows) {
         if ((other.session === identity.session && other.toolUseId === safeId) || other.path !== window.path) continue;
         const overlaps = new Set(other.overlappedPaths ?? []);
         overlaps.add(other.path);
         other.overlappedPaths = [...overlaps];
+        peers.set(`${other.session}\u0000${other.toolUseId}`, other);
       }
     }
     const remaining = windows.filter((window) => window.session !== identity.session || window.toolUseId !== safeId);
-    saveActiveWindows(path, remaining, closedAt, registry.attributionUnavailableUntil);
-    return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > closedAt };
+    for (const peer of peers.values()) {
+      const peerIdentity = { ...identity, session: peer.session, sessionPath: identifierPathComponent(peer.session) };
+      if (peerIdentity.logicalRepoRoot === identity.worktreeRoot) markPreSnapshotOverlappedLocked(peerIdentity, peer.toolUseId);
+      else markPreSnapshotOverlapped({ identity: peerIdentity, toolUseId: peer.toolUseId });
+    }
+    try {
+      saveActiveWindows(path, remaining, closedAt, registry.attributionUnavailableUntil);
+      return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > closedAt };
+    } catch (error) {
+      if (error?.message !== ACTIVE_WINDOW_OVERFLOW_REASON) throw error;
+      const withoutNewOverlapMarks = registry.windows
+        .filter((window) => window.session !== identity.session || window.toolUseId !== safeId)
+        .map(({ overlappedPaths, ...window }) => window);
+      saveActiveWindows(path, withoutNewOverlapMarks, closedAt, closedAt + ACTIVE_WINDOW_MAX_AGE_MS);
+      return { paths: [...overlap.paths], attributionUnavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_OVERFLOW_REASON };
+    }
   });
 }
 
@@ -209,6 +241,8 @@ function validStoredSnapshot(value, toolUseId) {
     && value.schemaVersion === SNAPSHOT_SCHEMA && value.toolUseId === toolUseId
     && Array.isArray(value.hintedPaths) && value.hintedPaths.every((path) => typeof path === "string")
     && (!Object.hasOwn(value, "overlapped") || typeof value.overlapped === "boolean")
+    && (!Object.hasOwn(value, "attributionUnavailable") || typeof value.attributionUnavailable === "boolean")
+    && (!Object.hasOwn(value, "attributionUnavailableReason") || typeof value.attributionUnavailableReason === "string")
     && (!Object.hasOwn(value, "terminalReason") || typeof value.terminalReason === "string")
     && value.entries && typeof value.entries === "object" && !Array.isArray(value.entries);
 }
@@ -277,13 +311,36 @@ export function takePreSnapshot({ identity, toolUseId } = {}) {
       found: true,
       hintedPaths: parsed.hintedPaths,
       overlapped: parsed.overlapped === true,
+      attributionUnavailable: parsed.attributionUnavailable === true,
+      attributionUnavailableReason: parsed.attributionUnavailableReason,
       terminalReason: parsed.terminalReason,
       preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
     };
   });
 }
 
+function markPreSnapshotOverlappedLocked(identity, safeId) {
+  const path = snapshotPath(identity, safeId);
+  let parsed = null;
+  try {
+    const stat = statSync(path);
+    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return { found: false, overlapped: false };
+    if (/snapshot exceeds/u.test(error?.message)) throw error;
+  }
+  if (!validStoredSnapshot(parsed, safeId)) return { found: false, overlapped: false };
+  if (parsed.overlapped !== true) writeDurableAtomic(path, JSON.stringify({ ...parsed, overlapped: true }));
+  return { found: true, overlapped: true };
+}
+
 export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
+  const safeId = streamingDiffToolUseId(toolUseId);
+  return withRepoStateLock(identity.logicalRepoRoot, () => markPreSnapshotOverlappedLocked(identity, safeId));
+}
+
+export function markPreSnapshotAttributionUnavailable({ identity, toolUseId, reason } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   return withRepoStateLock(identity.logicalRepoRoot, () => {
     const path = snapshotPath(identity, safeId);
@@ -293,12 +350,14 @@ export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
       if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
       parsed = JSON.parse(readFileSync(path, "utf8"));
     } catch (error) {
-      if (error?.code === "ENOENT") return { found: false, overlapped: false };
+      if (error?.code === "ENOENT") return { found: false, attributionUnavailable: false };
       if (/snapshot exceeds/u.test(error?.message)) throw error;
     }
-    if (!validStoredSnapshot(parsed, safeId)) return { found: false, overlapped: false };
-    if (parsed.overlapped !== true) writeDurableAtomic(path, JSON.stringify({ ...parsed, overlapped: true }));
-    return { found: true, overlapped: true };
+    if (!validStoredSnapshot(parsed, safeId)) return { found: false, attributionUnavailable: false };
+    if (parsed.attributionUnavailable !== true || parsed.attributionUnavailableReason !== reason) {
+      writeDurableAtomic(path, JSON.stringify({ ...parsed, attributionUnavailable: true, ...(typeof reason === "string" ? { attributionUnavailableReason: reason } : {}) }));
+    }
+    return { found: true, attributionUnavailable: true };
   });
 }
 

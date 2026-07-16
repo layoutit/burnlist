@@ -118,6 +118,20 @@ test("a failed overlapping post remains unattributed after its live windows expi
   } finally { context.cleanup(); }
 });
 
+test("the later peer remains unattributed after its active window expires", () => {
+  const context = fixture();
+  try {
+    captureStreamingDiff({ cwd: context.root, session: "first-peer", toolUseId: "first-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    captureStreamingDiff({ cwd: context.root, session: "second-peer", toolUseId: "second-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    captureStreamingDiff({ cwd: context.root, session: "first-peer", toolUseId: "first-tool", phase: "post", hintedPaths: ["target.txt"] });
+    rmSync(join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json"));
+    const second = captureStreamingDiff({ cwd: context.root, session: "second-peer", toolUseId: "second-tool", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(second.card.status, "partial");
+    assert.match(second.card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+  } finally { context.cleanup(); }
+});
+
 test("overlapping calls in one session are unattributed by tool-use id", () => {
   const context = fixture();
   try {
@@ -156,6 +170,38 @@ test("an active-window registry overflow makes the current capture unattributed"
     assert.equal(result.card.status, "partial");
     assert.match(result.card.partialReason, /attribution unavailable: too many concurrent windows/u);
     assert.deepEqual(result.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "attribution unavailable: too many concurrent windows" } }]);
+  } finally { context.cleanup(); }
+});
+
+test("an active-window lock timeout degrades a pre/post capture without throwing", () => {
+  const context = fixture();
+  try {
+    const locked = () => {
+      const error = new Error("busy");
+      error.code = "ELOCKED";
+      throw error;
+    };
+    const pre = captureStreamingDiff({
+      cwd: context.root, session: "locked", toolUseId: "locked-tool", phase: "pre", hintedPaths: ["target.txt"],
+      activeWindows: { registerActiveWindows: locked },
+    });
+    assert.equal(pre.activeWindow.attributionUnavailable, true);
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const post = captureStreamingDiff({ cwd: context.root, session: "locked", toolUseId: "locked-tool", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(post.card.status, "partial");
+    assert.match(post.card.partialReason, /active-window lock timed out/u);
+  } finally { context.cleanup(); }
+});
+
+test("a corrupt active-window registry makes the terminal capture partial", () => {
+  const context = fixture();
+  try {
+    captureStreamingDiff({ cwd: context.root, session: "corrupt", toolUseId: "corrupt-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    writeFileSync(join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json"), "{ broken");
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const result = captureStreamingDiff({ cwd: context.root, session: "corrupt", toolUseId: "corrupt-tool", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(result.card.status, "partial");
+    assert.match(result.card.partialReason, /active-window registry unreadable/u);
   } finally { context.cleanup(); }
 });
 

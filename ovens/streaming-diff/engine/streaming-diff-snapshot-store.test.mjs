@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import { captureCard, STREAMING_DIFF_ABSENT, STREAMING_DIFF_MISSING } from "./st
 import { resolveStreamingDiffIdentity, snapshotDirectory } from "./streaming-diff-feed.mjs";
 import {
   closeActiveWindows,
+  inspectActiveWindowOverlap,
   registerActiveWindows,
   removePreSnapshot,
   STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES,
@@ -148,5 +149,33 @@ test("active-window registry preserves normal overlaps and flags overflow withou
     assert.ok(JSON.parse(serialized).windows.length <= STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES);
     assert.ok(Buffer.byteLength(serialized, "utf8") <= STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES);
     assert.equal(closeActiveWindows({ identity: overflow, toolUseId: "overflow-tool", closedAt: openedAt + 1_001 }).attributionUnavailable, true);
+  } finally { context.cleanup(); }
+});
+
+test("closing an overlap durably marks the peer snapshot after its window expires", () => {
+  const context = fixture();
+  try {
+    const openedAt = Date.now();
+    const first = resolveStreamingDiffIdentity({ cwd: context.root, session: "first" });
+    const second = resolveStreamingDiffIdentity({ cwd: context.root, session: "second" });
+    writePreSnapshot({ identity: first, toolUseId: "a", hintedPaths: ["shared.txt"] });
+    writePreSnapshot({ identity: second, toolUseId: "b", hintedPaths: ["shared.txt"] });
+    registerActiveWindows({ identity: first, toolUseId: "a", hintedPaths: ["shared.txt"], openedAt });
+    registerActiveWindows({ identity: second, toolUseId: "b", hintedPaths: ["shared.txt"], openedAt: openedAt + 1 });
+    closeActiveWindows({ identity: first, toolUseId: "a", closedAt: openedAt + 2 });
+    assert.equal(takePreSnapshot({ identity: second, toolUseId: "b" }).overlapped, true);
+    assert.deepEqual(inspectActiveWindowOverlap({ identity: second, toolUseId: "b", inspectedAt: openedAt + 5 * 60_000 + 2 }).paths, []);
+    assert.equal(takePreSnapshot({ identity: second, toolUseId: "b" }).overlapped, true);
+  } finally { context.cleanup(); }
+});
+
+test("a corrupt active-window registry fails closed as attribution unavailable", () => {
+  const context = fixture();
+  try {
+    const path = join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json");
+    mkdirSync(join(context.root, ".local", "burnlist"), { recursive: true });
+    writeFileSync(path, "{ broken");
+    const overlap = inspectActiveWindowOverlap({ identity: context.identity, toolUseId: "corrupt" });
+    assert.equal(overlap.attributionUnavailable, true);
   } finally { context.cleanup(); }
 });

@@ -4,7 +4,7 @@ import { captureGitCard } from "./streaming-diff-capture-git.mjs";
 import { appendCard } from "./streaming-diff-journal.mjs";
 import { ensureStreamingDiffFeed } from "./streaming-diff-ensure-feed.mjs";
 import { feedIdentity, resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
-import { closeActiveWindows, inspectActiveWindowOverlap, markPreSnapshotOverlapped, registerActiveWindows, removePreSnapshot, streamingDiffToolUseId, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
+import { closeActiveWindows, inspectActiveWindowOverlap, markPreSnapshotAttributionUnavailable, markPreSnapshotOverlapped, registerActiveWindows, removePreSnapshot, streamingDiffToolUseId, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
 
 const TERMINAL_REASONS = Object.freeze({
   "adapter-incomplete": "hook adapter mapping was incomplete",
@@ -42,9 +42,20 @@ function appendWithRetry(append, feedDir, card, options) {
   throw new Error("streaming diff journal retry unexpectedly exhausted");
 }
 
-function markUnattributedOverlap(card, paths, attributionUnavailable, overlapDetected) {
+const ACTIVE_WINDOW_LOCK_REASON = "attribution unavailable: active-window lock timed out";
+
+function activeWindowOperation(operation) {
+  try {
+    return operation();
+  } catch (error) {
+    if (error?.code !== "ELOCKED") throw error;
+    return { paths: [], attributionUnavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_LOCK_REASON };
+  }
+}
+
+function markUnattributedOverlap(card, paths, attributionUnavailable, overlapDetected, attributionUnavailableReason) {
   if (!paths.length && !attributionUnavailable && !overlapDetected) return card;
-  const reason = attributionUnavailable ? "attribution unavailable: too many concurrent windows" : "overlapping concurrent edit (unattributed)";
+  const reason = attributionUnavailable ? attributionUnavailableReason ?? "attribution unavailable: too many concurrent windows" : "overlapping concurrent edit (unattributed)";
   const overlapped = new Set(attributionUnavailable ? card.files.map((file) => file.path) : paths);
   return {
     ...card,
@@ -56,16 +67,20 @@ function markUnattributedOverlap(card, paths, attributionUnavailable, overlapDet
   };
 }
 
-export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: rawToolUseId, phase, hintedPaths = [], terminalReason: terminalReasonCode, policy, append = appendCard } = {}) {
+export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: rawToolUseId, phase, hintedPaths = [], terminalReason: terminalReasonCode, policy, append = appendCard, activeWindows } = {}) {
   if (phase !== "pre" && phase !== "post") throw new Error("streaming diff capture phase must be pre or post");
   const identity = resolveStreamingDiffIdentity({ cwd, session });
   const safeToolUseId = streamingDiffToolUseId(rawToolUseId);
   const journalOptions = { identity: feedIdentity(identity) };
+  const windows = activeWindows ?? { closeActiveWindows, inspectActiveWindowOverlap, registerActiveWindows };
   if (phase === "pre") {
     ensureStreamingDiffFeed({ cwd, session });
     const marker = appendWithRetry(append, identity.feedDir, attemptCard(safeToolUseId, terminalReasonCode), { ...journalOptions, dedupeToolUseId: true });
     const snapshot = writePreSnapshot({ identity, toolUseId: safeToolUseId, hintedPaths, terminalReason: terminalReason(terminalReasonCode), policy });
-    const activeWindow = registerActiveWindows({ identity, toolUseId: safeToolUseId, hintedPaths: snapshot.hintedPaths });
+    const activeWindow = activeWindowOperation(() => windows.registerActiveWindows({ identity, toolUseId: safeToolUseId, hintedPaths: snapshot.hintedPaths }));
+    if (activeWindow.attributionUnavailable) {
+      activeWindowOperation(() => markPreSnapshotAttributionUnavailable({ identity, toolUseId: safeToolUseId, reason: activeWindow.attributionUnavailableReason }));
+    }
     return { phase, identity, marker, snapshot, activeWindow };
   }
   const snapshot = takePreSnapshot({ identity, toolUseId: safeToolUseId });
@@ -78,15 +93,26 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
     policy,
     opaqueReason: [snapshot.terminalReason, terminalReason(terminalReasonCode)].find(Boolean),
   });
-  const overlap = inspectActiveWindowOverlap({ identity, toolUseId: safeToolUseId });
+  const inspected = activeWindowOperation(() => windows.inspectActiveWindowOverlap({ identity, toolUseId: safeToolUseId }));
+  const closed = activeWindowOperation(() => windows.closeActiveWindows({ identity, toolUseId: safeToolUseId }));
+  const overlap = {
+    paths: [...new Set([...(inspected.paths ?? []), ...(closed.paths ?? [])])],
+    attributionUnavailable: inspected.attributionUnavailable || closed.attributionUnavailable,
+    attributionUnavailableReason: inspected.attributionUnavailableReason ?? closed.attributionUnavailableReason,
+  };
   const liveOverlap = overlap.paths.length > 0 || overlap.attributionUnavailable;
-  if (liveOverlap) markPreSnapshotOverlapped({ identity, toolUseId: safeToolUseId });
+  if (overlap.paths.length) markPreSnapshotOverlapped({ identity, toolUseId: safeToolUseId });
+  if (overlap.attributionUnavailable) {
+    activeWindowOperation(() => markPreSnapshotAttributionUnavailable({ identity, toolUseId: safeToolUseId, reason: overlap.attributionUnavailableReason }));
+  }
   const durableOverlap = snapshot.overlapped || liveOverlap;
+  const attributionUnavailable = snapshot.attributionUnavailable || overlap.attributionUnavailable;
   card = markUnattributedOverlap(
     card,
     overlap.paths.length ? overlap.paths : durableOverlap ? card.files.map((file) => file.path) : [],
-    overlap.attributionUnavailable,
+    attributionUnavailable,
     durableOverlap,
+    overlap.attributionUnavailableReason ?? snapshot.attributionUnavailableReason,
   );
   // A direct post invocation remains safe and useful: it establishes the
   // immutable binding/feed before the journal's first manifest append.
@@ -94,7 +120,6 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
   try {
     const appended = appendWithRetry(append, identity.feedDir, card, journalOptions);
     try {
-      closeActiveWindows({ identity, toolUseId: safeToolUseId });
       removePreSnapshot({ identity, toolUseId: safeToolUseId });
       return { phase, identity, snapshot, ...appended };
     } catch (cleanupError) {
