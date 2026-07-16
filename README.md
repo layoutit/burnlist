@@ -70,6 +70,12 @@ Projects that need worker orchestration can import `createDifferentialTestingWor
 
 See the [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) and [adapter SDK reference](skills/burnlist/references/differential-testing-adapter-sdk.md) for scenario bundles, exact sessions, telemetry, and worker interfaces.
 
+## Streaming Diff hooks
+
+`burnlist hooks install --agent codex,claude` merges local Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`; it preserves existing hook entries. The agent remains responsible for any first-run hook trust/consent prompt—Burnlist only writes configuration and never bypasses that review. `burnlist hooks status` reports whether each config is tracked (and therefore shared) or local; an already tracked config cannot be hidden with `.git/info/exclude`.
+
+Hooks use the portable `burnlist` command from `PATH`; the host resolves the platform-specific launcher.
+
 ## Command Line
 
 - `burnlist --plan <burnlist.md> --check` validates the active queue and completed ledger.

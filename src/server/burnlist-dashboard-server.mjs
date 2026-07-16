@@ -317,7 +317,7 @@ function blockedDashboardEntry(handler, error) {
   };
 }
 
-function ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBindings = resolvedOvenDataBindings() } = {}) {
+function ovenHandlerContext({ id, oven, req, res, url, binding, bindingPath, ovenDataBindings = resolvedOvenDataBindings() } = {}) {
   const cacheId = id ?? oven?.id;
   if (cacheId && !ovenHandlerCaches.has(cacheId)) ovenHandlerCaches.set(cacheId, new Map());
   return {
@@ -326,7 +326,8 @@ function ovenHandlerContext({ id, oven, req, res, url, bindingPath, ovenDataBind
     req,
     res,
     url,
-    bindingPath,
+    binding,
+    bindingPath: bindingPath ?? binding?.path,
     cache: cacheId ? ovenHandlerCaches.get(cacheId) : new Map(),
     ovenDataBindings,
     maxOvenDataBytes,
@@ -1105,18 +1106,31 @@ const server = createServer(async (req, res) => {
       const oven = findOven(id, requestedRepoKey);
       const handler = oven?.builtIn || !oven ? getOvenHandler(id) : null;
       const ovenDataBindings = resolvedOvenDataBindings();
+      if (id === "streaming-diff") {
+        const repoKeys = url.searchParams.getAll("repoKey");
+        if (repoKeys.length > 1 || (url.searchParams.has("list") && repoKeys.length !== 1)
+          || repoKeys.some((repoKey) => !/^[a-f0-9]{12}$/u.test(repoKey))) {
+          return json(res, 400, { error: url.searchParams.has("list")
+            ? "Streaming Diff list requires one lowercase 12-character hexadecimal repoKey"
+            : "repoKey must be a lowercase 12-character hexadecimal key" });
+        }
+      }
       const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
       if (!handler && !oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
       if (!binding) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
         const active = handler ?? genericJsonHandler;
-        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, bindingPath: binding.path, ovenDataBindings }));
+        const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, binding, ovenDataBindings }));
         if (response !== undefined) json(res, 200, response);
       } catch (error) {
-        json(res, Number.isInteger(error.status) ? error.status : 422, {
-          error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
-          issues: Array.isArray(error.issues) ? error.issues : undefined,
-        });
+        if (!res.headersSent) {
+          json(res, Number.isInteger(error.status) ? error.status : 422, {
+            error: error instanceof SyntaxError ? `Oven ${id} data is not valid JSON: ${error.message}` : error.message,
+            issues: Array.isArray(error.issues) ? error.issues : undefined,
+          });
+        } else {
+          res.end();
+        }
       }
       return;
     }

@@ -13,8 +13,9 @@ export function AppHeader({ section }: { section: string }) {
           <span className="dashboard-brand-name">Burnlist</span>
         </a>
         {section === "differential-testing" && <div className="dashboard-oven-title">Differential Testing</div>}
+        {section === "streaming-diff" && <div className="dashboard-oven-title">Streaming Diff</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
-          {section !== "differential-testing" && HEADER_LINKS.map((link, index) => (
+          {section !== "differential-testing" && section !== "streaming-diff" && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a aria-label={link.label} aria-current={section === link.section ? "page" : undefined} className="dashboard-primary-nav-link" href={link.href} title={link.label}>

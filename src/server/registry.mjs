@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import { linkSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { withDirectoryLock } from "./dir-lock.mjs";
 
 export const REGISTRY_SCHEMA_VERSION = 1;
-const LOCK_STALE_MS = 60_000;
 
 export class RegistryError extends Error {
   constructor(message, code) {
@@ -42,37 +42,26 @@ function validateRegistry(registry, path) {
   return registry;
 }
 
-function sleep(milliseconds) {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+function fsyncDirectory(path) {
+  const fd = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(fd); } finally { closeSync(fd); }
 }
 
-function lockHolder(lock) {
+function writeDurableAtomic(path, value) {
+  const temporary = `${path}.${randomBytes(12).toString("hex")}.tmp`;
+  let fd;
   try {
-    const holder = JSON.parse(readFileSync(lock, "utf8"));
-    return Number.isInteger(holder?.pid) && holder.pid > 0 ? holder.pid : null;
-  } catch {
-    return null;
+    fd = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
+    writeFileSync(fd, value);
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+    renameSync(temporary, path);
+    fsyncDirectory(dirname(path));
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+    rmSync(temporary, { force: true });
   }
-}
-
-function isAlive(pid) {
-  if (!pid) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return error?.code !== "ESRCH";
-  }
-}
-
-function lockIsStealable(lock) {
-  try {
-    if (Date.now() - statSync(lock).mtimeMs > LOCK_STALE_MS) return true;
-  } catch (error) {
-    if (error?.code === "ENOENT") return true;
-    throw error;
-  }
-  return !isAlive(lockHolder(lock));
 }
 
 export function readRegistry({ home = os.homedir() } = {}) {
@@ -99,66 +88,17 @@ export function writeRegistry(registry, { home = os.homedir() } = {}) {
   mkdirSync(dir, { recursive: true });
   const roots = [...new Map(registry.roots.map((entry) => [entry.root, entry])).values()]
     .sort((left, right) => left.root.localeCompare(right.root));
-  const temp = join(dir, `.roots.json.${randomBytes(12).toString("hex")}`);
-  try {
-    writeFileSync(temp, `${JSON.stringify({ schemaVersion: REGISTRY_SCHEMA_VERSION, roots })}\n`);
-    renameSync(temp, path);
-  } catch (error) {
-    rmSync(temp, { force: true });
-    throw error;
-  }
+  writeDurableAtomic(path, `${JSON.stringify({ schemaVersion: REGISTRY_SCHEMA_VERSION, roots })}\n`);
 }
 
 export function withRegistryLock({ home = os.homedir() } = {}, fn) {
   const dir = registryDir(home);
   const lock = join(dir, "roots.lock");
-  const token = randomBytes(12).toString("hex");
-  const temp = join(dir, `.lock.${token}`);
-  const stale = join(dir, `.stale.${token}`);
-  let holderPid = null;
-  mkdirSync(dir, { recursive: true });
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    let acquired = false;
-    try {
-      writeFileSync(temp, JSON.stringify({ pid: process.pid, token, createdAt: Date.now() }), { flag: "wx" });
-      try {
-        linkSync(temp, lock);
-        acquired = true;
-      } catch (error) {
-        if (error?.code !== "EEXIST") throw error;
-      } finally {
-        rmSync(temp, { force: true });
-      }
-    } catch (error) {
-      rmSync(temp, { force: true });
-      throw error;
-    }
-    if (!acquired) {
-      holderPid = lockHolder(lock);
-      if (lockIsStealable(lock)) {
-        try {
-          renameSync(lock, stale);
-        } catch (error) {
-          if (error?.code === "ENOENT") continue;
-          throw error;
-        }
-        rmSync(stale, { force: true });
-        continue;
-      }
-      sleep(20);
-      continue;
-    }
-    try {
-      return fn();
-    } finally {
-      try {
-        if (JSON.parse(readFileSync(lock, "utf8")).token === token) rmSync(lock, { force: true });
-      } catch {
-        // A replaced or removed lock must not be released by this owner.
-      }
-    }
-  }
-  throw new RegistryError(`Registry is locked by pid ${holderPid ?? "unknown"}: ${lock}`, "ELOCKED");
+  return withDirectoryLock({
+    lockPath: lock,
+    fn,
+    errorFactory: ({ holderPid, lockPath }) => new RegistryError(`Registry is locked by pid ${holderPid ?? "unknown"}: ${lockPath}`, "ELOCKED"),
+  });
 }
 
 function canonicalRoot(rootInput, { missing = false } = {}) {

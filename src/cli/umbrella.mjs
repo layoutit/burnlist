@@ -2,12 +2,16 @@ import { spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
+export const GIT_PROBE_TIMEOUT_MS = 2_000;
+
 export function gitProbe(cwd, args) {
   const result = spawnSync("git", ["-C", cwd, ...args], {
     cwd,
     encoding: "utf8",
     shell: false,
     stdio: ["ignore", "pipe", "ignore"],
+    timeout: GIT_PROBE_TIMEOUT_MS,
+    maxBuffer: 64 * 1024,
   });
   return result.status === 0 ? result.stdout.trim() : null;
 }

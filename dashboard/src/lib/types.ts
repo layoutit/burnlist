@@ -70,5 +70,11 @@ export type OvenSummary = {
 
 export type RepoSummary = { name: string; root: string; repoKey: string };
 
+export type StreamingDiffIdentity = { logicalRepoKey: string; worktreeKey: string; session: string };
+export type StreamingDiffFileKind = "modified" | "added" | "deleted" | "binary" | "denied" | "redacted" | "truncated" | "unavailable";
+export type StreamingDiffFile = { path: string; kind: StreamingDiffFileKind; diff?: string; meta?: { bytes?: number; reason?: string; redacted?: true } };
+export type StreamingDiffCard = { revId: string; toolUseId: string; ts: string; status: "captured" | "partial"; partialReason?: string; files: StreamingDiffFile[] };
+export type StreamingDiffFeed = { identity: StreamingDiffIdentity; updatedAt: string | null; href: string; repoLabel?: string };
+
 export type SelectedBurnlist = { repo?: string; repoKey?: string; id?: string; plan?: string };
 export type ProgressData = ChecklistProgressData;

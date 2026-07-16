@@ -6,3 +6,4 @@ export { DifferentialTestingPage } from "./DifferentialTesting";
 export { EmptyState } from "./EmptyState";
 export { FILTERS, Filters } from "./Filters";
 export { ProjectGroup } from "./ProjectGroup";
+export { StreamingDiff } from "./StreamingDiff";

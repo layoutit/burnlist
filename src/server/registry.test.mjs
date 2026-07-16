@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -13,6 +13,11 @@ import {
 function fixture() {
   const home = mkdtempSync(join(tmpdir(), "burnlist-registry-"));
   return { home, cleanup: () => rmSync(home, { recursive: true, force: true }) };
+}
+
+function writeV2Lock(lock, { pid, host = hostname(), token = "a".repeat(64), createdAt = Date.now() } = {}) {
+  mkdirSync(lock, { recursive: true });
+  writeFileSync(join(lock, `owner-${token}.json`), `${JSON.stringify({ version: 1, pid, hostname: host, token, createdAt })}\n`);
 }
 
 test("fresh registry reads as empty", () => {
@@ -156,8 +161,7 @@ test("a stale lock can be stolen", () => {
   const { home, cleanup } = fixture();
   const root = mkdtempSync(join(tmpdir(), "burnlist-stale-"));
   try {
-    mkdirSync(registryDir(home), { recursive: true });
-    writeFileSync(join(registryDir(home), "roots.lock"), JSON.stringify({ pid: 2147483646, token: "x" }));
+    writeV2Lock(join(registryDir(home), "roots.lock"), { pid: 2147483646 });
     assert.equal(registerRoot(root, { home }).added, true);
   } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
 });
@@ -166,21 +170,39 @@ test("a live, fresh lock is not stolen", () => {
   const { home, cleanup } = fixture();
   const root = mkdtempSync(join(tmpdir(), "burnlist-live-lock-"));
   try {
-    mkdirSync(registryDir(home), { recursive: true });
-    writeFileSync(join(registryDir(home), "roots.lock"), JSON.stringify({ pid: process.pid, token: "live" }));
+    writeV2Lock(join(registryDir(home), "roots.lock"), { pid: process.pid });
     assert.throws(() => registerRoot(root, { home }), { code: "ELOCKED" });
   } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
 });
 
-test("an old lock with a live pid can be stolen", () => {
+test("an old lock with a live pid is not stolen", () => {
   const { home, cleanup } = fixture();
   const root = mkdtempSync(join(tmpdir(), "burnlist-old-lock-"));
   try {
-    mkdirSync(registryDir(home), { recursive: true });
     const lock = join(registryDir(home), "roots.lock");
-    writeFileSync(lock, JSON.stringify({ pid: process.pid, token: "old" }));
-    const oldDate = new Date(Date.now() - 61_000);
-    utimesSync(lock, oldDate, oldDate);
+    writeV2Lock(lock, { pid: process.pid, createdAt: Date.now() - 120_000 });
+    assert.throws(() => registerRoot(root, { home }), { code: "ELOCKED" });
+  } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
+});
+
+test("old registry recovery artifacts are ignored and foreign-host locks are respected", () => {
+  const { home, cleanup } = fixture();
+  const root = mkdtempSync(join(tmpdir(), "burnlist-recovery-"));
+  try {
+    const dead = 2147483646;
+    writeV2Lock(join(registryDir(home), "roots.lock"), { pid: dead });
+    writeFileSync(join(registryDir(home), ".roots.lock.recovery"), "old artifact");
+    assert.equal(registerRoot(root, { home }).added, true);
+    writeV2Lock(join(registryDir(home), "roots.lock"), { pid: dead, host: "foreign-host", createdAt: Date.now() - 60 * 60_000 });
+    assert.throws(() => unregisterRoot(root, { home }), { code: "ELOCKED" });
+  } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
+});
+
+test("an expired same-host live registry pid is reclaimable", () => {
+  const { home, cleanup } = fixture();
+  const root = mkdtempSync(join(tmpdir(), "burnlist-reused-pid-"));
+  try {
+    writeV2Lock(join(registryDir(home), "roots.lock"), { pid: process.pid, createdAt: Date.now() - 16 * 60_000 });
     assert.equal(registerRoot(root, { home }).added, true);
   } finally { rmSync(root, { recursive: true, force: true }); cleanup(); }
 });

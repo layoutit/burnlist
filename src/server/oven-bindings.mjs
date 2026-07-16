@@ -1,7 +1,7 @@
 // Persisted bindings remain scoped to their repository; explicit --oven-data
 // bindings are global defaults. Persisted relative paths resolve per read.
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ovenId } from "../ovens/oven-contract.mjs";
 import { repoKey } from "./registry.mjs";
@@ -87,8 +87,16 @@ function writeStore(repoRoot, store) {
   const temporary = join(dir, `.bindings.json.${randomBytes(12).toString("hex")}`);
   mkdirSync(dir, { recursive: true });
   try {
-    writeFileSync(temporary, `${JSON.stringify(store, null, 2)}\n`);
+    const fd = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
+    try {
+      writeFileSync(fd, `${JSON.stringify(store, null, 2)}\n`);
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
     renameSync(temporary, path);
+    const directory = openSync(dir, constants.O_RDONLY);
+    try { fsyncSync(directory); } finally { closeSync(directory); }
   } catch (error) {
     rmSync(temporary, { force: true });
     throw error;
@@ -104,6 +112,24 @@ export function writeBinding(repoRoot, id, logicalPath, boundAt) {
     store.bindings[safeId] = { path: logicalPath, boundAt };
     writeStore(repoRoot, store);
     return { path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
+  });
+}
+
+// Producers that establish a durable discovery root must not silently replace a
+// user-selected binding. This keeps first-run setup idempotent while preserving
+// the ordinary CLI's explicit replacement behavior above.
+export function writeBindingIfAbsent(repoRoot, id, logicalPath, boundAt) {
+  const safeId = ovenId(id);
+  if (typeof logicalPath !== "string" || logicalPath.length === 0) throw new Error("Oven binding path must be a non-empty string.");
+  if (!isTimestamp(boundAt)) throw new Error("Oven binding timestamp must be a valid ISO timestamp.");
+  return withRepoStateLock(repoRoot, () => {
+    const store = mutableBindingStore(repoRoot);
+    if (Object.hasOwn(store.bindings, safeId)) {
+      return { created: false, path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
+    }
+    store.bindings[safeId] = { path: logicalPath, boundAt };
+    writeStore(repoRoot, store);
+    return { created: true, path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
   });
 }
 
