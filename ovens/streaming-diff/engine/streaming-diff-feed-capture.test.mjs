@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { captureStreamingDiff } from "./streaming-diff-feed-capture.mjs";
 import { resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
-import { registerActiveWindows, STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES } from "./streaming-diff-snapshot-store.mjs";
+import { markPreSnapshotRegistered, registerActiveWindows, STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
 import { readJournal } from "./streaming-diff-journal.mjs";
 
 function git(cwd, ...args) {
@@ -173,10 +173,14 @@ test("an active-window registry overflow makes the current capture unattributed"
   } finally { context.cleanup(); }
 });
 
-test("an active-window lock timeout degrades a pre/post capture without throwing", () => {
+test("a registration lock timeout preserves the pre-written pessimistic snapshot marker", () => {
   const context = fixture();
   try {
+    let persistedMarker;
     const locked = () => {
+      persistedMarker = takePreSnapshot({
+        identity: resolveStreamingDiffIdentity({ cwd: context.root, session: "locked" }), toolUseId: "locked-tool",
+      });
       const error = new Error("busy");
       error.code = "ELOCKED";
       throw error;
@@ -186,10 +190,14 @@ test("an active-window lock timeout degrades a pre/post capture without throwing
       activeWindows: { registerActiveWindows: locked },
     });
     assert.equal(pre.activeWindow.attributionUnavailable, true);
+    assert.equal(persistedMarker.found, true);
+    assert.equal(persistedMarker.registered, false);
+    assert.equal(persistedMarker.attributionUnavailable, true);
     writeFileSync(join(context.root, "target.txt"), "after\n");
     const post = captureStreamingDiff({ cwd: context.root, session: "locked", toolUseId: "locked-tool", phase: "post", hintedPaths: ["target.txt"] });
     assert.equal(post.card.status, "partial");
     assert.match(post.card.partialReason, /active-window lock timed out/u);
+    assert.notEqual(post.card.status, "captured");
   } finally { context.cleanup(); }
 });
 
@@ -260,6 +268,45 @@ test("missing pre-state is an honest partial card rather than a fabricated basel
     assert.equal(result.card.status, "partial");
     assert.match(result.card.partialReason, /snapshot unavailable/u);
     assert.equal(result.card.files[0].kind, "unavailable");
+  } finally { context.cleanup(); }
+});
+
+test("missing or corrupt pre-snapshots make the terminal card partial", () => {
+  const context = fixture();
+  try {
+    for (const [session, corrupt] of [["missing-snapshot", false], ["corrupt-snapshot", true]]) {
+      const pre = captureStreamingDiff({ cwd: context.root, session, toolUseId: "snapshot-tool", phase: "pre", hintedPaths: ["target.txt"] });
+      if (corrupt) writeFileSync(pre.snapshot.path, "{ broken");
+      else rmSync(pre.snapshot.path);
+      writeFileSync(join(context.root, "target.txt"), `${session}\n`);
+      const result = captureStreamingDiff({ cwd: context.root, session, toolUseId: "snapshot-tool", phase: "post", hintedPaths: ["target.txt"] });
+      assert.equal(result.card.status, "partial");
+      assert.match(result.card.partialReason, /pre-snapshot unreadable/u);
+      assert.notEqual(result.card.status, "captured");
+    }
+  } finally { context.cleanup(); }
+});
+
+test("a snapshot clear only permits captured attribution after its replacement succeeds", () => {
+  const context = fixture();
+  try {
+    const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "clear-atomic" });
+    writePreSnapshot({ identity, toolUseId: "clear-tool", hintedPaths: ["target.txt"] });
+    assert.throws(() => markPreSnapshotRegistered({
+      identity, toolUseId: "clear-tool", atomicOptions: { fsyncTemporary() { throw new Error("temporary fsync failed"); } },
+    }), /temporary fsync failed/u);
+    assert.equal(takePreSnapshot({ identity, toolUseId: "clear-tool" }).registered, false);
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const failed = captureStreamingDiff({ cwd: context.root, session: "clear-atomic", toolUseId: "clear-tool", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(failed.card.status, "partial");
+
+    writePreSnapshot({ identity, toolUseId: "directory-fsync", hintedPaths: ["target.txt"] });
+    assert.doesNotThrow(() => markPreSnapshotRegistered({
+      identity, toolUseId: "directory-fsync", atomicOptions: { fsyncParent() { throw new Error("directory fsync failed"); } },
+    }));
+    assert.equal(takePreSnapshot({ identity, toolUseId: "directory-fsync" }).registered, true);
+    const committed = captureStreamingDiff({ cwd: context.root, session: "clear-atomic", toolUseId: "directory-fsync", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(committed.card.status, "captured");
   } finally { context.cleanup(); }
 });
 

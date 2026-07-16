@@ -18,6 +18,11 @@ function writeV2(lock, { pid = process.pid, host = hostname(), value = token("a"
   writeFileSync(join(lock, `owner-${value}.json`), `${JSON.stringify({ version: 1, pid, hostname: host, token: value, createdAt })}\n`);
 }
 
+function writeLegacy(lock, { pid = process.pid, value = "a".repeat(24), createdAt = Date.now() } = {}) {
+  mkdirSync(dirname(lock), { recursive: true });
+  writeFileSync(lock, JSON.stringify({ pid, token: value, createdAt }));
+}
+
 function acquire(lock, fn = () => "ok", adapters = {}, hooks = {}) {
   return withDirectoryLock({
     lockPath: lock, fn, adapters, hooks,
@@ -36,12 +41,37 @@ test("valid directory records acquire, release, and use the 64-hex owner name", 
   });
 });
 
-test("legacy files migrate through the ENOTDIR branch", (t) => {
+test("stale v0.0.2 regular-file locks are reclaimed but fresh live ones are respected", (t) => {
   forBoth(t, "legacy migration", (lock) => {
-    mkdirSync(dirname(lock), { recursive: true });
-    writeFileSync(lock, JSON.stringify({ pid: 2147483646, hostname: hostname(), token: "a".repeat(24), createdAt: Date.now() }));
-    assert.equal(acquire(lock), "ok");
-    assert.equal(existsSync(lock), false);
+    const now = 2_000_000;
+    const dead = () => { throw Object.assign(new Error("gone"), { code: "ESRCH" }); };
+    writeLegacy(lock, { pid: 2147483646, createdAt: now });
+    assert.equal(acquire(lock, () => "dead reclaimed", { now: () => now, pidProbe: dead, sleep: () => {} }), "dead reclaimed");
+
+    writeLegacy(lock, { createdAt: now - LOCK_MAX_AGE_MS });
+    assert.equal(acquire(lock, () => "aged reclaimed", { now: () => now, pidProbe: () => {}, sleep: () => {} }), "aged reclaimed");
+
+    writeLegacy(lock, { createdAt: now - LOCK_MAX_AGE_MS + 1 });
+    assert.throws(
+      () => acquire(lock, () => assert.fail("fresh live legacy lock must be respected"), { now: () => now, pidProbe: () => {}, sleep: () => {} }),
+      { code: "ELOCKED" },
+    );
+  });
+});
+
+test("legacy reclaim only removes the exact stale record it inspected", (t) => {
+  forBoth(t, "legacy conditional reclaim", (lock) => {
+    const now = 2_000_000;
+    const staleToken = "a".repeat(24);
+    const freshToken = "b".repeat(24);
+    const fresh = JSON.stringify({ pid: process.pid, token: freshToken, createdAt: now });
+    writeLegacy(lock, { pid: 2147483646, value: staleToken, createdAt: now - LOCK_MAX_AGE_MS });
+    assert.throws(() => acquire(lock, () => assert.fail("a replacement lock must not be stolen"), {
+      now: () => now, pidProbe: () => {}, sleep: () => {},
+    }, {
+      afterStaleJudgment({ legacy }) { if (legacy) writeFileSync(lock, fresh); },
+    }), { code: "ELOCKED" });
+    assert.equal(readFileSync(lock, "utf8"), fresh);
   });
 });
 

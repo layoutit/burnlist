@@ -109,7 +109,7 @@ test("an invalid UTF-8 pre-snapshot stays captured binary metadata after a valid
   } finally { context.cleanup(); }
 });
 
-test("snapshot records enforce a serialized byte cap before write and before parse", () => {
+test("snapshot records enforce a serialized byte cap before write and fail closed when unreadable", () => {
   const context = fixture();
   try {
     writeFileSync(join(context.root, "one.txt"), "a".repeat(256 * 1024));
@@ -123,7 +123,9 @@ test("snapshot records enforce a serialized byte cap before write and before par
     const written = writePreSnapshot({ identity: context.identity, toolUseId: "small", hintedPaths: [] });
     writeFileSync(written.path, "x".repeat(600 * 1024));
     assert.equal(statSync(written.path).size > 512 * 1024, true);
-    assert.throws(() => takePreSnapshot({ identity: context.identity, toolUseId: "small" }), /snapshot exceeds/u);
+    const unreadable = takePreSnapshot({ identity: context.identity, toolUseId: "small" });
+    assert.equal(unreadable.found, false);
+    assert.equal(unreadable.attributionUnavailable, true);
   } finally { context.cleanup(); }
 });
 

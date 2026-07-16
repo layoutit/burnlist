@@ -82,12 +82,17 @@ function validV2(record, token) {
 function legacyRecord(record) {
   if (!record || Object.hasOwn(record, "version") || !safePid(record.pid) || !legacyTokenPattern.test(record.token)
     || !safeTime(record.createdAt)) return null;
-  if (record.hostname === undefined || record.hostname === "") return "missing-host";
-  return typeof record.hostname === "string" ? record : null;
+  // §7/2.3: v0.0.2 used a same-machine link()-based regular-file lock. Its
+  // complete record is { pid, token, createdAt }; hostname was never stored.
+  return !Object.hasOwn(record, "hostname") ? record : null;
 }
 
 function stale(record, now, hostname, pidProbe) {
   if (record.hostname !== hostname) return false;
+  return staleSameHost(record, now, pidProbe);
+}
+
+function staleSameHost(record, now, pidProbe) {
   let live = true;
   try { pidProbe(record.pid); } catch (error) { live = error?.code !== "ESRCH"; }
   return !live || now - record.createdAt >= LOCK_MAX_AGE_MS;
@@ -127,14 +132,15 @@ function inspectCanonical(fs, lockPath, { now, hostname, pidProbe, readFile }) {
     return { kind: "v2", record, token: match[1], stale: stale(record, inspectionNow, hostname, pidProbe) };
   }
   if (!stat.isFile()) return { kind: "corrupt" };
-  let record;
-  try { record = legacyRecord(parseRecord(readFile(lockPath, "utf8"))); } catch (error) {
+  let text;
+  try { text = readFile(lockPath, "utf8"); } catch (error) {
     if (ignored(error)) return { kind: "missing" };
     throw error;
   }
+  const record = legacyRecord(parseRecord(text));
   if (!record) return { kind: "corrupt" };
-  if (record === "missing-host") return { kind: "legacy-held" };
-  return { kind: "legacy", record, stale: stale(record, inspectionNow, hostname, pidProbe) };
+  // Only v2 directory records use hostname as a cross-host safety boundary.
+  return { kind: "legacy", record, text, stale: staleSameHost(record, inspectionNow, pidProbe) };
 }
 
 function buildCandidate(fs, lockPath, context) {
@@ -193,7 +199,14 @@ function release(fs, lockPath, token, { logger, hooks }) {
   try { fs.rmdirSync(lockPath); } catch (error) { if (!harmlessRmdir(error)) log(logger, error); }
 }
 
-function reclaimLegacy(fs, lockPath) {
+function reclaimLegacy(fs, lockPath, { record, text }, readFile) {
+  let stat;
+  try { stat = fs.lstatSync(lockPath); } catch (error) { if (ignored(error)) return; throw error; }
+  if (!stat.isFile()) return;
+  let current;
+  try { current = readFile(lockPath, "utf8"); } catch (error) { if (ignored(error)) return; throw error; }
+  const currentRecord = legacyRecord(parseRecord(current));
+  if (current !== text || !currentRecord || currentRecord.token !== record.token) return;
   try { fs.unlinkSync(lockPath); } catch (error) {
     if (ignored(error) || error?.code === "EISDIR") return;
     if (error?.code !== "EPERM") throw error;
@@ -289,7 +302,7 @@ export function withDirectoryLock({ lockPath, fn, errorFactory, adapters = {}, h
         try { fs.unlinkSync(join(lockPath, ownerName(observed.token))); } catch (unlinkError) { if (!ignored(unlinkError)) { removeCandidate(fs, candidate.candidate, context); throw unlinkError; } }
         try { hooks.afterStaleOwnerUnlink?.({ attempt, token: observed.token }); } catch (hookError) { removeCandidate(fs, candidate.candidate, context); throw hookError; }
         try { fs.rmdirSync(lockPath); } catch (rmdirError) { if (!harmlessRmdir(rmdirError)) { removeCandidate(fs, candidate.candidate, context); throw rmdirError; } }
-      } else reclaimLegacy(fs, lockPath);
+      } else reclaimLegacy(fs, lockPath, observed, context.readFile);
     }
     if (attempt < MAX_ATTEMPTS) context.sleep(RETRY_DELAY_MS);
   }

@@ -1,10 +1,10 @@
-import { randomBytes } from "node:crypto";
-import { closeSync, constants, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { createGitCaptureIo } from "./streaming-diff-capture-git.mjs";
 import { captureLimits, isBinaryContent, redact, STREAMING_DIFF_ABSENT, STREAMING_DIFF_CAPTURE_LIMITS, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
 import { identifierPathComponent, snapshotDirectory, streamingDiffIdentifier } from "./streaming-diff-feed.mjs";
+import { fsyncDirectory, writeDurableAtomic } from "./streaming-diff-durable-write.mjs";
 import { containedJoin, withRepoStateLock } from "../../../src/server/repo-state.mjs";
 
 const SNAPSHOT_SCHEMA = 1;
@@ -35,28 +35,6 @@ function hardDenied(path) {
       || /^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$/u.test(name)
       || /\.(?:pem|p12|pfx|key|crt)$/u.test(name);
   });
-}
-
-function fsyncDirectory(path) {
-  const fd = openSync(path, constants.O_RDONLY);
-  try { fsyncSync(fd); } finally { closeSync(fd); }
-}
-
-function writeDurableAtomic(path, value) {
-  const temporary = `${path}.${randomBytes(8).toString("hex")}.tmp`;
-  let fd;
-  try {
-    fd = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
-    writeFileSync(fd, value);
-    fsyncSync(fd);
-    closeSync(fd);
-    fd = undefined;
-    renameSync(temporary, path);
-    fsyncDirectory(dirname(path));
-  } finally {
-    if (fd !== undefined) closeSync(fd);
-    rmSync(temporary, { force: true });
-  }
 }
 
 function snapshotPath(identity, toolUseId) {
@@ -240,6 +218,7 @@ function validStoredSnapshot(value, toolUseId) {
   return value && typeof value === "object" && !Array.isArray(value)
     && value.schemaVersion === SNAPSHOT_SCHEMA && value.toolUseId === toolUseId
     && Array.isArray(value.hintedPaths) && value.hintedPaths.every((path) => typeof path === "string")
+    && (!Object.hasOwn(value, "registered") || typeof value.registered === "boolean")
     && (!Object.hasOwn(value, "overlapped") || typeof value.overlapped === "boolean")
     && (!Object.hasOwn(value, "attributionUnavailable") || typeof value.attributionUnavailable === "boolean")
     && (!Object.hasOwn(value, "attributionUnavailableReason") || typeof value.attributionUnavailableReason === "string")
@@ -276,47 +255,55 @@ export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], termin
     schemaVersion: SNAPSHOT_SCHEMA,
     toolUseId: safeId,
     hintedPaths: safeHints,
+    // Fail closed until active-window registration has completed. This record
+    // is per session/tool use and is persisted independently of that registry.
+    registered: false,
     overlapped: false,
+    attributionUnavailable: true,
     ...(terminalReasons.has(terminalReason) ? { terminalReason } : {}),
     entries,
   };
   const serialized = JSON.stringify(record);
   if (Buffer.byteLength(serialized, "utf8") > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-  return withRepoStateLock(identity.logicalRepoRoot, () => {
-    const dir = snapshotDirectory(identity);
-    mkdirSync(dir, { recursive: true, mode: 0o700 });
-    writeDurableAtomic(snapshotPath(identity, safeId), serialized);
-    return { path: snapshotPath(identity, safeId), hintedPaths: record.hintedPaths };
-  });
+  const dir = snapshotDirectory(identity);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  writeDurableAtomic(snapshotPath(identity, safeId), serialized);
+  return { path: snapshotPath(identity, safeId), hintedPaths: record.hintedPaths };
 }
 
 // A post hook reads this immutable pre-state before publication. It is deleted
 // only after a durable terminal card, so a failed append can safely retry.
 export function takePreSnapshot({ identity, toolUseId } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  return withRepoStateLock(identity.logicalRepoRoot, () => {
-    const path = snapshotPath(identity, safeId);
-    let parsed = null;
-    try {
-      const stat = statSync(path);
-      if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-      parsed = JSON.parse(readFileSync(path, "utf8"));
-    } catch (error) {
-      if (error?.code === "ENOENT") return { found: false, hintedPaths: [], preSnapshot: new Map() };
-      if (/snapshot exceeds/u.test(error?.message)) throw error;
-      parsed = null;
-    }
-    if (!validStoredSnapshot(parsed, safeId)) return { found: false, hintedPaths: [], preSnapshot: new Map() };
-    return {
-      found: true,
-      hintedPaths: parsed.hintedPaths,
-      overlapped: parsed.overlapped === true,
-      attributionUnavailable: parsed.attributionUnavailable === true,
-      attributionUnavailableReason: parsed.attributionUnavailableReason,
-      terminalReason: parsed.terminalReason,
-      preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
-    };
-  });
+  const path = snapshotPath(identity, safeId);
+  let parsed = null;
+  try {
+    const stat = statSync(path);
+    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch { return unavailableSnapshot(); }
+  if (!validStoredSnapshot(parsed, safeId)) return unavailableSnapshot();
+  return {
+    found: true,
+    hintedPaths: parsed.hintedPaths,
+    registered: parsed.registered === true,
+    overlapped: parsed.overlapped === true,
+    attributionUnavailable: parsed.attributionUnavailable === true,
+    attributionUnavailableReason: parsed.attributionUnavailableReason,
+    terminalReason: parsed.terminalReason,
+    preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
+  };
+}
+
+function unavailableSnapshot() {
+  return {
+    found: false,
+    hintedPaths: [],
+    registered: false,
+    attributionUnavailable: true,
+    attributionUnavailableReason: "attribution unavailable: pre-snapshot unreadable",
+    preSnapshot: new Map(),
+  };
 }
 
 function markPreSnapshotOverlappedLocked(identity, safeId) {
@@ -337,35 +324,52 @@ function markPreSnapshotOverlappedLocked(identity, safeId) {
 
 export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  return withRepoStateLock(identity.logicalRepoRoot, () => markPreSnapshotOverlappedLocked(identity, safeId));
+  return markPreSnapshotOverlappedLocked(identity, safeId);
 }
 
 export function markPreSnapshotAttributionUnavailable({ identity, toolUseId, reason } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  return withRepoStateLock(identity.logicalRepoRoot, () => {
-    const path = snapshotPath(identity, safeId);
-    let parsed = null;
-    try {
-      const stat = statSync(path);
-      if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-      parsed = JSON.parse(readFileSync(path, "utf8"));
-    } catch (error) {
-      if (error?.code === "ENOENT") return { found: false, attributionUnavailable: false };
-      if (/snapshot exceeds/u.test(error?.message)) throw error;
-    }
-    if (!validStoredSnapshot(parsed, safeId)) return { found: false, attributionUnavailable: false };
-    if (parsed.attributionUnavailable !== true || parsed.attributionUnavailableReason !== reason) {
-      writeDurableAtomic(path, JSON.stringify({ ...parsed, attributionUnavailable: true, ...(typeof reason === "string" ? { attributionUnavailableReason: reason } : {}) }));
-    }
-    return { found: true, attributionUnavailable: true };
-  });
+  const path = snapshotPath(identity, safeId);
+  let parsed = null;
+  try {
+    const stat = statSync(path);
+    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return { found: false, attributionUnavailable: false };
+    if (/snapshot exceeds/u.test(error?.message)) throw error;
+  }
+  if (!validStoredSnapshot(parsed, safeId)) return { found: false, attributionUnavailable: false };
+  if (parsed.attributionUnavailable !== true || parsed.attributionUnavailableReason !== reason) {
+    writeDurableAtomic(path, JSON.stringify({ ...parsed, attributionUnavailable: true, ...(typeof reason === "string" ? { attributionUnavailableReason: reason } : {}) }));
+  }
+  return { found: true, attributionUnavailable: true };
+}
+
+export function markPreSnapshotRegistered({ identity, toolUseId, overlapped = false, atomicOptions } = {}) {
+  const safeId = streamingDiffToolUseId(toolUseId);
+  const path = snapshotPath(identity, safeId);
+  let parsed = null;
+  try {
+    const stat = statSync(path);
+    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
+    parsed = JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return { found: false, registered: false };
+    if (/snapshot exceeds/u.test(error?.message)) throw error;
+  }
+  if (!validStoredSnapshot(parsed, safeId)) return { found: false, registered: false };
+  const { attributionUnavailable, attributionUnavailableReason, ...registered } = parsed;
+  const next = { ...registered, registered: true, overlapped: parsed.overlapped === true || overlapped === true };
+  if (parsed.registered !== true || parsed.attributionUnavailable === true || next.overlapped !== parsed.overlapped) {
+    writeDurableAtomic(path, JSON.stringify(next), atomicOptions);
+  }
+  return { found: true, registered: true, overlapped: next.overlapped };
 }
 
 export function removePreSnapshot({ identity, toolUseId } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  return withRepoStateLock(identity.logicalRepoRoot, () => {
-    const path = snapshotPath(identity, safeId);
-    rmSync(path, { force: true });
-    try { fsyncDirectory(dirname(path)); } catch (error) { if (error?.code !== "ENOENT") throw error; }
-  });
+  const path = snapshotPath(identity, safeId);
+  rmSync(path, { force: true });
+  try { fsyncDirectory(dirname(path)); } catch (error) { if (error?.code !== "ENOENT") throw error; }
 }
