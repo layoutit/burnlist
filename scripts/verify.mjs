@@ -238,7 +238,7 @@ for (const file of jsFiles) {
 
 assertSourceIncludes("dashboard/src/App.tsx", ">Ovens</h1>", "Dashboard page is missing.");
 assertSourceIncludes("dashboard/src/App.tsx", "<ChecklistDashboard", "Checklist Oven is not using the canonical React dashboard.");
-for (const surface of ["ProgressPanel", "Timeline", "Target", "Log", "RepoGraph", "Changes"]) {
+for (const surface of ["ChecklistKpis", "ProgressPanel", "ProgressLedger", "EventCardList"]) {
   assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashboard.tsx", `function ${surface}`, `Checklist dashboard is missing ${surface}.`);
 }
 assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashboard.tsx", "ResizeObserver", "Checklist progress chart does not follow its rendered width.");
