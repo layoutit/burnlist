@@ -14,6 +14,7 @@ export const STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES = 128;
 export const STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES = 64 * 1024;
 const ACTIVE_WINDOW_OVERFLOW_REASON = "attribution unavailable: too many concurrent windows";
 const ACTIVE_WINDOW_READ_ERROR_REASON = "attribution unavailable: active-window registry unreadable";
+const ACTIVE_WINDOW_EXPIRED_REASON = "attribution unavailable: active window expired before close";
 export const STREAMING_DIFF_SNAPSHOT_MAX_BYTES = 512 * 1024;
 const terminalReasons = new Set(["tool failed", "path hints truncated", "hook adapter mapping was incomplete", "hook payload exceeded byte limit", "hook payload read timed out"]);
 
@@ -77,7 +78,7 @@ function readActiveWindows(path, now) {
       return { windows: [], attributionUnavailableUntil: 0, unavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_READ_ERROR_REASON };
     }
     return {
-      windows: stored.windows.filter((window) => window.openedAt <= now && window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS),
+      windows: stored.windows.filter((window) => window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS),
       attributionUnavailableUntil: Number.isFinite(stored.attributionUnavailableUntil) && stored.attributionUnavailableUntil > now
         ? stored.attributionUnavailableUntil : 0,
     };
@@ -97,7 +98,7 @@ function activeWindowsPayload(windows, attributionUnavailableUntil = 0) {
 
 function pruneActiveWindows(windows, now) {
   return windows
-    .filter((window) => window.openedAt <= now && window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS)
+    .filter((window) => window.openedAt >= now - ACTIVE_WINDOW_MAX_AGE_MS)
     .sort((left, right) => left.openedAt - right.openedAt);
 }
 
@@ -119,26 +120,27 @@ function saveActiveWindows(path, windows, now, attributionUnavailableUntil = 0) 
 
 // The registry deliberately lives under each physical worktree. Sessions from
 // separate worktrees are isolated and can therefore be attributed normally.
-export function registerActiveWindows({ identity, toolUseId, hintedPaths = [], openedAt = Date.now() } = {}) {
+export function registerActiveWindows({ identity, toolUseId, hintedPaths = [], openedAt } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   const paths = [...new Set(hintedPaths.filter((path) => typeof path === "string"))];
   return withRepoStateLock(identity.worktreeRoot, () => {
+    const now = Number.isFinite(openedAt) ? openedAt : Date.now();
     const path = activeWindowPath(identity);
-    const registry = readActiveWindows(path, openedAt);
+    const registry = readActiveWindows(path, now);
     if (registry.unavailable) {
-      return { path, openedAt, attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
+      return { path, openedAt: now, attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
     }
     const windows = registry.windows;
     let attributionUnavailableUntil = registry.attributionUnavailableUntil;
     for (const hintedPath of paths) {
       if (!windows.some((window) => window.session === identity.session && window.toolUseId === safeId && window.path === hintedPath)) {
-        const window = { session: identity.session, toolUseId: safeId, path: hintedPath, openedAt };
+        const window = { session: identity.session, toolUseId: safeId, path: hintedPath, openedAt: now };
         if (activeWindowsFit([...windows, window], attributionUnavailableUntil)) windows.push(window);
-        else attributionUnavailableUntil = Math.max(attributionUnavailableUntil, openedAt + ACTIVE_WINDOW_MAX_AGE_MS);
+        else attributionUnavailableUntil = Math.max(attributionUnavailableUntil, now + ACTIVE_WINDOW_MAX_AGE_MS);
       }
     }
-    saveActiveWindows(path, windows, openedAt, attributionUnavailableUntil);
-    return { path, openedAt, attributionUnavailable: attributionUnavailableUntil > openedAt };
+    saveActiveWindows(path, windows, now, attributionUnavailableUntil);
+    return { path, openedAt: now, attributionUnavailable: attributionUnavailableUntil > now };
   });
 }
 
@@ -154,25 +156,27 @@ function activeWindowOverlap(windows, identity, toolUseId) {
   return { mine, paths };
 }
 
-export function inspectActiveWindowOverlap({ identity, toolUseId, inspectedAt = Date.now() } = {}) {
+export function inspectActiveWindowOverlap({ identity, toolUseId, inspectedAt } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   return withRepoStateLock(identity.worktreeRoot, () => {
-    const registry = readActiveWindows(activeWindowPath(identity), inspectedAt);
+    const now = Number.isFinite(inspectedAt) ? inspectedAt : Date.now();
+    const registry = readActiveWindows(activeWindowPath(identity), now);
     if (registry.unavailable) {
       return { paths: [], attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
     }
     const overlap = activeWindowOverlap(registry.windows, identity, safeId);
-    return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > inspectedAt };
+    return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > now };
   });
 }
 
-export function closeActiveWindows({ identity, toolUseId, closedAt = Date.now() } = {}) {
+export function closeActiveWindows({ identity, toolUseId, closedAt } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   return withRepoStateLock(identity.worktreeRoot, () => {
+    const now = Number.isFinite(closedAt) ? closedAt : Date.now();
     const path = activeWindowPath(identity);
-    const registry = readActiveWindows(path, closedAt);
+    const registry = readActiveWindows(path, now);
     if (registry.unavailable) {
-      return { paths: [], attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
+      return { paths: [], closed: false, attributionUnavailable: true, attributionUnavailableReason: registry.attributionUnavailableReason };
     }
     const windows = registry.windows;
     const overlap = activeWindowOverlap(windows, identity, safeId);
@@ -193,15 +197,24 @@ export function closeActiveWindows({ identity, toolUseId, closedAt = Date.now() 
       else markPreSnapshotOverlapped({ identity: peerIdentity, toolUseId: peer.toolUseId });
     }
     try {
-      saveActiveWindows(path, remaining, closedAt, registry.attributionUnavailableUntil);
-      return { paths: [...overlap.paths], attributionUnavailable: registry.attributionUnavailableUntil > closedAt };
+      saveActiveWindows(path, remaining, now, registry.attributionUnavailableUntil);
+      const closed = overlap.mine.length > 0;
+      const registryUnavailable = registry.attributionUnavailableUntil > now;
+      return {
+        paths: [...overlap.paths],
+        closed,
+        attributionUnavailable: registryUnavailable,
+        ...(registryUnavailable
+          ? { attributionUnavailableReason: ACTIVE_WINDOW_OVERFLOW_REASON }
+          : !closed ? { attributionUnavailableReason: ACTIVE_WINDOW_EXPIRED_REASON } : {}),
+      };
     } catch (error) {
       if (error?.message !== ACTIVE_WINDOW_OVERFLOW_REASON) throw error;
       const withoutNewOverlapMarks = registry.windows
         .filter((window) => window.session !== identity.session || window.toolUseId !== safeId)
         .map(({ overlappedPaths, ...window }) => window);
-      saveActiveWindows(path, withoutNewOverlapMarks, closedAt, closedAt + ACTIVE_WINDOW_MAX_AGE_MS);
-      return { paths: [...overlap.paths], attributionUnavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_OVERFLOW_REASON };
+      saveActiveWindows(path, withoutNewOverlapMarks, now, now + ACTIVE_WINDOW_MAX_AGE_MS);
+      return { paths: [...overlap.paths], closed: overlap.mine.length > 0, attributionUnavailable: true, attributionUnavailableReason: ACTIVE_WINDOW_OVERFLOW_REASON };
     }
   });
 }

@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { closeSync, constants, existsSync, fsyncSync, mkdirSync, openSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { realpathSync } from "node:fs";
 
-import { withLock } from "../../../src/server/fs-safe.mjs";
+import { withDirectoryLock } from "../../../src/server/dir-lock.mjs";
 import { readContainedFile } from "./streaming-diff-capture-git.mjs";
 import { STREAMING_DIFF_ABSENT } from "./streaming-diff-capture.mjs";
 import { assertCard, assertManifest, STREAMING_DIFF_CONTRACT_LIMITS, STREAMING_DIFF_DATA_CONTRACT } from "./streaming-diff-data-contract.mjs";
@@ -168,17 +168,27 @@ function sameIdentity(left, right) {
     && left?.session === right?.session;
 }
 
-export function appendCard(feedDir, card, { identity, now = () => new Date().toISOString(), limits, beforeManifestSwap, dedupeToolUseId = false } = {}) {
+function isUnterminatedAttempt(card) {
+  return card.status === "partial" && card.files.length === 0 && card.partialReason?.includes("attempt in progress / unterminated");
+}
+
+export function appendCard(feedDir, card, { identity, now = () => new Date().toISOString(), limits, beforeManifestSwap, dedupeToolUseId = false, dedupeTerminalToolUseId = false } = {}) {
   assertCard(card);
   const bounded = retention(limits);
   mkdirSync(feedDir, { recursive: true });
-  return withLock(feedDir, () => {
+  return withDirectoryLock({
+    lockPath: join(feedDir, ".lock"),
+    fn: () => {
     const healed = healManifestUnsafe(feedDir);
     const previous = healed.manifest;
     if (!previous && !identity) throw new Error("new streaming feed requires an identity");
     if (previous && identity && !sameIdentity(previous.identity, identity)) throw new Error("streaming diff feed identity does not match its immutable manifest identity");
     if (dedupeToolUseId) {
       const existing = healed.cards.find((entry) => entry.toolUseId === card.toolUseId);
+      if (existing) return { card: existing, manifest: previous, existing: true };
+    }
+    if (dedupeTerminalToolUseId) {
+      const existing = healed.cards.find((entry) => entry.toolUseId === card.toolUseId && !isUnterminatedAttempt(entry));
       if (existing) return { card: existing, manifest: previous, existing: true };
     }
     let published = card;
@@ -193,6 +203,8 @@ export function appendCard(feedDir, card, { identity, now = () => new Date().toI
     writeDurableAtomic(manifestPath(feedDir), JSON.stringify(manifest));
     pruneUnreferencedCards(feedDir, manifest.revs);
     return { card: published, manifest };
+    },
+    errorFactory: () => Object.assign(new Error(`${basename(feedDir)} is busy (locked)`), { code: "ELOCKED" }),
   });
 }
 
@@ -223,7 +235,11 @@ export function reconnectFeed(feedDir, since = null) {
   if (!journal.manifest) return { type: "reset", cards: [] };
   if (journal.race) {
     // Recovery belongs exclusively to the CLI append/reconnect writer path.
-    const healed = withLock(feedDir, () => healManifestUnsafe(feedDir));
+    const healed = withDirectoryLock({
+      lockPath: join(feedDir, ".lock"),
+      fn: () => healManifestUnsafe(feedDir),
+      errorFactory: () => Object.assign(new Error(`${basename(feedDir)} is busy (locked)`), { code: "ELOCKED" }),
+    });
     return { type: "reset", cards: healed.cards };
   }
   return resolveReconnect(journal.manifest, journal.cards, since);

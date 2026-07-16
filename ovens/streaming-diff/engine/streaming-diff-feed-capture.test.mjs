@@ -163,7 +163,8 @@ test("an active-window registry overflow makes the current capture unattributed"
     }
     const target = join(context.root, "target.txt");
     writeFileSync(target, "before\n");
-    captureStreamingDiff({ cwd: context.root, session: "overflow", toolUseId: "overflow-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    const pre = captureStreamingDiff({ cwd: context.root, session: "overflow", toolUseId: "overflow-tool", phase: "pre", hintedPaths: ["target.txt"] });
+    assert.equal(pre.activeWindow.attributionUnavailable, true);
     writeFileSync(target, "after\n");
     const result = captureStreamingDiff({ cwd: context.root, session: "overflow", toolUseId: "overflow-tool", phase: "post", hintedPaths: ["target.txt"] });
 
@@ -301,6 +302,7 @@ test("an immutable snapshot permits captured attribution only after its register
     writePreSnapshot({ identity, toolUseId: "directory-fsync", hintedPaths: ["target.txt"] });
     assert.doesNotThrow(() => markPreSnapshotRegistered({ identity, toolUseId: "directory-fsync" }));
     assert.equal(takePreSnapshot({ identity, toolUseId: "directory-fsync" }).registered, true);
+    registerActiveWindows({ identity, toolUseId: "directory-fsync", hintedPaths: ["target.txt"] });
     const committed = captureStreamingDiff({ cwd: context.root, session: "clear-atomic", toolUseId: "directory-fsync", phase: "post", hintedPaths: ["target.txt"] });
     assert.equal(committed.card.status, "captured");
   } finally { context.cleanup(); }

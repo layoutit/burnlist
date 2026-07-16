@@ -71,6 +71,9 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
   if (phase !== "pre" && phase !== "post") throw new Error("streaming diff capture phase must be pre or post");
   const identity = resolveStreamingDiffIdentity({ cwd, session });
   const safeToolUseId = streamingDiffToolUseId(rawToolUseId);
+  // The hook fallback is shared by unrelated degraded events, so it cannot
+  // distinguish a retry from a later event.
+  const hasStableToolUseId = safeToolUseId !== "unknown-tool-use";
   const journalOptions = { identity: feedIdentity(identity) };
   const windows = activeWindows ?? { closeActiveWindows, inspectActiveWindowOverlap, registerActiveWindows };
   if (phase === "pre") {
@@ -112,8 +115,9 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
   const overlap = {
     paths: [...new Set([...(inspected.paths ?? []), ...(closed.paths ?? [])])],
     attributionUnavailable: inspected.attributionUnavailable || closed.attributionUnavailable,
-    attributionUnavailableReason: inspected.attributionUnavailableReason ?? closed.attributionUnavailableReason,
+    attributionUnavailableReason: inspected.attributionUnavailableReason ?? (closed.attributionUnavailable ? closed.attributionUnavailableReason : undefined),
   };
+  const ownWindowMissing = closed.closed === false;
   const liveOverlap = overlap.paths.length > 0 || overlap.attributionUnavailable;
   if (overlap.paths.length) markPreSnapshotOverlapped({ identity, toolUseId: safeToolUseId });
   if (overlap.attributionUnavailable) {
@@ -122,20 +126,21 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
   const attribution = takePreSnapshot({ identity, toolUseId: safeToolUseId });
   const durableOverlap = attribution.overlapped || liveOverlap;
   const attributionUnavailable = attribution.found === false || (attribution.registered === false && !durableOverlap)
-    || attribution.attributionUnavailable || overlap.attributionUnavailable;
+    || attribution.attributionUnavailable || overlap.attributionUnavailable || (ownWindowMissing && !durableOverlap);
   card = markUnattributedOverlap(
     card,
     overlap.paths.length ? overlap.paths : durableOverlap ? card.files.map((file) => file.path) : [],
     attributionUnavailable,
     durableOverlap,
     overlap.attributionUnavailableReason ?? attribution.attributionUnavailableReason
-      ?? (attribution.registered === false && !overlap.attributionUnavailable ? ACTIVE_WINDOW_LOCK_REASON : undefined),
+      ?? (attribution.registered === false && !overlap.attributionUnavailable ? ACTIVE_WINDOW_LOCK_REASON : undefined)
+      ?? (ownWindowMissing && !durableOverlap ? closed.attributionUnavailableReason : undefined),
   );
   // A direct post invocation remains safe and useful: it establishes the
   // immutable binding/feed before the journal's first manifest append.
   ensureStreamingDiffFeed({ cwd, session });
   try {
-    const appended = appendWithRetry(append, identity.feedDir, card, journalOptions);
+    const appended = appendWithRetry(append, identity.feedDir, card, { ...journalOptions, dedupeTerminalToolUseId: hasStableToolUseId });
     try {
       removePreSnapshot({ identity, toolUseId: safeToolUseId });
       return { phase, identity, snapshot, ...appended };
