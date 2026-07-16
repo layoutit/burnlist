@@ -90,8 +90,10 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
     });
     if (activeWindow.attributionUnavailable) {
       markPreSnapshotAttributionUnavailable({ identity, toolUseId: safeToolUseId, reason: activeWindow.attributionUnavailableReason });
+    } else if (activeWindow.paths.length) {
+      markPreSnapshotOverlapped({ identity, toolUseId: safeToolUseId });
     } else {
-      markPreSnapshotRegistered({ identity, toolUseId: safeToolUseId, overlapped: activeWindow.paths.length > 0 });
+      markPreSnapshotRegistered({ identity, toolUseId: safeToolUseId });
     }
     return { phase, identity, marker, snapshot, activeWindow };
   }
@@ -117,15 +119,17 @@ export function captureStreamingDiff({ cwd = process.cwd(), session, toolUseId: 
   if (overlap.attributionUnavailable) {
     activeWindowOperation(() => markPreSnapshotAttributionUnavailable({ identity, toolUseId: safeToolUseId, reason: overlap.attributionUnavailableReason }));
   }
-  const durableOverlap = snapshot.overlapped || liveOverlap;
-  const attributionUnavailable = snapshot.registered === false || snapshot.attributionUnavailable || overlap.attributionUnavailable;
+  const attribution = takePreSnapshot({ identity, toolUseId: safeToolUseId });
+  const durableOverlap = attribution.overlapped || liveOverlap;
+  const attributionUnavailable = attribution.found === false || (attribution.registered === false && !durableOverlap)
+    || attribution.attributionUnavailable || overlap.attributionUnavailable;
   card = markUnattributedOverlap(
     card,
     overlap.paths.length ? overlap.paths : durableOverlap ? card.files.map((file) => file.path) : [],
     attributionUnavailable,
     durableOverlap,
-    overlap.attributionUnavailableReason ?? snapshot.attributionUnavailableReason
-      ?? (snapshot.registered === false && !overlap.attributionUnavailable ? ACTIVE_WINDOW_LOCK_REASON : undefined),
+    overlap.attributionUnavailableReason ?? attribution.attributionUnavailableReason
+      ?? (attribution.registered === false && !overlap.attributionUnavailable ? ACTIVE_WINDOW_LOCK_REASON : undefined),
   );
   // A direct post invocation remains safe and useful: it establishes the
   // immutable binding/feed before the journal's first manifest append.

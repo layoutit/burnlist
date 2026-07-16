@@ -10,6 +10,9 @@ import { resolveStreamingDiffIdentity, snapshotDirectory } from "./streaming-dif
 import {
   closeActiveWindows,
   inspectActiveWindowOverlap,
+  markPreSnapshotAttributionUnavailable,
+  markPreSnapshotOverlapped,
+  markPreSnapshotRegistered,
   registerActiveWindows,
   removePreSnapshot,
   STREAMING_DIFF_ACTIVE_WINDOW_MAX_BYTES,
@@ -42,8 +45,12 @@ test("pre-snapshots round-trip bounded safe content and remain until durable pos
     assert.equal(taken.preSnapshot.get("safe.txt"), "before\n");
     assert.equal(taken.preSnapshot.get("gone.txt"), STREAMING_DIFF_ABSENT);
     assert.equal(existsSync(written.path), true);
+    markPreSnapshotRegistered({ identity: context.identity, toolUseId: "tool-1" });
+    markPreSnapshotOverlapped({ identity: context.identity, toolUseId: "tool-1" });
+    markPreSnapshotAttributionUnavailable({ identity: context.identity, toolUseId: "tool-1", reason: "test unavailable" });
     removePreSnapshot({ identity: context.identity, toolUseId: "tool-1" });
     assert.equal(existsSync(written.path), false);
+    for (const marker of ["registered", "overlapped", "unavailable"]) assert.equal(existsSync(written.path.replace(/\.json$/u, `.${marker}`)), false);
     assert.equal(takePreSnapshot({ identity: context.identity, toolUseId: "tool-1" }).found, false);
   } finally { context.cleanup(); }
 });

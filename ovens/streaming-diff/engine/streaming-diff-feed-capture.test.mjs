@@ -7,7 +7,7 @@ import test from "node:test";
 
 import { captureStreamingDiff } from "./streaming-diff-feed-capture.mjs";
 import { resolveStreamingDiffIdentity } from "./streaming-diff-feed.mjs";
-import { markPreSnapshotRegistered, registerActiveWindows, STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
+import { markPreSnapshotOverlapped, markPreSnapshotRegistered, registerActiveWindows, STREAMING_DIFF_ACTIVE_WINDOW_MAX_ENTRIES, takePreSnapshot, writePreSnapshot } from "./streaming-diff-snapshot-store.mjs";
 import { readJournal } from "./streaming-diff-journal.mjs";
 
 function git(cwd, ...args) {
@@ -107,7 +107,7 @@ test("a failed overlapping post remains unattributed after its live windows expi
       append: () => { throw new Error("simulated append failure"); },
     });
     assert.match(failed.error.message, /simulated append failure/u);
-    assert.equal(JSON.parse(readFileSync(pre.snapshot.path, "utf8")).overlapped, true);
+    assert.equal(existsSync(pre.snapshot.path.replace(/\.json$/u, ".overlapped")), true);
     rmSync(join(context.root, ".local", "burnlist", "streaming-diff-active-windows.json"));
 
     const retried = captureStreamingDiff({ cwd: context.root, session: "expired-one", toolUseId: "expired-tool-one", phase: "post", hintedPaths: ["target.txt"] });
@@ -173,7 +173,7 @@ test("an active-window registry overflow makes the current capture unattributed"
   } finally { context.cleanup(); }
 });
 
-test("a registration lock timeout preserves the pre-written pessimistic snapshot marker", () => {
+test("a registration lock timeout leaves the pre-snapshot unregistered", () => {
   const context = fixture();
   try {
     let persistedMarker;
@@ -192,7 +192,8 @@ test("a registration lock timeout preserves the pre-written pessimistic snapshot
     assert.equal(pre.activeWindow.attributionUnavailable, true);
     assert.equal(persistedMarker.found, true);
     assert.equal(persistedMarker.registered, false);
-    assert.equal(persistedMarker.attributionUnavailable, true);
+    assert.equal(persistedMarker.attributionUnavailable, false);
+    assert.equal(takePreSnapshot({ identity: resolveStreamingDiffIdentity({ cwd: context.root, session: "locked" }), toolUseId: "locked-tool" }).attributionUnavailable, true);
     writeFileSync(join(context.root, "target.txt"), "after\n");
     const post = captureStreamingDiff({ cwd: context.root, session: "locked", toolUseId: "locked-tool", phase: "post", hintedPaths: ["target.txt"] });
     assert.equal(post.card.status, "partial");
@@ -287,26 +288,49 @@ test("missing or corrupt pre-snapshots make the terminal card partial", () => {
   } finally { context.cleanup(); }
 });
 
-test("a snapshot clear only permits captured attribution after its replacement succeeds", () => {
+test("an immutable snapshot permits captured attribution only after its registered marker exists", () => {
   const context = fixture();
   try {
     const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "clear-atomic" });
     writePreSnapshot({ identity, toolUseId: "clear-tool", hintedPaths: ["target.txt"] });
-    assert.throws(() => markPreSnapshotRegistered({
-      identity, toolUseId: "clear-tool", atomicOptions: { fsyncTemporary() { throw new Error("temporary fsync failed"); } },
-    }), /temporary fsync failed/u);
     assert.equal(takePreSnapshot({ identity, toolUseId: "clear-tool" }).registered, false);
     writeFileSync(join(context.root, "target.txt"), "after\n");
     const failed = captureStreamingDiff({ cwd: context.root, session: "clear-atomic", toolUseId: "clear-tool", phase: "post", hintedPaths: ["target.txt"] });
     assert.equal(failed.card.status, "partial");
 
     writePreSnapshot({ identity, toolUseId: "directory-fsync", hintedPaths: ["target.txt"] });
-    assert.doesNotThrow(() => markPreSnapshotRegistered({
-      identity, toolUseId: "directory-fsync", atomicOptions: { fsyncParent() { throw new Error("directory fsync failed"); } },
-    }));
+    assert.doesNotThrow(() => markPreSnapshotRegistered({ identity, toolUseId: "directory-fsync" }));
     assert.equal(takePreSnapshot({ identity, toolUseId: "directory-fsync" }).registered, true);
     const committed = captureStreamingDiff({ cwd: context.root, session: "clear-atomic", toolUseId: "directory-fsync", phase: "post", hintedPaths: ["target.txt"] });
     assert.equal(committed.card.status, "captured");
+  } finally { context.cleanup(); }
+});
+
+test("a late registered marker cannot overwrite a peer overlap marker", () => {
+  const context = fixture();
+  try {
+    const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "marker-race" });
+    const activeWindows = {
+      registerActiveWindows: () => ({ attributionUnavailable: false }),
+      inspectActiveWindowOverlap: () => {
+        // Registration has observed no overlap. Before it creates its marker,
+        // a peer determines that this attempt overlaps and marks it.
+        markPreSnapshotOverlapped({ identity, toolUseId: "marker-tool" });
+        return { paths: [], attributionUnavailable: false };
+      },
+    };
+    const pre = captureStreamingDiff({
+      cwd: context.root, session: "marker-race", toolUseId: "marker-tool", phase: "pre", hintedPaths: ["target.txt"], activeWindows,
+    });
+    assert.equal(takePreSnapshot({ identity, toolUseId: "marker-tool" }).registered, true);
+    assert.equal(takePreSnapshot({ identity, toolUseId: "marker-tool" }).overlapped, true);
+    assert.equal(JSON.parse(readFileSync(pre.snapshot.path, "utf8")).overlapped, undefined);
+
+    writeFileSync(join(context.root, "target.txt"), "after\n");
+    const post = captureStreamingDiff({ cwd: context.root, session: "marker-race", toolUseId: "marker-tool", phase: "post", hintedPaths: ["target.txt"] });
+    assert.equal(post.card.status, "partial");
+    assert.match(post.card.partialReason, /overlapping concurrent edit \(unattributed\)/u);
+    assert.deepEqual(post.card.files, [{ path: "target.txt", kind: "unavailable", meta: { reason: "overlapping concurrent edit (unattributed)" } }]);
   } finally { context.cleanup(); }
 });
 

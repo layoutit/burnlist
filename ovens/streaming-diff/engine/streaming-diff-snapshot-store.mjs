@@ -1,10 +1,10 @@
-import { mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { createGitCaptureIo } from "./streaming-diff-capture-git.mjs";
 import { captureLimits, isBinaryContent, redact, STREAMING_DIFF_ABSENT, STREAMING_DIFF_CAPTURE_LIMITS, STREAMING_DIFF_MISSING } from "./streaming-diff-capture.mjs";
 import { identifierPathComponent, snapshotDirectory, streamingDiffIdentifier } from "./streaming-diff-feed.mjs";
-import { fsyncDirectory, writeDurableAtomic } from "./streaming-diff-durable-write.mjs";
+import { fsyncDirectory, writeDurableAtomic, writeDurableExclusive } from "./streaming-diff-durable-write.mjs";
 import { containedJoin, withRepoStateLock } from "../../../src/server/repo-state.mjs";
 
 const SNAPSHOT_SCHEMA = 1;
@@ -39,6 +39,24 @@ function hardDenied(path) {
 
 function snapshotPath(identity, toolUseId) {
   return join(snapshotDirectory(identity), `${identifierPathComponent(toolUseId)}.json`);
+}
+
+function markerPath(identity, toolUseId, marker) {
+  return join(snapshotDirectory(identity), `${identifierPathComponent(toolUseId)}.${marker}`);
+}
+
+function createMarker(identity, toolUseId, marker, value = "") {
+  mkdirSync(snapshotDirectory(identity), { recursive: true, mode: 0o700 });
+  return writeDurableExclusive(markerPath(identity, toolUseId, marker), value);
+}
+
+function readUnavailableMarker(identity, toolUseId) {
+  try {
+    const value = readFileSync(markerPath(identity, toolUseId, "unavailable"), "utf8");
+    return { unavailable: true, reason: value.length <= 256 ? value || undefined : undefined };
+  } catch (error) {
+    return error?.code === "ENOENT" ? { unavailable: false } : { unavailable: true };
+  }
 }
 
 function activeWindowPath(identity) {
@@ -218,10 +236,6 @@ function validStoredSnapshot(value, toolUseId) {
   return value && typeof value === "object" && !Array.isArray(value)
     && value.schemaVersion === SNAPSHOT_SCHEMA && value.toolUseId === toolUseId
     && Array.isArray(value.hintedPaths) && value.hintedPaths.every((path) => typeof path === "string")
-    && (!Object.hasOwn(value, "registered") || typeof value.registered === "boolean")
-    && (!Object.hasOwn(value, "overlapped") || typeof value.overlapped === "boolean")
-    && (!Object.hasOwn(value, "attributionUnavailable") || typeof value.attributionUnavailable === "boolean")
-    && (!Object.hasOwn(value, "attributionUnavailableReason") || typeof value.attributionUnavailableReason === "string")
     && (!Object.hasOwn(value, "terminalReason") || typeof value.terminalReason === "string")
     && value.entries && typeof value.entries === "object" && !Array.isArray(value.entries);
 }
@@ -251,15 +265,15 @@ export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], termin
       entries[path] = { kind: "missing" };
     }
   }
+  const path = snapshotPath(identity, safeId);
+  if (existsSync(path)) {
+    const existing = takePreSnapshot({ identity, toolUseId: safeId });
+    return { path, hintedPaths: existing.found ? existing.hintedPaths : safeHints };
+  }
   const record = {
     schemaVersion: SNAPSHOT_SCHEMA,
     toolUseId: safeId,
     hintedPaths: safeHints,
-    // Fail closed until active-window registration has completed. This record
-    // is per session/tool use and is persisted independently of that registry.
-    registered: false,
-    overlapped: false,
-    attributionUnavailable: true,
     ...(terminalReasons.has(terminalReason) ? { terminalReason } : {}),
     entries,
   };
@@ -267,8 +281,11 @@ export function writePreSnapshot({ identity, toolUseId, hintedPaths = [], termin
   if (Buffer.byteLength(serialized, "utf8") > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
   const dir = snapshotDirectory(identity);
   mkdirSync(dir, { recursive: true, mode: 0o700 });
-  writeDurableAtomic(snapshotPath(identity, safeId), serialized);
-  return { path: snapshotPath(identity, safeId), hintedPaths: record.hintedPaths };
+  if (!writeDurableExclusive(path, serialized)) {
+    const existing = takePreSnapshot({ identity, toolUseId: safeId });
+    return { path, hintedPaths: existing.found ? existing.hintedPaths : record.hintedPaths };
+  }
+  return { path, hintedPaths: record.hintedPaths };
 }
 
 // A post hook reads this immutable pre-state before publication. It is deleted
@@ -283,13 +300,14 @@ export function takePreSnapshot({ identity, toolUseId } = {}) {
     parsed = JSON.parse(readFileSync(path, "utf8"));
   } catch { return unavailableSnapshot(); }
   if (!validStoredSnapshot(parsed, safeId)) return unavailableSnapshot();
+  const unavailable = readUnavailableMarker(identity, safeId);
   return {
     found: true,
     hintedPaths: parsed.hintedPaths,
-    registered: parsed.registered === true,
-    overlapped: parsed.overlapped === true,
-    attributionUnavailable: parsed.attributionUnavailable === true,
-    attributionUnavailableReason: parsed.attributionUnavailableReason,
+    registered: existsSync(markerPath(identity, safeId, "registered")),
+    overlapped: existsSync(markerPath(identity, safeId, "overlapped")),
+    attributionUnavailable: unavailable.unavailable,
+    attributionUnavailableReason: unavailable.reason,
     terminalReason: parsed.terminalReason,
     preSnapshot: new Map(parsed.hintedPaths.map((path) => [path, decode(parsed.entries[path])])),
   };
@@ -307,19 +325,9 @@ function unavailableSnapshot() {
 }
 
 function markPreSnapshotOverlappedLocked(identity, safeId) {
-  const path = snapshotPath(identity, safeId);
-  let parsed = null;
-  try {
-    const stat = statSync(path);
-    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    if (error?.code === "ENOENT") return { found: false, overlapped: false };
-    if (/snapshot exceeds/u.test(error?.message)) throw error;
-  }
-  if (!validStoredSnapshot(parsed, safeId)) return { found: false, overlapped: false };
-  if (parsed.overlapped !== true) writeDurableAtomic(path, JSON.stringify({ ...parsed, overlapped: true }));
-  return { found: true, overlapped: true };
+  const found = existsSync(snapshotPath(identity, safeId));
+  if (found) createMarker(identity, safeId, "overlapped");
+  return { found, overlapped: found };
 }
 
 export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
@@ -329,47 +337,22 @@ export function markPreSnapshotOverlapped({ identity, toolUseId } = {}) {
 
 export function markPreSnapshotAttributionUnavailable({ identity, toolUseId, reason } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  const path = snapshotPath(identity, safeId);
-  let parsed = null;
-  try {
-    const stat = statSync(path);
-    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    if (error?.code === "ENOENT") return { found: false, attributionUnavailable: false };
-    if (/snapshot exceeds/u.test(error?.message)) throw error;
-  }
-  if (!validStoredSnapshot(parsed, safeId)) return { found: false, attributionUnavailable: false };
-  if (parsed.attributionUnavailable !== true || parsed.attributionUnavailableReason !== reason) {
-    writeDurableAtomic(path, JSON.stringify({ ...parsed, attributionUnavailable: true, ...(typeof reason === "string" ? { attributionUnavailableReason: reason } : {}) }));
-  }
-  return { found: true, attributionUnavailable: true };
+  const found = existsSync(snapshotPath(identity, safeId));
+  if (found) createMarker(identity, safeId, "unavailable", typeof reason === "string" ? reason.slice(0, 256) : "");
+  return { found, attributionUnavailable: found };
 }
 
-export function markPreSnapshotRegistered({ identity, toolUseId, overlapped = false, atomicOptions } = {}) {
+export function markPreSnapshotRegistered({ identity, toolUseId } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
-  const path = snapshotPath(identity, safeId);
-  let parsed = null;
-  try {
-    const stat = statSync(path);
-    if (!stat.isFile() || stat.size > STREAMING_DIFF_SNAPSHOT_MAX_BYTES) throw new Error(`snapshot exceeds its ${STREAMING_DIFF_SNAPSHOT_MAX_BYTES}-byte limit`);
-    parsed = JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
-    if (error?.code === "ENOENT") return { found: false, registered: false };
-    if (/snapshot exceeds/u.test(error?.message)) throw error;
-  }
-  if (!validStoredSnapshot(parsed, safeId)) return { found: false, registered: false };
-  const { attributionUnavailable, attributionUnavailableReason, ...registered } = parsed;
-  const next = { ...registered, registered: true, overlapped: parsed.overlapped === true || overlapped === true };
-  if (parsed.registered !== true || parsed.attributionUnavailable === true || next.overlapped !== parsed.overlapped) {
-    writeDurableAtomic(path, JSON.stringify(next), atomicOptions);
-  }
-  return { found: true, registered: true, overlapped: next.overlapped };
+  const found = existsSync(snapshotPath(identity, safeId));
+  if (found) createMarker(identity, safeId, "registered");
+  return { found, registered: found, overlapped: found && existsSync(markerPath(identity, safeId, "overlapped")) };
 }
 
 export function removePreSnapshot({ identity, toolUseId } = {}) {
   const safeId = streamingDiffToolUseId(toolUseId);
   const path = snapshotPath(identity, safeId);
+  for (const marker of ["registered", "overlapped", "unavailable"]) rmSync(markerPath(identity, safeId, marker), { force: true });
   rmSync(path, { force: true });
   try { fsyncDirectory(dirname(path)); } catch (error) { if (error?.code !== "ENOENT") throw error; }
 }
