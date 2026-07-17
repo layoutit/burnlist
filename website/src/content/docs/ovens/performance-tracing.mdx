@@ -1,0 +1,31 @@
+---
+title: Performance Tracing oven
+description: Retained browser-output timing evidence from a project-owned trace run.
+---
+
+Performance Tracing renders retained browser-output timing evidence from a project-owned trace run: frame pacing, synchronous step cost, budget checks, renderer trace groups, slow steps, browser identity, and source provenance — without treating instrumentation as gameplay or visual-equivalence authority.
+
+## State contract
+
+The project publishes one atomic `performance-tracing-oven@1` JSON report. The report owns capture, deterministic replay, raw Chrome trace retention, samples, machine and browser provenance, and budget evaluation. Burnlist validates and renders that normalized report; it does not execute the trace command or rewrite project evidence.
+
+## What the report must preserve
+
+- Canonical prepared route and scenario identity.
+- Browser, viewport, machine, and source-file provenance.
+- Startup, frame, synchronous-step, trace-group, and residency measurements.
+- Bounded per-dispatch phase attribution with source producer and next-probe metadata.
+- Ranked frame spikes, residency-changing step spikes, trace hot windows, and top complete events.
+- A measured optimization queue whose items name the producer, evidence, next action, and verification metrics.
+- Comparable-history context plus the exact command and integrity gate for the next rerun.
+- Every declared budget with its actual value and pass/fail result.
+- Raw trace and sample artifact bindings.
+- Explicit browser-output trust that makes no native-execution or visual-equivalence claim.
+
+## Blocking rules
+
+Missing, malformed, partially written, contradictory, or unactionable evidence is blocked. Never guess a producer and never loosen a budget to make a run green. Fix the capture boundary when observer overhead dominates; otherwise change one measured source producer, rerun the retained comparable command, require the same comparison key and zero integrity violations, and keep the change only when the named acceptance metrics improve without structural regressions.
+
+## Execution boundary
+
+The Oven is read-only. Project tooling runs traces and atomically publishes the report; Burnlist only validates and displays it. See [Ovens](/ovens) and the [dashboard](/dashboard).

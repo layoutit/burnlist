@@ -1,0 +1,50 @@
+---
+title: Dashboard
+description: The read-only observer over your Burnlist lifecycle folders.
+---
+
+## A read-only observer
+
+The dashboard scans lifecycle folders and refreshes automatically. It is read-only: it never mutates canonical task state (`burnlist.md`, the lifecycle folders, or the registry). All canonical writes are CLI-only. The dashboard's only write surface is a pair of explicit, token-gated, loopback-only controller actions — New Oven and Run Burn — that record local files under `.local/burnlist/` and never touch canonical state (see [below](#new-oven-and-run-burn)).
+
+## Running
+
+```sh
+burnlist
+burnlist --port 4510
+```
+
+It binds only to loopback hosts by default and prints its local URL. An occupied port is a hard error unless you pass `--auto-port`. It scans:
+
+```text
+notes/burnlists/{draft,ready,inprogress,completed}/*/burnlist.md
+```
+
+To force a scope, pass comma-separated roots:
+
+```sh
+burnlist --scan-root /path/to/repo,/path/to/another-repo
+```
+
+## What it parses from `burnlist.md`
+
+The dashboard parses top metadata, `Goal: ./goal.md`, `## Active Checklist`, and the terse `## Completed` ledger. The completed ledger is the only completion source of truth; Tasks KPI equals completed plus remaining. Do not add chart metadata, telemetry, or progress fields to a Burnlist.
+
+## The project registry
+
+The dashboard observes Burnlists across a machine-local registry of repository roots (`~/.burnlist/roots.json`) unioned with the current repository, so one dashboard can cover every registered project. Registration is always explicit: the CLI is the only writer, and nothing auto-registers.
+
+- `burnlist init [path]` — for a new repository, scaffold the lifecycle folders, git-ignore that state locally (or use `--track` to commit it), and register the root.
+- `burnlist register [path]` — register an existing repository that already has Burnlists, with no scaffolding.
+- `burnlist unregister [path]` — remove a repository root.
+- `burnlist roots [--prune]` — list registered roots with health: healthy, empty, missing, or unreadable. `--prune` drops only missing roots.
+
+A Burnlist in an unregistered repository is still visible when the dashboard launches inside that repository, but it is not visible in the global landing until `init` or `register`. Observation spans all registered repositories, but mutating verbs (`--close-completed` and lifecycle moves) act only on the current repository.
+
+## New Oven and Run Burn
+
+New Oven and Run Burn are explicit, user-controlled local controller surfaces. They write local controller records under `.local/burnlist/` by default: custom Ovens under `.local/burnlist/ovens/` and immutable Run snapshots under `.local/burnlist/runs/`. They do not change canonical task state, execute instructions, or start an agent. See [Ovens](/ovens).
+
+## Local state
+
+Dashboard observer state, custom Ovens, and Run snapshots live under `.local/burnlist/`. Keep `notes/burnlists/` and `.local/burnlist/` ignored unless you deliberately want to share task state.

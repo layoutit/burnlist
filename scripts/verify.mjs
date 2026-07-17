@@ -89,6 +89,9 @@ const sourceScanExcludes = [
   ".playwright-cli/",
   "notes/burnlists/",
   "output/",
+  "website/node_modules/",
+  "website/dist/",
+  "website/.astro/",
 ];
 
 function shouldScanSourceFile(path) {

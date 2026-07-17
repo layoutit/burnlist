@@ -1,0 +1,96 @@
+---
+title: CLI reference
+description: Every Burnlist command, grouped by task.
+---
+
+Run `burnlist --help` for the authoritative, installed surface.
+
+## Dashboard
+
+```sh
+burnlist [--port <port>] [--scan-root <repo[,repo...]>]
+```
+
+Launches the loopback observer dashboard.
+
+## Plan protocol
+
+```sh
+burnlist --plan <burnlist.md> --check
+burnlist --plan <burnlist.md> --digest
+burnlist --close-completed [--scan-root <repo[,repo...]>]
+burnlist --stamp
+```
+
+`--check` validates the active queue and completed ledger. `--digest` prints a completion digest once the active queue is empty. `--close-completed` adds a digest when needed and moves empty in-progress Burnlists to completed. `--stamp` prints a local ISO timestamp for completion records.
+
+## Lifecycle
+
+These commands act on the current repository by default, or on an explicit `--repo <path>` target. The lifecycle order is `new` → `ready` → `start` → `burn` → `close`.
+
+| Command | Description |
+| --- | --- |
+| `burnlist new [--repo <path>]` | Create a new Burnlist. |
+| `burnlist show <id>[#<item>] [--repo <path>]` | Show a Burnlist or one of its items. |
+| `burnlist ready <id> [--repo <path>]` | Move a Burnlist to ready. |
+| `burnlist start <id> [--repo <path>]` | Move a ready Burnlist into progress. |
+| `burnlist burn <id> <item> [--check] [--repo <path>]` | Complete a Burnlist item; `--check` validates it. |
+| `burnlist close <id> [--repo <path>]` | Close a completed Burnlist. |
+
+## Registry
+
+```sh
+burnlist register [path]
+burnlist unregister [path]
+burnlist roots [--prune]
+burnlist init [path] [--track]
+```
+
+`init` scaffolds `notes/burnlists/{draft,ready,inprogress,completed}/` and registers the root. `register` adds an existing repository. `roots` lists registered roots with health, while `--prune` drops missing ones. `unregister` removes a registered path.
+
+## Ovens
+
+```sh
+burnlist oven <list|view|bind|unbind|bindings|create|update> ...
+```
+
+Author and inspect Ovens. (`burnlist oven help` lists a few more subcommands, such as `fork`.) See [Ovens](/ovens).
+
+## Hooks
+
+```sh
+burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
+```
+
+See [Install](/install).
+
+## Differential Testing
+
+```sh
+burnlist differential-testing <validate|validate-bundle|schema|sdk> ...
+```
+
+## Streaming Diff
+
+```sh
+burnlist streaming-diff <ensure-feed|capture|url|hook> ...
+```
+
+## Options
+
+| Option | Description |
+| --- | --- |
+| `--auto-port` | Try the next available loopback port. |
+| `--host <host>` | Bind host; loopback is required by default. |
+| `--state-dir <path>` | Override ignored dashboard observer state. |
+| `--ovens-dir <path>` | Override launch-repository custom Oven storage only. |
+| `--runs-dir <path>` | Override Run snapshot storage. |
+| `--oven-data <id=path>` | Bind one Oven to a read-only normalized JSON payload. |
+| `--version`, `-v` | Print the version. |
+| `--help`, `-h` | Print help. |
+
+## Uninstall
+
+```sh
+burnlist uninstall
+```
