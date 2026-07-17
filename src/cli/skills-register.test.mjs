@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { resolveRepoRoot } from "./skills-register.mjs";
+import { withGlobalSkillsLock } from "./skills-install-lock.mjs";
+import { registerSkills, resolveRepoRoot } from "./skills-register.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const registerScript = join(repoRoot, "scripts", "register-skills.mjs");
@@ -93,6 +94,25 @@ test("each global override affects only its matching agent and remains idempoten
   }
 });
 
+test("global registration uses the shared global skill lock", () => {
+  const context = fixture();
+  try {
+    const env = {
+      ...baseEnv,
+      HOME: context.home,
+      USERPROFILE: context.home,
+      BURNLIST_CLAUDE_SKILLS_DIR: join(context.root, "override-claude"),
+      BURNLIST_SKILLS_DIR: join(context.root, "override-codex"),
+    };
+    assert.throws(() => withGlobalSkillsLock(env, () => {
+      assert.equal(lstatSync(join(context.home, ".burnlist", ".local", "burnlist", ".lock")).isDirectory(), true);
+      return registerSkills({
+        sourceRoot: join(repoRoot, "skills"), scope: "global", cwd: context.repo, env, agents: ["codex"], log: () => {},
+      });
+    }), /Repo state is locked by pid/u);
+  } finally { context.cleanup(); }
+});
+
 test("repo registration creates both agent links at a temporary worktree root and is idempotent", () => {
   const context = fixture();
   try {
@@ -106,6 +126,49 @@ test("repo registration creates both agent links at a temporary worktree root an
     assert.match(output, /kept .*burnlist/u);
     linkedTo(claude);
     linkedTo(codex);
+  } finally { context.cleanup(); }
+});
+
+test("registration rolls every target and the exclude file back when its exclude write fails", () => {
+  const context = fixture();
+  try {
+    execFileSync("git", ["init", "--quiet"], { cwd: context.repo });
+    const options = {
+      sourceRoot: join(repoRoot, "skills"), cwd: context.repo,
+      env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home }, log: () => {},
+    };
+    registerSkills(options);
+    const excludePath = join(context.repo, ".git", "info", "exclude");
+    const beforeExclude = readFileSync(excludePath, "utf8");
+    assert.throws(
+      () => registerSkills({ ...options, commit: true, writeAtomic: () => { throw new Error("injected exclude failure"); } }),
+      /injected exclude failure/u,
+    );
+    linkedTo(join(context.repo, ".claude", "skills", "burnlist"));
+    linkedTo(join(context.repo, ".agents", "skills", "burnlist"));
+    assert.equal(readFileSync(excludePath, "utf8"), beforeExclude);
+  } finally { context.cleanup(); }
+});
+
+test("revalidation keeps a target that becomes correct immediately before mutation", () => {
+  const context = fixture();
+  try {
+    const target = join(context.repo, ".agents", "skills", "burnlist");
+    const logs = [];
+    let inode;
+    const planned = registerSkills({
+      sourceRoot: join(repoRoot, "skills"), cwd: context.repo,
+      env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home }, agents: ["codex"],
+      log: (line) => logs.push(line),
+      beforeTargetMutation: () => {
+        symlinkSync(source, target, process.platform === "win32" ? "junction" : "dir");
+        inode = lstatSync(target).ino;
+      },
+    });
+    assert.equal(planned[0].action, "keep");
+    assert.equal(lstatSync(target).ino, inode);
+    linkedTo(target);
+    assert.match(logs.join("\n"), /kept .*burnlist/u);
   } finally { context.cleanup(); }
 });
 
@@ -170,7 +233,7 @@ test("unregister removes only exact managed symlinks and preserves foreign entri
     assert.equal(lstatOrNull(claudeTarget), null);
     assert.equal(lstatSync(codexTarget).isDirectory(), true);
     assert.equal(lstatSync(foreignTarget).isSymbolicLink(), true);
-    assert.equal(lstatSync(dirname(claudeTarget)).isDirectory(), true);
+    assert.equal(lstatOrNull(dirname(claudeTarget)), null);
     assert.equal(lstatSync(dirname(codexTarget)).isDirectory(), true);
   } finally { context.cleanup(); }
 });

@@ -1,8 +1,11 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, renameSync, rmSync, symlinkSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readlinkSync, readdirSync, renameSync, rmSync, rmdirSync, symlinkSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { gitProbe } from "./git-ignore.mjs";
 import { addOwnedLocalExcludeText, fsyncDirectory, gitExcludePath, localExcludeTarget, removeOwnedLocalExcludeText, writeAtomicText } from "./local-exclude.mjs";
+import { ignoredSkillContent, trackedPathsInGit } from "./skills-install-git.mjs";
+import { withGlobalSkillsLock } from "./skills-install-lock.mjs";
+import { runInstallTransaction } from "./skills-install-transaction.mjs";
 import { withRepoStateLock } from "../server/repo-state.mjs";
 
 export const TARGETS = Object.freeze({
@@ -144,47 +147,80 @@ function targetState(registration) {
   return isManagedCopy(registration) ? "copy" : "foreign";
 }
 
-function trackedInGit(repoRoot, path) {
-  const target = relative(repoRoot, path).replace(/\\/gu, "/");
-  const result = gitProbe(repoRoot, ["ls-files", "--error-unmatch", "--", target]);
-  if (result.status === 0) return true;
-  if (result.status === 1) return false;
-  throw new Error(result.error?.message || result.stderr?.trim() || `could not determine whether ${target} is tracked`);
+export function snapshotManagedSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents }) {
+  return registrations({ sourceRoot, scope, cwd, env, agents }).flatMap((registration) => {
+    const state = targetState(registration);
+    return state === "link" || state === "copy" ? [{ ...registration, state }] : [];
+  });
 }
 
-function assertInstallable(registration, desired) {
+export function removeSnapshotManagedSkills({ registrations: snapshot, env = process.env, log = console.log, warn = console.warn, remove = rmSync }) {
+  const removed = [];
+  const failures = [];
+  for (const registration of snapshot) {
+    try {
+      // The package may already be gone, so use the pre-npm snapshot and only
+      // remove the same exact managed object that we originally observed.
+      if (targetState(registration) !== registration.state) {
+        warn(`Burnlist: left ${registration.target} untouched because it is no longer the exact managed registration discovered before purge.`);
+        continue;
+      }
+      remove(registration.target, { recursive: true, force: true });
+      removeEmptySkillParents(registration, homeForGlobalTargets(env));
+      log(`Burnlist: removed ${registration.source} -> ${registration.target}; global managed registration.`);
+      removed.push(registration);
+    } catch (error) {
+      failures.push({ target: registration.target, error });
+    }
+  }
+  return { removed, failures };
+}
+
+function assertInstallable(registration, desired, force) {
   const state = targetState(registration);
   if (state === "foreign-link") throw new Error(`${registration.target} already links to a different skill source (foreign symlink; refusing to overwrite it)`);
   if (state === "foreign") throw new Error(`${registration.target} already exists and is not a Burnlist-managed symlink or provenance-marked portable copy; refusing to overwrite it`);
+  if (state === "copy" && desired === "link" && !force) {
+    throw new Error(`${registration.target} is a Burnlist-managed portable copy; default install would downgrade a committed copy to a symlink. Run burnlist uninstall first, or pass --force to proceed.`);
+  }
   return { ...registration, state, action: state === desired ? "keep" : desired };
 }
 
-function copySkill(registration, version) {
-  mkdirSync(registration.targetRoot, { recursive: true });
+function copySkill(registration, version, onCreated) {
   const stage = mkdtempSync(join(registration.targetRoot, ".burnlist-skill-"));
   const payload = join(stage, registration.name);
   try {
     cpSync(registration.source, payload, { recursive: true, dereference: true, errorOnExist: true });
     writeAtomicText(join(payload, COPY_MARKER), `${JSON.stringify(copyMarker(registration, version), null, 2)}\n`);
     renameSync(payload, registration.target);
+    onCreated?.();
     fsyncDirectory(registration.targetRoot);
   } finally { rmSync(stage, { recursive: true, force: true }); }
 }
 
-function installTarget(registration, version) {
-  if (registration.action === "keep") return;
-  if (registration.state !== "missing") rmSync(registration.target, { recursive: true, force: true });
+function createInstallTarget(registration, version, onCreated) {
   if (registration.action === "link") {
-    mkdirSync(registration.targetRoot, { recursive: true });
     symlinkSync(registration.source, registration.target, process.platform === "win32" ? "junction" : "dir");
-  } else copySkill(registration, version);
+    onCreated?.();
+  } else copySkill(registration, version, onCreated);
+}
+
+function assertUntrackedLocalInstall(repoRoot, registration) {
+  const tracked = trackedPathsInGit(repoRoot, registration.target);
+  if (!tracked.length) return;
+  if (targetState(registration) === "copy") {
+    throw new Error(`${registration.target} is a tracked portable copy; refusing to replace it with a local symlink. Run git rm or uninstall with the commit-aware workflow first.`);
+  }
+  throw new Error(`${localExcludeTarget(repoRoot, registration.target)} is already tracked by git; refusing to hide a tracked skill in .git/info/exclude. Use --commit only with a Burnlist-managed portable copy.`);
 }
 
 function formatInstall(registration, dryRun, commit) {
   const verb = registration.action === "keep" ? (dryRun ? "would keep" : "kept")
     : registration.action === "link" ? (dryRun ? "would link" : "linked") : (dryRun ? "would copy" : "copied");
   const mode = commit
-    ? registration.exclude === "no git repository to exclude into" ? "portable copy (no git repo)" : "committable (portable copy; run git add to track)"
+    ? registration.exclude === "no git repository to exclude into" ? "portable copy (no git repo)"
+      : registration.gitIgnore ? `still ignored (portable copy; ignored by ${registration.gitIgnore})`
+        : "committable (portable copy; run git add to track)"
     : registration.exclude === "no git repository to exclude into" ? "symlink (no git repo to exclude into)"
       : "untracked (local, .git/info/exclude)";
   const exclude = registration.exclude === "no git repository to exclude into" ? "" : `; ${registration.exclude}`;
@@ -196,7 +232,7 @@ function formatGlobal(registration, dryRun) {
   return `Burnlist: ${verb} ${registration.source} -> ${registration.target}; global symlink (no repo exclude).`;
 }
 
-export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, log = console.log }) {
+export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, force = false, log = console.log, writeAtomic = writeAtomicText, beforeTargetMutation }) {
   if (scope === "global" && commit) throw new Error("--commit is only valid for per-repository skill installs");
   const context = scope === "repo" ? gitContext(cwd) : null;
   const register = () => {
@@ -204,18 +240,17 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
     const registrationsForScope = registrations({ sourceRoot, scope, cwd, env, agents });
     if (scope === "repo" && context.git && !commit) {
       for (const registration of registrationsForScope) {
-        if (trackedInGit(context.root, registration.target)) {
-          throw new Error(`${localExcludeTarget(context.root, registration.target)} is already tracked by git; refusing to hide a tracked skill in .git/info/exclude. Use --commit only with a Burnlist-managed portable copy.`);
-        }
+        assertUntrackedLocalInstall(context.root, registration);
       }
     }
-    const planned = registrationsForScope.map((registration) => assertInstallable(registration, desired));
+    const planned = registrationsForScope.map((registration) => assertInstallable(registration, desired, force));
     let excludePath;
+    let excludeBefore;
     let excludeAfter;
     if (scope === "repo" && context.git) {
       excludePath = gitExcludePath(context.root);
-      const before = readOptionalText(excludePath);
-      excludeAfter = before ?? "";
+      excludeBefore = readOptionalText(excludePath);
+      excludeAfter = excludeBefore ?? "";
       for (const registration of planned) {
         const target = localExcludeTarget(context.root, registration.target);
         const previous = excludeAfter;
@@ -232,13 +267,37 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
     for (const registration of planned) registration.exclude ??= "no git repository to exclude into";
     if (!dryRun) {
       const version = commit && planned.some((registration) => registration.action === "copy") ? sourcePackageVersion(sourceRoot) : undefined;
-      for (const registration of planned) installTarget(registration, version);
-      if (excludePath && readOptionalText(excludePath) !== excludeAfter) writeAtomicText(excludePath, excludeAfter);
+      runInstallTransaction({
+        planned,
+        revalidate: (registration) => {
+          if (scope === "repo" && context.git && !commit) assertUntrackedLocalInstall(context.root, registration);
+          return assertInstallable(registration, desired, force);
+        },
+        create: (registration, onCreated) => createInstallTarget(registration, version, onCreated),
+        beforeMutation: beforeTargetMutation,
+        exclude: excludePath && readOptionalText(excludePath) !== excludeAfter ? {
+          changed: true,
+          write: () => writeAtomic(excludePath, excludeAfter),
+          restore: () => {
+            if (excludeBefore === undefined) rmSync(excludePath, { force: true });
+            else writeAtomicText(excludePath, excludeBefore);
+          },
+          afterWrite: commit ? () => {
+            for (const registration of planned) registration.gitIgnore = ignoredSkillContent(context.root, registration, COPY_MARKER);
+          } : undefined,
+        } : commit && context.git ? {
+          afterWrite: () => {
+            for (const registration of planned) registration.gitIgnore = ignoredSkillContent(context.root, registration, COPY_MARKER);
+          },
+        } : undefined,
+      });
     }
     for (const registration of planned) log(scope === "global" ? formatGlobal(registration, dryRun) : formatInstall(registration, dryRun, commit));
     return planned;
   };
-  return scope === "repo" && context.git && !dryRun ? withRepoStateLock(context.root, register) : register();
+  if (dryRun) return register();
+  if (scope === "repo" && context.git) return withRepoStateLock(context.root, register);
+  return scope === "global" ? withGlobalSkillsLock(env, register) : register();
 }
 
 export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, log = console.log, warn = console.warn }) {
@@ -255,11 +314,6 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
       excludeAfter = excludeBefore ?? "";
     }
     for (const registration of planned) {
-      const state = targetState(registration);
-      if (state !== "link" && state !== "copy") {
-        if (state !== "missing") warn(`Burnlist: left ${registration.target} untouched because it is not managed by this package.`);
-        continue;
-      }
       if (excludeAfter !== undefined) {
         const previous = excludeAfter;
         excludeAfter = removeOwnedLocalExcludeText(excludeAfter, localExcludeTarget(context.root, registration.target), SKILL_EXCLUDE_MARKER);
@@ -267,7 +321,17 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
           ? "no owned exclude entry to remove"
           : (dryRun ? "would remove owned exclude entry" : "owned exclude entry removed");
       }
-      if (!dryRun) rmSync(registration.target, { recursive: true, force: true });
+    }
+    for (const registration of planned) {
+      const state = targetState(registration);
+      if (state !== "link" && state !== "copy") {
+        if (state !== "missing") warn(`Burnlist: left ${registration.target} untouched because it is not managed by this package.`);
+        continue;
+      }
+      if (!dryRun) {
+        rmSync(registration.target, { recursive: true, force: true });
+        removeEmptySkillParents(registration, scope === "repo" ? context.root : homeForGlobalTargets(env));
+      }
       const mode = scope === "global" ? "global symlink (no repo exclude)"
         : state === "copy" ? registration.exclude === undefined ? "portable copy (no git repo)" : "committable (portable copy; run git add to track)"
           : registration.exclude === undefined ? "symlink (no git repo to exclude into)" : "untracked (local, .git/info/exclude)";
@@ -278,5 +342,25 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
     if (!dryRun && excludePath && excludeBefore !== excludeAfter) writeAtomicText(excludePath, excludeAfter);
     return removed;
   };
-  return scope === "repo" && context.git && !dryRun ? withRepoStateLock(context.root, unregister) : unregister();
+  if (dryRun) return unregister();
+  if (scope === "repo" && context.git) return withRepoStateLock(context.root, unregister);
+  return scope === "global" ? withGlobalSkillsLock(env, unregister) : unregister();
+}
+
+function isWithin(parent, child) {
+  const pathFromParent = relative(parent, child);
+  return pathFromParent === "" || (pathFromParent !== ".." && !pathFromParent.startsWith(`..${sep}`) && !isAbsolute(pathFromParent));
+}
+
+function removeEmptySkillParents(registration, boundary) {
+  const stop = boundary && isWithin(boundary, registration.targetRoot) ? resolve(boundary) : registration.targetRoot;
+  let current = registration.targetRoot;
+  while (current !== stop) {
+    try { rmdirSync(current); } catch (error) {
+      if (error.code === "ENOENT") { current = dirname(current); continue; }
+      if (error.code === "ENOTEMPTY") return;
+      throw error;
+    }
+    current = dirname(current);
+  }
 }

@@ -26,8 +26,19 @@ const knownSubcommands = new Set([
   "init",
 ]);
 
+function printSkillUsage(command) {
+  const usage = command === "install"
+    ? "Usage: burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-run]"
+    : "Usage: burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]";
+  console.log(`${usage}\n\nInstall and remove Burnlist-managed agent skills for Codex and Claude.`);
+}
+
 async function main() {
 if (args[0] === "install" || args[0] === "uninstall") {
+  if (args.includes("--help") || args.includes("-h")) {
+    printSkillUsage(args[0]);
+    return;
+  }
   process.exitCode = runSkillsInstallCli({ args, packageRoot });
   return;
 }
@@ -72,7 +83,7 @@ if (args[0] && !args[0].startsWith("--") && !["-h", "-v"].includes(args[0]) && !
   process.exit(2);
 }
 
-if (args[0] !== "oven" && (args.includes("--help") || args.includes("-h"))) {
+if (!["oven", "hooks"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
 Usage:
@@ -98,7 +109,7 @@ Usage:
   burnlist unregister [path]
   burnlist roots [--prune]
   burnlist init [path] [--track]
-  burnlist install [--global] [--commit] [--agent codex,claude] [--dry-run]
+  burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-run]
   burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 
 Options:
@@ -110,6 +121,7 @@ Options:
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
   --global              Install or uninstall skills in the user home directory.
   --commit              Per-repository install: copy portable skills for git commit.
+  --force               Permit install to replace a Burnlist-managed portable copy with a symlink.
   --agent <agents>      Restrict skill install or uninstall to codex, claude, or both.
   --dry-run             Print skill link or portable-copy plans without writing them.
   --purge               With uninstall --global only, also remove the global npm package.

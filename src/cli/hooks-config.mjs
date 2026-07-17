@@ -127,17 +127,20 @@ function configPath(repoRoot, agent) {
   return join(resolve(repoRoot), spec.file);
 }
 
-function worktreeRoot(repoRoot) {
+function worktreeRoot(repoRoot, operation) {
   const cwd = resolve(repoRoot);
   const gitRoot = gitProbe(cwd, ["rev-parse", "--show-toplevel"]);
+  if (gitRoot.status === 128 && /not a git repository/iu.test(gitRoot.stderr ?? "")) {
+    throw new Error(`hooks ${operation} must run inside a Git repository.`);
+  }
   if (gitRoot.status !== 0) throw new Error(gitRoot.error?.message || gitRoot.stderr?.trim() || "could not determine Git worktree root");
   const root = gitRoot.stdout.trim();
   if (!root) throw new Error("could not determine Git worktree root");
   return resolve(cwd, root);
 }
 
-function preflight(repoRoot, agents) {
-  const root = worktreeRoot(repoRoot);
+function preflight(repoRoot, agents, operation) {
+  const root = worktreeRoot(repoRoot, operation);
   const targets = agents.map((agent) => {
     const path = configPath(root, agent);
     const target = relative(root, path).replace(/\\/gu, "/");
@@ -195,7 +198,7 @@ export function hookCapability(agent, { spawn = spawnSync, env = process.env } =
 }
 
 export function hookConfigStatus({ repoRoot = process.cwd(), agents = Object.keys(AGENTS), capability = hookCapability } = {}) {
-  const { root, targets } = preflight(repoRoot, agents);
+  const { root, targets } = preflight(repoRoot, agents, "status");
   return targets.map(({ agent, path, tracked }) => {
     let installed = false;
     let malformed = false;
@@ -216,7 +219,7 @@ export function hookConfigStatus({ repoRoot = process.cwd(), agents = Object.key
 
 export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.keys(AGENTS), install, untracked = false, capability = hookCapability, writeJson = writeDurableJson, restoreFile = restoreFileChange } = {}) {
   if (typeof install !== "boolean") throw new Error("install must be true or false");
-  const { root, targets } = preflight(repoRoot, agents);
+  const { root, targets } = preflight(repoRoot, agents, install ? "install" : "uninstall");
   return withRepoStateLock(root, () => {
     const capabilities = new Map(targets.map(({ agent }) => [agent, capability(agent)]));
     const created = readProvenance(root);
@@ -234,6 +237,7 @@ export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.ke
       if (!install && created.delete(key)) provenanceChanged = true;
       return {
         agent, path, tracked, key, next, changed, remove,
+        removed: !install && ownershipState(config, agent) !== "none",
         change: changed || remove ? { path, before: state.text, after: remove ? undefined : "", value: remove ? undefined : next } : null,
       };
     });
@@ -268,12 +272,13 @@ export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.ke
       }
       throw error;
     }
-    return prepared.map(({ agent, path, tracked, next }) => {
+    return prepared.map(({ agent, path, tracked, next, removed }) => {
       const resulting = install ? next : Object.keys(next).length === 0 ? {} : next;
       return {
         agent, path, installed: hasOwnedEntries(resulting, agent), state: ownershipState(resulting, agent),
         mode: tracked ? "tracked" : "untracked", excluded: excludedIn(excludeAfter ?? "", localExcludeTarget(root, path)),
         forcedUntracked: untracked && tracked, capability: capabilities.get(agent),
+        removed,
       };
     });
   });

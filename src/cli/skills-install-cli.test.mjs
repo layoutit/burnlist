@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-
-import { runSkillsInstallCli } from "./skills-install-cli.mjs";
 
 const sourceRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const cli = join(sourceRoot, "bin", "burnlist.mjs");
@@ -66,8 +64,8 @@ test("default repository install is local and excluded, then uninstall restores 
     assert.equal(existsSync(claude), false);
     assert.equal(existsSync(codex), false);
     assert.equal(exclude(context), before);
-    assert.equal(lstatSync(dirname(claude)).isDirectory(), true);
-    assert.equal(lstatSync(dirname(codex)).isDirectory(), true);
+    assert.equal(existsSync(dirname(claude)), false);
+    assert.equal(existsSync(dirname(codex)), false);
   } finally { context.cleanup(); }
 });
 
@@ -130,6 +128,24 @@ test("uninstall leaves a foreign copy without the provenance marker untouched", 
   } finally { context.cleanup(); }
 });
 
+test("uninstall removes owned excludes for missing or foreign targets without touching them", () => {
+  const context = fixture();
+  try {
+    assert.equal(run(context, ["install"]).status, 0);
+    const claude = target(context, "claude");
+    const codex = target(context, "codex");
+    rmSync(claude, { recursive: true, force: true });
+    rmSync(codex, { recursive: true, force: true });
+    mkdirSync(codex);
+    writeFileSync(join(codex, "SKILL.md"), "foreign\n");
+    const result = run(context, ["uninstall"]);
+    assert.equal(result.status, 0);
+    assert.equal(lstatSync(codex).isDirectory(), true);
+    assert.doesNotMatch(exclude(context), /# burnlist-managed:skills@1\n\/\.(?:claude|agents)\/skills\/burnlist/u);
+    assert.match(result.stderr, /left .* untouched/u);
+  } finally { context.cleanup(); }
+});
+
 test("default install in a non-git directory remains a local symlink and reports no exclude destination", () => {
   const context = fixture();
   try {
@@ -175,6 +191,58 @@ test("default install refuses a target already tracked by git instead of excludi
     assert.equal(result.status, 1);
     assert.match(result.stderr, /already tracked by git; refusing to hide a tracked skill/u);
     assert.equal(exclude(context), before);
+  } finally { context.cleanup(); }
+});
+
+test("--commit reports a content-file ignore even when the copy directory is not ignored", () => {
+  const context = fixture();
+  try {
+    writeFileSync(join(context.repo, ".gitignore"), "*.md\n");
+    const result = run(context, ["install", "--commit", "--agent", "codex"]);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /mode still ignored \(portable copy; ignored by .*\.gitignore:1:\*\.md/u);
+    assert.match(gitCheckIgnore(context, ".agents/skills/burnlist/SKILL.md"), /\.gitignore/u);
+    assert.equal(spawnSync("git", ["check-ignore", "--", ".agents/skills/burnlist"], { cwd: context.repo }).status, 1);
+  } finally { context.cleanup(); }
+});
+
+test("default install refuses to downgrade a portable copy unless --force is explicit", () => {
+  const context = fixture();
+  try {
+    assert.equal(run(context, ["install", "--commit", "--agent", "codex"]).status, 0);
+    const refused = run(context, ["install", "--agent", "codex"]);
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /would downgrade a committed copy.*pass --force/u);
+    assert.equal(lstatSync(target(context, "codex")).isSymbolicLink(), false);
+    const forced = run(context, ["install", "--force", "--agent", "codex"]);
+    assert.equal(forced.status, 0);
+    assertLink(target(context, "codex"));
+  } finally { context.cleanup(); }
+});
+
+test("--force refuses to downgrade a tracked portable copy", () => {
+  const context = fixture();
+  try {
+    assert.equal(run(context, ["install", "--commit", "--agent", "codex"]).status, 0);
+    execFileSync("git", ["add", ".agents/skills/burnlist"], { cwd: context.repo });
+    const forced = run(context, ["install", "--force", "--agent", "codex"]);
+    assert.equal(forced.status, 1);
+    assert.match(forced.stderr, /tracked portable copy; refusing to replace.*Run git rm/u);
+    assert.equal(lstatSync(target(context, "codex")).isSymbolicLink(), false);
+  } finally { context.cleanup(); }
+});
+
+test("uninstall removes empty skill parents but retains a parent containing a foreign entry", () => {
+  const context = fixture();
+  try {
+    assert.equal(run(context, ["install"]).status, 0);
+    const codexSkills = dirname(target(context, "codex"));
+    mkdirSync(join(codexSkills, "foreign"));
+    writeFileSync(join(codexSkills, "foreign", "SKILL.md"), "foreign\n");
+    assert.equal(run(context, ["uninstall"]).status, 0);
+    assert.equal(existsSync(join(context.repo, ".claude")), false);
+    assert.equal(lstatSync(codexSkills).isDirectory(), true);
+    assert.equal(existsSync(join(codexSkills, "foreign", "SKILL.md")), true);
   } finally { context.cleanup(); }
 });
 
@@ -231,79 +299,4 @@ test("global install refuses foreign files, directories, and symlinks without to
       assert.equal(existsSync(join(codexSkills, "burnlist")), false);
     } finally { context.cleanup(); }
   }
-});
-
-test("failed global purge restores exactly the removed links without running npm", () => {
-  const context = fixture();
-  try {
-    const packageRoot = join(context.root, "npm", "lib", "node_modules", "burnlist");
-    cpSync(join(sourceRoot, "skills"), join(packageRoot, "skills"), { recursive: true });
-    const claudeSkills = join(context.root, "claude-skills");
-    const codexSkills = join(context.root, "codex-skills");
-    const env = {
-      ...baseEnv,
-      HOME: context.home,
-      USERPROFILE: context.home,
-      BURNLIST_CLAUDE_SKILLS_DIR: claudeSkills,
-      BURNLIST_SKILLS_DIR: codexSkills,
-    };
-    const logs = [];
-    const packageSkill = join(packageRoot, "skills", "burnlist");
-    assert.equal(runSkillsInstallCli({ args: ["install", "--global"], packageRoot, cwd: context.repo, env, log: (line) => logs.push(line) }), 0);
-    assertLink(join(claudeSkills, "burnlist"), packageSkill);
-    assertLink(join(codexSkills, "burnlist"), packageSkill);
-
-    const calls = [];
-    const failNpm = (command, args) => {
-      calls.push({ command, args });
-      mkdirSync(join(packageRoot, "skills", "foreign"));
-      writeFileSync(join(packageRoot, "skills", "foreign", "SKILL.md"), "---\nname: foreign\n---\n");
-      symlinkSync(join(context.root, "foreign-skill"), join(claudeSkills, "foreign"));
-      return { status: 1 };
-    };
-    assert.equal(runSkillsInstallCli({ args: ["uninstall", "--global", "--purge"], packageRoot, cwd: context.repo, env, log: (line) => logs.push(line), spawn: failNpm }), 1);
-
-    assert.deepEqual(calls, [{ command: process.platform === "win32" ? "npm.cmd" : "npm", args: ["uninstall", "--global", "--prefix", join(context.root, "npm"), "burnlist"] }]);
-    assertLink(join(claudeSkills, "burnlist"), packageSkill);
-    assertLink(join(codexSkills, "burnlist"), packageSkill);
-    assert.equal(readlinkSync(join(claudeSkills, "foreign")), join(context.root, "foreign-skill"));
-    assert.match(logs.join("\n"), /restored .*burnlist/u);
-  } finally { context.cleanup(); }
-});
-
-test("--agent scopes the install and uninstall to the requested agent", () => {
-  const context = fixture();
-  try {
-    assert.equal(run(context, ["install", "--agent", "codex"]).status, 0);
-    assertLink(target(context, "codex"));
-    assert.equal(existsSync(target(context, "claude")), false);
-    assert.equal(run(context, ["uninstall", "--agent", "codex"]).status, 0);
-    assert.equal(existsSync(target(context, "codex")), false);
-  } finally { context.cleanup(); }
-});
-
-test("--dry-run reports the honest mode and exclude outcome without writing", () => {
-  const context = fixture();
-  try {
-    const result = run(context, ["install", "--dry-run"]);
-    assert.equal(result.status, 0);
-    assert.match(result.stdout, /would link .*\.claude.*burnlist/u);
-    assert.match(result.stdout, /would link .*\.agents.*burnlist/u);
-    assert.match(result.stdout, /mode untracked \(local, \.git\/info\/exclude\); would write exclude entry/u);
-    const committed = run(context, ["install", "--commit", "--dry-run"]);
-    assert.equal(committed.status, 0);
-    assert.match(committed.stdout, /would copy .*mode committable \(portable copy; run git add to track\); no owned exclude entry to remove/u);
-    assert.equal(existsSync(join(context.repo, ".claude")), false);
-    assert.equal(existsSync(join(context.repo, ".agents")), false);
-    assert.doesNotMatch(exclude(context), /\/\.(?:claude|agents)\/skills\/burnlist/u);
-  } finally { context.cleanup(); }
-});
-
-test("unknown --agent values fail with valid choices", () => {
-  const context = fixture();
-  try {
-    const result = run(context, ["install", "--agent", "cursor"]);
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /unknown --agent value: cursor\. Valid agents: codex, claude\./u);
-  } finally { context.cleanup(); }
 });

@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { lstatSync, mkdirSync, readlinkSync, symlinkSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
-import { registerSkills, unregisterSkills } from "./skills-register.mjs";
+import { registerSkills, removeSnapshotManagedSkills, snapshotManagedSkills, unregisterSkills } from "./skills-register.mjs";
+import { withGlobalSkillsLock } from "./skills-install-lock.mjs";
 
 const VALID_AGENTS = Object.freeze(["codex", "claude"]);
 
@@ -23,6 +23,7 @@ function parseSkillCommand(args) {
   let dryRun = false;
   let purge = false;
   let commit = false;
+  let force = false;
   let agents = VALID_AGENTS;
   let agentSpecified = false;
   for (let index = 1; index < args.length; index += 1) {
@@ -30,6 +31,7 @@ function parseSkillCommand(args) {
     if (argument === "--global") global = true;
     else if (argument === "--dry-run") dryRun = true;
     else if (argument === "--commit") commit = true;
+    else if (argument === "--force") force = true;
     else if (argument === "--purge") purge = true;
     else if (argument === "--agent") {
       const value = args[++index];
@@ -43,10 +45,11 @@ function parseSkillCommand(args) {
   }
   if (command === "install" && purge) throw new Error("--purge is only valid with uninstall");
   if (command === "uninstall" && commit) throw new Error("--commit is only valid with install");
+  if (command === "uninstall" && force) throw new Error("--force is only valid with install");
   if (global && commit) throw new Error("--commit is only valid for per-repository skill installs");
   if (purge && !global) throw new Error("--purge requires --global");
   if (purge && agentSpecified) throw new Error("--purge removes the global package and must clean both agents; omit --agent");
-  return { command, scope: global ? "global" : "repo", dryRun, purge, commit, agents };
+  return { command, scope: global ? "global" : "repo", dryRun, purge, commit, force, agents };
 }
 
 function npmGlobalPrefix(packageRoot) {
@@ -61,33 +64,7 @@ function npmGlobalPrefix(packageRoot) {
   throw new Error("Burnlist is not running from a global npm installation.");
 }
 
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-function restoreRemovedSkills(removed, { log, warn }) {
-  for (const registration of removed) {
-    const stat = lstatOrNull(registration.target);
-    if (stat) {
-      if (stat.isSymbolicLink() && resolve(dirname(registration.target), readlinkSync(registration.target)) === registration.source) {
-        log(`Burnlist: kept restored ${registration.source} -> ${registration.target}`);
-      } else {
-        warn(`Burnlist: left ${registration.target} untouched during recovery because it is no longer this package's skill link.`);
-      }
-      continue;
-    }
-    mkdirSync(registration.targetRoot, { recursive: true });
-    symlinkSync(registration.source, registration.target, process.platform === "win32" ? "junction" : "dir");
-    log(`Burnlist: restored ${registration.source} -> ${registration.target}`);
-  }
-}
-
-function purgeGlobalPackage({ packageRoot, env, log, warn, spawn, removed }) {
+function purgeGlobalPackage({ packageRoot, env, error, spawn }) {
   const prefix = npmGlobalPrefix(packageRoot);
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const removal = spawn(npm, ["uninstall", "--global", "--prefix", prefix, "burnlist"], {
@@ -96,14 +73,13 @@ function purgeGlobalPackage({ packageRoot, env, log, warn, spawn, removed }) {
     stdio: "inherit",
   });
   if (removal.error || removal.status !== 0) {
-    log("Burnlist: npm uninstall failed; restoring agent skill registrations.");
-    restoreRemovedSkills(removed, { log, warn });
+    error("Burnlist: npm uninstall failed; global skill registrations were left untouched.");
     return removal.status ?? 1;
   }
   return 0;
 }
 
-export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), env = process.env, log = console.log, warn = console.warn, error = console.error, spawn = spawnSync }) {
+export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), env = process.env, log = console.log, warn = console.warn, error = console.error, spawn = spawnSync, remove }) {
   try {
     const options = parseSkillCommand(args);
     const sourceRoot = resolve(packageRoot, "skills");
@@ -112,14 +88,31 @@ export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), en
       return 0;
     }
     if (options.command !== "uninstall") throw new Error(`unknown skill command: ${options.command}`);
-    if (options.purge && !options.dryRun) npmGlobalPrefix(packageRoot);
-    const removed = unregisterSkills({ sourceRoot, cwd, env, ...options, log, warn });
-    if (!options.purge) return 0;
-    if (options.dryRun) {
-      log("Burnlist: would uninstall the global npm package burnlist.");
+    if (!options.purge) {
+      const removed = unregisterSkills({ sourceRoot, cwd, env, ...options, log, warn });
+      if (!removed.length) log("Burnlist: nothing installed to remove.");
       return 0;
     }
-    return purgeGlobalPackage({ packageRoot, env, log, warn, spawn, removed });
+    if (options.dryRun) {
+      log("Burnlist: would uninstall the global npm package burnlist.");
+      const planned = snapshotManagedSkills({ sourceRoot, scope: "global", cwd, env, agents: options.agents });
+      for (const registration of planned) log(`Burnlist: would remove ${registration.source} -> ${registration.target}; global managed registration.`);
+      if (!planned.length) log("Burnlist: no global skill registrations would be removed.");
+      return 0;
+    }
+    npmGlobalPrefix(packageRoot);
+    return withGlobalSkillsLock(env, () => {
+      const snapshot = snapshotManagedSkills({ sourceRoot, scope: "global", cwd, env, agents: options.agents });
+      const purgeStatus = purgeGlobalPackage({ packageRoot, env, error, spawn });
+      if (purgeStatus !== 0) return purgeStatus;
+      const cleanup = removeSnapshotManagedSkills({ registrations: snapshot, env, log, warn, remove });
+      if (!cleanup.removed.length && !cleanup.failures.length) log("Burnlist: nothing installed to remove.");
+      if (cleanup.failures.length) {
+        error(`Burnlist: npm uninstall succeeded, but could not remove ${cleanup.failures.length} global skill registration(s): ${cleanup.failures.map(({ target, error: cause }) => `${target} (${cause.message})`).join("; ")}`);
+        return 1;
+      }
+      return 0;
+    });
   } catch (cause) {
     error(`Burnlist: ${cause.message}`);
     return 1;
