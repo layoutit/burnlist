@@ -96,6 +96,18 @@
         outline: 3px solid var(--accent);
         outline-offset: 3px;
       }
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        z-index: 100;
+        background: var(--accent);
+        color: #07131b;
+        font-weight: 750;
+        padding: .6rem 1rem;
+        border-radius: 0 0 8px 0;
+      }
+      .skip-link:focus { left: 0; }
       .container { width: min(1120px, calc(100% - 40px)); margin-inline: auto; }
       .topbar {
         position: sticky;
@@ -124,18 +136,28 @@
       .button { border: 1px solid var(--hairline-strong); border-radius: 999px; font-weight: 750; padding: .68rem 1rem; transition: transform .15s ease, background .15s ease; }
       .button:hover { transform: translateY(-1px); background: var(--bg-elev); }
       .button.primary { background: var(--accent); border-color: var(--accent); color: #07131b; }
-      .button.primary:hover { background: var(--accent-2); }
+      .button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+      @media (prefers-color-scheme: light) {
+        .button.primary { background: #0369a1; border-color: #0369a1; color: #fff; }
+        .button.primary:hover { background: #075985; border-color: #075985; }
+      }
+      :root[data-theme='dark'] .button.primary { background: var(--accent); border-color: var(--accent); color: #07131b; }
+      :root[data-theme='dark'] .button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+      :root[data-theme='light'] .button.primary { background: #0369a1; border-color: #0369a1; color: #fff; }
+      :root[data-theme='light'] .button.primary:hover { background: #075985; border-color: #075985; }
       .section-lede { color: var(--muted); max-width: 680px; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; margin-top: 1.8rem; }
+      .grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 1.8rem; }
+      @media (min-width: 620px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+      @media (min-width: 1040px) { .grid { grid-template-columns: repeat(5, 1fr); } }
       .card { border: 1px solid var(--hairline); border-radius: 14px; background: var(--panel); padding: 1.35rem; }
       .card h3 { color: var(--accent-2); }
       .card p { color: var(--muted); font-size: .94rem; margin-bottom: 0; }
       code { font-family: var(--font-mono); font-size: .92em; }
       .loop { border: 1px solid var(--hairline); border-radius: 16px; background: var(--panel); padding: clamp(1.25rem, 4vw, 2.1rem); }
-      .steps { display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 10px; margin: 1.5rem 0; }
+      .steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 10px; margin: 1.5rem 0; }
       .step { display: flex; align-items: center; gap: 10px; color: var(--accent-2); font-family: var(--font-mono); font-size: .92rem; font-weight: 750; white-space: nowrap; }
       .step:not(:last-child)::after { content: '→'; color: var(--muted); font-family: var(--font); font-size: 1.2rem; margin-left: auto; }
-      .loop p { color: var(--muted); max-width: 930px; margin-bottom: .9rem; }
+      .loop p { color: var(--muted); max-width: 70ch; margin-bottom: .9rem; }
       .flow-caption { color: var(--accent-2) !important; font-family: var(--font-mono); font-size: .85rem; font-weight: 700; margin-bottom: 0 !important; }
       .install-card { border: 1px solid var(--hairline); border-radius: 16px; background: var(--panel); overflow: hidden; }
       pre { max-width: 100%; overflow-x: auto; margin: 0; background: var(--code-bg); border-bottom: 1px solid var(--hairline); padding: 1.25rem 1.4rem; }
@@ -162,9 +184,15 @@
         .step:not(:last-child)::after { content: '↓'; margin-left: 8px; }
         .footer-inner { align-items: flex-start; flex-direction: column; }
       }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .button { transition: none; }
+        .button:hover { transform: none; }
+      }
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="topbar">
       <div class="container topbar-inner">
         <a class="brand" href="/" aria-label="Burnlist home">burnlist</a>
@@ -178,7 +206,7 @@
       </div>
     </header>
 
-    <main class="container">
+    <main id="main-content" class="container">
       <section class="hero" aria-labelledby="page-title">
         <span class="eyebrow">Zero runtime dependencies · pure Node · MIT</span>
         <h1 id="page-title">Burnlist</h1>
@@ -206,9 +234,9 @@
       <section aria-labelledby="loop-title">
         <div class="loop">
           <h2 id="loop-title">How the loop works</h2>
-          <div class="steps" aria-label="Burnlist folder lifecycle">
-            <div class="step">draft/</div><div class="step">ready/</div><div class="step">inprogress/</div><div class="step">completed/</div>
-          </div>
+          <ol class="steps" aria-label="Burnlist folder lifecycle">
+            <li class="step">draft/</li><li class="step">ready/</li><li class="step">inprogress/</li><li class="step">completed/</li>
+          </ol>
           <p>Ready work moves to <code>inprogress</code> before execution and to <code>completed</code> once the active queue is empty. Each active item is validated before it leaves the checklist: the agent appends a terse completion record, deletes the item, then re-checks the Burnlist. <code>burnlist.md</code> is the canonical shrinking queue; <code>goal.md</code> holds the stable contract.</p>
           <p class="flow-caption">new → ready → start → burn → close</p>
         </div>

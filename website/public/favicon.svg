@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Star flame icon</title>
+  <desc id="desc">Minimal black flame silhouette with a transparent four-point star cutout.</desc>
+  <path fill="#d4d4d8" fill-rule="evenodd" d="M278 32 C246 54 220 88 204 126 C188 166 196 219 184 238 C172 258 153 249 157 221 C160 197 157 174 159 166 C122 200 100 241 94 284 C80 375 144 462 248 478 C353 494 418 413 418 328 C418 274 400 220 365 184 C372 226 362 262 349 279 C344 249 327 190 275 110 C263 82 264 54 278 32Z M256 236 C270 289 294 322 348 342 C294 354 270 384 256 436 C242 384 218 354 164 342 C218 322 242 289 256 236Z"/>
+</svg>
