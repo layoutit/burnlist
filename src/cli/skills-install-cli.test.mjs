@@ -196,7 +196,41 @@ test("global install and uninstall honor isolated skill-directory overrides", ()
     assert.match(uninstalled.stdout, /global symlink \(no repo exclude\)/u);
     assert.equal(existsSync(join(claudeSkills, "burnlist")), false);
     assert.equal(existsSync(join(codexSkills, "burnlist")), false);
+    assert.equal(lstatSync(claudeSkills).isDirectory(), true);
+    assert.equal(lstatSync(codexSkills).isDirectory(), true);
   } finally { context.cleanup(); }
+});
+
+test("global install refuses foreign files, directories, and symlinks without touching them", () => {
+  for (const foreign of ["file", "directory", "symlink"]) {
+    const context = fixture();
+    try {
+      const claudeSkills = join(context.root, "claude-skills");
+      const codexSkills = join(context.root, "codex-skills");
+      const destination = join(claudeSkills, "burnlist");
+      const env = { BURNLIST_CLAUDE_SKILLS_DIR: claudeSkills, BURNLIST_SKILLS_DIR: codexSkills };
+      mkdirSync(claudeSkills, { recursive: true });
+      if (foreign === "file") writeFileSync(destination, "foreign\n");
+      else if (foreign === "directory") mkdirSync(destination);
+      else {
+        const foreignSource = join(context.root, "foreign-burnlist");
+        mkdirSync(foreignSource);
+        writeFileSync(join(foreignSource, "SKILL.md"), "foreign\n");
+        symlinkSync(foreignSource, destination, process.platform === "win32" ? "junction" : "dir");
+      }
+
+      const result = run(context, ["install", "--global"], env);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, foreign === "symlink"
+        ? /already links to a different skill source/u
+        : /not a Burnlist-managed symlink or provenance-marked portable copy/u);
+      assert.equal(lstatSync(destination).isSymbolicLink(), foreign === "symlink");
+      assert.equal(lstatSync(destination).isDirectory(), foreign === "directory");
+      if (foreign === "file") assert.equal(readFileSync(destination, "utf8"), "foreign\n");
+      if (foreign === "symlink") assert.notEqual(readlinkSync(destination), skillSource);
+      assert.equal(existsSync(join(codexSkills, "burnlist")), false);
+    } finally { context.cleanup(); }
+  }
 });
 
 test("failed global purge restores exactly the removed links without running npm", () => {
