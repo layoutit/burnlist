@@ -13,11 +13,10 @@ export function trackedPathsInGit(repoRoot, path) {
   return result.stdout.split(/\r?\n/u).filter(Boolean);
 }
 
-function contentPaths(source, target, paths = []) {
-  for (const entry of readdirSync(source, { withFileTypes: true })) {
-    const sourcePath = join(source, entry.name);
+function contentPaths(target, paths = []) {
+  for (const entry of readdirSync(target, { withFileTypes: true })) {
     const targetPath = join(target, entry.name);
-    if (entry.isDirectory()) contentPaths(sourcePath, targetPath, paths);
+    if (entry.isDirectory()) contentPaths(targetPath, paths);
     else paths.push(targetPath);
   }
   return paths;
@@ -26,7 +25,9 @@ function contentPaths(source, target, paths = []) {
 // Check files, not just the directory: a pattern such as *.md ignores SKILL.md
 // without necessarily ignoring its parent directory.
 export function ignoredSkillContent(repoRoot, registration, marker) {
-  const targets = contentPaths(registration.source, registration.target);
+  // Commit mode dereferences source links. Inspect the published copy rather
+  // than the source tree so check-ignore sees every file git could add.
+  const targets = contentPaths(registration.target);
   targets.push(join(registration.target, marker));
   const result = gitProbe(repoRoot, ["check-ignore", "-v", "--", ...targets.map((path) => gitPath(repoRoot, path))]);
   if (result.status === 1) return undefined;

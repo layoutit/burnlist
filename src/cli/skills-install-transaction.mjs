@@ -1,21 +1,13 @@
 import { lstatSync, mkdirSync, mkdtempSync, renameSync, rmSync, rmdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 
+import { filesystemIdentity, quarantineTarget, removeQuarantinedTarget } from "./atomic-quarantine.mjs";
+
 function lstatOrNull(path) {
   try { return lstatSync(path); } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-}
-
-function targetIdentity(path) {
-  const stat = lstatSync(path);
-  return { ino: stat.ino, dev: stat.dev };
-}
-
-function hasTargetIdentity(path, identity) {
-  const stat = lstatOrNull(path);
-  return Boolean(stat && stat.ino === identity.ino && stat.dev === identity.dev);
 }
 
 function ensureDirectory(path, created) {
@@ -52,17 +44,39 @@ function cleanBackups(changes) {
   if (failures.length) throw new Error(`install committed, but backup cleanup failed: ${failures.join("; ")}`);
 }
 
-function rollback(changes, createdDirectories, exclude) {
+function targetVacantForRestore(target, transaction) {
+  const occupied = quarantineTarget({
+    target,
+    quarantined: join(transaction, "rollback-occupant"),
+    validate: () => false,
+  });
+  return occupied.status === "missing";
+}
+
+function rollback(changes, createdDirectories, exclude, beforeRestore) {
   const failures = [];
   for (const { registration, backup, createdIdentity, transaction } of changes.reverse()) {
     try {
       // A newly-created target has no backup. Only remove it when it is still
       // the exact filesystem object this transaction published; a replacement
       // entry belongs to somebody else.
-      if (backup || (createdIdentity && hasTargetIdentity(registration.target, createdIdentity))) {
-        rmSync(registration.target, { recursive: true, force: true });
+      if (createdIdentity) {
+        const outcome = removeQuarantinedTarget({ target: registration.target, identity: createdIdentity });
+        if (outcome.status === "foreign") {
+          failures.push(`${registration.target} occupied by a foreign object`);
+          // TODO(follow-up): crash-recovery sweep of orphaned quarantine dirs.
+          continue;
+        }
       }
-      if (backup) renameSync(backup, registration.target);
+      if (backup) {
+        beforeRestore?.(registration);
+        if (!targetVacantForRestore(registration.target, transaction)) {
+          failures.push(`${registration.target} occupied by a foreign object`);
+          // TODO(follow-up): crash-recovery sweep of orphaned quarantine dirs.
+          continue;
+        }
+        renameSync(backup, registration.target);
+      }
     } catch (error) {
       failures.push(`could not restore ${registration.target}: ${error.message}`);
       continue;
@@ -83,7 +97,7 @@ function rollback(changes, createdDirectories, exclude) {
 // Target replacements are reversible renames until all targets and the exclude
 // update have committed. create() must publish new targets atomically and call
 // onCreated immediately after publishing a missing target, before its dir fsync.
-export function runInstallTransaction({ planned, revalidate, create, exclude, beforeMutation }) {
+export function runInstallTransaction({ planned, revalidate, create, exclude, beforeMutation, beforeRestore, validateQuarantined }) {
   const changes = [];
   const createdDirectories = [];
   try {
@@ -106,16 +120,29 @@ export function runInstallTransaction({ planned, revalidate, create, exclude, be
             let recorded = false;
             const onCreated = () => {
               if (!recorded) {
-                changes.push({ registration, createdIdentity: targetIdentity(registration.target) });
+                changes.push({ registration, createdIdentity: filesystemIdentity(registration.target) });
                 recorded = true;
               }
             };
             create(registration, onCreated);
             onCreated();
           } else {
-            renameSync(registration.target, backup);
+            const quarantined = quarantineTarget({
+              target: registration.target,
+              quarantined: backup,
+              validate: () => validateQuarantined?.(registration, backup) ?? targetStateAt(registration, backup),
+            });
+            if (quarantined.status !== "quarantined") {
+              rmSync(transaction, { recursive: true, force: true });
+              throw new Error(`${registration.target} changed before it could be replaced`);
+            }
             changes.push({ registration, transaction, backup });
-            create(registration);
+            create(registration, () => {
+              const change = changes.at(-1);
+              change.createdIdentity = filesystemIdentity(registration.target);
+            });
+            const change = changes.at(-1);
+            if (!change.createdIdentity) change.createdIdentity = filesystemIdentity(registration.target);
           }
         } catch (error) {
           if (!changes.some((change) => change.transaction === transaction)) {
@@ -129,7 +156,7 @@ export function runInstallTransaction({ planned, revalidate, create, exclude, be
         let recorded = false;
         const onCreated = () => {
           if (!recorded) {
-            changes.push({ registration, createdIdentity: targetIdentity(registration.target) });
+            changes.push({ registration, createdIdentity: filesystemIdentity(registration.target) });
             recorded = true;
           }
         };
@@ -140,7 +167,7 @@ export function runInstallTransaction({ planned, revalidate, create, exclude, be
     if (exclude?.changed) exclude.write();
     exclude?.afterWrite?.();
   } catch (error) {
-    const failures = rollback(changes, createdDirectories, exclude);
+    const failures = rollback(changes, createdDirectories, exclude, beforeRestore);
     if (failures.length) {
       throw new AggregateError([error], `install failed: ${error.message}; rollback incomplete: ${failures.join("; ")}`);
     }
@@ -148,4 +175,11 @@ export function runInstallTransaction({ planned, revalidate, create, exclude, be
   }
   // Backups are disposable only after the full transaction, including exclude write, commits.
   cleanBackups(changes);
+}
+
+function targetStateAt(registration, path) {
+  const stat = lstatOrNull(path);
+  if (!stat) return "missing";
+  if (stat.isSymbolicLink()) return registration.state === "link" ? "link" : "foreign-link";
+  return registration.state === "copy" && stat.isDirectory() ? "copy" : "foreign";
 }

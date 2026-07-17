@@ -9,16 +9,30 @@ export function fsyncDirectory(path) {
   try { fsyncSync(fd); } finally { closeSync(fd); }
 }
 
-// A single durable writer is shared by all CLI users of .git/info/exclude.
-export function writeAtomicText(path, text) {
+// A staged durable writer lets guarded callers validate immediately before swap.
+export function stageAtomicText(path, text) {
   mkdirSync(dirname(path), { recursive: true });
   const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
   let fd;
+  let staged = false;
   try {
     fd = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
     writeFileSync(fd, text); fsyncSync(fd); closeSync(fd); fd = undefined;
-    renameSync(temporary, path); fsyncDirectory(dirname(path));
-  } finally { if (fd !== undefined) closeSync(fd); rmSync(temporary, { force: true }); }
+    staged = true;
+    return {
+      commit() { renameSync(temporary, path); fsyncDirectory(dirname(path)); },
+      discard() { rmSync(temporary, { force: true }); },
+    };
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+    if (!staged) rmSync(temporary, { force: true });
+  }
+}
+
+// A single durable writer is shared by all CLI users of .git/info/exclude.
+export function writeAtomicText(path, text) {
+  const staged = stageAtomicText(path, text);
+  try { staged.commit(); } finally { staged.discard(); }
 }
 
 export function gitExcludePath(repoRoot) {

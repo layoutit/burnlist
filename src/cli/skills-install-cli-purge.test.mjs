@@ -68,7 +68,7 @@ test("failed global purge runs npm first and leaves skill links untouched", () =
     assertLink(join(claudeSkills, "burnlist"), packageSkill);
     assertLink(join(codexSkills, "burnlist"), packageSkill);
     assert.doesNotMatch(logs.join("\n"), /restored|removed/u);
-    assert.match(errors.join("\n"), /npm uninstall failed; global skill registrations were left untouched/u);
+    assert.match(errors.join("\n"), /npm uninstall failed; checking global skill registrations for newly broken links/u);
   } finally { context.cleanup(); }
 });
 
@@ -107,10 +107,35 @@ test("npm-successful global purge aggregates every cleanup failure", () => {
       error: (line) => errors.push(line),
     });
     assert.equal(status, 1);
-    assert.deepEqual(attempted.sort(), [join(claudeSkills, "burnlist"), join(codexSkills, "burnlist")].sort());
+    assert.equal(attempted.length, 2);
+    assert.ok(attempted.every((path) => /\.burnlist\.burnlist-quarantine-.+\/object$/u.test(path)));
     assert.match(errors.join("\n"), /could not remove 2 global skill registration/u);
     assertLink(join(claudeSkills, "burnlist"), packageSkill);
     assertLink(join(codexSkills, "burnlist"), packageSkill);
+  } finally { context.cleanup(); }
+});
+
+test("failed npm purge removes and reports only newly dangling global links", () => {
+  const context = fixture();
+  try {
+    const packageRoot = join(context.root, "npm", "lib", "node_modules", "burnlist");
+    cpSync(join(sourceRoot, "skills"), join(packageRoot, "skills"), { recursive: true });
+    const claudeSkills = join(context.root, "claude-skills");
+    const codexSkills = join(context.root, "codex-skills");
+    const env = { ...baseEnv, HOME: context.home, USERPROFILE: context.home, BURNLIST_CLAUDE_SKILLS_DIR: claudeSkills, BURNLIST_SKILLS_DIR: codexSkills };
+    assert.equal(runSkillsInstallCli({ args: ["install", "--global"], packageRoot, cwd: context.repo, env }), 0);
+    const errors = [];
+    const status = runSkillsInstallCli({
+      args: ["uninstall", "--global", "--purge"], packageRoot, cwd: context.repo, env,
+      spawn: () => { rmSync(packageRoot, { recursive: true, force: true }); return { status: 1 }; },
+      error: (line) => errors.push(line),
+    });
+    assert.equal(status, 1);
+    assert.equal(existsSync(join(claudeSkills, "burnlist")), false);
+    assert.equal(existsSync(join(codexSkills, "burnlist")), false);
+    assert.match(errors.join("\n"), /removed now-broken global skill link\(s\):/u);
+    assert.match(errors.join("\n"), new RegExp(claudeSkills, "u"));
+    assert.match(errors.join("\n"), new RegExp(codexSkills, "u"));
   } finally { context.cleanup(); }
 });
 

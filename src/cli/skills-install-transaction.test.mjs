@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -126,5 +126,29 @@ test("created-target rollback leaves a foreign entry that replaced it", () => {
     }), /later failure/u);
     assert.equal(lstatSync(target).isSymbolicLink(), true);
     assert.equal(readlinkSync(target), context.newSource);
+  } finally { context.cleanup(); }
+});
+
+test("rollback leaves a foreign target that races into a restore vacancy", () => {
+  const context = fixture();
+  try {
+    const target = join(context.targetRoot, "burnlist");
+    link(context.oldSource, target);
+    const registration = { target, targetRoot: context.targetRoot, state: "link", action: "link" };
+    assert.throws(() => runInstallTransaction({
+      planned: [registration],
+      revalidate: () => ({ state: "link", action: "link" }),
+      create: (_, onCreated) => {
+        link(context.newSource, target);
+        onCreated();
+        throw new Error("later failure");
+      },
+      beforeRestore: () => writeFileSync(target, "foreign\n"),
+    }), new RegExp(`rollback incomplete: ${target} occupied by a foreign object`, "u"));
+    assert.equal(lstatSync(target).isFile(), true);
+    assert.equal(readFileSync(target, "utf8"), "foreign\n");
+    const transaction = readdirSync(context.targetRoot).find((name) => name.startsWith(".burnlist-skill-transaction-"));
+    assert.ok(transaction);
+    assert.equal(readlinkSync(join(context.targetRoot, transaction, "previous")), context.oldSource);
   } finally { context.cleanup(); }
 });

@@ -2,7 +2,9 @@ import { cpSync, existsSync, lstatSync, mkdtempSync, readFileSync, readlinkSync,
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { gitProbe } from "./git-ignore.mjs";
-import { addOwnedLocalExcludeText, fsyncDirectory, gitExcludePath, localExcludeTarget, removeOwnedLocalExcludeText, writeAtomicText } from "./local-exclude.mjs";
+import { addOwnedLocalExcludeText, fsyncDirectory, gitExcludePath, localExcludeTarget, removeOwnedLocalExcludeText, stageAtomicText, writeAtomicText } from "./local-exclude.mjs";
+import { filesystemIdentity, removeQuarantinedTarget } from "./atomic-quarantine.mjs";
+import { restoreExcludeSnapshot, snapshotExclude, writeGuardedExclude } from "./skills-exclude.mjs";
 import { ignoredSkillContent, trackedPathsInGit } from "./skills-install-git.mjs";
 import { withGlobalSkillsLock } from "./skills-install-lock.mjs";
 import { runInstallTransaction } from "./skills-install-transaction.mjs";
@@ -30,18 +32,11 @@ function lstatOrNull(path) {
   }
 }
 
-function linkedSource(path) { return resolve(dirname(path), readlinkSync(path)); }
-
-function readOptionalText(path) {
-  try { return readFileSync(path, "utf8"); } catch (error) {
-    if (error.code === "ENOENT") return undefined;
-    throw error;
-  }
-}
+function linkedSource(path, sourceBase = dirname(path)) { return resolve(sourceBase, readlinkSync(path)); }
 
 function skillNames(sourceRoot) {
   return readdirSync(sourceRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
     .map((entry) => entry.name)
     .sort()
     .map((name) => {
@@ -131,26 +126,35 @@ function sourcePackageVersion(sourceRoot) {
   return packageJson.version;
 }
 
-function isManagedCopy(registration) {
-  const stat = lstatOrNull(registration.target);
+function isManagedCopy(registration, path = registration.target) {
+  const stat = lstatOrNull(path);
   if (!stat || !stat.isDirectory() || stat.isSymbolicLink()) return false;
   try {
-    const marker = JSON.parse(readFileSync(join(registration.target, COPY_MARKER), "utf8"));
+    const marker = JSON.parse(readFileSync(join(path, COPY_MARKER), "utf8"));
     return marker?.managedBy === "burnlist" && marker?.skill === registration.name;
   } catch { return false; }
 }
 
-function targetState(registration) {
-  const stat = lstatOrNull(registration.target);
+function targetState(registration, path = registration.target, sourceBase = dirname(path)) {
+  const stat = lstatOrNull(path);
   if (!stat) return "missing";
-  if (stat.isSymbolicLink()) return linkedSource(registration.target) === registration.source ? "link" : "foreign-link";
-  return isManagedCopy(registration) ? "copy" : "foreign";
+  if (stat.isSymbolicLink()) return linkedSource(path, sourceBase) === registration.source ? "link" : "foreign-link";
+  return isManagedCopy(registration, path) ? "copy" : "foreign";
+}
+
+function removeManagedTarget(registration, state, identity, remove) {
+  return removeQuarantinedTarget({
+    target: registration.target,
+    identity,
+    validate: (quarantined) => targetState(registration, quarantined, dirname(registration.target)) === state,
+    remove,
+  });
 }
 
 export function snapshotManagedSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents }) {
   return registrations({ sourceRoot, scope, cwd, env, agents }).flatMap((registration) => {
     const state = targetState(registration);
-    return state === "link" || state === "copy" ? [{ ...registration, state }] : [];
+    return state === "link" || state === "copy" ? [{ ...registration, state, identity: filesystemIdentity(registration.target) }] : [];
   });
 }
 
@@ -160,12 +164,12 @@ export function removeSnapshotManagedSkills({ registrations: snapshot, env = pro
   for (const registration of snapshot) {
     try {
       // The package may already be gone, so use the pre-npm snapshot and only
-      // remove the same exact managed object that we originally observed.
-      if (targetState(registration) !== registration.state) {
+      // remove the exact object discovered before npm ran.
+      const outcome = removeManagedTarget(registration, registration.state, registration.identity, remove);
+      if (outcome.status !== "removed") {
         warn(`Burnlist: left ${registration.target} untouched because it is no longer the exact managed registration discovered before purge.`);
         continue;
       }
-      remove(registration.target, { recursive: true, force: true });
       removeEmptySkillParents(registration, homeForGlobalTargets(env));
       log(`Burnlist: removed ${registration.source} -> ${registration.target}; global managed registration.`);
       removed.push(registration);
@@ -232,7 +236,7 @@ function formatGlobal(registration, dryRun) {
   return `Burnlist: ${verb} ${registration.source} -> ${registration.target}; global symlink (no repo exclude).`;
 }
 
-export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, force = false, log = console.log, writeAtomic = writeAtomicText, beforeTargetMutation }) {
+export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, force = false, log = console.log, stageAtomic = stageAtomicText, beforeTargetMutation, afterExcludeWrite }) {
   if (scope === "global" && commit) throw new Error("--commit is only valid for per-repository skill installs");
   const context = scope === "repo" ? gitContext(cwd) : null;
   const register = () => {
@@ -246,11 +250,13 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
     const planned = registrationsForScope.map((registration) => assertInstallable(registration, desired, force));
     let excludePath;
     let excludeBefore;
+    let excludeBeforeText;
     let excludeAfter;
     if (scope === "repo" && context.git) {
       excludePath = gitExcludePath(context.root);
-      excludeBefore = readOptionalText(excludePath);
-      excludeAfter = excludeBefore ?? "";
+      excludeBefore = snapshotExclude(excludePath);
+      excludeBeforeText = excludeBefore.kind === "missing" ? "" : excludeBefore.text;
+      excludeAfter = excludeBeforeText;
       for (const registration of planned) {
         const target = localExcludeTarget(context.root, registration.target);
         const previous = excludeAfter;
@@ -273,23 +279,26 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
           if (scope === "repo" && context.git && !commit) assertUntrackedLocalInstall(context.root, registration);
           return assertInstallable(registration, desired, force);
         },
+        validateQuarantined: (registration, quarantined) => targetState(registration, quarantined, dirname(registration.target)) === registration.state,
         create: (registration, onCreated) => createInstallTarget(registration, version, onCreated),
         beforeMutation: beforeTargetMutation,
-        exclude: excludePath && readOptionalText(excludePath) !== excludeAfter ? {
+        exclude: excludePath && excludeBeforeText !== excludeAfter ? (() => {
+          let written;
+          return {
           changed: true,
-          write: () => writeAtomic(excludePath, excludeAfter),
-          restore: () => {
-            if (excludeBefore === undefined) rmSync(excludePath, { force: true });
-            else writeAtomicText(excludePath, excludeBefore);
-          },
+          write: () => { written = writeGuardedExclude({ path: excludePath, before: excludeBefore, text: excludeAfter, stageAtomic }); },
+          restore: () => restoreExcludeSnapshot({ path: excludePath, before: excludeBefore, written }),
           afterWrite: commit ? () => {
             for (const registration of planned) registration.gitIgnore = ignoredSkillContent(context.root, registration, COPY_MARKER);
-          } : undefined,
-        } : commit && context.git ? {
+            afterExcludeWrite?.();
+          } : afterExcludeWrite,
+          };
+        })() : commit && context.git ? {
           afterWrite: () => {
             for (const registration of planned) registration.gitIgnore = ignoredSkillContent(context.root, registration, COPY_MARKER);
+            afterExcludeWrite?.();
           },
-        } : undefined,
+        } : afterExcludeWrite ? { afterWrite: afterExcludeWrite } : undefined,
       });
     }
     for (const registration of planned) log(scope === "global" ? formatGlobal(registration, dryRun) : formatInstall(registration, dryRun, commit));
@@ -305,13 +314,14 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
   const unregister = () => {
     const planned = registrations({ sourceRoot, scope, cwd, env, agents });
     const removed = [];
+    let excludesRemoved = 0;
     let excludePath;
     let excludeBefore;
     let excludeAfter;
     if (scope === "repo" && context.git) {
       excludePath = gitExcludePath(context.root);
-      excludeBefore = readOptionalText(excludePath);
-      excludeAfter = excludeBefore ?? "";
+      excludeBefore = snapshotExclude(excludePath);
+      excludeAfter = excludeBefore.kind === "missing" ? "" : excludeBefore.text;
     }
     for (const registration of planned) {
       if (excludeAfter !== undefined) {
@@ -320,6 +330,7 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
         registration.exclude = previous === excludeAfter
           ? "no owned exclude entry to remove"
           : (dryRun ? "would remove owned exclude entry" : "owned exclude entry removed");
+        if (previous !== excludeAfter) excludesRemoved += 1;
       }
     }
     for (const registration of planned) {
@@ -329,7 +340,11 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
         continue;
       }
       if (!dryRun) {
-        rmSync(registration.target, { recursive: true, force: true });
+        const outcome = removeManagedTarget(registration, state, filesystemIdentity(registration.target), rmSync);
+        if (outcome.status !== "removed") {
+          warn(`Burnlist: left ${registration.target} untouched because it changed before removal.`);
+          continue;
+        }
         removeEmptySkillParents(registration, scope === "repo" ? context.root : homeForGlobalTargets(env));
       }
       const mode = scope === "global" ? "global symlink (no repo exclude)"
@@ -339,8 +354,10 @@ export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd
       log(`Burnlist: ${dryRun ? "would remove" : "removed"} ${registration.source} -> ${registration.target}; mode ${mode}${exclude}.`);
       removed.push(registration);
     }
-    if (!dryRun && excludePath && excludeBefore !== excludeAfter) writeAtomicText(excludePath, excludeAfter);
-    return removed;
+    if (!dryRun && excludePath && (excludeBefore.kind === "missing" ? "" : excludeBefore.text) !== excludeAfter) {
+      writeGuardedExclude({ path: excludePath, before: excludeBefore, text: excludeAfter });
+    }
+    return { removed, excludesRemoved };
   };
   if (dryRun) return unregister();
   if (scope === "repo" && context.git) return withRepoStateLock(context.root, unregister);

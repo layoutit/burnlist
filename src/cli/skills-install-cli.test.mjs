@@ -143,6 +143,8 @@ test("uninstall removes owned excludes for missing or foreign targets without to
     assert.equal(lstatSync(codex).isDirectory(), true);
     assert.doesNotMatch(exclude(context), /# burnlist-managed:skills@1\n\/\.(?:claude|agents)\/skills\/burnlist/u);
     assert.match(result.stderr, /left .* untouched/u);
+    assert.match(result.stdout, /removed 2 owned local exclude entries/u);
+    assert.doesNotMatch(result.stdout, /nothing installed to remove/u);
   } finally { context.cleanup(); }
 });
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,12 +141,65 @@ test("registration rolls every target and the exclude file back when its exclude
     const excludePath = join(context.repo, ".git", "info", "exclude");
     const beforeExclude = readFileSync(excludePath, "utf8");
     assert.throws(
-      () => registerSkills({ ...options, commit: true, writeAtomic: () => { throw new Error("injected exclude failure"); } }),
+      () => registerSkills({ ...options, commit: true, stageAtomic: () => { throw new Error("injected exclude failure"); } }),
       /injected exclude failure/u,
     );
     linkedTo(join(context.repo, ".claude", "skills", "burnlist"));
     linkedTo(join(context.repo, ".agents", "skills", "burnlist"));
     assert.equal(readFileSync(excludePath, "utf8"), beforeExclude);
+  } finally { context.cleanup(); }
+});
+
+test("exclude rollback preserves the original filesystem object type and mode", () => {
+  for (const type of ["file", "symlink"]) {
+    const context = fixture();
+    try {
+      execFileSync("git", ["init", "--quiet"], { cwd: context.repo });
+      const excludePath = join(context.repo, ".git", "info", "exclude");
+      const original = "# original exclude\n/original/\n";
+      let external;
+      if (type === "symlink") {
+        external = join(context.root, "external-exclude");
+        writeFileSync(external, original);
+        rmSync(excludePath);
+        symlinkSync(external, excludePath);
+      } else {
+        writeFileSync(excludePath, original);
+        chmodSync(excludePath, 0o644);
+      }
+      assert.throws(() => registerSkills({
+        sourceRoot: join(repoRoot, "skills"), cwd: context.repo, agents: ["codex"],
+        env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home }, log: () => {},
+        afterExcludeWrite: () => { throw new Error("injected post-exclude failure"); },
+      }), /injected post-exclude failure/u);
+      assert.equal(readFileSync(excludePath, "utf8"), original);
+      if (type === "symlink") assert.equal(readlinkSync(excludePath), external);
+      else assert.equal(lstatSync(excludePath).mode & 0o777, 0o644);
+    } finally { context.cleanup(); }
+  }
+});
+
+test("commit ignore checks the dereferenced published skill copy", () => {
+  const context = fixture();
+  try {
+    execFileSync("git", ["init", "--quiet"], { cwd: context.repo });
+    writeFileSync(join(context.repo, ".gitignore"), "*.md\n");
+    const packageRoot = join(context.root, "package");
+    const skills = join(packageRoot, "skills");
+    const skill = join(skills, "burnlist");
+    const linked = join(context.root, "linked-content");
+    mkdirSync(skill, { recursive: true });
+    mkdirSync(linked);
+    writeFileSync(join(packageRoot, "package.json"), '{"version":"1.0.0"}\n');
+    writeFileSync(join(skill, "SKILL.md"), "skill\n");
+    writeFileSync(join(linked, "ignored.md"), "ignored\n");
+    symlinkSync(linked, join(skill, "linked"), process.platform === "win32" ? "junction" : "dir");
+    const logs = [];
+    registerSkills({
+      sourceRoot: skills, cwd: context.repo, agents: ["codex"], commit: true,
+      env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home }, log: (line) => logs.push(line),
+    });
+    assert.match(logs.join("\n"), /still ignored .*\*\.md/u);
   } finally { context.cleanup(); }
 });
 

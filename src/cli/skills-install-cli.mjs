@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
 import { registerSkills, removeSnapshotManagedSkills, snapshotManagedSkills, unregisterSkills } from "./skills-register.mjs";
@@ -73,7 +74,7 @@ function purgeGlobalPackage({ packageRoot, env, error, spawn }) {
     stdio: "inherit",
   });
   if (removal.error || removal.status !== 0) {
-    error("Burnlist: npm uninstall failed; global skill registrations were left untouched.");
+    error("Burnlist: npm uninstall failed; checking global skill registrations for newly broken links.");
     return removal.status ?? 1;
   }
   return 0;
@@ -89,8 +90,11 @@ export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), en
     }
     if (options.command !== "uninstall") throw new Error(`unknown skill command: ${options.command}`);
     if (!options.purge) {
-      const removed = unregisterSkills({ sourceRoot, cwd, env, ...options, log, warn });
-      if (!removed.length) log("Burnlist: nothing installed to remove.");
+      const cleanup = unregisterSkills({ sourceRoot, cwd, env, ...options, log, warn });
+      if (!cleanup.removed.length && cleanup.excludesRemoved) {
+        log(`Burnlist: ${options.dryRun ? "would remove" : "removed"} ${cleanup.excludesRemoved} owned local exclude entr${cleanup.excludesRemoved === 1 ? "y" : "ies"}.`);
+      }
+      if (!cleanup.removed.length && !cleanup.excludesRemoved) log("Burnlist: nothing installed to remove.");
       return 0;
     }
     if (options.dryRun) {
@@ -104,7 +108,15 @@ export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), en
     return withGlobalSkillsLock(env, () => {
       const snapshot = snapshotManagedSkills({ sourceRoot, scope: "global", cwd, env, agents: options.agents });
       const purgeStatus = purgeGlobalPackage({ packageRoot, env, error, spawn });
-      if (purgeStatus !== 0) return purgeStatus;
+      if (purgeStatus !== 0) {
+        // npm can remove the package tree and still exit non-zero.  Revalidate
+        // the pre-npm identities and only clean links whose source is now gone.
+        const dangling = snapshot.filter((registration) => registration.state === "link" && !existsSync(registration.source));
+        const cleanup = removeSnapshotManagedSkills({ registrations: dangling, env, log, warn, remove });
+        if (cleanup.removed.length) error(`Burnlist: npm uninstall failed after removing the package; removed now-broken global skill link(s): ${cleanup.removed.map(({ target }) => target).join(", ")}.`);
+        if (cleanup.failures.length) error(`Burnlist: npm uninstall failed and could not remove ${cleanup.failures.length} now-broken global skill link(s): ${cleanup.failures.map(({ target, error: cause }) => `${target} (${cause.message})`).join("; ")}`);
+        return purgeStatus;
+      }
       const cleanup = removeSnapshotManagedSkills({ registrations: snapshot, env, log, warn, remove });
       if (!cleanup.removed.length && !cleanup.failures.length) log("Burnlist: nothing installed to remove.");
       if (cleanup.failures.length) {
