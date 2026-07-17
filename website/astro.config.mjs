@@ -24,12 +24,22 @@ export default defineConfig({
           items: [{ slug: 'getting-started' }, { slug: 'install' }],
         },
         {
+          label: 'Concepts',
+          items: [{ slug: 'lifecycle' }],
+        },
+        {
           label: 'Reference',
           items: [{ slug: 'cli' }, { slug: 'dashboard' }],
         },
         {
           label: 'Ovens',
-          items: [{ slug: 'ovens' }],
+          items: [
+            { slug: 'ovens', label: 'Overview' },
+            { slug: 'ovens/checklist' },
+            { slug: 'ovens/differential-testing' },
+            { slug: 'ovens/streaming-diff' },
+            { slug: 'ovens/performance-tracing' },
+          ],
         },
       ],
     }),

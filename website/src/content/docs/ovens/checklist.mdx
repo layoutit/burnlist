@@ -1,0 +1,28 @@
+---
+title: Checklist oven
+description: The default queue-completion Oven.
+---
+
+Checklist is the default queue-completion Oven. It observes a shrinking Markdown checklist and answers: how much of the work queue has been burned down?
+
+## State contract
+
+Canonical run state is `burnlist.md` with an ordered `## Active Checklist` and a terse `## Completed` ledger. The dashboard observes; it does not replace or silently mutate that state.
+
+## Direction
+
+Progress normally moves 0% → 100%. Completed count comes from the completed ledger, remaining from the active checklist, and total equals completed plus remaining.
+
+## Run inputs
+
+A run needs a repository, a concise title, and an objective. Planning and execution stay governed by the [Burnlist lifecycle](/lifecycle).
+
+## Evidence
+
+Completion is proven by canonical checklist state and the checks each item requires. Dashboard percentages, charts, and logs are reader views, not implementation proof.
+
+## Detail-page data
+
+The normalized detail payload may expose `summary`, `active`, `completed`, `timeline`, and `log` fields. Detail-block bindings use JSON-pointer-like source paths and never execute code.
+
+See [Ovens](/ovens) and the [dashboard](/dashboard).

@@ -1,0 +1,74 @@
+---
+title: Lifecycle
+description: How a Burnlist moves from draft to completed — and how an item burns down.
+---
+
+A Burnlist's state **is** its location. Burnlist moves the whole folder through four lifecycle directories; the per-item work flows through five verbs.
+
+## Folder lifecycle
+
+```text
+notes/burnlists/draft/<YYMMDD-NNN>/
+notes/burnlists/ready/<YYMMDD-NNN>/
+notes/burnlists/inprogress/<YYMMDD-NNN>/
+notes/burnlists/completed/<YYMMDD-NNN>/
+```
+
+`draft/` is being created or hardened — do not execute it. `ready/` may be inspected and selected, but is not casually rewritten. Move `ready/<id>/` to `inprogress/<id>/` before selecting, editing, testing, or deleting any active item. Closeout moves the folder to `completed/<id>/`.
+
+The id is repo-local, short, sortable, and stable, such as `260630-001`; its global identity is the repo root plus id.
+
+## The five verbs
+
+| Verb | CLI command | Meaning |
+| --- | --- | --- |
+| new | `burnlist new` | Create a draft Burnlist. |
+| ready | `burnlist ready <id>` | Mark a plan ready. |
+| start | `burnlist start <id>` | Move ready to inprogress. |
+| burn | `burnlist burn <id> <item>` | Complete one active item. |
+| close | `burnlist close <id>` | Close a completed Burnlist. |
+
+See the [CLI reference](/cli).
+
+## Canonical files
+
+`goal.md` is the stable contract: Goal, Guardrails, Proof Authority, Ordering Intent, Stop Conditions, and Handoff. `burnlist.md` is hot, shrinking task state: top metadata, an ordered `## Active Checklist`, and a terse `## Completed` ledger. `completed.md` is optional durable per-burn history for humans; it is not canonical.
+
+```markdown
+## Active Checklist
+- [ ] B1 | <short dashboard title>
+  Files/search: `<paths or rg terms>`
+  Action: <specific action>
+  Done/delete when: <observable proof>
+  Validate: `<command or artifact>`
+
+## Completed
+- B0 | <YYYY-MM-DDTHH:mm:ss±HH:mm> | <short completed item title>
+```
+
+An active item is a `- [ ] <id> | <title>` line with indented `Files/search`, `Action`, `Done/delete when`, and `Validate` fields. Completed work becomes a single terse ledger line under `## Completed`.
+
+## The burn transaction
+
+Perform this transaction atomically:
+
+1. Validate the active item.
+2. Generate a local ISO timestamp mechanically with `burnlist --stamp`.
+3. Append one `## Completed` ledger line.
+4. Delete the active item.
+5. Append or update the matching `completed.md` record when useful.
+6. Run the protocol check.
+
+The completed ledger is the only completion source of truth.
+
+## Protocol check and closeout
+
+```sh
+burnlist --plan notes/burnlists/inprogress/<YYMMDD-NNN>/burnlist.md --check
+burnlist --plan notes/burnlists/inprogress/<YYMMDD-NNN>/burnlist.md --digest
+burnlist --close-completed --scan-root <repo>
+```
+
+Fix only reported protocol errors: missing sections, missing or duplicate stable ids, malformed ledger lines, completed ids still active, and checked active items that should move to `## Completed`. A Burnlist is not closed just because it shows 100%: closeout needs 0 active items, a completion digest, a passing check, and the folder moved to `completed/`.
+
+See the [dashboard](/dashboard) and the [Checklist oven](/ovens/checklist).

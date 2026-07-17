@@ -1,0 +1,20 @@
+---
+title: Streaming Diff oven
+description: Read-only, session-scoped pre-to-post diff cards from a local feed.
+---
+
+Streaming Diff is a declarative, read-only Oven for recently published, session-scoped pre-to-post diff cards. Producers write immutable cards to the local feed; the dashboard observes them through the Oven data endpoint.
+
+## Selecting a feed
+
+A feed is selected by its logical repository key, worktree key, and session. A feed's activity time indicates recent publication only — it does **not** indicate that an agent or process is live.
+
+## Boundary
+
+This package contains no executable renderer, hook, or producer code. The server-side adapter validates and reads the local feed without mutating it.
+
+## Producing cards
+
+Producers are wired through Streaming Diff hooks and CLI. `burnlist hooks install --agent codex,claude` merges the Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`, preserving existing entries. The low-level surface is `burnlist streaming-diff <ensure-feed|capture|url|hook> ...`.
+
+See [installation](/install) for hooks and [Ovens](/ovens).
