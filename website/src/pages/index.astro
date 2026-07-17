@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="A real-time, non-invasive tracker for agents." />
-    <title>Burnlist — a real-time tracker for agents</title>
+    <meta name="description" content="A repo-local burndown tracker and read-only observer dashboard for agent build-loops." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Burnlist — a repo-local burndown tracker for agents</title>
     <script>
       try {
         const theme = localStorage.getItem('starlight-theme');
@@ -12,72 +13,45 @@
       } catch {}
     </script>
     <style>
-      :root {
-        --bg: #0b0d10;
-        --bg-elev: #11141a;
-        --panel: #11141a;
-        --text: #e2e8f0;
-        --muted: #94a3b8;
-        --accent: #38bdf8;
-        --accent-2: #7dd3fc;
-        --hairline: rgba(255, 255, 255, .08);
-        --hairline-strong: rgba(255, 255, 255, .14);
-        --code-bg: #0f1115;
-        --hero-gradient: linear-gradient(135deg, #050a13, #0f1e31);
-        --hero-border: rgba(56, 189, 248, .25);
-        --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      :root,
+      :root[data-theme='dark'] {
+        --bg: #000000;
+        --panel: #111111;
+        --panel-2: #0a0a0a;
+        --text: #e8e8e8;
+        --muted: #a8a8a8;
+        --line: #262626;
+        --line-strong: #3a3a3a;
+        --accent: #5aa2ff;
+        --accent-ink: #050505;
+        --accent-soft: rgba(90, 162, 255, 0.14);
         color-scheme: dark;
       }
-
+      :root[data-theme='light'] {
+        --bg: #ffffff;
+        --panel: #f6f6f6;
+        --panel-2: #fafafa;
+        --text: #171717;
+        --muted: #5b5b5b;
+        --line: #e4e4e4;
+        --line-strong: #d0d0d0;
+        --accent: #2563eb;
+        --accent-ink: #ffffff;
+        --accent-soft: rgba(37, 99, 235, 0.1);
+        color-scheme: light;
+      }
       @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #ffffff;
-          --bg-elev: #f8fafc;
-          --panel: #f8fafc;
-          --text: #0f172a;
-          --muted: #475569;
-          --accent: #0284c7;
-          --accent-2: #0369a1;
-          --hairline: rgba(15, 23, 42, .1);
-          --hairline-strong: rgba(15, 23, 42, .16);
-          --code-bg: #f1f5f9;
-          --hero-gradient: linear-gradient(135deg, #eff6ff, #dbeafe);
-          --hero-border: rgba(2, 132, 199, .3);
+        :root:not([data-theme]) {
+          --bg: #ffffff; --panel: #f6f6f6; --panel-2: #fafafa; --text: #171717;
+          --muted: #5b5b5b; --line: #e4e4e4; --line-strong: #d0d0d0;
+          --accent: #2563eb; --accent-ink: #ffffff; --accent-soft: rgba(37, 99, 235, 0.1);
           color-scheme: light;
         }
       }
 
-      :root[data-theme='light'] {
-        --bg: #ffffff;
-        --bg-elev: #f8fafc;
-        --panel: #f8fafc;
-        --text: #0f172a;
-        --muted: #475569;
-        --accent: #0284c7;
-        --accent-2: #0369a1;
-        --hairline: rgba(15, 23, 42, .1);
-        --hairline-strong: rgba(15, 23, 42, .16);
-        --code-bg: #f1f5f9;
-        --hero-gradient: linear-gradient(135deg, #eff6ff, #dbeafe);
-        --hero-border: rgba(2, 132, 199, .3);
-        color-scheme: light;
-      }
-
-      :root[data-theme='dark'] {
-        --bg: #0b0d10;
-        --bg-elev: #11141a;
-        --panel: #11141a;
-        --text: #e2e8f0;
-        --muted: #94a3b8;
-        --accent: #38bdf8;
-        --accent-2: #7dd3fc;
-        --hairline: rgba(255, 255, 255, .08);
-        --hairline-strong: rgba(255, 255, 255, .14);
-        --code-bg: #0f1115;
-        --hero-gradient: linear-gradient(135deg, #050a13, #0f1e31);
-        --hero-border: rgba(56, 189, 248, .25);
-        color-scheme: dark;
+      :root {
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+        --title: 'Helvetica Neue', Helvetica, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
 
       * { box-sizing: border-box; }
@@ -88,106 +62,94 @@
         overflow-x: hidden;
         background: var(--bg);
         color: var(--text);
-        font-family: var(--font);
-        line-height: 1.6;
+        font: 400 14.5px/1.6 var(--mono);
       }
       a { color: inherit; text-decoration: none; }
-      a:focus-visible {
-        outline: 3px solid var(--accent);
-        outline-offset: 3px;
-      }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      h1, h2, h3 { font-family: var(--title); font-weight: 600; margin: 0; }
+
       .skip-link {
-        position: absolute;
-        left: -9999px;
-        top: 0;
-        z-index: 100;
-        background: var(--accent);
-        color: #07131b;
-        font-weight: 750;
-        padding: .6rem 1rem;
-        border-radius: 0 0 8px 0;
+        position: absolute; left: -9999px; top: 0; z-index: 100;
+        background: var(--accent); color: var(--accent-ink);
+        font-weight: 600; padding: .6rem 1rem; border-radius: 0 0 8px 0;
       }
       .skip-link:focus { left: 0; }
-      .container { width: min(1120px, calc(100% - 40px)); margin-inline: auto; }
-      .topbar {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        border-bottom: 1px solid var(--hairline);
-        background: color-mix(in srgb, var(--bg) 92%, transparent);
-        backdrop-filter: blur(14px);
+      .container { width: min(1080px, calc(100% - 40px)); margin-inline: auto; }
+
+      /* Header — the dashboard chrome: black bar, hairline, mono. */
+      .topbar { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--line); }
+      .topbar-inner { min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .brand { display: inline-flex; align-items: center; gap: .5rem; color: var(--text); font-family: var(--mono); font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+      .brand .logo { color: var(--accent); font-size: 1.35em; line-height: 1; font-weight: 400; }
+      .brand b { color: var(--accent); }
+      .nav { display: flex; align-items: center; gap: 2px; }
+      .nav a { border-radius: 6px; color: var(--muted); font-size: .85rem; padding: .38rem .6rem; white-space: nowrap; }
+      .nav a:hover { background: var(--accent-soft); color: var(--text); }
+
+      main { padding: 44px 0 72px; }
+      section { margin-top: 72px; scroll-margin-top: 72px; }
+
+      /* Hero — a flat bordered panel like a dashboard card, not a gradient. */
+      .hero { margin-top: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); padding: clamp(1.8rem, 5vw, 3.4rem); }
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: .5rem;
+        border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+        color: var(--muted); font-family: var(--mono); font-size: .72rem;
+        letter-spacing: .03em; padding: .34rem .6rem; text-transform: uppercase;
       }
-      .topbar-inner { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-      .brand { color: var(--accent-2); font-family: var(--font-mono); font-size: 1.1rem; font-weight: 800; letter-spacing: -.04em; }
-      .nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-      .nav a { border-radius: 999px; color: var(--muted); font-size: .9rem; font-weight: 650; padding: .38rem .72rem; }
-      .nav a:hover { background: var(--bg-elev); color: var(--text); }
-      main { padding: 56px 0 76px; }
-      section { margin-top: 88px; scroll-margin-top: 88px; }
-      .hero { margin-top: 0; border: 1px solid var(--hero-border); border-radius: 16px; background: var(--hero-gradient); padding: clamp(2.2rem, 7vw, 5.2rem); }
-      .eyebrow { display: inline-flex; border: 1px solid var(--hero-border); border-radius: 999px; color: var(--accent-2); font-family: var(--font-mono); font-size: .75rem; font-weight: 700; letter-spacing: .02em; padding: .38rem .7rem; }
-      h1, h2, h3, p { margin-top: 0; }
-      h1 { max-width: 700px; font-size: clamp(3rem, 9vw, 6rem); letter-spacing: -.065em; line-height: .98; margin: 1.05rem 0 .85rem; }
-      h2 { font-size: clamp(1.7rem, 4vw, 2.45rem); letter-spacing: -.04em; line-height: 1.1; margin-bottom: .75rem; }
-      h3 { font-size: 1.08rem; letter-spacing: -.02em; margin-bottom: .5rem; }
-      .tagline { color: var(--accent-2); font-size: clamp(1.25rem, 2.5vw, 1.7rem); font-weight: 700; margin-bottom: .8rem; }
-      .intro { color: var(--muted); font-size: 1.06rem; max-width: 760px; }
-      .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.8rem; }
-      .button { border: 1px solid var(--hairline-strong); border-radius: 999px; font-weight: 750; padding: .68rem 1rem; transition: transform .15s ease, background .15s ease; }
-      .button:hover { transform: translateY(-1px); background: var(--bg-elev); }
-      .button.primary { background: var(--accent); border-color: var(--accent); color: #07131b; }
-      .button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
-      @media (prefers-color-scheme: light) {
-        .button.primary { background: #0369a1; border-color: #0369a1; color: #fff; }
-        .button.primary:hover { background: #075985; border-color: #075985; }
-      }
-      :root[data-theme='dark'] .button.primary { background: var(--accent); border-color: var(--accent); color: #07131b; }
-      :root[data-theme='dark'] .button.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
-      :root[data-theme='light'] .button.primary { background: #0369a1; border-color: #0369a1; color: #fff; }
-      :root[data-theme='light'] .button.primary:hover { background: #075985; border-color: #075985; }
-      .section-lede { color: var(--muted); max-width: 680px; }
-      .grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 1.8rem; }
-      @media (min-width: 620px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-      @media (min-width: 1040px) { .grid { grid-template-columns: repeat(5, 1fr); } }
-      .card { border: 1px solid var(--hairline); border-radius: 14px; background: var(--panel); padding: 1.35rem; }
-      .card h3 { color: var(--accent-2); }
-      .card p { color: var(--muted); font-size: .94rem; margin-bottom: 0; }
-      code { font-family: var(--font-mono); font-size: .92em; }
-      .loop { border: 1px solid var(--hairline); border-radius: 16px; background: var(--panel); padding: clamp(1.25rem, 4vw, 2.1rem); }
-      .steps { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 10px; margin: 1.5rem 0; }
-      .step { display: flex; align-items: center; gap: 10px; color: var(--accent-2); font-family: var(--font-mono); font-size: .92rem; font-weight: 750; white-space: nowrap; }
-      .step:not(:last-child)::after { content: '→'; color: var(--muted); font-family: var(--font); font-size: 1.2rem; margin-left: auto; }
-      .loop p { color: var(--muted); max-width: 70ch; margin-bottom: .9rem; }
-      .flow-caption { color: var(--accent-2) !important; font-family: var(--font-mono); font-size: .85rem; font-weight: 700; margin-bottom: 0 !important; }
-      .install-card { border: 1px solid var(--hairline); border-radius: 16px; background: var(--panel); overflow: hidden; }
-      pre { max-width: 100%; overflow-x: auto; margin: 0; background: var(--code-bg); border-bottom: 1px solid var(--hairline); padding: 1.25rem 1.4rem; }
-      pre code { color: var(--text); font-size: .96rem; }
-      .install-copy { padding: 1.35rem; }
-      .install-copy p { color: var(--muted); margin-bottom: .85rem; }
-      .text-link { color: var(--accent-2); font-weight: 750; }
-      .text-link:hover { text-decoration: underline; }
-      footer { border-top: 1px solid var(--hairline); color: var(--muted); font-size: .88rem; padding: 28px 0; }
+      .eyebrow::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+      h1 { max-width: 16ch; font-size: clamp(2.5rem, 6.5vw, 4.4rem); letter-spacing: -.03em; line-height: 1.02; margin: 1.1rem 0 .7rem; }
+      .tagline { color: var(--text); font-family: var(--title); font-weight: 500; font-size: clamp(1.15rem, 2.4vw, 1.55rem); margin-bottom: .8rem; }
+      .intro { color: var(--muted); font-size: 1rem; max-width: 68ch; margin: 0; }
+      .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.7rem; }
+      .button { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-family: var(--mono); font-size: .88rem; font-weight: 600; padding: .58rem .95rem; transition: border-color .15s ease, background .15s ease; }
+      .button:hover { border-color: var(--line-strong); background: var(--bg); }
+      .button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      .button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+      h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -.02em; line-height: 1.15; margin-bottom: .6rem; }
+      .section-lede { color: var(--muted); max-width: 66ch; margin: 0; }
+
+      /* Surface cards — dashboard panels. */
+      .grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 1.7rem; }
+      @media (min-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (min-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+      .card { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 1.3rem; }
+      .card h3 { font-size: 1rem; color: var(--text); margin-bottom: .5rem; }
+      .card h3::before { content: '# '; color: var(--accent); font-family: var(--mono); }
+      .card p { color: var(--muted); font-size: .875rem; margin: 0; line-height: 1.6; }
+      code { font-family: var(--mono); font-size: .88em; color: var(--text); background: var(--accent-soft); border-radius: 4px; padding: .05em .32em; }
+
+      /* Loop panel. */
+      .loop { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: clamp(1.3rem, 4vw, 2rem); }
+      .steps { list-style: none; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 1.3rem 0; }
+      .step { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-2); color: var(--accent); font-family: var(--mono); font-size: .84rem; padding: .32rem .6rem; white-space: nowrap; }
+      .step:not(:last-child)::after { content: '→'; color: var(--muted); }
+      .loop p { color: var(--muted); max-width: 74ch; margin: 0 0 .8rem; }
+      .flow-caption { color: var(--accent) !important; font-family: var(--mono); font-size: .82rem; margin: 0 !important; }
+
+      /* Install. */
+      .install-card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
+      pre { max-width: 100%; overflow-x: auto; margin: 0; background: var(--panel-2); border-bottom: 1px solid var(--line); padding: 1.15rem 1.3rem; }
+      pre code { color: var(--text); background: transparent; padding: 0; font-size: .92rem; }
+      .install-copy { padding: 1.25rem 1.3rem; }
+      .install-copy p { color: var(--muted); margin: 0 0 .8rem; }
+      .text-link { color: var(--accent); font-weight: 600; }
+      .text-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      footer { margin-top: 72px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; padding: 26px 0; }
       .footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
       .footer-links { display: flex; gap: 18px; }
-      .footer-links a:hover { color: var(--accent-2); }
+      .footer-links a:hover { color: var(--text); }
 
-      @media (max-width: 960px) {
-        main { padding-top: 36px; }
-        section { margin-top: 64px; }
-      }
       @media (max-width: 640px) {
-        .container { width: min(100% - 28px, 1120px); }
-        .topbar-inner { align-items: flex-start; flex-direction: column; gap: 8px; padding: 13px 0; }
-        .nav { justify-content: flex-start; margin-left: -.72rem; }
-        .hero { padding: 2rem 1.35rem; }
-        .steps { grid-template-columns: 1fr; gap: 8px; }
-        .step:not(:last-child)::after { content: '↓'; margin-left: 8px; }
-        .footer-inner { align-items: flex-start; flex-direction: column; }
+        .topbar-inner { min-height: 54px; }
+        .nav a { padding: .34rem .48rem; }
+        section { margin-top: 56px; }
       }
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
         .button { transition: none; }
-        .button:hover { transform: none; }
       }
     </style>
   </head>
@@ -195,7 +157,7 @@
     <a class="skip-link" href="#main-content">Skip to content</a>
     <header class="topbar">
       <div class="container topbar-inner">
-        <a class="brand" href="/" aria-label="Burnlist home">burnlist</a>
+        <a class="brand" href="/" aria-label="Burnlist home"><span class="logo" aria-hidden="true">⟁</span><span class="wordmark"><b>burn</b>list</span></a>
         <nav class="nav" aria-label="Primary navigation">
           <a href="/getting-started">Docs</a>
           <a href="/cli">CLI</a>
@@ -210,8 +172,8 @@
       <section class="hero" aria-labelledby="page-title">
         <span class="eyebrow">Zero runtime dependencies · pure Node · MIT</span>
         <h1 id="page-title">Burnlist</h1>
-        <p class="tagline">A real-time, non-invasive tracker for agents.</p>
-        <p class="intro">A repo-local, shrinking Markdown checklist that renders live progress in a local observer dashboard. Burnlist owns task state — not your implementation, tests, or delivery.</p>
+        <p class="tagline">A repo-local burndown tracker for agent build-loops.</p>
+        <p class="intro">A shrinking Markdown checklist that renders live progress in a read-only observer dashboard. Burnlist owns task state — not your implementation, tests, or delivery — and never executes your work or drives your agents.</p>
         <div class="actions" aria-label="Get started">
           <a class="button primary" href="/getting-started">Read the docs</a>
           <a class="button" href="#install">Install</a>
@@ -226,8 +188,9 @@
           <article class="card"><h3>CLI</h3><p>One command, <code>burnlist</code>, launches the loopback dashboard. Lifecycle verbs (<code>new</code>, <code>ready</code>, <code>start</code>, <code>burn</code>, <code>close</code>) plus protocol helpers (<code>--check</code>, <code>--digest</code>, <code>--stamp</code>) drive the burndown. Run <code>burnlist --help</code> for the full surface.</p></article>
           <article class="card"><h3>Dashboard</h3><p>A read-only web observer. It scans the <code>notes/burnlists/</code> lifecycle folders across your registered repos and refreshes automatically. It never mutates canonical task state.</p></article>
           <article class="card"><h3>Ovens</h3><p>Declarative, non-executable recipes for a Burn: two files — <code>instructions.md</code> (outcome + evidence rules) and <code>detail.json</code> (grid, widgets, bindings). Four built-in Ovens ship: Checklist, Differential Testing, Streaming Diff, and Performance Tracing.</p></article>
-          <article class="card"><h3>Skills</h3><p>A single agent skill owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance. It installs globally under <code>$HOME/.agents/skills</code>.</p></article>
+          <article class="card"><h3>Skills</h3><p>A single agent skill owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance — installable for both Claude and Codex, per-repo or global.</p></article>
           <article class="card"><h3>Hooks</h3><p><code>burnlist hooks install --agent codex,claude</code> merges Streaming Diff commands into <code>.codex/hooks.json</code> and <code>.claude/settings.json</code>, preserving your existing hook entries.</p></article>
+          <article class="card"><h3>Lifecycle</h3><p>Work flows through folders — <code>draft/</code> → <code>ready/</code> → <code>inprogress/</code> → <code>completed/</code> — with every transition validated before an item leaves the checklist.</p></article>
         </div>
       </section>
 
