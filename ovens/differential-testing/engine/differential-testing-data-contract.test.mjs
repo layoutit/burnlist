@@ -375,6 +375,28 @@ test("accepts the empty shipped example without inventing a run", () => {
   assert.doesNotThrow(() => assertDifferentialTestingData(payload));
 });
 
+test("scenario catalogs retain a contained runtime engine identity", () => {
+  const payload = buildPayload(...populatedCaptures());
+  payload.scenarioCatalog.scenarios[0].engine = {
+    id: "fixtureEngine",
+    runtimeRoot: "src/runtime",
+  };
+  assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+
+  payload.scenarioCatalog.scenarios[0].engine.runtimeRoot = ".";
+  assert.doesNotThrow(() => assertDifferentialTestingData(payload));
+
+  for (const runtimeRoot of ["/tmp/runtime", "../runtime", "src/../runtime", "src\\runtime", "src//runtime"]) {
+    const invalid = structuredClone(payload);
+    invalid.scenarioCatalog.scenarios[0].engine.runtimeRoot = runtimeRoot;
+    assert.match(
+      validateDifferentialTestingData(invalid).issues.map((entry) => entry.message).join("\n"),
+      /contained relative path/u,
+      runtimeRoot,
+    );
+  }
+});
+
 test("empty scenario state rejects fake selection and retained data", async (t) => {
   await t.test("selectedScenarioId must stay null", () => {
     const payload = buildPayload(...emptyCaptures());

@@ -13,6 +13,7 @@ export const verificationTestFiles = [
   "ovens/differential-testing/engine/differential-testing-data-contract.test.mjs",
   "ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
   "ovens/performance-tracing/engine/performance-tracing-contract.test.mjs",
+  "ovens/visual-parity/engine/visual-parity-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-data-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture-git.test.mjs",

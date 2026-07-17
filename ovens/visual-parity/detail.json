@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "columns": 12,
+  "rows": 12,
+  "rowHeight": 64,
+  "cells": [
+    {
+      "id": "verdict",
+      "title": "Target verdict",
+      "widget": "status",
+      "source": "/comparisons",
+      "format": "plain",
+      "column": 1,
+      "row": 1,
+      "columnSpan": 3,
+      "rowSpan": 2
+    },
+    {
+      "id": "domains",
+      "title": "Render domains",
+      "widget": "table",
+      "source": "/domains",
+      "format": "plain",
+      "column": 4,
+      "row": 1,
+      "columnSpan": 9,
+      "rowSpan": 2
+    },
+    {
+      "id": "frames",
+      "title": "Frame comparisons",
+      "widget": "comparison",
+      "source": "/comparisons",
+      "format": "plain",
+      "column": 1,
+      "row": 3,
+      "columnSpan": 12,
+      "rowSpan": 10
+    }
+  ]
+}

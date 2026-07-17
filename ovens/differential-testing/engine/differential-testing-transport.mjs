@@ -503,17 +503,31 @@ function validateScenarioCatalog(value, label) {
   const ids = new Set();
   for (const [index, entry] of value.scenarios.entries()) {
     const entryLabel = `${label}.scenarios[${index}]`;
-    assertOnlyKeys(entry, new Set(["id", "label", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"]), entryLabel);
+    assertOnlyKeys(entry, new Set(["id", "label", "engine", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"]), entryLabel);
     scenarioId(entry.id, `${entryLabel}.id`);
     if (ids.has(entry.id)) fail(`${entryLabel}.id is duplicated`);
     ids.add(entry.id);
     text(entry.label, `${entryLabel}.label`, 160);
+    if (entry.engine !== undefined) validateScenarioEngine(entry.engine, `${entryLabel}.engine`);
     positiveCount(entry.frameCount, `${entryLabel}.frameCount`);
     for (const key of ["replaySha256", "profileSha256", "contractSha256"]) digest(entry[key], `${entryLabel}.${key}`);
     timestamp(entry.updatedAt, `${entryLabel}.updatedAt`);
   }
   if (!ids.has(value.selectedScenarioId)) fail(`${label}.selectedScenarioId is not in the catalog`);
   return value;
+}
+
+function validateScenarioEngine(value, label) {
+  assertOnlyKeys(value, new Set(["id", "runtimeRoot"]), label);
+  text(value.id, `${label}.id`, 80);
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/u.test(value.id)) fail(`${label}.id is invalid`);
+  text(value.runtimeRoot, `${label}.runtimeRoot`, 400);
+  if (value.runtimeRoot === ".") return;
+  const parts = value.runtimeRoot.split("/");
+  if (value.runtimeRoot.startsWith("/") || value.runtimeRoot.includes("\\")
+    || parts.some((part) => !part || part === "." || part === "..")) {
+    fail(`${label}.runtimeRoot must be a contained relative path`);
+  }
 }
 
 function reconcileMetric(actual, expected, label) {

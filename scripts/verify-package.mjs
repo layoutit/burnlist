@@ -58,6 +58,11 @@ const required = [
   "ovens/performance-tracing/detail.json",
   "ovens/performance-tracing/engine/performance-tracing-contract.mjs",
   "ovens/performance-tracing/engine/performance-tracing-handler.mjs",
+  "ovens/visual-parity/instructions.md",
+  "ovens/visual-parity/detail.json",
+  "ovens/visual-parity/engine/visual-parity-contract.mjs",
+  "ovens/visual-parity/engine/visual-parity-handler.mjs",
+  "ovens/visual-parity/renderer/visual-parity.css",
   "dashboard/dist/index.html",
 ];
 

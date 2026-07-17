@@ -5,12 +5,13 @@ export function currentSection() {
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
   if (window.location.pathname === "/ovens/performance-tracing/view") return "performance-tracing";
   if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
+  if (window.location.pathname === "/ovens/visual-parity/view") return "visual-parity";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
 }
 
 export function ovenRepoKey() {
-  return ["differential-testing", "performance-tracing", "streaming-diff"].includes(currentSection())
+  return ["differential-testing", "performance-tracing", "streaming-diff", "visual-parity"].includes(currentSection())
     ? new URLSearchParams(window.location.search).get("repoKey")
     : null;
 }
