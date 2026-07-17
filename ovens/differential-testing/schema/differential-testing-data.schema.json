@@ -216,12 +216,22 @@
       "additionalProperties": false
     },
     "scenarioId": { "type": "string", "pattern": "^[a-f0-9]{16}$" },
+    "scenarioEngine": {
+      "type": "object",
+      "required": ["id", "runtimeRoot"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$", "maxLength": 80 },
+        "runtimeRoot": { "type": "string", "minLength": 1, "maxLength": 400 }
+      },
+      "additionalProperties": false
+    },
     "scenarioCatalogEntry": {
       "type": "object",
       "required": ["id", "label", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"],
       "properties": {
         "id": { "$ref": "#/$defs/scenarioId" },
         "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "engine": { "$ref": "#/$defs/scenarioEngine" },
         "frameCount": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
         "replaySha256": { "$ref": "#/$defs/sha256" },
         "profileSha256": { "$ref": "#/$defs/sha256" },

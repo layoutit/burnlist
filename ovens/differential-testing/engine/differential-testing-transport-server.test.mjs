@@ -51,6 +51,10 @@ test("the Differential Testing data route serves bounded bundle pages with stabl
     assert.equal(current.transport.scenarioSha256, fixture.scenarioSha256);
     assert.equal(Object.hasOwn(current.payload, "fields"), false);
     assert.equal(current.payload.scenarioCatalog.selectedScenarioId, fixture.scenarioId);
+    assert.deepEqual(current.payload.scenarioCatalog.scenarios[0].engine, {
+      id: "fixtureEngine",
+      runtimeRoot: "src/runtime",
+    });
     assert.deepEqual(current.frameDeltaMetrics, {
       frameDeviationRatios: [0, 0, 0.5],
       firstFailingFrame: 2,
@@ -137,6 +141,10 @@ test("the Differential Testing data route serves bounded bundle pages with stabl
 
 async function publishBundle(root) {
   const payload = buildPayload(...populatedCaptures());
+  payload.scenarioCatalog.scenarios[0].engine = {
+    id: "fixtureEngine",
+    runtimeRoot: "src/runtime",
+  };
   const scenarioId = payload.scenarioCatalog.selectedScenarioId;
   const scenarioDirectory = join(root, "bundle", "scenarios", scenarioId);
   await mkdir(scenarioDirectory, { recursive: true });

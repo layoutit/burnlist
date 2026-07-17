@@ -241,11 +241,26 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
           issue(path, "must be a scenario catalog entry");
           return;
         }
-        onlyKeys(scenario, path, new Set(["id", "label", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"]), "scenario-catalog contract");
+        onlyKeys(scenario, path, new Set(["id", "label", "engine", "frameCount", "replaySha256", "profileSha256", "contractSha256", "updatedAt"]), "scenario-catalog contract");
         if (typeof scenario.id !== "string" || !scenarioIdPattern.test(scenario.id)) issue(`${path}.id`, "must be a lowercase 16-character hexadecimal scenario id");
         else if (scenarioIds.has(scenario.id)) issue(`${path}.id`, `duplicates scenario id ${scenario.id}`);
         else scenarioIds.add(scenario.id);
         text(scenario.label, `${path}.label`, { max: 160 });
+        if (scenario.engine !== undefined) {
+          if (!plainObject(scenario.engine)) {
+            issue(`${path}.engine`, "must identify a runtime engine");
+          } else {
+            onlyKeys(scenario.engine, `${path}.engine`, new Set(["id", "runtimeRoot"]), "scenario-engine contract");
+            text(scenario.engine.id, `${path}.engine.id`, { max: 80 });
+            if (typeof scenario.engine.id === "string" && !/^[A-Za-z][A-Za-z0-9_-]*$/u.test(scenario.engine.id)) {
+              issue(`${path}.engine.id`, "must be a runtime engine id");
+            }
+            text(scenario.engine.runtimeRoot, `${path}.engine.runtimeRoot`, { max: 400 });
+            if (typeof scenario.engine.runtimeRoot === "string" && !containedRuntimeRoot(scenario.engine.runtimeRoot)) {
+              issue(`${path}.engine.runtimeRoot`, "must be a contained relative path");
+            }
+          }
+        }
         count(scenario.frameCount, `${path}.frameCount`);
         if (scenario.frameCount === 0) issue(`${path}.frameCount`, "must be greater than zero");
         sha256(scenario.replaySha256, `${path}.replaySha256`);
@@ -1133,6 +1148,13 @@ export function validateDifferentialTestingData(payload, { maxIssues = 50 } = {}
     if (payload.exactSession !== undefined) issue("$.exactSession", "must be absent when there are no scenarios");
   }
   return { ok: issues.length === 0, issues };
+}
+
+function containedRuntimeRoot(value) {
+  if (value === ".") return true;
+  const parts = value.split("/");
+  return !value.startsWith("/") && !value.includes("\\")
+    && parts.every((part) => part && part !== "." && part !== "..");
 }
 
 export function assertDifferentialTestingData(payload, options) {

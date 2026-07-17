@@ -49,6 +49,8 @@ function withoutCanonicalTemplateVocabulary(text) {
   return text
     .replaceAll(/driving-parity/giu, "")
     .replaceAll(/driving parity/giu, "")
+    .replaceAll(/visual-parity/giu, "")
+    .replaceAll(/visual parity/giu, "")
     .replaceAll(/parity progress/giu, "");
 }
 
@@ -221,6 +223,7 @@ const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/performance-tracing/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/streaming-diff/engine"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "ovens/visual-parity/engine"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "src/ovens/oven-registry.mjs"),
   resolve(repoRoot, "src/ovens/built-in-handlers.mjs"),
   resolve(repoRoot, "src/ovens/handlers/generic-json-handler.mjs"),
@@ -252,6 +255,7 @@ assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/performance-tracing/engine/performance-tracing-handler.mjs", "assertPerformanceTracingData(payload)", "Performance Tracing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/visual-parity/engine/visual-parity-handler.mjs", "assertVisualParityData(payload)", "Visual Parity data is not validated at the server boundary.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'id === "differential-testing"', "Dashboard server still hardcodes the Differential Testing Oven.");
@@ -372,11 +376,12 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
-assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "performance-tracing", "streaming-diff"]);
+assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "performance-tracing", "streaming-diff", "visual-parity"]);
 assertBuiltInOven(repoRoot, "checklist", "Checklist");
 assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
 assertBuiltInOven(repoRoot, "performance-tracing", "Performance Tracing");
 assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
+assertBuiltInOven(repoRoot, "visual-parity", "Visual Parity");
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 

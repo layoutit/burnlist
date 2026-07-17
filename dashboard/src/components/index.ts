@@ -7,3 +7,4 @@ export { EmptyState } from "./EmptyState";
 export { FILTERS, Filters } from "./Filters";
 export { ProjectGroup } from "./ProjectGroup";
 export { StreamingDiff } from "./StreamingDiff";
+export { VisualParityPage } from "./VisualParity";
