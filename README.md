@@ -10,7 +10,7 @@ Burnlist requires Node.js 18 or newer.
 npm install --global burnlist
 ```
 
-The global package installs the `burnlist` command and registers the bundled skill for Claude Code under `$HOME/.claude/skills` and Codex under `$HOME/.agents/skills`.
+The global package installs the `burnlist` command and registers the bundled Burnlist skill for Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. Streaming Diff hooks are a separate, opt-in per-repository integration; see [Agent integrations](#agent-integrations).
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow; the CLI provides the dashboard and protocol helpers.
 
@@ -70,11 +70,75 @@ Projects that need worker orchestration can import `createDifferentialTestingWor
 
 See the [Differential Testing data contract](skills/burnlist/references/differential-testing-data.md) and [adapter SDK reference](skills/burnlist/references/differential-testing-adapter-sdk.md) for scenario bundles, exact sessions, telemetry, and worker interfaces.
 
-## Streaming Diff hooks
+## Agent integrations
 
-`burnlist hooks install --agent codex,claude` merges local Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`; it preserves existing hook entries. The agent remains responsible for any first-run hook trust/consent prompt—Burnlist only writes configuration and never bypasses that review. `burnlist hooks status` reports whether each config is tracked (and therefore shared) or local; an already tracked config cannot be hidden with `.git/info/exclude`.
+Burnlist has two independent systems. You can install the skill without hooks, hooks without the skill, or both.
 
-Hooks use the portable `burnlist` command from `PATH`; the host resolves the platform-specific launcher.
+### Skills: make Burnlist discoverable
+
+`burnlist install` registers the bundled skill for both Claude Code and Codex. Its default scope is the current repository and creates managed, untracked-local skill registrations via `.git/info/exclude`:
+
+| Agent | Per-repository target | Global target (`--global`) |
+| --- | --- | --- |
+| Claude Code | `<repo>/.claude/skills/burnlist` | `~/.claude/skills/burnlist` |
+| Codex | `<repo>/.agents/skills/burnlist` | `~/.agents/skills/burnlist` |
+
+```sh
+# Per-repository skill only (both agents by default)
+burnlist install
+
+# Limit to one agent, or preview without writing
+burnlist install --agent codex
+burnlist install --dry-run
+
+# Global skill only
+burnlist install --global
+
+# Portable per-repository copy that the team can commit
+burnlist install --commit
+
+# Remove the matching per-repository or global registration
+burnlist uninstall
+burnlist uninstall --global
+
+# Also remove the global npm package (global scope only)
+burnlist uninstall --global --purge
+```
+
+`--agent codex,claude` restricts either install or uninstall to the selected agents. `--commit` is per-repository only; it makes a portable copy instead of the default local registration.
+
+### Hooks: capture Streaming Diff edits
+
+`burnlist hooks install` is separate from skill installation. It is per-repository only (there is no global hooks mode) and merges Burnlist's edit-capture commands without replacing unrelated hooks:
+
+| Agent that consumes the hook | Worktree-root config |
+| --- | --- |
+| Codex | `<repo>/.codex/hooks.json` |
+| Claude Code | `<repo>/.claude/settings.json` |
+
+Codex receives `SessionStart`, `PreToolUse`, and `PostToolUse` hooks; Claude Code also receives `PostToolUseFailure`. Edit events are limited to each agent's edit/write tools and invoke `burnlist streaming-diff hook`. Codex needs CLI version 0.124.0 or newer to run these hooks. The host needs `burnlist` on `PATH`, and the agent remains responsible for any hook trust or consent prompt.
+
+```sh
+# Hooks only, for both agents by default
+burnlist hooks install
+
+# Limit to one agent; --untracked requests a local exclude entry
+burnlist hooks install --agent claude
+burnlist hooks install --untracked
+
+# Inspect or remove Burnlist-managed hooks
+burnlist hooks status
+burnlist hooks uninstall
+
+# Install or remove both independent per-repository systems
+burnlist install && burnlist hooks install
+burnlist uninstall && burnlist hooks uninstall
+
+# A global skill can be combined with hooks in the current repository
+burnlist install --global && burnlist hooks install
+```
+
+Untracked hook configs are added to `.git/info/exclude` by default; tracked configs remain shared with the team, and `--untracked` cannot hide one. `burnlist hooks uninstall` removes only Burnlist's own hook entries and preserves the rest of the config. See the [installation reference](skills/burnlist/references/installation.md) for the full CLI surface.
 
 ## Command Line
 
@@ -82,8 +146,8 @@ Hooks use the portable `burnlist` command from `PATH`; the host resolves the pla
 - `burnlist --plan <burnlist.md> --digest` prints a completion digest after the active queue is empty.
 - `burnlist --close-completed` adds a digest when needed and moves empty in-progress Burnlists to `completed`.
 - `burnlist --stamp` prints a local ISO timestamp for completion records.
-- `burnlist install` registers the bundled skill for Codex and Claude in the current repository.
-- `burnlist uninstall` removes only those repository skill registrations. Use `burnlist uninstall --global --purge` to also remove a global npm installation and its global skill registrations.
+- `burnlist install` / `burnlist uninstall` manage the independent agent-skill registrations.
+- `burnlist hooks install|uninstall|status` manages the independent per-repository Streaming Diff hooks.
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 

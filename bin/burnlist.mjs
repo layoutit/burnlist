@@ -86,7 +86,7 @@ Usage:
   burnlist differential-testing schema
   burnlist differential-testing sdk
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
-  burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
+  burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
   burnlist oven <list|view|bind|unbind|bindings|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
