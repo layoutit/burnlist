@@ -10,7 +10,7 @@ Burnlist requires Node.js 18 or newer.
 npm install --global burnlist
 ```
 
-The global package installs the `burnlist` command and registers one bundled agent skill under `$HOME/.agents/skills`.
+The global package installs the `burnlist` command and registers the bundled skill for Claude Code under `$HOME/.claude/skills` and Codex under `$HOME/.agents/skills`.
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow; the CLI provides the dashboard and protocol helpers.
 

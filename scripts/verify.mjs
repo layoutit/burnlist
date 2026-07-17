@@ -23,6 +23,20 @@ function run(command, args, options = {}) {
   }
 }
 
+function runCapture(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: repoRoot,
+    encoding: "utf8",
+    shell: false,
+    ...options,
+  });
+  if (result.status !== 0) {
+    process.stderr.write(result.stderr || result.stdout || "");
+    process.exit(result.status || 1);
+  }
+  return result.stdout;
+}
+
 function walkFiles(root, predicate) {
   const files = [];
   for (const entry of readdirSync(root, { withFileTypes: true })) {
@@ -364,7 +378,8 @@ assertSourceExcludes("ovens/differential-testing/renderer/differential-testing-r
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "exact comparator when used", "React Run Burn still requests the superseded manual comparator workflow.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
-assertSourceIncludes("scripts/register-skills.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the agent skill directory.");
+assertSourceIncludes("src/cli/skills-register.mjs", 'join(home, ".claude", "skills")', "Global npm install does not use the Claude skill directory.");
+assertSourceIncludes("src/cli/skills-register.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the Codex skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
 assertSourceIncludes("bin/burnlist.mjs", 'args[0] === "uninstall"', "Burnlist CLI does not own safe uninstall cleanup.");
 assertSourceExcludes("README.md", "**Target**", "README still advertises the removed Target Oven.");
@@ -382,9 +397,25 @@ assertPublishablePackage();
 
 run(process.execPath, ["--test", ...verificationTestFiles]);
 
-run(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
-  env: { ...process.env, HOME: resolve(repoRoot, "fixtures", "npm-home") },
+const {
+  BURNLIST_CLAUDE_SKILLS_DIR: ignoredClaudeSkillsDir,
+  BURNLIST_SKILLS_DIR: ignoredCodexSkillsDir,
+  ...verificationEnv
+} = process.env;
+const verificationHome = resolve(repoRoot, "fixtures", "npm-home");
+const skillDryRun = runCapture(process.execPath, ["scripts/register-skills.mjs", "--force-global", "--dry-run"], {
+  env: { ...verificationEnv, HOME: verificationHome },
 });
+for (const target of [
+  join(verificationHome, ".claude", "skills", "burnlist"),
+  join(verificationHome, ".agents", "skills", "burnlist"),
+]) {
+  if (!skillDryRun.includes(target)) {
+    console.error(`Global skill registration dry-run did not include ${target}.`);
+    process.exit(1);
+  }
+}
+process.stdout.write(skillDryRun);
 run(process.execPath, ["bin/burnlist.mjs", "--version"]);
 run(process.execPath, ["bin/burnlist.mjs", "--stamp"]);
 run(process.execPath, ["bin/burnlist.mjs", "differential-testing", "schema"]);

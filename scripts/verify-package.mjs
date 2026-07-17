@@ -32,6 +32,7 @@ const required = [
   "package.json",
   "scripts/register-skills.mjs",
   "scripts/unregister-skills.mjs",
+  "src/cli/skills-register.mjs",
   "src/cli/oven-cli.mjs",
   "src/cli/registry-cli.mjs",
   "src/ovens/oven-contract.mjs",
