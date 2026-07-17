@@ -1,0 +1,78 @@
+:root {
+  --sl-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell,
+    'Noto Sans', sans-serif;
+  --sl-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #0c2d4a;
+  --sl-color-accent: #38bdf8;
+  --sl-color-accent-high: #7dd3fc;
+  --sl-color-white: #e2e8f0;
+  --sl-color-gray-1: #cbd5e1;
+  --sl-color-gray-2: #94a3b8;
+  --sl-color-gray-3: #64748b;
+  --sl-color-gray-4: #334155;
+  --sl-color-gray-5: #1e293b;
+  --sl-color-gray-6: #0f172a;
+  --sl-color-black: #0b0d10;
+  --sl-color-bg: #0b0d10;
+  --sl-color-bg-nav: #0f1115;
+  --sl-color-bg-sidebar: #0b0d10;
+  --sl-color-bg-inline-code: rgba(56, 189, 248, 0.12);
+  --sl-color-hairline-light: rgba(255, 255, 255, 0.08);
+  --sl-color-hairline: rgba(255, 255, 255, 0.05);
+  --sl-color-text: #e2e8f0;
+  --sl-color-text-accent: #7dd3fc;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #0284c7;
+  --sl-color-accent-high: #0369a1;
+  --sl-color-white: #0f172a;
+  --sl-color-gray-1: #1e293b;
+  --sl-color-gray-2: #334155;
+  --sl-color-gray-3: #64748b;
+  --sl-color-gray-4: #94a3b8;
+  --sl-color-gray-5: #cbd5e1;
+  --sl-color-gray-6: #f1f5f9;
+  --sl-color-black: #ffffff;
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #f8fafc;
+  --sl-color-bg-sidebar: #f8fafc;
+  --sl-color-bg-inline-code: rgba(2, 132, 199, 0.1);
+  --sl-color-hairline-light: rgba(15, 23, 42, 0.1);
+  --sl-color-hairline: rgba(15, 23, 42, 0.06);
+  --sl-color-text: #0f172a;
+  --sl-color-text-accent: #0369a1;
+}
+
+.page > header.header {
+  position: fixed;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  width: 100%;
+  height: var(--sl-nav-height);
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
+  z-index: var(--sl-z-index-navbar);
+}
+
+.main-frame {
+  padding-top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+}
+
+:where(.sl-markdown-content) {
+  line-height: 1.7;
+}
+
+:where(.sl-markdown-content) :is(code, pre) {
+  font-family: var(--sl-font-mono);
+}
+
+:where(.sl-markdown-content) :not(pre) > code {
+  background: var(--sl-color-bg-inline-code);
+  border-radius: 0.3rem;
+}

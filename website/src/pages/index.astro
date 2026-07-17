@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Burnlist is a repo-local burndown tracker and multi-agent build-loop runner."
+    />
+    <title>Burnlist</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #ffffff;
+        --surface: #f8fafc;
+        --text: #0f172a;
+        --muted: #475569;
+        --line: #cbd5e1;
+        --accent: #0369a1;
+        --accent-contrast: #ffffff;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0d10;
+          --surface: #0f172a;
+          --text: #e2e8f0;
+          --muted: #94a3b8;
+          --line: #334155;
+          --accent: #7dd3fc;
+          --accent-contrast: #0b0d10;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+      a { color: inherit; }
+      .container { width: min(100% - 2rem, 70rem); margin: 0 auto; }
+      header { padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
+      .brand { font: 700 1.05rem 'SFMono-Regular', Consolas, monospace; text-decoration: none; }
+      main { padding: clamp(4rem, 12vw, 9rem) 0 4rem; }
+      .hero { max-width: 48rem; }
+      h1 { margin: 0; font-size: clamp(3rem, 9vw, 6.5rem); letter-spacing: -0.07em; }
+      .lede { max-width: 39rem; margin: 1.25rem 0 2rem; color: var(--muted); font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.6; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+      .button { padding: 0.75rem 1rem; border: 1px solid var(--line); border-radius: 0.5rem; font-weight: 700; text-decoration: none; }
+      .button--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+      .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: clamp(4rem, 10vw, 7rem); }
+      .feature { padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: 0.75rem; }
+      .feature h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+      .feature p { margin: 0; color: var(--muted); line-height: 1.55; }
+      @media (max-width: 42rem) { .features { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="container"><a class="brand" href="/">Burnlist</a></div>
+    </header>
+    <main class="container">
+      <section class="hero" aria-labelledby="page-title">
+        <h1 id="page-title">Burnlist</h1>
+        <p class="lede">A repo-local burndown tracker and multi-agent build-loop runner.</p>
+        <div class="actions">
+          <a class="button button--primary" href="/getting-started">Read the docs</a>
+          <a class="button" href="https://github.com/layoutit/burnlist">GitHub</a>
+        </div>
+      </section>
+      <section class="features" aria-label="Burnlist features">
+        <article class="feature">
+          <h2>CLI</h2>
+          <p>Create and advance repo-local burnlists from the command line.</p>
+        </article>
+        <article class="feature">
+          <h2>Dashboard</h2>
+          <p>Observe burnlist state through a read-only web dashboard.</p>
+        </article>
+        <article class="feature">
+          <h2>Ovens</h2>
+          <p>Describe repeatable work with declarative, non-executable Ovens.</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
