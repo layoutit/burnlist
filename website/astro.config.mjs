@@ -1,10 +1,12 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   site: 'https://burnlist.dev',
   integrations: [
+    sitemap(),
     starlight({
       title: 'Burnlist',
       description:
@@ -53,6 +55,7 @@ export default defineConfig({
             { slug: 'ovens/differential-testing' },
             { slug: 'ovens/streaming-diff' },
             { slug: 'ovens/performance-tracing' },
+            { slug: 'ovens/visual-parity' },
           ],
         },
       ],

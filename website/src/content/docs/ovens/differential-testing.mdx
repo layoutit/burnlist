@@ -17,6 +17,8 @@ Canonical state stays in project-owned captures, reports, retained runtime state
 
 The adapter must preserve roles, real sample identity and ordering, source and candidate values, nulls-as-values distinct from numeric zero, missing-as-missing, field semantics, unit, tolerance, and scenario/reference/replay/profile/report/exact identities. It must never invent points, stretch one series to another, combine artifacts from different runs, weaken thresholds, hide regressions, or classify unavailable evidence as a pass.
 
+Each catalog scenario may also declare an optional `engine` identity (an `id` plus a contained relative `runtimeRoot`) and a `contractSha256`, binding that scenario's evidence to one named runtime engine and one contract revision.
+
 ## Normalized payload
 
 The required comparison surface contains `summary.runs`, `summary.fields`, and `summary.frames`; a `scenarioCatalog` with one selected scenario; a `refresh` with one event-driven `queued`, `running`, `complete`, or `failed` state; chronological `progress`; reverse-chronological `log`; and aligned `fields` with paired reference/candidate samples and normalized state.
