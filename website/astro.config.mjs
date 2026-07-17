@@ -21,7 +21,15 @@ export default defineConfig({
       sidebar: [
         {
           label: 'Getting Started',
-          items: [{ slug: 'getting-started' }],
+          items: [{ slug: 'getting-started' }, { slug: 'install' }],
+        },
+        {
+          label: 'Reference',
+          items: [{ slug: 'cli' }, { slug: 'dashboard' }],
+        },
+        {
+          label: 'Ovens',
+          items: [{ slug: 'ovens' }],
         },
       ],
     }),

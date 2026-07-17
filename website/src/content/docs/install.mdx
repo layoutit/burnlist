@@ -1,0 +1,54 @@
+---
+title: Install
+description: Install the Burnlist CLI, the agent skill, and the Streaming Diff hooks.
+---
+
+Burnlist requires Node.js 18 or newer. It has zero runtime dependencies: it uses pure Node built-ins and ES modules.
+
+## Install the CLI
+
+```sh
+npm install --global burnlist
+```
+
+The global package installs the `burnlist` command and registers one bundled agent skill under `$HOME/.agents/skills`. Run `burnlist` from any project to open the dashboard; it binds to loopback by default and prints its local URL.
+
+## The skill system
+
+One agent skill named `burnlist` owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance. Burnlist owns task state; your project (or a domain skill) owns implementation, tests, and delivery.
+
+Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow, while the CLI provides the dashboard and protocol helpers.
+
+## The hooks system (optional)
+
+Streaming Diff hooks are optional and installed per-agent. You can install them for Codex, Claude, or both:
+
+```sh
+burnlist hooks install --agent codex,claude
+burnlist hooks status
+burnlist hooks uninstall --agent codex,claude
+```
+
+Installation merges local Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`, preserving existing hook entries. Hooks use the portable `burnlist` command from `PATH`.
+
+The agent remains responsible for any first-run hook trust or consent prompt; Burnlist only writes configuration. `burnlist hooks status` reports whether each config is tracked (shared) or local. `--agent codex,claude` selects agents, and `--untracked` is available for untracked handling.
+
+## From a source checkout (optional)
+
+```sh
+npm install
+npm run build:dashboard
+npm run verify
+```
+
+`verify` checks source, contract tests, and the leak scan.
+
+## Uninstall
+
+```sh
+burnlist uninstall
+```
+
+This removes the command and its registered skill.
+
+Next: [Getting started](/getting-started), [CLI reference](/cli), and [Dashboard](/dashboard).

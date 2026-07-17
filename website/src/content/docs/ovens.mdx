@@ -1,0 +1,87 @@
+---
+title: Ovens
+description: The declarative, non-executable recipe format — and how to author one.
+---
+
+## What an Oven is
+
+An Oven is a named, declarative recipe for a Burn. It has two canonical files in a lowercase-slug directory:
+
+```text
+<oven-id>/
+  instructions.md
+  detail.json
+```
+
+`instructions.md` defines the outcome, canonical state, required run inputs, and evidence rules. It must be non-empty and contain a level-one heading, which is the Oven name. `detail.json` is a bounded, versioned, non-executable detail-page skeleton: its grid, controlled widgets and formats, and optional bindings.
+
+## What an Oven cannot do
+
+An Oven cannot execute commands or code, collect or transform project data, own or replace canonical project state, mutate Burnlists or other files, import arbitrary UI, or start an agent. It is data, never code.
+
+## Built-in Ovens
+
+Four built-in, read-only Ovens ship with Burnlist:
+
+- Checklist tracks the active work queue and progress.
+- Differential Testing provides aligned reference-versus-candidate series, optional aggregate telemetry, and exact-first evidence.
+- Streaming Diff.
+- Performance Tracing.
+
+Custom Ovens use the same two-file package and live in ignored `.local/burnlist/ovens/` state, scoped to the repository that owns them.
+
+## Authoring with the CLI
+
+```sh
+burnlist oven list [--json]
+burnlist oven view <id> [--json] [--cell-width <n>] [--cell-height <n>]
+burnlist oven create <id> --dir <dir>          # dir holds instructions.md + detail.json
+burnlist oven create <id> --package <file|->   # JSON: {name?, instructions, detail}
+burnlist oven create <id> --instructions <f|-> --detail <f|-> [--name <text>]
+burnlist oven update <id> [same inputs as create]
+burnlist oven fork <id> <newId>
+burnlist oven bind <id> <path> [--repo <path>]  # bind an Oven to a normalized data payload
+burnlist oven unbind <id> [--repo <path>]
+burnlist oven bindings [--repo <path>]          # list this repo's Oven data bindings
+```
+
+`view` prints the detail skeleton as a box-drawing grid and a section table with widget, format, source, cell, and span. Any file input accepts `-` for standard input. `--name` owns the level-one heading. `create` refuses an existing id; use `update`, or `--force`. Built-in Ovens are read-only, so fork one to customize it.
+
+Validation reuses the same `oven-contract` used by the dashboard. A bad grid — overlap, an out-of-bounds span, an unknown widget or format, or a missing H1 — is rejected before anything is written. This CLI never executes Oven instructions.
+
+## Grid rules
+
+The grid has 2–24 columns, 2–32 rows, a `rowHeight` of 32–120, and version `1`. It contains 1–32 sections. Each section id is a unique lowercase slug. `column` and `row` are 1-based; `column + columnSpan - 1 <= columns`, and the same rule applies to rows. Sections may not overlap. A `source` is empty (unbound) or a JSON-pointer-like string beginning with `/`.
+
+## Widget vocabulary
+
+| Widget | Intent |
+| --- | --- |
+| `metric` | One headline value. |
+| `progress` | Completion toward a whole — a number in `0..1` (or `0..100` with the `percent` format). |
+| `comparison` | Paired reference-versus-candidate series. |
+| `status` | A short state label. |
+| `timestamp` | A single moment. |
+| `line-chart` | A trend over an ordered axis. |
+| `bar-chart` | Categories compared with bars. |
+| `pie-chart` | Parts of a whole. |
+| `chart` | A generic series. |
+| `table` | Rows and columns. |
+| `list` | Items. |
+| `timeline` | Events in time order. |
+| `log` | Append-only lines. |
+| `markdown` | Prose. |
+
+## Formats
+
+The controlled formats applied to a widget value are `plain` (the default), `number`, `percent`, `duration`, and `timestamp`.
+
+## Binding
+
+A bound section's `source` is a JSON-pointer into a single read-only data document produced by a project-specific adapter at view time. The adapter is not part of the Oven, and source-value shape is not validated at creation time: the renderer and adapter are the final authority. Record the expected document shape in `instructions.md`, for example in a `## State Contract` section.
+
+An unbound section is a layout placeholder that renders no data. Rich built-in Ovens instead define a versioned normalized-data contract validated in code. For example, Differential Testing uses `burnlist-differential-testing-data@1`, bound with `burnlist --oven-data differential-testing=<path>`.
+
+## Runs
+
+Run Burn records a repository, title, and objective, then copies the selected `instructions.md` and `detail.json` into a new ignored `.local/burnlist/runs/` directory as immutable run provenance. The app does not execute it.
