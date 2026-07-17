@@ -1,9 +1,9 @@
-import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { closeSync, constants, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { existsSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 
 import { gitProbe } from "./git-ignore.mjs";
+import { addOwnedLocalExcludeText, fsyncDirectory, gitExcludePath, localExcludeTarget, removeOwnedLocalExcludeText, writeAtomicText } from "./local-exclude.mjs";
 import { containedJoin, withRepoStateLock } from "../server/repo-state.mjs";
 
 export const HOOK_MARKER = "burnlist-managed:streaming-diff-hooks@1";
@@ -22,23 +22,7 @@ const MUTATING_MATCHERS = {
   codex: "apply_patch|write_file|edit_file|create_file|delete_file|rename_file|move_file",
 };
 
-function fsyncDirectory(path) {
-  const fd = openSync(path, constants.O_RDONLY);
-  try { fsyncSync(fd); } finally { closeSync(fd); }
-}
-
-function writeDurableText(path, text) {
-  mkdirSync(dirname(path), { recursive: true });
-  const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
-  let fd;
-  try {
-    fd = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
-    writeFileSync(fd, text); fsyncSync(fd); closeSync(fd); fd = undefined;
-    renameSync(temporary, path); fsyncDirectory(dirname(path));
-  } finally { if (fd !== undefined) closeSync(fd); rmSync(temporary, { force: true }); }
-}
-
-export function writeDurableJson(path, value) { writeDurableText(path, `${JSON.stringify(value, null, 2)}\n`); }
+export function writeDurableJson(path, value) { writeAtomicText(path, `${JSON.stringify(value, null, 2)}\n`); }
 
 function provenancePath(repoRoot) { return containedJoin(repoRoot, "hooks-config-provenance.json"); }
 function configKey(repoRoot, path) { return relative(resolve(repoRoot), path).replace(/\\/gu, "/"); }
@@ -143,17 +127,20 @@ function configPath(repoRoot, agent) {
   return join(resolve(repoRoot), spec.file);
 }
 
-function worktreeRoot(repoRoot) {
+function worktreeRoot(repoRoot, operation) {
   const cwd = resolve(repoRoot);
   const gitRoot = gitProbe(cwd, ["rev-parse", "--show-toplevel"]);
+  if (gitRoot.status === 128 && /not a git repository/iu.test(gitRoot.stderr ?? "")) {
+    throw new Error(`hooks ${operation} must run inside a Git repository.`);
+  }
   if (gitRoot.status !== 0) throw new Error(gitRoot.error?.message || gitRoot.stderr?.trim() || "could not determine Git worktree root");
   const root = gitRoot.stdout.trim();
   if (!root) throw new Error("could not determine Git worktree root");
   return resolve(cwd, root);
 }
 
-function preflight(repoRoot, agents) {
-  const root = worktreeRoot(repoRoot);
+function preflight(repoRoot, agents, operation) {
+  const root = worktreeRoot(repoRoot, operation);
   const targets = agents.map((agent) => {
     const path = configPath(root, agent);
     const target = relative(root, path).replace(/\\/gu, "/");
@@ -164,33 +151,9 @@ function preflight(repoRoot, agents) {
   return { root, targets };
 }
 
-function excludePath(repoRoot) {
-  const result = gitProbe(repoRoot, ["rev-parse", "--git-path", "info/exclude"]);
-  if (result.status !== 0) throw new Error(result.error?.message || result.stderr?.trim() || "could not locate .git/info/exclude");
-  return resolve(repoRoot, result.stdout.trim());
-}
-
-function excludeTarget(repoRoot, path) { return `/${relative(resolve(repoRoot), path).replace(/\\/gu, "/")}`; }
-
-function addLocalExcludeText(content, target) {
-  if (content.split(/\r?\n/u).includes(target)) return;
-  const prefix = content && !content.endsWith("\n") ? `${content}\n` : content;
-  return `${prefix}# ${HOOK_MARKER}\n${target}\n`;
-}
-
-function removeLocalExcludeText(content, target) {
-  const lines = content.split(/\r?\n/u);
-  const kept = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    if (lines[index] === `# ${HOOK_MARKER}` && lines[index + 1] === target) { index += 1; continue; }
-    kept.push(lines[index]);
-  }
-  return kept.join("\n");
-}
-
 function locallyExcluded(repoRoot, path) {
-  const exclude = excludePath(repoRoot);
-  return existsSync(exclude) && readFileSync(exclude, "utf8").split(/\r?\n/u).includes(excludeTarget(repoRoot, path));
+  const exclude = gitExcludePath(repoRoot);
+  return existsSync(exclude) && readFileSync(exclude, "utf8").split(/\r?\n/u).includes(localExcludeTarget(repoRoot, path));
 }
 
 function excludedIn(content, target) { return content.split(/\r?\n/u).includes(target); }
@@ -200,14 +163,14 @@ function applyFileChange(change, writeJson) {
     rmSync(change.path, { force: true });
     fsyncDirectory(dirname(change.path));
   } else if (change.value) writeJson(change.path, change.value);
-  else writeDurableText(change.path, change.after);
+  else writeAtomicText(change.path, change.after);
 }
 
 function restoreFileChange(change) {
   if (change.before === undefined) {
     rmSync(change.path, { force: true });
     fsyncDirectory(dirname(change.path));
-  } else writeDurableText(change.path, change.before);
+  } else writeAtomicText(change.path, change.before);
 }
 
 function versionAtLeast(version, minimum) {
@@ -235,7 +198,7 @@ export function hookCapability(agent, { spawn = spawnSync, env = process.env } =
 }
 
 export function hookConfigStatus({ repoRoot = process.cwd(), agents = Object.keys(AGENTS), capability = hookCapability } = {}) {
-  const { root, targets } = preflight(repoRoot, agents);
+  const { root, targets } = preflight(repoRoot, agents, "status");
   return targets.map(({ agent, path, tracked }) => {
     let installed = false;
     let malformed = false;
@@ -256,7 +219,7 @@ export function hookConfigStatus({ repoRoot = process.cwd(), agents = Object.key
 
 export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.keys(AGENTS), install, untracked = false, capability = hookCapability, writeJson = writeDurableJson, restoreFile = restoreFileChange } = {}) {
   if (typeof install !== "boolean") throw new Error("install must be true or false");
-  const { root, targets } = preflight(repoRoot, agents);
+  const { root, targets } = preflight(repoRoot, agents, install ? "install" : "uninstall");
   return withRepoStateLock(root, () => {
     const capabilities = new Map(targets.map(({ agent }) => [agent, capability(agent)]));
     const created = readProvenance(root);
@@ -274,16 +237,17 @@ export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.ke
       if (!install && created.delete(key)) provenanceChanged = true;
       return {
         agent, path, tracked, key, next, changed, remove,
+        removed: !install && ownershipState(config, agent) !== "none",
         change: changed || remove ? { path, before: state.text, after: remove ? undefined : "", value: remove ? undefined : next } : null,
       };
     });
-    const exclude = excludePath(root);
+    const exclude = gitExcludePath(root);
     const excludeBefore = readOptionalText(exclude);
     let excludeAfter = excludeBefore ?? "";
     for (const { path, tracked } of prepared) {
-      const target = excludeTarget(root, path);
-      if (install && (!tracked || untracked)) excludeAfter = addLocalExcludeText(excludeAfter, target) ?? excludeAfter;
-      if (!install) excludeAfter = removeLocalExcludeText(excludeAfter, target);
+      const target = localExcludeTarget(root, path);
+      if (install && (!tracked || untracked)) excludeAfter = addOwnedLocalExcludeText(excludeAfter, target, HOOK_MARKER) ?? excludeAfter;
+      if (!install) excludeAfter = removeOwnedLocalExcludeText(excludeAfter, target, HOOK_MARKER);
     }
     if (excludeBefore === undefined && excludeAfter === "") excludeAfter = undefined;
     const changes = prepared.flatMap(({ change }) => change ? [change] : []);
@@ -308,12 +272,13 @@ export function updateHookConfigs({ repoRoot = process.cwd(), agents = Object.ke
       }
       throw error;
     }
-    return prepared.map(({ agent, path, tracked, next }) => {
+    return prepared.map(({ agent, path, tracked, next, removed }) => {
       const resulting = install ? next : Object.keys(next).length === 0 ? {} : next;
       return {
         agent, path, installed: hasOwnedEntries(resulting, agent), state: ownershipState(resulting, agent),
-        mode: tracked ? "tracked" : "untracked", excluded: excludedIn(excludeAfter ?? "", excludeTarget(root, path)),
+        mode: tracked ? "tracked" : "untracked", excluded: excludedIn(excludeAfter ?? "", localExcludeTarget(root, path)),
         forcedUntracked: untracked && tracked, capability: capabilities.get(agent),
+        removed,
       };
     });
   });

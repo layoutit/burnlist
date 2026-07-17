@@ -18,8 +18,13 @@ const home = join(tmpRoot, "home");
 const prefix = join(tmpRoot, "prefix");
 const packRoot = join(tmpRoot, "pack");
 const npmCache = join(tmpRoot, "npm-cache");
+const {
+  BURNLIST_CLAUDE_SKILLS_DIR: ignoredClaudeSkillsDir,
+  BURNLIST_SKILLS_DIR: ignoredCodexSkillsDir,
+  ...smokeEnv
+} = process.env;
 const env = {
-  ...process.env,
+  ...smokeEnv,
   HOME: home,
   USERPROFILE: home,
   npm_config_cache: npmCache,
@@ -41,8 +46,8 @@ function run(command, args, options = {}) {
   return options.capture ? result.stdout.trim() : "";
 }
 
-function assertManagedLink(name, packageRoot) {
-  const target = join(home, ".agents", "skills", name);
+function assertManagedLink(agentDirectory, name, packageRoot) {
+  const target = join(home, agentDirectory, "skills", name);
   const stat = lstatSync(target);
   if (!stat.isSymbolicLink()) throw new Error(`${target} is not a symlink`);
   const actual = realpathSync(resolve(dirname(target), readlinkSync(target)));
@@ -68,7 +73,8 @@ try {
   run("npm", ["install", "--global", "--prefix", prefix, tarball]);
   const globalRoot = run("npm", ["root", "--global", "--prefix", prefix], { capture: true });
   const packageRoot = resolve(globalRoot, "burnlist");
-  assertManagedLink("burnlist", packageRoot);
+  assertManagedLink(".claude", "burnlist", packageRoot);
+  assertManagedLink(".agents", "burnlist", packageRoot);
 
   const cli = process.platform === "win32"
     ? join(prefix, "burnlist.cmd")
@@ -95,13 +101,15 @@ try {
       || JSON.stringify(Object.keys(sdk).sort()) !== JSON.stringify(expected.sort())) process.exit(1);
   `]);
 
-  run(cli, ["uninstall"]);
-  for (const name of ["burnlist"]) {
-    try {
-      lstatSync(join(home, ".agents", "skills", name));
-      throw new Error(`uninstall left the ${name} skill registration behind`);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
+  run(cli, ["uninstall", "--global", "--purge"]);
+  for (const agentDirectory of [".claude", ".agents"]) {
+    for (const name of ["burnlist"]) {
+      try {
+        lstatSync(join(home, agentDirectory, "skills", name));
+        throw new Error(`uninstall left the ${agentDirectory} ${name} skill registration behind`);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
     }
   }
   console.log("Global npm install smoke test passed.");
