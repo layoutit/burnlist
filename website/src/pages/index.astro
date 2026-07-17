@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="A repo-local burndown tracker and read-only observer dashboard for agent build-loops." />
+    <meta name="description" content="A repo-local burndown tracker and read-only observer dashboard for agents." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Burnlist — a repo-local burndown tracker for agents</title>
     <script>
@@ -172,7 +172,7 @@
       <section class="hero" aria-labelledby="page-title">
         <span class="eyebrow">Zero runtime dependencies · pure Node · MIT</span>
         <h1 id="page-title">Burnlist</h1>
-        <p class="tagline">A repo-local burndown tracker for agent build-loops.</p>
+        <p class="tagline">A repo-local burndown tracker for agents.</p>
         <p class="intro">A shrinking Markdown checklist that renders live progress in a read-only observer dashboard. Burnlist owns task state — not your implementation, tests, or delivery — and never executes your work or drives your agents.</p>
         <div class="actions" aria-label="Get started">
           <a class="button primary" href="/getting-started">Read the docs</a>
@@ -187,16 +187,15 @@
         <div class="grid">
           <article class="card"><h3>CLI</h3><p>One command, <code>burnlist</code>, launches the loopback dashboard. Lifecycle verbs (<code>new</code>, <code>ready</code>, <code>start</code>, <code>burn</code>, <code>close</code>) plus protocol helpers (<code>--check</code>, <code>--digest</code>, <code>--stamp</code>) drive the burndown. Run <code>burnlist --help</code> for the full surface.</p></article>
           <article class="card"><h3>Dashboard</h3><p>A read-only web observer. It scans the <code>notes/burnlists/</code> lifecycle folders across your registered repos and refreshes automatically. It never mutates canonical task state.</p></article>
-          <article class="card"><h3>Ovens</h3><p>Declarative, non-executable recipes for a Burn: two files — <code>instructions.md</code> (outcome + evidence rules) and <code>detail.json</code> (grid, widgets, bindings). Four built-in Ovens ship: Checklist, Differential Testing, Streaming Diff, and Performance Tracing.</p></article>
+          <article class="card"><h3>Ovens</h3><p>Declarative, non-executable recipes for a Burn: two files — <code>instructions.md</code> (outcome + evidence rules) and <code>detail.json</code> (grid, widgets, bindings). Five built-in Ovens ship: Checklist, Differential Testing, Streaming Diff, Performance Tracing, and Visual Parity.</p></article>
           <article class="card"><h3>Skills</h3><p>A single agent skill owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance — installable for both Claude and Codex, per-repo or global.</p></article>
           <article class="card"><h3>Hooks</h3><p><code>burnlist hooks install --agent codex,claude</code> merges Streaming Diff commands into <code>.codex/hooks.json</code> and <code>.claude/settings.json</code>, preserving your existing hook entries.</p></article>
-          <article class="card"><h3>Lifecycle</h3><p>Work flows through folders — <code>draft/</code> → <code>ready/</code> → <code>inprogress/</code> → <code>completed/</code> — with every transition validated before an item leaves the checklist.</p></article>
         </div>
       </section>
 
-      <section aria-labelledby="loop-title">
+      <section aria-labelledby="lifecycle-title">
         <div class="loop">
-          <h2 id="loop-title">How the loop works</h2>
+          <h2 id="lifecycle-title">How burnlist works</h2>
           <ol class="steps" aria-label="Burnlist folder lifecycle">
             <li class="step">draft/</li><li class="step">ready/</li><li class="step">inprogress/</li><li class="step">completed/</li>
           </ol>

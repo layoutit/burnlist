@@ -21,12 +21,13 @@ An Oven cannot execute commands or code, collect or transform project data, own 
 
 ## Built-in Ovens
 
-Four built-in, read-only Ovens ship with Burnlist:
+Five built-in, read-only Ovens ship with Burnlist:
 
 - Checklist tracks the active work queue and progress.
 - Differential Testing provides aligned reference-versus-candidate series, optional aggregate telemetry, and exact-first evidence.
 - Streaming Diff surfaces recently published, session-scoped pre-to-post diff cards read from a local feed.
 - Performance Tracing renders retained browser-output timing evidence — frame pacing, budget checks, and slow steps — from a project-owned trace run.
+- Visual Parity compares trusted reference and candidate frames as isolated render passes, gating each render domain on calibrated channel, mean-delta, and changed-pixel bounds.
 
 Custom Ovens use the same two-file package and live in ignored `.local/burnlist/ovens/` state, scoped to the repository that owns them.
 
