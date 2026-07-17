@@ -33,6 +33,7 @@ export const verificationTestFiles = [
   "src/cli/registry-cli.test.mjs",
   "src/cli/git-ignore.test.mjs",
   "src/cli/skills-register.test.mjs",
+  "src/cli/skills-install-cli.test.mjs",
   "src/cli/oven-cli.test.mjs",
   "src/cli/oven-cli-stdout.test.mjs",
   "src/cli/oven-storage.test.mjs",

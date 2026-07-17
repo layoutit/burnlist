@@ -86,18 +86,22 @@ function homeForGlobalTargets(env) {
   return home;
 }
 
-export function targetRoots({ scope, cwd = process.cwd(), env = process.env }) {
+export function targetRoots({ scope, cwd = process.cwd(), env = process.env, agents = Object.keys(TARGETS) }) {
   if (!Object.hasOwn(TARGETS.claude, scope)) throw new Error(`unknown skill registration scope: ${scope}`);
   const home = scope === "global" ? homeForGlobalTargets(env) : undefined;
   const repoRoot = scope === "repo" ? resolveRepoRoot(cwd) : undefined;
-  return Object.entries(TARGETS).map(([agent, targets]) => ({
-    agent,
-    root: targets[scope]({ env, home, repoRoot }),
-  }));
+  return agents.map((agent) => {
+    const targets = TARGETS[agent];
+    if (!targets) throw new Error(`unknown skill registration agent: ${agent}`);
+    return {
+      agent,
+      root: targets[scope]({ env, home, repoRoot }),
+    };
+  });
 }
 
-function registrations({ sourceRoot, scope, cwd, env }) {
-  return targetRoots({ scope, cwd, env }).flatMap(({ agent, root }) => skillNames(sourceRoot).map(({ name, source }) => ({
+function registrations({ sourceRoot, scope, cwd, env, agents }) {
+  return targetRoots({ scope, cwd, env, agents }).flatMap(({ agent, root }) => skillNames(sourceRoot).map(({ name, source }) => ({
     agent,
     name,
     source,
@@ -118,8 +122,8 @@ function registrationState(registration) {
   return "keep";
 }
 
-export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, dryRun = false, log = console.log }) {
-  const planned = registrations({ sourceRoot, scope, cwd, env }).map((registration) => ({
+export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, log = console.log }) {
+  const planned = registrations({ sourceRoot, scope, cwd, env, agents }).map((registration) => ({
     ...registration,
     action: registrationState(registration),
   }));
@@ -138,8 +142,8 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
   return planned;
 }
 
-export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, dryRun = false, log = console.log, warn = console.warn }) {
-  const planned = registrations({ sourceRoot, scope, cwd, env });
+export function unregisterSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, log = console.log, warn = console.warn }) {
+  const planned = registrations({ sourceRoot, scope, cwd, env, agents });
   const removed = [];
   for (const registration of planned) {
     const stat = lstatOrNull(registration.target);

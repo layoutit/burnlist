@@ -82,7 +82,8 @@ Hooks use the portable `burnlist` command from `PATH`; the host resolves the pla
 - `burnlist --plan <burnlist.md> --digest` prints a completion digest after the active queue is empty.
 - `burnlist --close-completed` adds a digest when needed and moves empty in-progress Burnlists to `completed`.
 - `burnlist --stamp` prints a local ISO timestamp for completion records.
-- `burnlist uninstall` removes the command and its registered skill.
+- `burnlist install` registers the bundled skill for Codex and Claude in the current repository.
+- `burnlist uninstall` removes only those repository skill registrations. Use `burnlist uninstall --global --purge` to also remove a global npm installation and its global skill registrations.
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 

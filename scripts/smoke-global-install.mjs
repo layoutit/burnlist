@@ -101,7 +101,7 @@ try {
       || JSON.stringify(Object.keys(sdk).sort()) !== JSON.stringify(expected.sort())) process.exit(1);
   `]);
 
-  run(cli, ["uninstall"]);
+  run(cli, ["uninstall", "--global", "--purge"]);
   for (const agentDirectory of [".claude", ".agents"]) {
     for (const name of ["burnlist"]) {
       try {
