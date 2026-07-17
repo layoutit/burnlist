@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const SITE_URL = 'https://burnlist.dev';
@@ -40,29 +40,44 @@ const documents = await Promise.all(
   }),
 );
 
-await rm(outputDirectory, { recursive: true, force: true });
-await mkdir(outputDirectory, { recursive: true });
-await Promise.all(
-  documents.map(async ({ slug, source }) => {
-    const destination = path.join(outputDirectory, `${slug}.md`);
-    await mkdir(path.dirname(destination), { recursive: true });
-    await cp(source, destination);
-  }),
-);
-
 const header = [
   '# Burnlist',
   '',
-  '> A repo-local burndown tracker and multi-agent build-loop runner. MIT licensed.',
+  '> A repo-local burndown tracker with a read-only observer dashboard and declarative Ovens. MIT licensed.',
   '',
 ];
 const index = documents.map(({ slug, title }) => `- [${title}](${SITE_URL}/docs/${slug}.md)`);
 const footer = ['', '- GitHub: https://github.com/layoutit/burnlist', '- License: MIT', ''];
 
-await writeFile(path.resolve('dist/llms.txt'), [...header, ...index, ...footer].join('\n'));
-await writeFile(
-  path.resolve('dist/llms-full.txt'),
-  [...header, ...documents.flatMap(({ title, body }) => [`## ${title}`, '', body.trim(), '']), ...footer].join('\n'),
-);
+// Atomic publish: stage the complete output in a sibling temp dir, then rename
+// each artifact into place so a reader never observes a partial file or tree.
+const distDirectory = path.resolve('dist');
+const stagingDirectory = path.join(distDirectory, `.llms-staging-${process.pid}`);
+await rm(stagingDirectory, { recursive: true, force: true });
+await mkdir(stagingDirectory, { recursive: true });
+
+try {
+  const stagedDocs = path.join(stagingDirectory, 'docs');
+  await Promise.all(
+    documents.map(async ({ slug, source }) => {
+      const destination = path.join(stagedDocs, `${slug}.md`);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await cp(source, destination);
+    }),
+  );
+
+  await writeFile(path.join(stagingDirectory, 'llms.txt'), [...header, ...index, ...footer].join('\n'));
+  await writeFile(
+    path.join(stagingDirectory, 'llms-full.txt'),
+    [...header, ...documents.flatMap(({ title, body }) => [`## ${title}`, '', body.trim(), '']), ...footer].join('\n'),
+  );
+
+  await rm(outputDirectory, { recursive: true, force: true });
+  await rename(stagedDocs, outputDirectory);
+  await rename(path.join(stagingDirectory, 'llms.txt'), path.join(distDirectory, 'llms.txt'));
+  await rename(path.join(stagingDirectory, 'llms-full.txt'), path.join(distDirectory, 'llms-full.txt'));
+} finally {
+  await rm(stagingDirectory, { recursive: true, force: true });
+}
 
 console.log(`Generated llms.txt, llms-full.txt, and ${documents.length} documentation file(s).`);

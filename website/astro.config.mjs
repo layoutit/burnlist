@@ -8,7 +8,21 @@ export default defineConfig({
     starlight({
       title: 'Burnlist',
       description:
-        'A repo-local burndown tracker and multi-agent build-loop runner — CLI, dashboard, and declarative Ovens.',
+        'A repo-local burndown tracker with a read-only observer dashboard and declarative Ovens.',
+      favicon: '/favicon.svg',
+      head: [
+        { tag: 'meta', attrs: { property: 'og:title', content: 'Burnlist' } },
+        {
+          tag: 'meta',
+          attrs: {
+            property: 'og:description',
+            content:
+              'A repo-local burndown tracker with a read-only observer dashboard and declarative Ovens.',
+          },
+        },
+        { tag: 'meta', attrs: { property: 'og:type', content: 'website' } },
+        { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary' } },
+      ],
       customCss: ['./src/styles/custom.css'],
       components: { Header: './src/components/DocsHeader.astro' },
       social: [
