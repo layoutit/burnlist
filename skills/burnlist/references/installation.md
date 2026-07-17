@@ -7,7 +7,7 @@ Burnlist offers two independent integrations. The **skill** tells an agent how t
 The skills CLI surface is:
 
 ```sh
-burnlist install [--global] [--agent codex,claude] [--dry-run] [--commit]
+burnlist install [--global] [--agent codex,claude] [--dry-run] [--commit] [--force]
 burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 ```
 
@@ -18,9 +18,9 @@ By default, `burnlist install` registers the bundled Burnlist skill for both age
 | Claude Code | `<repo>/.claude/skills/burnlist` | `~/.claude/skills/burnlist` |
 | Codex | `<repo>/.agents/skills/burnlist` | `~/.agents/skills/burnlist` |
 
-The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
+The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. A global npm installation of Burnlist automatically registers those global skills for both agents. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--force` permits an untracked managed copy to be downgraded to a symlink; tracked copies must be removed through Git first. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
 
-For a Git worktree, the command reports the default mode as `untracked (local, .git/info/exclude)`, `--commit` as `committable (portable copy; run git add to track)`, and global registrations as `global symlink (no repo exclude)`. A non-Git directory instead reports `symlink (no git repo to exclude into)` or `portable copy (no git repo)`.
+For a Git worktree, the command reports the default mode as `untracked (local, .git/info/exclude)`. For `--commit`, it checks copied content files and reports either `committable (portable copy; run git add to track)` or the actual ignore rule still hiding content. Global registrations report `global symlink (no repo exclude)`. A non-Git directory instead reports `symlink (no git repo to exclude into)` or `portable copy (no git repo)`.
 
 `burnlist uninstall` removes only Burnlist-managed registrations in the matching scope and removes its matching local exclusion entries. `--purge` requires `uninstall --global`, targets both agents, and also uninstalls the global npm package.
 
@@ -47,7 +47,7 @@ By default, an untracked hook config is added to `.git/info/exclude`, making it 
 
 Use `burnlist hooks status` to report each selected agent's hook state, whether its config is tracked or local, and CLI capability. `burnlist hooks uninstall` removes Burnlist's managed hook entries and its matching local-exclude entry. Both default to Codex and Claude; use `--agent codex`, `--agent claude`, or `--agent codex,claude` to limit the operation.
 
-The status output uses hook states `installed`, `none`, `partial`, or `corrupt`; it labels configuration as `shared with the team; info/exclude cannot hide tracked config`, `local (listed in .git/info/exclude)`, or `local (not listed in .git/info/exclude)`. Capability output is `installed+hooks-supported`, `installed-but-hooks-unsupported` (including the required minimum), or `not-installed`.
+The status output uses hook states `installed`, `none`, `partial`, or `corrupt`; it labels configuration as `shared with the team; info/exclude cannot hide tracked config`, `local (listed in .git/info/exclude)`, or `local (not listed in .git/info/exclude)`, and shows the config path inspected. Capability output is labeled by CLI (`codex cli:` or `claude cli:`) and is `installed+hooks-supported`, `installed-but-hooks-unsupported` (including the required minimum), or `not-installed`.
 
 ## Common Commands
 
