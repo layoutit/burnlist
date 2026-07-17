@@ -1,10 +1,15 @@
 import { Settings } from "lucide-react";
+import { formatTime, type ChecklistProgressData } from "@lib";
 
 const HEADER_LINKS = [
   { href: "/ovens/new", label: "New Oven", section: "new-oven" },
 ] as const;
 
-export function AppHeader({ section }: { section: string }) {
+export function AppHeader({ detail, section }: { detail: ChecklistProgressData | null; section: string }) {
+  const title = section === "differential-testing" ? "Differential Testing"
+    : section === "performance-tracing" ? "Performance Tracing"
+      : section === "streaming-diff" ? "Streaming Diff"
+        : section === "visual-parity" ? "Visual Parity" : detail?.title;
   return (
     <header className="dashboard-header">
       <div className="dashboard-header-inner">
@@ -12,12 +17,9 @@ export function AppHeader({ section }: { section: string }) {
           <img alt="" className="dashboard-brand-logo" src="/favicon.svg" />
           <span className="dashboard-brand-name">Burnlist</span>
         </a>
-        {section === "differential-testing" && <div className="dashboard-oven-title">Differential Testing</div>}
-        {section === "performance-tracing" && <div className="dashboard-oven-title">Performance Tracing</div>}
-        {section === "streaming-diff" && <div className="dashboard-oven-title">Streaming Diff</div>}
-        {section === "visual-parity" && <div className="dashboard-oven-title">Visual Parity</div>}
+        {title && <div className="dashboard-oven-title">{title}</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
-          {section !== "differential-testing" && section !== "performance-tracing" && section !== "streaming-diff" && section !== "visual-parity" && HEADER_LINKS.map((link, index) => (
+          {detail ? <time className="dashboard-detail-time" dateTime={detail.generatedAt}>{formatTime(detail.generatedAt)}</time> : !["differential-testing", "performance-tracing", "streaming-diff", "visual-parity"].includes(section) && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>
               {index > 0 && <span aria-hidden="true" className="dashboard-primary-nav-separator">·</span>}
               <a aria-label={link.label} aria-current={section === link.section ? "page" : undefined} className="dashboard-primary-nav-link" href={link.href} title={link.label}>

@@ -47,6 +47,8 @@ export const verificationTestFiles = [
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",
   "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
+  "dashboard/src/components/ChecklistDashboard/ChecklistDashboard.test.mjs",
+  "dashboard/src/lib/checklist-progress-chart.test.mjs",
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
