@@ -98,7 +98,7 @@ Usage:
   burnlist unregister [path]
   burnlist roots [--prune]
   burnlist init [path] [--track]
-  burnlist install [--global] [--agent codex,claude] [--dry-run]
+  burnlist install [--global] [--commit] [--agent codex,claude] [--dry-run]
   burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 
 Options:
@@ -109,8 +109,9 @@ Options:
   --runs-dir <path>     Override Run snapshot storage.
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
   --global              Install or uninstall skills in the user home directory.
+  --commit              Per-repository install: copy portable skills for git commit.
   --agent <agents>      Restrict skill install or uninstall to codex, claude, or both.
-  --dry-run             Print skill links that would change without writing them.
+  --dry-run             Print skill link or portable-copy plans without writing them.
   --purge               With uninstall --global only, also remove the global npm package.
   --version, -v         Print the installed Burnlist version.
   --help, -h            Show this help.`);

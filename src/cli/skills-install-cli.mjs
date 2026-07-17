@@ -22,12 +22,14 @@ function parseSkillCommand(args) {
   let global = false;
   let dryRun = false;
   let purge = false;
+  let commit = false;
   let agents = VALID_AGENTS;
   let agentSpecified = false;
   for (let index = 1; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--global") global = true;
     else if (argument === "--dry-run") dryRun = true;
+    else if (argument === "--commit") commit = true;
     else if (argument === "--purge") purge = true;
     else if (argument === "--agent") {
       const value = args[++index];
@@ -40,9 +42,11 @@ function parseSkillCommand(args) {
     } else throw new Error(`unexpected argument: ${argument}`);
   }
   if (command === "install" && purge) throw new Error("--purge is only valid with uninstall");
+  if (command === "uninstall" && commit) throw new Error("--commit is only valid with install");
+  if (global && commit) throw new Error("--commit is only valid for per-repository skill installs");
   if (purge && !global) throw new Error("--purge requires --global");
   if (purge && agentSpecified) throw new Error("--purge removes the global package and must clean both agents; omit --agent");
-  return { command, scope: global ? "global" : "repo", dryRun, purge, agents };
+  return { command, scope: global ? "global" : "repo", dryRun, purge, commit, agents };
 }
 
 function npmGlobalPrefix(packageRoot) {
