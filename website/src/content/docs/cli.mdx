@@ -56,13 +56,22 @@ burnlist oven <list|view|bind|unbind|bindings|create|update> ...
 
 Author and inspect Ovens. (`burnlist oven help` lists a few more subcommands, such as `fork`.) See [Ovens](/ovens).
 
+## Skills
+
+```sh
+burnlist install [--global] [--agent codex,claude] [--commit] [--force] [--dry-run]
+burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
+```
+
+Registers (or removes) the bundled Burnlist skill for Claude Code and/or Codex, per-repository by default or globally with `--global`. Independent of Hooks below — install one, the other, or both. See [Install](/install).
+
 ## Hooks
 
 ```sh
 burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
 ```
 
-See [Install](/install).
+Independent of Skills above. See [Install](/install).
 
 ## Differential Testing
 
@@ -88,9 +97,3 @@ burnlist streaming-diff <ensure-feed|capture|url|hook> ...
 | `--oven-data <id=path>` | Bind one Oven to a read-only normalized JSON payload. |
 | `--version`, `-v` | Print the version. |
 | `--help`, `-h` | Print help. |
-
-## Uninstall
-
-```sh
-burnlist uninstall
-```

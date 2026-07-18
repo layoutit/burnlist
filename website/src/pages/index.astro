@@ -1,3 +1,6 @@
+---
+const skillUrl = new URL('/skill.md', Astro.site).toString();
+---
 <!doctype html>
 <html lang="en">
   <head>
@@ -129,13 +132,39 @@
       .flow-caption { color: var(--accent) !important; font-family: var(--mono); font-size: .82rem; margin: 0 !important; }
 
       /* Install. */
-      .install-card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; }
-      pre { max-width: 100%; overflow-x: auto; margin: 0; background: var(--panel-2); border-bottom: 1px solid var(--line); padding: 1.15rem 1.3rem; }
-      pre code { color: var(--text); background: transparent; padding: 0; font-size: .92rem; }
-      .install-copy { padding: 1.25rem 1.3rem; }
-      .install-copy p { color: var(--muted); margin: 0 0 .8rem; }
+      .install-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 1.5rem; }
+      @media (min-width: 720px) { .install-grid { grid-template-columns: repeat(2, 1fr); } }
+      .install-card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); overflow: hidden; display: flex; flex-direction: column; }
+      .install-card h3 { font-size: 1rem; color: var(--text); margin: 0; padding: 1.1rem 1.3rem .85rem; }
+      .install-card h3::before { content: '# '; color: var(--accent); font-family: var(--mono); }
+      .code-block { position: relative; }
+      pre {
+        max-width: 100%; overflow-x: auto; margin: 0; background: var(--panel-2);
+        border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        padding: 1.15rem 3rem 1.15rem 1.3rem;
+      }
+      pre code { color: var(--text); background: transparent; padding: 0; font-size: .92rem; word-break: break-all; }
+      .install-copy { padding: 1.1rem 1.3rem; }
+      .install-copy p { color: var(--muted); margin: 0; font-size: .875rem; }
+      .install-footnote { color: var(--muted); margin-top: 1.2rem; }
       .text-link { color: var(--accent); font-weight: 600; }
       .text-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      /* Copy-to-clipboard icon button — a small square in the code block's corner. */
+      .copy-btn {
+        position: absolute; top: .5rem; right: .5rem; width: 30px; height: 30px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+        color: var(--muted); cursor: pointer; padding: 0;
+        transition: border-color .15s ease, color .15s ease, background .15s ease;
+      }
+      .copy-btn:hover, .copy-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
+      .copy-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .copy-btn svg { width: 16px; height: 16px; display: block; }
+      .copy-btn .icon-check { display: none; }
+      .copy-btn.is-copied { border-color: var(--accent); color: var(--accent); }
+      .copy-btn.is-copied .icon-copy { display: none; }
+      .copy-btn.is-copied .icon-check { display: block; }
 
       footer { margin-top: 72px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; padding: 26px 0; }
       .footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
@@ -150,6 +179,7 @@
       @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
         .button { transition: none; }
+        .copy-btn { transition: none; }
       }
     </style>
   </head>
@@ -206,14 +236,36 @@
 
       <section id="install" aria-labelledby="install-title">
         <h2 id="install-title">Install</h2>
-        <div class="install-card">
-          <pre><code>npm install --global burnlist
-burnlist</code></pre>
-          <div class="install-copy">
-            <p>Requires Node.js 18 or newer. The global package installs the <code>burnlist</code> command and registers the bundled agent skill. Run <code>burnlist</code> from any project to open the dashboard on loopback.</p>
-            <a class="text-link" href="/getting-started">Read the getting-started guide →</a>
+        <p class="section-lede">Two ways to get Burnlist running — pick one, or use both.</p>
+        <div class="install-grid">
+          <div class="install-card">
+            <h3>Install globally with npm</h3>
+            <div class="code-block">
+              <pre><code>npm install --global burnlist</code></pre>
+              <button type="button" class="copy-btn" data-copy-text="npm install --global burnlist" aria-label="Copy">
+                <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19a2 2 0 0 1-1-2V2a2 2 0 0 1 1-1h13a2 2 0 0 1 2 1"></path><rect x="6" y="5" width="16" height="18" rx="1.5" ry="1.5"></rect></svg>
+                <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>
+              </button>
+            </div>
+            <div class="install-copy">
+              <p><code>burnlist</code> launches the dashboard from any project.</p>
+            </div>
+          </div>
+          <div class="install-card">
+            <h3>Give your agent the skill</h3>
+            <div class="code-block">
+              <pre><code>{skillUrl}</code></pre>
+              <button type="button" class="copy-btn" data-copy-text={skillUrl} aria-label="Copy">
+                <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 19a2 2 0 0 1-1-2V2a2 2 0 0 1 1-1h13a2 2 0 0 1 2 1"></path><rect x="6" y="5" width="16" height="18" rx="1.5" ry="1.5"></rect></svg>
+                <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>
+              </button>
+            </div>
+            <div class="install-copy">
+              <p>Paste this URL to your coding agent (Claude Code / Codex) — it fetches a complete, self-contained Burnlist skill. No local setup needed.</p>
+            </div>
           </div>
         </div>
+        <p class="install-footnote">Requires Node.js 18 or newer. <a class="text-link" href="/getting-started">Read the getting-started guide →</a></p>
       </section>
     </main>
 
@@ -226,5 +278,27 @@ burnlist</code></pre>
         </nav>
       </div>
     </footer>
+
+    <script>
+      document.querySelectorAll('.copy-btn').forEach((button) => {
+        const idleAriaLabel = button.getAttribute('aria-label') || 'Copy';
+        let resetTimer;
+        button.addEventListener('click', async () => {
+          const text = button.getAttribute('data-copy-text') || '';
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch {
+            return;
+          }
+          window.clearTimeout(resetTimer);
+          button.classList.add('is-copied');
+          button.setAttribute('aria-label', 'Copied');
+          resetTimer = window.setTimeout(() => {
+            button.classList.remove('is-copied');
+            button.setAttribute('aria-label', idleAriaLabel);
+          }, 1500);
+        });
+      });
+    </script>
   </body>
 </html>
