@@ -3,4 +3,7 @@ export { SectionHeader } from "./SectionHeader";
 export { LogTable } from "./LogTable";
 export { KpiItem } from "./KpiItem";
 export { KpiStrip } from "./KpiStrip";
+export { FeedList } from "./FeedList";
+export { DiffCard } from "./DiffCard";
+export { FileDiff } from "./FileDiff";
 export { useOvenLiveData } from "./live-data";
