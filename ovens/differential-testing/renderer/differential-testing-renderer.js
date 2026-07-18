@@ -1264,20 +1264,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     </div>
   </main>`;
   }
-  function render() {
-    const existingHeaderTimestamp = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-overview-time");
-    const existingHeaderStatus = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-refresh-status");
-    existingHeaderTimestamp?.remove();
-    existingHeaderStatus?.remove();
-    if (!state.oven || !state.payload) return;
-    const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
-    const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
-    if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
-    const titleText = String(title.title || state.oven.name || "Differential Testing");
-    if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
-      root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
-      return;
-    }
+  function buildDashboardHtml() {
     const visible = visibleFields(state, state.telemetryByField, fieldOrder);
     const serverPage = state.fieldPage;
     if (!serverPage) {
@@ -1315,7 +1302,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const primaryChartMarkup = primaryChartField
       ? `<div class="chart hybrid-chart" id="progress-chart" role="img" aria-label="${escapeHtml(primaryChartTitle)} over time">${chart(primaryChartField, true, state.progressChart === "delta" ? "delta" : "value")}</div>`
       : progress(state.payload.progress);
-    let html = templateHtml()
+    return templateHtml()
       .replace('<main id="burnlist-detail" class="detail-view" hidden>', '<main id="burnlist-detail" class="detail-view">')
       .replace('<section class="differential-overview" id="differential-overview" hidden>', '<section class="differential-overview" id="differential-overview">')
       .replace('<span id="differential-refresh-status" class="differential-refresh-status" hidden></span>', refreshStatus())
@@ -1336,6 +1323,22 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace('<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta">', `<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed="${state.progressChart === "delta"}">`)
       .replace('<div class="rows-view" id="hybrid-rows"></div>', `<div class="rows-view" id="hybrid-rows">${fieldRows(page, { state, telemetryByField: state.telemetryByField, chartMode: state.chart })}</div>`)
       .replace(/<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>[\s\S]*?<\/div>\n  <\/main>/u, `${paginationHtml}\n  </main>`);
+  }
+  function render() {
+    const existingHeaderTimestamp = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-overview-time");
+    const existingHeaderStatus = typeof document === "undefined" ? null : document.querySelector(".dashboard-primary-nav > #differential-refresh-status");
+    existingHeaderTimestamp?.remove();
+    existingHeaderStatus?.remove();
+    if (!state.oven || !state.payload) return;
+    const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
+    const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
+    if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
+    const titleText = String(title.title || state.oven.name || "Differential Testing");
+    if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
+      root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
+      return;
+    }
+    const html = buildDashboardHtml();
     root.innerHTML = html;
     const overviewTimestamp = root.querySelector("#differential-overview-time");
     const refreshStatusElement = root.querySelector("#differential-refresh-status");
