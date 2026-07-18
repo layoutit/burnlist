@@ -1,0 +1,141 @@
+/* Burnlist docs — styled to match the dashboard/ovens design system
+   (black terminal aesthetic, monospace body, Helvetica titles, flat weights). */
+
+:root {
+  /* Body = the dashboard's monospace; titles = the dashboard's Helvetica stack. */
+  --sl-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  --sl-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', monospace;
+  --title-font: 'Helvetica Neue', Helvetica, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sl-nav-height: 3.5rem;
+  --sl-text-code: 0.875rem;
+  --sl-line-height: 1.7;
+}
+
+/* Dashboard palette (dark is the canonical look). */
+:root,
+:root[data-theme='dark'] {
+  --dash-bg: #000000;
+  --dash-panel: #111111;
+  --dash-line: #262626;
+  --dash-text: #e8e8e8;
+  --dash-muted: #a8a8a8;
+  --dash-accent: #5aa2ff;
+
+  --sl-color-accent-low: #13233a;
+  --sl-color-accent: #5aa2ff;
+  --sl-color-accent-high: #8bbcff;
+  --sl-color-white: #e8e8e8;
+  --sl-color-gray-1: #d0d0d0;
+  --sl-color-gray-2: #a8a8a8;
+  --sl-color-gray-3: #6f6f6f;
+  --sl-color-gray-4: #404040;
+  --sl-color-gray-5: #262626;
+  --sl-color-gray-6: #111111;
+  --sl-color-gray-7: #0a0a0a;
+  --sl-color-black: #000000;
+  --sl-color-bg: #000000;
+  --sl-color-bg-nav: #000000;
+  --sl-color-bg-sidebar: #000000;
+  --sl-color-bg-inline-code: rgba(90, 162, 255, 0.12);
+  --sl-color-hairline-light: #262626;
+  --sl-color-hairline: #1a1a1a;
+  --sl-color-text: #e8e8e8;
+  --sl-color-text-accent: #5aa2ff;
+}
+
+:root[data-theme='light'] {
+  --dash-bg: #ffffff;
+  --dash-panel: #f6f6f6;
+  --dash-line: #e2e2e2;
+  --dash-text: #171717;
+  --dash-muted: #5b5b5b;
+  --dash-accent: #2563eb;
+
+  --sl-color-accent-low: #dbe6ff;
+  --sl-color-accent: #2563eb;
+  --sl-color-accent-high: #1d4ed8;
+  --sl-color-white: #0a0a0a;
+  --sl-color-gray-1: #262626;
+  --sl-color-gray-2: #404040;
+  --sl-color-gray-3: #6f6f6f;
+  --sl-color-gray-4: #a8a8a8;
+  --sl-color-gray-5: #e2e2e2;
+  --sl-color-gray-6: #f6f6f6;
+  --sl-color-black: #ffffff;
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #ffffff;
+  --sl-color-bg-sidebar: #fafafa;
+  --sl-color-bg-inline-code: rgba(37, 99, 235, 0.1);
+  --sl-color-hairline-light: #e2e2e2;
+  --sl-color-hairline: #efefef;
+  --sl-color-text: #171717;
+  --sl-color-text-accent: #1d4ed8;
+}
+
+/* Flat weights + Helvetica titles = the dashboard's restraint. */
+:where(.sl-markdown-content) :is(h1, h2, h3, h4, h5, h6),
+.content-panel h1,
+h1, h2 {
+  font-family: var(--title-font);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+:where(.sl-markdown-content) h1 { font-weight: 500; }
+
+/* Header: solid black bar with a hairline, matching the dashboard chrome. */
+.page > header.header {
+  position: fixed;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  width: 100%;
+  height: var(--sl-nav-height);
+  padding: 0;
+  background: var(--dash-bg);
+  border-bottom: 1px solid var(--dash-line);
+  z-index: var(--sl-z-index-navbar);
+}
+
+.main-frame {
+  padding-top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+}
+
+/* Sidebar hairline like the dashboard's panels. */
+.sidebar-pane {
+  border-inline-end: 1px solid var(--dash-line);
+}
+
+/* Prose. */
+:where(.sl-markdown-content) {
+  line-height: 1.7;
+}
+:where(.sl-markdown-content) :is(code, pre) {
+  font-family: var(--sl-font-mono);
+}
+:where(.sl-markdown-content) :not(pre) > code {
+  background: var(--sl-color-bg-inline-code);
+  border: 1px solid var(--dash-line);
+  border-radius: 6px;
+  padding: 0.08em 0.36em;
+  font-size: 0.9em;
+}
+:where(.sl-markdown-content) pre {
+  border: 1px solid var(--dash-line);
+  border-radius: 8px;
+}
+
+/* Cards / asides get the panel treatment (8px radius, hairline). */
+.card,
+.sl-markdown-content .starlight-aside {
+  border: 1px solid var(--dash-line);
+  border-radius: 8px;
+  background: var(--dash-panel);
+}
+
+/* Links carry the accent. */
+:where(.sl-markdown-content) a {
+  color: var(--sl-color-text-accent);
+  text-underline-offset: 3px;
+}

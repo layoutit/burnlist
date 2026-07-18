@@ -1,0 +1,74 @@
+---
+title: Install
+description: Install the Burnlist CLI, the agent skill, and the Streaming Diff hooks.
+---
+
+Burnlist requires Node.js 18 or newer. It has zero runtime dependencies: it uses pure Node built-ins and ES modules.
+
+Burnlist has two independent, optional integrations on top of the CLI: the **skill**, which teaches an agent to create and execute Burnlists, and the **hooks**, which capture edit activity for Streaming Diff. Installing one does not install, require, or remove the other — install one, the other, or both.
+
+## Install the CLI
+
+```sh
+npm install --global burnlist
+```
+
+The global package installs the `burnlist` command. Its npm `postinstall` step also globally registers the bundled agent skill for both agents (Claude Code under `~/.claude/skills`, Codex under `~/.agents/skills`) so the skill is available immediately. Run `burnlist` from any project to open the dashboard; it binds to loopback by default and prints its local URL.
+
+## Give your agent the skill
+
+One agent skill named `burnlist` owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance. Burnlist owns task state; your project (or a domain skill) owns implementation, tests, and delivery.
+
+Two ways to get the skill in front of an agent:
+
+- **Point the agent at the URL.** Paste `https://burnlist.dev/skill.md` to your coding agent (Claude Code or Codex) and it fetches a complete, self-contained skill document — no local setup needed.
+- **Register it locally.** The global npm install already registers the skill for both agents (see above). To (re)install per-repository, customize which agent gets it, or reinstall after removal:
+
+  ```sh
+  burnlist install [--global] [--agent codex,claude] [--commit] [--force] [--dry-run]
+  ```
+
+  Without `--global`, this registers the skill for the current repository only (an untracked local symlink by default, or a portable copy for git with `--commit`):
+
+  | Agent | Per-repository target | Global target (`--global`) |
+  | --- | --- | --- |
+  | Claude Code | `.claude/skills/burnlist` | `~/.claude/skills/burnlist` |
+  | Codex | `.agents/skills/burnlist` | `~/.agents/skills/burnlist` |
+
+  `--agent codex,claude` restricts which agent(s) get the skill (default: both); `--dry-run` prints the plan without writing. Remove a registration with the symmetric `burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]` — `--purge` (global only) also removes the global npm package.
+
+Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow, while the CLI provides the dashboard and protocol helpers.
+
+## The hooks system (optional, independent of the skill)
+
+Streaming Diff hooks are optional and installed per-agent, separately from the skill above. You can install them for Codex, Claude, or both:
+
+```sh
+burnlist hooks install --agent codex,claude
+burnlist hooks status
+burnlist hooks uninstall --agent codex,claude
+```
+
+Installation merges local Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`, preserving existing hook entries. Hooks use the portable `burnlist` command from `PATH`.
+
+The agent remains responsible for any first-run hook trust or consent prompt; Burnlist only writes configuration. `burnlist hooks status` reports whether each config is tracked (shared) or local. `--agent codex,claude` selects agents, and `--untracked` is available for untracked handling.
+
+## From a source checkout (optional)
+
+```sh
+npm install
+npm run build:dashboard
+npm run verify
+```
+
+`verify` checks source, contract tests, and the leak scan.
+
+## Uninstall
+
+```sh
+burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
+```
+
+Removes Burnlist-managed skill registrations in the matching scope (per-repository by default, or `--global`). `--purge` requires `uninstall --global`, targets both agents, and also runs `npm uninstall --global` to remove the package itself. Hooks are removed separately with `burnlist hooks uninstall` (above).
+
+Next: [Getting started](/getting-started), [CLI reference](/cli), and [Dashboard](/dashboard).

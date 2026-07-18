@@ -23,6 +23,11 @@ tiny (≤ 200 lines). `CLAUDE.md` in each folder is a symlink to its `AGENTS.md`
 - **Ovens are declarative and non-executable** — data, never code. No `eval`, no
   runtime component/renderer injection, no imported UI.
 
+## Agent integrations
+- Skills (`burnlist install`) and Streaming Diff hooks (`burnlist hooks install`) are
+  independent. Keep their docs accurate and separate; see `README.md` and
+  `skills/burnlist/references/installation.md` before changing either surface.
+
 ## Hygiene
 - **Conventional commits** (`feat:`/`fix:`/…); reference a burnlist item id when one
   applies: `feat: … (auth-07)`.

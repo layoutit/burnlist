@@ -1,0 +1,171 @@
+---
+import config from 'virtual:starlight/user-config';
+import Search from 'virtual:starlight/components/Search';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+const pathname = Astro.url.pathname;
+const topLinks = [
+  { href: '/getting-started', label: 'Docs' },
+  { href: '/cli', label: 'CLI' },
+  { href: '/ovens', label: 'Ovens' },
+  { href: '/dashboard', label: 'Dashboard' },
+];
+const isActive = (href: string) => pathname.startsWith(href);
+const siteTitle =
+  typeof config.title === 'string' ? config.title : (config.title?.en ?? 'Burnlist');
+---
+
+<header class="header" aria-label={`${siteTitle} navigation`}>
+  <div class="header-inner">
+    <div class="header-left">
+      <a class="brand" href="/" aria-label={`${siteTitle} home`}><span class="logo" aria-hidden="true">⟁</span>{siteTitle}</a>
+      <nav class="docs-top-nav" aria-label="Primary navigation">
+        {topLinks.map(({ href, label }) => (
+          <a href={href} aria-current={isActive(href) ? 'page' : undefined}>{label}</a>
+        ))}
+      </nav>
+    </div>
+
+    <div class="header-actions">
+      <div class="search-dock"><Search /></div>
+      <ThemeSelect />
+      <a
+        class="github-pill"
+        href="https://github.com/layoutit/burnlist"
+        aria-label="View Burnlist on GitHub"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.5c-2.23.49-2.7-.95-2.7-.95-.36-.93-.89-1.18-.89-1.18-.73-.5.06-.49.06-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.65-.89-3.65-3.96 0-.88.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.12 0 0 .68-.22 2.2.82A7.68 7.68 0 0 1 8 4.8c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.52.56.83 1.27.83 2.15 0 3.08-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.14.46.55.38A8 8 0 0 0 8 0Z" /></svg>
+        <span class="github-label">GitHub</span>
+        <span id="star-count-docs" aria-label="GitHub stars"></span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<script>
+  const starCount = document.getElementById('star-count-docs');
+  if (starCount) {
+    try {
+      const response = await fetch('https://api.github.com/repos/layoutit/burnlist');
+      if (response.ok) {
+        const repository = await response.json();
+        starCount.textContent = String(repository.stargazers_count ?? '');
+      }
+    } catch {
+      // A network failure should not affect navigation.
+    }
+  }
+</script>
+
+<style>
+  :global(:root) {
+    --sl-nav-height: 3.75rem;
+  }
+
+  .header {
+    height: var(--sl-nav-height);
+    background: var(--dash-bg, #000);
+    border-bottom: 1px solid var(--dash-line, #262626);
+  }
+
+  /* One robust row: [brand + nav] .............. [search + theme + github]. */
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    height: 100%;
+    padding: 0 1.1rem;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    min-width: 0;
+  }
+
+  .brand {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--sl-color-text);
+    font-family: var(--sl-font-mono);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .brand .logo {
+    color: var(--sl-color-accent);
+    font-size: 1.35em;
+    line-height: 1;
+    font-weight: 400;
+  }
+
+  .docs-top-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .docs-top-nav::-webkit-scrollbar { display: none; }
+
+  .docs-top-nav a {
+    color: var(--sl-color-gray-2);
+    border-radius: 6px;
+    padding: 0.38rem 0.62rem;
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .docs-top-nav a:hover,
+  .docs-top-nav a[aria-current='page'] {
+    color: var(--sl-color-text);
+    background: rgba(90, 162, 255, 0.14);
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .search-dock { display: flex; align-items: center; }
+
+  .github-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.62rem;
+    color: var(--sl-color-text);
+    background: transparent;
+    border: 1px solid var(--dash-line, #262626);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .github-pill:hover {
+    background: rgba(90, 162, 255, 0.14);
+    border-color: var(--sl-color-accent);
+  }
+  .github-pill svg { width: 1rem; fill: currentColor; }
+  .github-pill #star-count-docs:empty { display: none; }
+  .github-pill #star-count-docs::before { content: '★'; margin-right: 0.2rem; }
+
+  @media (max-width: 46rem) {
+    .brand { display: none; }
+  }
+  @media (max-width: 34rem) {
+    .github-label { display: none; }
+    .search-dock { display: none; }
+  }
+</style>

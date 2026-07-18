@@ -1,0 +1,29 @@
+---
+title: 'Getting Started'
+description: 'Install Burnlist and run your first burndown.'
+---
+
+Burnlist is a repo-local burndown tracker with a read-only observer dashboard and declarative **Ovens**. It stores work in a shrinking Markdown checklist and renders live progress; it owns task state, not implementation, tests, or delivery. It is built for planning and observing an agent's work — but it never executes your work or drives your agents.
+
+Burnlist has zero runtime dependencies: it uses pure Node built-ins and ES modules, and runs on Node.js 18 or newer.
+
+## Explore the CLI
+
+Use the built-in help to see every available command, then create a burnlist in your repository.
+
+```sh
+burnlist --help
+burnlist new
+```
+
+The core workflow moves a burnlist item through its lifecycle:
+
+`new` → `ready` → `start` → `burn` → `close`
+
+Useful commands include `burnlist show <id>`, `burnlist ready <id>`, `burnlist start <id>`, `burnlist burn <id> <item>`, and `burnlist close <id>`. Run `burnlist --help` for the full list.
+
+You can also launch the dashboard server with `burnlist`, create a workspace with `burnlist init`, manage registered roots with `burnlist register`, `burnlist unregister`, and `burnlist roots`, and manage hooks with `burnlist hooks <install|uninstall|status>`.
+
+## Coming next
+
+Upcoming sections cover the [CLI](/cli), [Ovens](/ovens), and the [Dashboard](/dashboard). Burnlist also includes `burnlist oven <list|view|bind|create|update|...>`, `burnlist differential-testing ...`, and `burnlist streaming-diff ...` commands.

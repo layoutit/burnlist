@@ -1,0 +1,21 @@
+{
+  "name": "burnlist-website",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Burnlist documentation and landing page.",
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build && node scripts/generate-llms-txt.mjs",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/starlight": "^0.38.2",
+    "@layoutit/polycss": "^0.2.8",
+    "astro": "^6.1.1",
+    "sharp": "^0.34.5"
+  }
+}

@@ -1,0 +1,22 @@
+---
+title: Visual Parity
+description: Reference-versus-candidate frame comparison as isolated render passes.
+---
+
+Visual Parity compares trusted **reference** and **candidate** frames as isolated render passes. It renders machine evidence from a project adapter through one normalized contract, `burnlist-visual-parity-data@1`, and never imports project code, executes commands, selects files, or grants authority.
+
+## Domains and roles
+
+Each render domain declares whether it **qualifies** the current scenario (`target`) or remains visible **diagnostic context** (`context`), so unrelated render domains never contaminate one another. A context domain stays visible and keeps its own pass/fail state, but it does not decide the target scenario verdict.
+
+## Pass criteria
+
+A passing `target` domain must satisfy its explicit, calibrated bounds: a channel bound, a mean-delta bound, and a changed-pixel bound. The default is zero tolerance — an unqualified difference fails.
+
+## Honesty rules
+
+Do not widen a tolerance to make a regression green. Calibrate only a deterministic renderer-boundary residual, with a written rationale, and preserve the zero-tolerance default. Pixel evidence decides visual parity here; gameplay and state authority stay in the linked [Differential Testing](/ovens/differential-testing) payload.
+
+## State contract
+
+Canonical state stays in the project's own captures and render output. A project adapter maps that into `burnlist-visual-parity-data@1`; Burnlist validates and renders only that normalized document, and the adapter remains the final authority on pixel evidence. Record the expected document shape in the Oven's `instructions.md`.

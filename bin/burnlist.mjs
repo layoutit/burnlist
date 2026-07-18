@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { basename, dirname, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { runSkillsInstallCli } from "../src/cli/skills-install-cli.mjs";
 
 const args = process.argv.slice(2);
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const knownSubcommands = new Set([
+  "install",
   "uninstall",
   "differential-testing",
   "streaming-diff",
@@ -24,50 +26,20 @@ const knownSubcommands = new Set([
   "init",
 ]);
 
-function npmGlobalPrefix() {
-  let current = packageRoot;
-  while (dirname(current) !== current) {
-    if (basename(current) === "node_modules") {
-      const parent = dirname(current);
-      return basename(parent) === "lib" ? dirname(parent) : parent;
-    }
-    current = dirname(current);
-  }
-  throw new Error("Burnlist is not running from a global npm installation.");
-}
-
-function runNodeScript(path, scriptArgs) {
-  return spawnSync(process.execPath, [path, ...scriptArgs], {
-    env: process.env,
-    shell: false,
-    stdio: "inherit",
-  });
+function printSkillUsage(command) {
+  const usage = command === "install"
+    ? "Usage: burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-run]"
+    : "Usage: burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]";
+  console.log(`${usage}\n\nInstall and remove Burnlist-managed agent skills for Codex and Claude.`);
 }
 
 async function main() {
-if (args[0] === "uninstall") {
-  let prefix;
-  try {
-    prefix = npmGlobalPrefix();
-  } catch (error) {
-    console.error(error.message);
-    process.exit(1);
+if (args[0] === "install" || args[0] === "uninstall") {
+  if (args.includes("--help") || args.includes("-h")) {
+    printSkillUsage(args[0]);
+    return;
   }
-  const unregisterPath = resolve(packageRoot, "scripts", "unregister-skills.mjs");
-  const unregister = runNodeScript(unregisterPath, ["--force-global"]);
-  if (unregister.status !== 0) process.exit(unregister.status || 1);
-
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-  const removal = spawnSync(npm, ["uninstall", "--global", "--prefix", prefix, "burnlist"], {
-    env: process.env,
-    shell: false,
-    stdio: "inherit",
-  });
-  if (removal.status !== 0) {
-    console.error("Burnlist: npm uninstall failed; restoring agent skill registrations.");
-    runNodeScript(resolve(packageRoot, "scripts", "register-skills.mjs"), ["--force-global"]);
-  }
-  process.exitCode = removal.status || 0;
+  process.exitCode = runSkillsInstallCli({ args, packageRoot });
   return;
 }
 
@@ -111,7 +83,7 @@ if (args[0] && !args[0].startsWith("--") && !["-h", "-v"].includes(args[0]) && !
   process.exit(2);
 }
 
-if (args[0] !== "oven" && (args.includes("--help") || args.includes("-h"))) {
+if (!["oven", "hooks"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
 Usage:
@@ -125,7 +97,7 @@ Usage:
   burnlist differential-testing schema
   burnlist differential-testing sdk
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
-  burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
+  burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
   burnlist oven <list|view|bind|unbind|bindings|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
@@ -137,7 +109,8 @@ Usage:
   burnlist unregister [path]
   burnlist roots [--prune]
   burnlist init [path] [--track]
-  burnlist uninstall
+  burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-run]
+  burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 
 Options:
   --auto-port           Try the next available loopback port.
@@ -146,6 +119,12 @@ Options:
   --ovens-dir <path>    Override launch-repository custom Oven storage only.
   --runs-dir <path>     Override Run snapshot storage.
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.
+  --global              Install or uninstall skills in the user home directory.
+  --commit              Per-repository install: copy portable skills for git commit.
+  --force               Permit install to replace a Burnlist-managed portable copy with a symlink.
+  --agent <agents>      Restrict skill install or uninstall to codex, claude, or both.
+  --dry-run             Print skill link or portable-copy plans without writing them.
+  --purge               With uninstall --global only, also remove the global npm package.
   --version, -v         Print the installed Burnlist version.
   --help, -h            Show this help.`);
   return;

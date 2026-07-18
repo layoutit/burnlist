@@ -1,0 +1,77 @@
+---
+title: Differential Testing oven
+description: Generic source-versus-candidate evidence through one normalized contract.
+---
+
+Differential Testing is the generic source-versus-candidate Oven. It renders aligned machine evidence from any project through one normalized contract, `burnlist-differential-testing-data@1`. It does **not** import project code, execute project commands, select files, repair captures, apply or revert engine edits, or grant authority. The objective is an exact match to a trusted reference; tolerance-state charts are evidence locators, not a substitute for the exact frontier.
+
+## Operating modes
+
+`aggregate` uses normalized paired samples and declared tolerances to guide a conventional comparison cycle. `exact-first` uses an optional retained `exactSession` to report the active exact frontier, source-owned producer, composed-loop result, and one next action.
+
+When `exactSession.strategy` is `exact-first`, exact target selection fails closed: missing, stale, failed, contradictory, or unbound exact evidence produces `blocked`, and the adapter must not fall back to field failure counts, aggregate ticks, Changed, history, or visually prominent intervals.
+
+## State contract
+
+Canonical state stays in project-owned captures, reports, retained runtime state, replay/profile data, exact artifacts, checker outputs, and source evidence. A project adapter maps compact facts into `burnlist-differential-testing-data@1`; Burnlist validates and renders only that normalized document.
+
+The adapter must preserve roles, real sample identity and ordering, source and candidate values, nulls-as-values distinct from numeric zero, missing-as-missing, field semantics, unit, tolerance, and scenario/reference/replay/profile/report/exact identities. It must never invent points, stretch one series to another, combine artifacts from different runs, weaken thresholds, hide regressions, or classify unavailable evidence as a pass.
+
+Each catalog scenario may also declare an optional `engine` identity (an `id` plus a contained relative `runtimeRoot`) and a `contractSha256`, binding that scenario's evidence to one named runtime engine and one contract revision.
+
+## Normalized payload
+
+The required comparison surface contains `summary.runs`, `summary.fields`, and `summary.frames`; a `scenarioCatalog` with one selected scenario; a `refresh` with one event-driven `queued`, `running`, `complete`, or `failed` state; chronological `progress`; reverse-chronological `log`; and aligned `fields` with paired reference/candidate samples and normalized state.
+
+Optional independent surfaces are `telemetry`, with `authority: "telemetry-only"` and two candidates compared against one reference, and `exactSession`, with `authority: "adapter-attested"` and the one retained exact-first session. When no scenarios exist, publish the explicit empty state: a null selection, an empty catalog, `refresh: null`, zero summaries, and no rows or fields.
+
+## Trust gate
+
+The primary comparison is trustworthy only when:
+
+1. Reference and candidate artifacts are real and named.
+2. Scenario, seed, inputs, timing, alignment, and coverage are comparable.
+3. Roles, field semantics, units, and tolerances are explicit.
+4. Missing values and present nulls are preserved.
+5. Summary partitions reconcile with field rows and samples.
+6. Incomplete, stale, contradictory, or partially written data is reported as blocked.
+
+When the gate fails, fix the capture, adapter, or comparison seam before changing runtime behavior.
+
+## Attestation boundary
+
+Burnlist validates normalized structure, arithmetic, chronology, required identities, and session consistency, but it cannot prove that a declared digest matches bytes it never receives. `adapter-attested` means the adapter reported those checks, not that Burnlist independently verified project artifacts.
+
+## Result semantics
+
+| Exact-first result | Meaning |
+| --- | --- |
+| `advanced` | No earlier divergence and a strictly later exact prefix; retain the candidate and publish the next session. |
+| `complete` | The configured scenario is exact; retain the candidate and enter end-of-scenario work. |
+| `rejected` | The candidate has the same or an earlier exact frontier; discard only that candidate and keep the prior retained session. |
+| `evidence-only` | Source or tool evidence improved without an engine-retention decision. |
+| `blocked` | A concrete source, replay, mapping, evidence, or tool gap prevents a trustworthy decision. |
+
+| Aggregate result | Meaning |
+| --- | --- |
+| `pass` | All required trusted comparisons satisfy the declared contract. |
+| `improved` | The comparable residual moved toward an exact match. |
+| `unchanged` | The comparable residual did not move. |
+| `worsened` | The comparable residual moved away from an exact match. |
+| `blocked` | Evidence is not trustworthy enough to guide the next action. |
+
+Threshold loosening, excluded failures, fabricated values, role reversal, and sample truncation never count as improvement.
+
+## Working with it
+
+```sh
+burnlist differential-testing schema
+burnlist differential-testing validate <differential-testing.json>
+burnlist differential-testing validate-bundle <bundle/current.json>
+burnlist differential-testing sdk
+burnlist --oven-data differential-testing=<path>
+```
+
+Small comparisons may bind the data document directly. Large comparisons use the `burnlist-differential-testing-bundle@1` transport so Burnlist validates field records sequentially and range-reads only the visible page. `burnlist differential-testing sdk` prints the packaged worker module path.
+
+See [Ovens](/ovens) and the [CLI reference](/cli).
