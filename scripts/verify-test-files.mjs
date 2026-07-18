@@ -56,6 +56,7 @@ export const verificationTestFiles = [
   "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
   "dashboard/src/components/ChecklistDashboard/ChecklistDashboard.test.mjs",
   "dashboard/src/lib/checklist-progress-chart.test.mjs",
+  "dashboard/src/oven/chart-core/compact-time-scale.test.mjs",
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
