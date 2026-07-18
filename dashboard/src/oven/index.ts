@@ -13,3 +13,5 @@ export { MetricTiles } from "./MetricTiles";
 export { DomainNote } from "./DomainNote";
 export { ImageTriptych } from "./ImageTriptych";
 export { FrameCard } from "./FrameCard";
+export { OvenView } from "./OvenView";
+export type { Binding, CellDef, JsonPrimitive, JsonValue, OvenViewDef, OvenViewProps, SectionDef, SlotDef } from "./OvenView";

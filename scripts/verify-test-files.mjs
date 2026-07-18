@@ -70,6 +70,8 @@ export const verificationTestFiles = [
   "dashboard/src/oven/DomainNote/DomainNote.test.mjs",
   "dashboard/src/oven/ImageTriptych/ImageTriptych.test.mjs",
   "dashboard/src/oven/FrameCard/FrameCard.test.mjs",
+  "dashboard/src/oven/OvenView/json-pointer.test.mjs",
+  "dashboard/src/oven/OvenView/OvenView.test.mjs",
   "dashboard/src/lib/checklist-progress-chart.test.mjs",
   "dashboard/src/oven/chart-core/compact-time-scale.test.mjs",
   "dashboard/src/oven/live-data/transports.test.mjs",
