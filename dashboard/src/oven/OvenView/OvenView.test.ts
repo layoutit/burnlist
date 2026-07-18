@@ -1,63 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { ClipboardList } from "lucide-react";
-import { build } from "esbuild";
-
-const ovenViewPath = new URL("./OvenView.tsx", import.meta.url).pathname;
-const metricTilesPath = new URL("../MetricTiles/MetricTiles.tsx", import.meta.url).pathname;
-const domainNotePath = new URL("../DomainNote/DomainNote.tsx", import.meta.url).pathname;
-const kpiItemPath = new URL("../KpiItem/KpiItem.tsx", import.meta.url).pathname;
-const progressDonutPath = new URL("../ProgressDonut/ProgressDonut.tsx", import.meta.url).pathname;
-const libPath = new URL("../../lib", import.meta.url).pathname;
-const layoutPath = new URL("../../layout", import.meta.url).pathname;
-const ovenPath = new URL("..", import.meta.url).pathname;
-
-let outputDir;
-let OvenView;
-let MetricTiles;
-let DomainNote;
-let KpiItem;
-let ProgressDonut;
-
-async function bundle(entryPath, name) {
-  const outputPath = join(outputDir, `${name}.mjs`);
-  await build({
-    entryPoints: [entryPath],
-    bundle: true,
-    format: "esm",
-    outfile: outputPath,
-    platform: "node",
-    alias: { "@lib": libPath, "@layout": layoutPath, "@oven": ovenPath },
-    jsx: "automatic",
-    packages: "external",
-    target: "node18",
-  });
-  return import(`${new URL(`file://${outputPath}`).href}?test=${name}-${Date.now()}`);
-}
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".oven-view-test-"));
-  const modules = await Promise.all([
-    bundle(ovenViewPath, "OvenView"),
-    bundle(metricTilesPath, "MetricTiles"),
-    bundle(domainNotePath, "DomainNote"),
-    bundle(kpiItemPath, "KpiItem"),
-    bundle(progressDonutPath, "ProgressDonut"),
-  ]);
-  OvenView = modules[0].OvenView;
-  MetricTiles = modules[1].MetricTiles;
-  DomainNote = modules[2].DomainNote;
-  KpiItem = modules[3].KpiItem;
-  ProgressDonut = modules[4].ProgressDonut;
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { DomainNote } from "../DomainNote/DomainNote";
+import { MetricTiles } from "../MetricTiles/MetricTiles";
+import { KpiItem } from "../KpiItem/KpiItem";
+import { ProgressDonut } from "../ProgressDonut/ProgressDonut";
+import { OvenView } from "./OvenView";
 
 function render(def, payload) {
   return renderToString(createElement(OvenView, { def, payload }));

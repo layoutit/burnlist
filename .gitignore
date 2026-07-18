@@ -5,6 +5,7 @@ notes/burnlists/
 dist/
 dashboard/dist/
 node_modules/
+.oven-test-*/
 .playwright-cli/
 output/
 build/

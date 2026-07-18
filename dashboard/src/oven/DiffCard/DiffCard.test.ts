@@ -1,30 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { build } from "esbuild";
-
-const componentPath = new URL("./DiffCard.tsx", import.meta.url).pathname;
-const layoutPath = new URL("../../layout", import.meta.url).pathname;
-const libPath = new URL("../../lib", import.meta.url).pathname;
-let outputDir;
-let DiffCard;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".diff-card-test-"));
-  const outputPath = join(outputDir, "DiffCard.mjs");
-  await build({
-    entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-    alias: { "@layout": layoutPath, "@lib": libPath }, jsx: "automatic", packages: "external", target: "node18",
-  });
-  ({ DiffCard } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { DiffCard } from "./DiffCard";
 
 test("DiffCard preserves a complete card with file content", () => {
   const card = {

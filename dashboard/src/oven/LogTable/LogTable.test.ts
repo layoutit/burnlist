@@ -1,28 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { Fragment, createElement } from "react";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { build } from "esbuild";
-
-const componentPath = new URL("./LogTable.tsx", import.meta.url).pathname;
-let outputDir;
-let LogTable;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".log-table-test-"));
-  const outputPath = join(outputDir, "LogTable.mjs");
-  await build({
-    entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-    jsx: "automatic", packages: "external", target: "node18",
-  });
-  ({ LogTable } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { LogTable } from "./LogTable";
 
 function FrozenChecklistLog({ rows, emptyState }) {
   return createElement(

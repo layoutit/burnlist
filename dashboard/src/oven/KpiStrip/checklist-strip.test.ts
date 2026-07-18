@@ -1,34 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { createElement, Fragment } from "react";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { build } from "esbuild";
-
-const itemPath = new URL("../KpiItem/KpiItem.tsx", import.meta.url).pathname;
-const stripPath = new URL("./KpiStrip.tsx", import.meta.url).pathname;
-let outputDir;
-let KpiItem;
-let KpiStrip;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".checklist-strip-test-"));
-  const itemOutputPath = join(outputDir, "KpiItem.mjs");
-  const stripOutputPath = join(outputDir, "KpiStrip.mjs");
-  const buildOptions = {
-    bundle: true, format: "esm", platform: "node",
-    jsx: "automatic", packages: "external", target: "node18",
-  };
-  await build({ ...buildOptions, entryPoints: [itemPath], outfile: itemOutputPath });
-  await build({ ...buildOptions, entryPoints: [stripPath], outfile: stripOutputPath });
-  ({ KpiItem } = await import(`${new URL(`file://${itemOutputPath}`).href}?test=${Date.now()}`));
-  ({ KpiStrip } = await import(`${new URL(`file://${stripOutputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { KpiItem } from "../KpiItem/KpiItem";
+import { KpiStrip } from "./KpiStrip";
 
 test("Checklist KPI strip preserves its complete static structure", () => {
   const scenarioIcon = createElement("svg", { "aria-hidden": "true", className: "driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" });

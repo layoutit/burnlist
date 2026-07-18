@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const testSupportDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(testSupportDir, "../../../..");
 const sourceDir = resolve(testSupportDir, "../..");
 const ovenDir = resolve(sourceDir, "oven");
 
@@ -48,7 +48,7 @@ console.log(`=== Oven TypeScript tests (${testEntries.length}) ===`);
 
 if (testEntries.length === 0) process.exit(0);
 
-const outputDir = mkdtempSync(join(tmpdir(), "burnlist-oven-tests-"));
+const outputDir = mkdtempSync(join(repoRoot, ".oven-test-"));
 let status = 0;
 try {
   await build({

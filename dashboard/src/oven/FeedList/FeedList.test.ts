@@ -1,29 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { build } from "esbuild";
-
-const componentPath = new URL("./FeedList.tsx", import.meta.url).pathname;
-const libPath = new URL("../../lib", import.meta.url).pathname;
-let outputDir;
-let FeedList;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".feed-list-test-"));
-  const outputPath = join(outputDir, "FeedList.mjs");
-  await build({
-    entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-    alias: { "@lib": libPath }, jsx: "automatic", packages: "external", target: "node18",
-  });
-  ({ FeedList } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { FeedList } from "./FeedList";
 
 const heading = "<section class=\"streaming-diff-view\"><header class=\"streaming-diff-heading\"><h1>Streaming Diff</h1><p>Recent feeds are ordered by published activity time, not process liveness.</p></header>";
 

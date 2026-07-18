@@ -1,28 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { Fragment, createElement } from "react";
 import { renderToStaticMarkup, renderToString } from "react-dom/server";
-import { build } from "esbuild";
-
-const componentPath = new URL("./KpiItem.tsx", import.meta.url).pathname;
-let outputDir;
-let KpiItem;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".kpi-item-test-"));
-  const outputPath = join(outputDir, "KpiItem.mjs");
-  await build({
-    entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-    jsx: "automatic", packages: "external", target: "node18",
-  });
-  ({ KpiItem } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { KpiItem } from "./KpiItem";
 
 test("KpiItem preserves the exact Checklist item markup", () => {
   const visual = createElement("svg", { "aria-hidden": "true", className: "driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" });

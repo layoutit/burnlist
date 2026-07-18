@@ -1,31 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { after, before, test } from "node:test";
+import { test } from "node:test";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { ArrowLeft } from "lucide-react";
-import { build } from "esbuild";
-
-const componentPath = new URL("./VerdictHeader.tsx", import.meta.url).pathname;
-const libPath = new URL("../../lib", import.meta.url).pathname;
-const ovenPath = new URL("..", import.meta.url).pathname;
-let outputDir;
-let VerdictHeader;
-
-before(async () => {
-  outputDir = await mkdtemp(join(process.cwd(), ".verdict-header-test-"));
-  const outputPath = join(outputDir, "VerdictHeader.mjs");
-  await build({
-    entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-    alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18",
-  });
-  ({ VerdictHeader } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`));
-});
-
-after(async () => {
-  await rm(outputDir, { force: true, recursive: true });
-});
+import { VerdictHeader } from "./VerdictHeader";
 
 function FrozenVerdictHeader({ targetPass, framesCount, error }) {
   return createElement(
