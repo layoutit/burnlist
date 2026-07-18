@@ -5,6 +5,8 @@ export { DifferentialKpiStrip } from "./DifferentialKpiStrip";
 export { WaffleMetric } from "./WaffleMetric";
 export { SectionHeader } from "./SectionHeader";
 export { LogTable } from "./LogTable";
+export { buildDifferentialLogRows, DifferentialLogTable } from "./DifferentialLogTable";
+export type { DifferentialLogEntry, DifferentialLogRows, DifferentialLogTableProps } from "./DifferentialLogTable";
 export { KpiItem } from "./KpiItem";
 export { KpiStrip } from "./KpiStrip";
 export { FeedList } from "./FeedList";
