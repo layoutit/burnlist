@@ -4,7 +4,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { filesystemIdentity, sameFilesystemIdentity } from "./atomic-quarantine.mjs";
 import { runInstallTransaction } from "./skills-install-transaction.mjs";
+
+// Force the wall clock to advance at least one tick. A freshly created
+// object's modification time (mtime) is set fresh at creation, but its
+// resolution is bounded by the clock; without this, two creations issued
+// back to back could land in the same tick and make two genuinely different
+// filesystem objects compare equal by mtime alone (on top of Linux already
+// reusing inode numbers immediately after unlink). Real installs are never
+// this fast twice in a row, so this only exists to make the test itself
+// deterministic across platforms.
+function waitForNextTick() {
+  const start = Date.now();
+  while (Date.now() === start) { /* busy-wait for the clock to tick */ }
+}
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-skills-transaction-"));
@@ -115,12 +129,20 @@ test("created-target rollback leaves a foreign entry that replaced it", () => {
       revalidate: () => ({ state: "missing", action: "link" }),
       create: (_, onCreated) => {
         link(context.newSource, target);
-        createdIdentity = lstatSync(target);
+        createdIdentity = filesystemIdentity(target);
         onCreated();
         rmSync(target, { recursive: true, force: true });
+        // Inode numbers can be reused the instant a path is unlinked (this is
+        // routine on Linux/ext4), so raw {dev, ino} equality cannot be relied
+        // on to prove the replacement below is a distinct object — only the
+        // production identity check (dev + ino + mtimeMs) can. Force a clock
+        // tick so the replacement's mtimeMs is guaranteed to differ, then
+        // assert via the actual guard function used in production, not a
+        // platform-dependent assumption about inode allocation.
+        waitForNextTick();
         link(context.newSource, target);
-        const replacement = lstatSync(target);
-        assert.notDeepEqual({ ino: replacement.ino, dev: replacement.dev }, { ino: createdIdentity.ino, dev: createdIdentity.dev });
+        const replacement = filesystemIdentity(target);
+        assert.equal(sameFilesystemIdentity(replacement, createdIdentity), false);
         throw new Error("later failure");
       },
     }), /later failure/u);

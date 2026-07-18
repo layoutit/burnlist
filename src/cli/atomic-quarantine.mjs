@@ -8,13 +8,31 @@ function lstatOrNull(path) {
   }
 }
 
+// {dev, ino} alone cannot prove "this is the exact object I created": Linux
+// (ext4 and friends) reuses inode numbers as soon as the old one is unlinked,
+// so a foreign object that replaces ours at the same path can land on the
+// identical {dev, ino} by pure allocator coincidence — inode uniqueness is a
+// macOS/APFS behavior, not a POSIX guarantee. Pairing the pair with mtimeMs
+// (set fresh at creation, never inherited from a prior tenant of a reused
+// inode) means a false match additionally requires the replacement to land
+// in the very same clock tick as the original. mtime is deliberately used
+// instead of ctime: quarantineTarget below holds an object by *renaming* it
+// to a private path before validating it, and rename(2) always bumps ctime
+// (even for the exact same object) but never touches mtime — so ctime would
+// make every legitimate match look foreign, while mtime survives it. For a
+// local, single-process, lock-serialized installer this tuple is a
+// proportionate, best-effort defense-in-depth check — not a cryptographic
+// guarantee — and it is honest cross-platform where a bare {dev, ino} check
+// was not.
 export function filesystemIdentity(path) {
   const stat = lstatSync(path);
-  return { dev: stat.dev, ino: stat.ino };
+  return { dev: stat.dev, ino: stat.ino, mtimeMs: stat.mtimeMs };
 }
 
 export function sameFilesystemIdentity(stat, identity) {
-  return Boolean(stat && identity && stat.dev === identity.dev && stat.ino === identity.ino);
+  return Boolean(
+    stat && identity && stat.dev === identity.dev && stat.ino === identity.ino && stat.mtimeMs === identity.mtimeMs,
+  );
 }
 
 // Rename to an owned quarantine path before deciding whether the object is
