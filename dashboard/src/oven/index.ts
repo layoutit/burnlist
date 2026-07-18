@@ -34,3 +34,5 @@ export { HybridMetric } from "./HybridMetric";
 export type { HybridMetricProps, HybridTelemetry } from "./HybridMetric";
 export { HybridFieldList } from "./HybridFieldList";
 export type { HybridFieldListProps, TelemetryAvailability, TelemetryByField } from "./HybridFieldList";
+export { PaginationBar } from "./PaginationBar";
+export type { PaginationBarProps } from "./PaginationBar";
