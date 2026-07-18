@@ -63,6 +63,8 @@ export const verificationTestFiles = [
   "dashboard/src/oven/SectionHeader/SectionHeader.test.mjs",
   "dashboard/src/lib/checklist-progress-chart.test.mjs",
   "dashboard/src/oven/chart-core/compact-time-scale.test.mjs",
+  "dashboard/src/oven/live-data/transports.test.mjs",
+  "dashboard/src/oven/live-data/adapters.test.mjs",
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
