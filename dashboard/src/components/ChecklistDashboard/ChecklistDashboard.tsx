@@ -4,6 +4,8 @@ import type { ChecklistProgressData, CompletedItem, HistoryPoint } from "@lib";
 import "./ChecklistDashboard.css";
 // @ts-expect-error The chart model is plain ESM so the dashboard and Node tests share it.
 import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.js";
+import { ProgressDonut } from "../../oven/ProgressDonut";
+import { SectionHeader } from "../../oven/SectionHeader";
 
 function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
@@ -38,12 +40,6 @@ function timing(data: ChecklistProgressData) {
   const currentAge = Math.max(0, end - lastCompletion);
   const timeLeft = data.remaining ? Math.max(pace, currentAge) + Math.max(0, data.remaining - 1) * pace : 0;
   return { elapsed: end - start, pace, timeLeft };
-}
-
-function ProgressDonut({ percent }: { percent: number }) {
-  const donePercent = Math.max(0, Math.min(100, percent));
-  const remainingPercent = Math.max(0, 100 - donePercent);
-  return <svg aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"><circle className="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21" /><circle className="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" strokeDasharray={`${donePercent.toFixed(3)} ${remainingPercent.toFixed(3)}`} transform="rotate(-90 29 29)" /></svg>;
 }
 
 function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
@@ -158,7 +154,7 @@ function EventDetail({ detail }: { detail: string }) {
 function EventCardList({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  return <section className="checklist-events-section"><div className="checklist-events-head"><h2>Events <span className="field-list-count">({rows.length})</span></h2></div><div className="event-card-list">{rows.map((item) => {
+  return <section className="checklist-events-section"><div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div><div className="event-card-list">{rows.map((item) => {
     const key = `${item.id}/${item.completedAt}`;
     const fields = item.detail ? checklistEventDetailFields(item.detail) : [];
     const outcome = fields.find((field) => field.label === "Outcome") ?? fields.find((field) => field.label === "Detail");
