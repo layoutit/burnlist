@@ -1,5 +1,5 @@
-@import "../../ovens/differential-testing/renderer/differential-testing.css";
-@import "../../ovens/visual-parity/renderer/visual-parity.css";
+@import "./components/DifferentialTesting/differential-testing.css";
+@import "./components/VisualParity/visual-parity.css";
 
 :root {
   color-scheme: dark;

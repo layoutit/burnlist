@@ -53,7 +53,6 @@ const required = [
   "ovens/differential-testing/example/adapter.mjs",
   "ovens/differential-testing/example/reference.json",
   "ovens/differential-testing/example/candidate.json",
-  "ovens/differential-testing/renderer/differential-testing.css",
   "ovens/differential-testing/renderer/differential-testing-progress-chart.js",
   "ovens/differential-testing/renderer/differential-testing-renderer.js",
   "ovens/performance-tracing/instructions.md",
@@ -64,7 +63,6 @@ const required = [
   "ovens/visual-parity/detail.json",
   "ovens/visual-parity/engine/visual-parity-contract.mjs",
   "ovens/visual-parity/engine/visual-parity-handler.mjs",
-  "ovens/visual-parity/renderer/visual-parity.css",
   "dashboard/dist/index.html",
 ];
 

@@ -3,7 +3,7 @@ import { useStreamingDiffCards, useStreamingDiffFeeds } from "@hooks";
 import { DiffCard, FeedList } from "@oven";
 import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffRepositories, streamingDiffSelection } from "@lib";
 import type { Project, StreamingDiffCard } from "@lib";
-import "../../../../ovens/streaming-diff/renderer/streaming-diff.css";
+import "./streaming-diff.css";
 
 function SelectedFeed({ cards, error, session }: { cards: StreamingDiffCard[]; error: string; session: string }) {
   return <section className="streaming-diff-view">
