@@ -1,0 +1,1 @@
+export { KpiStrip } from "./KpiStrip";

@@ -7,6 +7,8 @@ import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.
 import { ProgressDonut } from "../../oven/ProgressDonut";
 import { LogTable } from "../../oven/LogTable";
 import { SectionHeader } from "../../oven/SectionHeader";
+import { KpiItem } from "../../oven/KpiItem";
+import { KpiStrip } from "../../oven/KpiStrip";
 
 function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
@@ -51,11 +53,11 @@ function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
     { icon: Gauge, heading: "Avg pace", value: formatDuration(durations.pace) },
     { icon: TimerReset, heading: "Time left", value: formatDuration(durations.timeLeft) },
   ];
-  return <div aria-label="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
-    <div className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"}><ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Current</div><div className="driving-parity-kpi-ratio">{current ? `${current.id} · Active` : "Complete"}</div></div></div>
-    <div className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`}><ProgressDonut percent={data.percent} /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Progress</div><div className="driving-parity-kpi-ratio"><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></div></div></div>
-    {metrics.map(({ icon: Icon, heading, value }) => <div className="driving-parity-kpi-item driving-parity-kpi-section" key={heading}><Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">{heading}</div><div className="driving-parity-kpi-ratio">{value}</div></div></div>)}
-  </div>;
+  return <KpiStrip ariaLabel="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · Active` : "Complete"} />
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`} visual={<ProgressDonut percent={data.percent} />} heading="Progress" value={<><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></>} />
+    {metrics.map(({ icon: Icon, heading, value }) => <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section" heading={heading} key={heading} value={value} visual={<Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} />)}
+  </KpiStrip>;
 }
 
 function useElementSize() {

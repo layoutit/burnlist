@@ -33,6 +33,13 @@ test("checklist detail renders the split progress surface and event card list", 
     const markup = renderToStaticMarkup(createElement(ChecklistDashboard, { data }));
 
     assert.match(markup, /aria-label="Burnlist progress KPIs"/u);
+    assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current"/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Current<\/div><div class="driving-parity-kpi-ratio">Complete<\/div>/u);
+    assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress"/u);
+    assert.match(markup, /<div class="driving-parity-kpi-ratio"><span class="pass">2<\/span><span class="separator">·<\/span><span class="total">2<\/span> <span class="pass">\(100%\)<\/span><\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Elapsed<\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Avg pace<\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Time left<\/div>/u);
     assert.match(markup, /class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"/u);
     assert.match(markup, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="100\.000 0\.000"/u);
     assert.match(markup, /aria-label="Remaining items over time"/u);
