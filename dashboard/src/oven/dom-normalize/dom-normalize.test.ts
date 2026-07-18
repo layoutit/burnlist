@@ -25,6 +25,20 @@ test("detects changed attributes, structure, and text", () => {
   assert.equal(domEquivalent("<div>a</div>", "<div>b</div>").equal, false);
 });
 
+test("decodes equivalent entities in text and attributes", () => {
+  assertDomEquivalent('<div title="&#39;">&#39;</div>', '<div title="&#x27;">&#x27;</div>');
+  assertDomEquivalent('<div title="&#39;">&#39;</div>', "<div title=\"'\">'</div>");
+  assertDomEquivalent(
+    '<div title="&amp; &lt; &gt; &quot;">&amp; &lt; &gt; &quot;</div>',
+    '<div title="&#38; &#60; &#62; &#34;">&#38; &#60; &#62; &#34;</div>',
+  );
+});
+
+test("does not make genuinely different characters equivalent", () => {
+  assert.equal(domEquivalent("<div>a</div>", "<div>b</div>").equal, false);
+  assert.equal(domEquivalent('<div title="&#39;">&#39;</div>', '<div title="&quot;">&quot;</div>').equal, false);
+});
+
 test("drops comments", () => {
   assertDomEquivalent("<div><!-- x -->a</div>", "<div>a</div>");
 });

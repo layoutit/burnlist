@@ -1,4 +1,8 @@
 export { ProgressDonut } from "./ProgressDonut";
+export { BurnDonut } from "./BurnDonut";
+export { DifferentialKpiItem } from "./DifferentialKpiItem";
+export { DifferentialKpiStrip } from "./DifferentialKpiStrip";
+export { WaffleMetric } from "./WaffleMetric";
 export { SectionHeader } from "./SectionHeader";
 export { LogTable } from "./LogTable";
 export { KpiItem } from "./KpiItem";

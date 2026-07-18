@@ -33,6 +33,24 @@ function isWhitespace(value: string): boolean {
   return /\s/u.test(value);
 }
 
+export function decodeEntities(value: string): string {
+  return value.replace(/&(?:amp|lt|gt|quot|#39|apos);|&#(?:x[0-9a-fA-F]+|X[0-9a-fA-F]+|\d+);/gu, (entity) => {
+    switch (entity) {
+      case "&amp;": return "&";
+      case "&lt;": return "<";
+      case "&gt;": return ">";
+      case "&quot;": return '"';
+      case "&#39;":
+      case "&apos;": return "'";
+      default: {
+        const digits = entity.startsWith("&#x") || entity.startsWith("&#X") ? entity.slice(3, -1) : entity.slice(2, -1);
+        const codePoint = Number.parseInt(digits, entity[2].toLowerCase() === "x" ? 16 : 10);
+        return codePoint <= 0x10FFFF ? String.fromCodePoint(codePoint) : entity;
+      }
+    }
+  });
+}
+
 function findTagEnd(html: string, start: number): number {
   let quote = "";
   for (let index = start; index < html.length; index += 1) {
@@ -170,14 +188,14 @@ export function normalize(nodes: Node[]): Node[] {
   const normalized: Node[] = [];
   for (const node of nodes) {
     if (node.type === "text") {
-      const value = node.value.replace(/\s+/gu, " ").trim();
+      const value = decodeEntities(node.value).replace(/\s+/gu, " ").trim();
       if (value) normalized.push({ type: "text", value });
       continue;
     }
     normalized.push({
       type: "element",
       tag: node.tag,
-      attrs: { ...node.attrs },
+      attrs: Object.fromEntries(Object.entries(node.attrs).map(([name, value]) => [name, decodeEntities(value)])),
       children: normalize(node.children),
     });
   }
@@ -185,10 +203,10 @@ export function normalize(nodes: Node[]): Node[] {
 }
 
 function serializeNode(node: Node): string {
-  if (node.type === "text") return node.value;
+  if (node.type === "text") return node.value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   const attrs = Object.keys(node.attrs)
     .sort()
-    .map((name) => `${name}="${node.attrs[name]}"`)
+    .map((name) => `${name}="${node.attrs[name].replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;")}"`)
     .join(" ");
   const opening = attrs ? `<${node.tag} ${attrs}>` : `<${node.tag}>`;
   return `${opening}${serializeCanonical(node.children)}</${node.tag}>`;
