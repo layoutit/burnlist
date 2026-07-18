@@ -1,0 +1,1 @@
+export { FrameCard } from "./FrameCard";

@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import { useVisualParityData } from "@hooks";
 import { visualParityDomainSummary } from "@lib";
-
-function percent(value: number) {
-  return `${(value * 100).toFixed(value < 0.01 ? 3 : 2)}%`;
-}
-
-function delta(value: number) {
-  return value.toFixed(4).replace(/0+$/u, "").replace(/\.$/u, "");
-}
+import { DomainNote, DomainTabs, FrameCard, MetricTiles, VerdictHeader } from "@oven";
 
 export function VisualParityPage() {
   const { payload, error, loading } = useVisualParityData();
@@ -42,67 +34,15 @@ export function VisualParityPage() {
 
   return (
     <section className="visual-parity-page">
-      <header className="visual-parity-heading">
-        <a className="visual-parity-back" href="/"><ArrowLeft aria-hidden="true" />Burnlists</a>
-        <div>
-          <div className={`visual-parity-verdict ${targetPass ? "pass" : "fail"}`}>
-            {targetPass ? "Target qualified" : "Target open"}
-          </div>
-          <p>{payload.comparisons.length} settled frames · isolated render passes · live refresh</p>
-        </div>
-        {error && <span className="visual-parity-refresh-error">{error}</span>}
-      </header>
-
-      <nav aria-label="Visual parity domains" className="visual-parity-domains">
-        {payload.domains.map((entry) => {
-          const current = entry.id === domain.id;
-          const domainSummary = visualParityDomainSummary(payload, entry.id);
-          return (
-            <button
-              aria-pressed={current}
-              className={current ? "is-active" : ""}
-              key={entry.id}
-              onClick={() => setSelectedDomainId(entry.id)}
-              type="button"
-            >
-              <span>{entry.label}</span>
-              <small>{entry.qualification} · {domainSummary.failed ? `${domainSummary.failed} fail` : "pass"}</small>
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="visual-parity-metrics">
-        <article><span>Frames</span><strong>{summary.passed}/{payload.comparisons.length}</strong></article>
-        <article><span>Changed pixels</span><strong>{percent(summary.ratio)}</strong></article>
-        <article><span>Mean RGB delta</span><strong>{delta(summary.meanAbsoluteDelta)}</strong></article>
-        <article><span>Maximum delta</span><strong>{summary.maximumAbsoluteDelta}</strong></article>
-      </div>
-
-      <div className="visual-parity-domain-note">
-        <strong>{domain.qualification === "target" ? "Qualifying target" : "Diagnostic context"}</strong>
-        <span>{domain.tolerance?.rationale ?? "Exact zero tolerance."}</span>
-      </div>
+      <VerdictHeader targetPass={targetPass} framesCount={payload.comparisons.length} error={error} />
+      <DomainTabs tabs={payload.domains.map((entry) => ({ id: entry.id, label: entry.label, qualification: entry.qualification, failed: visualParityDomainSummary(payload, entry.id).failed }))} activeId={domain.id} onSelect={setSelectedDomainId} />
+      <MetricTiles passed={summary.passed} total={payload.comparisons.length} ratio={summary.ratio} meanAbsoluteDelta={summary.meanAbsoluteDelta} maximumAbsoluteDelta={summary.maximumAbsoluteDelta} />
+      <DomainNote isTarget={domain.qualification === "target"} rationale={domain.tolerance?.rationale ?? "Exact zero tolerance."} />
 
       <div className="visual-parity-frames">
         {visibleComparisons.map((comparison) => {
           const entry = comparison.domains[domain.id];
-          return (
-            <article className={`visual-parity-frame ${entry.status}`} key={comparison.id}>
-              <header>
-                <strong>Frame {comparison.frame}</strong>
-                <span>{entry.status} · {percent(entry.difference.ratio)} · mean {delta(entry.difference.meanAbsoluteDelta)} · max {entry.difference.maximumAbsoluteDelta}</span>
-              </header>
-              <div className="visual-parity-shots">
-                {[entry.reference, entry.candidate, entry.diff].map((image) => (
-                  <figure key={image.label}>
-                    <figcaption>{image.label}</figcaption>
-                    <img alt={`${entry.label} ${image.label.toLowerCase()} frame ${comparison.frame}`} height={image.height} src={image.src ?? undefined} width={image.width} />
-                  </figure>
-                ))}
-              </div>
-            </article>
-          );
+          return <FrameCard key={comparison.id} status={entry.status} frame={comparison.frame} difference={entry.difference} images={[entry.reference, entry.candidate, entry.diff]} label={entry.label} />;
         })}
       </div>
     </section>
