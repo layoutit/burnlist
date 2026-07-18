@@ -1,6 +1,6 @@
 import { ovenRepoKey, type VisualParityPayload } from "@lib";
+import { useOvenLiveData } from "@oven";
 import { receiveVisualParity } from "./visual-parity-transport.mjs";
-import { useOvenLiveData } from "../oven/live-data";
 
 export function useVisualParityData() {
   const { data, error, loading } = useOvenLiveData<VisualParityPayload | null>({

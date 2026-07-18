@@ -4,11 +4,7 @@ import type { ChecklistProgressData, CompletedItem, HistoryPoint } from "@lib";
 import "./ChecklistDashboard.css";
 // @ts-expect-error The chart model is plain ESM so the dashboard and Node tests share it.
 import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.js";
-import { ProgressDonut } from "../../oven/ProgressDonut";
-import { LogTable } from "../../oven/LogTable";
-import { SectionHeader } from "../../oven/SectionHeader";
-import { KpiItem } from "../../oven/KpiItem";
-import { KpiStrip } from "../../oven/KpiStrip";
+import { KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
 
 function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";

@@ -8,6 +8,7 @@ import { build } from "esbuild";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
+const ovenPath = new URL("../../oven", import.meta.url).pathname;
 
 test("checklist detail renders the split progress surface and event card list", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".checklist-dashboard-test-"));
@@ -15,7 +16,7 @@ test("checklist detail renders the split progress surface and event card list", 
     const outputPath = join(outputDir, "ChecklistDashboard.mjs");
     await build({
       entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-      alias: { "@lib": libPath }, jsx: "automatic", packages: "external", target: "node18",
+      alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18",
     });
     const { ChecklistDashboard, checklistEventDetailFields } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
     const data = {

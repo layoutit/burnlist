@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { applyStreamingDiffUpdate, mapStreamingDiffLandingFeeds } from "@lib";
 import type { StreamingDiffCard, StreamingDiffFeed } from "@lib";
+import { useOvenLiveData } from "@oven";
 import { applyStreamingDiffCardMessage } from "./streaming-diff-transport.mjs";
-import { useOvenLiveData } from "../oven/live-data";
 
 type FeedState = { feeds: StreamingDiffFeed[]; error: string; loading: boolean };
 type CardState = { cards: StreamingDiffCard[]; error: string };

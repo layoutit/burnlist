@@ -16,6 +16,7 @@ export default defineConfig({
       "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
       "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
       "@lib": fileURLToPath(new URL("./src/lib", import.meta.url)),
+      "@oven": fileURLToPath(new URL("./src/oven", import.meta.url)),
     },
   },
   build: {
