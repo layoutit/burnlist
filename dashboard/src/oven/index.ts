@@ -36,3 +36,5 @@ export { HybridFieldList } from "./HybridFieldList";
 export type { HybridFieldListProps, TelemetryAvailability, TelemetryByField } from "./HybridFieldList";
 export { PaginationBar } from "./PaginationBar";
 export type { PaginationBarProps } from "./PaginationBar";
+export { RefreshStatusChip, differentialRefreshStatusLabel } from "./RefreshStatusChip";
+export type { RefreshStatus, RefreshStatusChipProps } from "./RefreshStatusChip";
