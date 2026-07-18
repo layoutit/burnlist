@@ -5,6 +5,7 @@ import "./ChecklistDashboard.css";
 // @ts-expect-error The chart model is plain ESM so the dashboard and Node tests share it.
 import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.js";
 import { ProgressDonut } from "../../oven/ProgressDonut";
+import { LogTable } from "../../oven/LogTable";
 import { SectionHeader } from "../../oven/SectionHeader";
 
 function formatDuration(milliseconds: number) {
@@ -139,7 +140,21 @@ function progressHistory(data: ChecklistProgressData): HistoryPoint[] {
 
 function ProgressLedger({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data).slice(0, 8);
-  return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><div className="checklist-log-list"><div className="checklist-log-table-header"><span>Age</span><span>Event</span><span>Result</span><span>Delta</span><span>Done</span></div>{rows.map((item) => <article className="log-row log-table-row" key={`${item.id}/${item.completedAt}`}><span className="log-table-cell age">{compactAge(item.completedAt, data.generatedAt)}</span><span className="log-table-cell event">{item.id}</span><span className="log-table-cell result improved">Done</span><span className="log-table-cell delta improved">+1</span><span className="log-table-cell done">{item.percent}%</span></article>)}{!rows.length && <div className="event-ledger-empty">No completed events</div>}</div></div></div></section>;
+  return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><LogTable
+    columns={["Age", "Event", "Result", "Delta", "Done"]}
+    rows={rows.map((item) => ({
+      key: `${item.id}/${item.completedAt}`,
+      className: "log-row log-table-row",
+      cells: [
+        { className: "log-table-cell age", content: compactAge(item.completedAt, data.generatedAt) },
+        { className: "log-table-cell event", content: item.id },
+        { className: "log-table-cell result improved", content: "Done" },
+        { className: "log-table-cell delta improved", content: "+1" },
+        { className: "log-table-cell done", content: <>{item.percent}%</> },
+      ],
+    }))}
+    emptyState={<div className="event-ledger-empty">No completed events</div>}
+  /></div></div></section>;
 }
 
 function EventDetail({ detail }: { detail: string }) {
