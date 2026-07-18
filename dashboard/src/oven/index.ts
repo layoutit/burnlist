@@ -26,3 +26,5 @@ export { ToggleGroup } from "./ToggleGroup";
 export type { ToggleGroupProps } from "./ToggleGroup";
 export { FieldToolbar } from "./FieldToolbar";
 export type { ChartMode, FieldToolbarProps } from "./FieldToolbar";
+export { FieldMiniChart, buildFieldMiniChart } from "./FieldMiniChart";
+export type { FieldMiniChartProps, FieldMiniChartField, FieldMiniChartGeometry } from "./FieldMiniChart";
