@@ -2,8 +2,33 @@ import {
   renderDifferentialTestingFrameDeltaChart,
   renderDifferentialTestingProgressChart,
 } from "./differential-testing-progress-chart.js";
-import { escapeHtml, count, kpiTotal, percent, value, compact, blockers, unique, timeOnly, dateTime, overviewTime, formatLogRelativeMinutes, kpiItem, burnDonut, progressDonut, waffleMetric, log, plotValue, paths } from "./differential-testing-render.js";
+import {
+  escapeHtml,
+  count,
+  kpiTotal,
+  percent,
+  value,
+  compact,
+  blockers,
+  unique,
+  timeOnly,
+  dateTime,
+  overviewTime,
+  formatLogRelativeMinutes,
+  kpiItem,
+  burnDonut,
+  progressDonut,
+  waffleMetric,
+  log,
+  chart,
+  fieldRows,
+  visibleFields,
+  GREEN,
+  RED,
+} from "./differential-testing-render.js";
 // The canonical minute age display remains: return minutes === 0 ? "now" : minutes + "m";
+
+export { differentialSampleStateIsNonPass } from "./differential-testing-render.js";
 
 export function differentialTestingLoadingMarkup() {
   const title = `<div class="driving-parity-kpi-item driving-parity-kpi-title-item">
@@ -28,10 +53,6 @@ export function differentialTestingLoadingMarkup() {
 
 function differentialTestingDashboardTemplateMarkup() {
   return mountDifferentialTestingDashboard(null, null, null, { templateOnly: true });
-}
-
-export function differentialSampleStateIsNonPass(sampleState) {
-  return sampleState !== 0;
 }
 
 export function differentialPayloadRevision(payload) {
@@ -155,10 +176,6 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   templateOnly = false,
 } = {}) {
   if (templateOnly) return templateHtml();
-  const WIDTH = 900;
-  const HEIGHT = 58;
-  const GREEN = "#61d394";
-  const RED = "#ef4444";
   const telemetryAvailability = differentialTelemetryAvailability(payload);
   const state = {
     chart: initialChart === "current" ? "current" : "delta",
@@ -207,13 +224,6 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     const statusTitle = state.payload.refresh?.status === "failed" ? state.payload.refresh.error || status : status;
     return `<span id="differential-refresh-status" class="differential-refresh-status ${escapeHtml(state.clientRefreshStatus || state.payload.refresh?.status || "")}" title="${escapeHtml(statusTitle)}"${status ? "" : " hidden"}>${escapeHtml(status)}</span>`;
   }
-  function nonPass(field) { return Number(field.failedSampleCount || 0) + Number(field.missingSampleCount || 0); }
-  function fieldResult(field) { return field.trustStatus === "blocked" || field.missingSampleCount > 0 ? "BLOCKED" : field.failedSampleCount > 0 ? "FAIL" : "PASS"; }
-  function telemetryFor(field) { return state.telemetryByField.get(field.id) ?? null; }
-  function telemetryChange(field) {
-    const telemetry = telemetryFor(field);
-    return telemetry ? Number(telemetry.failToPassCount || 0) + Number(telemetry.passToFailCount || 0) : 0;
-  }
   function paintWaffles() {
     const scale = window.devicePixelRatio || 1;
     root.querySelectorAll("canvas.driving-parity-kpi-waffle").forEach((waffle) => {
@@ -251,164 +261,6 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
   }
   function progress() {
     return `<svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>`;
-  }
-  function chart(field, showFrameLabels = false, chartMode = state.chart) {
-    const categories = new Map();
-    const rows = field.samples.map(([tick, reference, candidate, sampleState]) => ({ tick, reference: plotValue(reference, categories), candidate: plotValue(candidate, categories), state: sampleState }));
-    const x = (index) => rows.length <= 1 ? 0 : index / (rows.length - 1) * WIDTH;
-    const exactFailure = (index) => {
-      const row = rows[index];
-      if (!row) return false;
-      return differentialSampleStateIsNonPass(row.state);
-    };
-    const intervalFails = (index) => exactFailure(index) || exactFailure(index + 1);
-    const frameStep = (() => {
-      if (rows.length <= 1) return 0;
-      const raw = Math.max(1, rows.length / 10);
-      const magnitude = 10 ** Math.floor(Math.log10(raw));
-      for (const multiplier of [1, 2, 2.5, 5, 10]) {
-        const step = Math.max(1, Math.round(multiplier * magnitude));
-        if (step >= raw) return step;
-      }
-      return 1;
-    })();
-    const tickIndexes = [];
-    for (let index = frameStep; index < rows.length - 1; index += frameStep * 2) tickIndexes.push(index);
-    const tickMarks = tickIndexes.map((index) => `<line class="frame-tick" x1="${x(index).toFixed(1)}" x2="${x(index).toFixed(1)}" y1="${showFrameLabels ? 13 : 0}" y2="${HEIGHT}" stroke="rgba(168, 168, 168, 0.075)" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`).join("");
-    const tickLabels = showFrameLabels
-      ? tickIndexes.map((index) => `<span class="frame-tick-label" style="left:${(index / Math.max(1, rows.length - 1) * 100).toFixed(4)}%">${escapeHtml(field.sampleLabels?.[index] || Math.round(rows[index].tick))}</span>`).join("")
-      : "";
-    const segment = (start, end, trimStart = 0, trimEnd = 0) => {
-      let [x1, y1] = start, [x2, y2] = end;
-      const dx = x2 - x1, dy = y2 - y1, length = Math.max(Math.hypot(dx, dy), .000001);
-      const first = Math.min(trimStart, length / 2), last = Math.min(trimEnd, length / 2);
-      x1 += dx / length * first; y1 += dy / length * first;
-      x2 -= dx / length * last; y2 -= dy / length * last;
-      return { path: `M${x1.toFixed(1)},${y1.toFixed(1)}L${x2.toFixed(1)},${y2.toFixed(1)}`, length: Math.hypot(x2 - x1, y2 - y1), x2, y2 };
-    };
-    const bands = (failed, points) => {
-      const result = [];
-      for (let index = 0; index < rows.length - 1; index += 1) {
-        if (intervalFails(index) !== failed || !points[index] || !points[index + 1]) continue;
-        const start = index;
-        while (index + 1 < rows.length - 1 && intervalFails(index + 1) === failed && points[index + 1] && points[index + 2]) index += 1;
-        result.push(`<rect x="${x(start).toFixed(1)}" y="0" width="${Math.max(1, x(index + 1) - x(start)).toFixed(1)}" height="${HEIGHT}" fill="${failed ? RED : GREEN}" opacity="${failed ? ".14" : ".10"}"/>`);
-      }
-      return result.join("");
-    };
-    if (chartMode === "delta") {
-      const values = rows.map((row) => row.reference === null || row.candidate === null ? null : row.candidate - row.reference);
-      const finite = values.filter(Number.isFinite);
-      if (!finite.length) return '<div class="plot"></div>';
-      const maxAbs = Math.max(.000001, ...finite.map((entry) => Math.abs(entry)));
-      const limit = maxAbs + Math.max(maxAbs * .16, .000001);
-      const y = (entry) => HEIGHT - (entry + limit) / (limit * 2) * HEIGHT;
-      const points = values.map((entry, index) => entry === null ? null : [x(index), y(entry)]);
-      const passed = [], failed = [];
-      for (let index = 0; index < rows.length - 1; index += 1) {
-        if (!points[index] || !points[index + 1]) continue;
-        const isFailed = intervalFails(index);
-        const line = segment(points[index], points[index + 1], !isFailed && index > 0 && intervalFails(index - 1) ? 1.2 : 0, !isFailed && index + 1 < rows.length - 1 && intervalFails(index + 1) ? 1.2 : 0).path;
-        (isFailed ? failed : passed).push(line);
-      }
-      return `<div class="plot"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none">${bands(false, points)}${bands(true, points)}${tickMarks}<line x1="0" x2="${WIDTH}" y1="${y(0)}" y2="${y(0)}" stroke="${GREEN}" stroke-width="1.05" stroke-dasharray="5 4" opacity=".58" vector-effect="non-scaling-stroke"/>${passed.length ? `<path d="${passed.join(" ")}" fill="none" stroke="${GREEN}" stroke-width="1.55" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}${failed.length ? `<path d="${failed.join(" ")}" fill="none" stroke="${RED}" stroke-width="1.6" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}</svg>${tickLabels}</div>`;
-    }
-    const finite = rows.flatMap((row) => [row.reference, row.candidate]).filter(Number.isFinite);
-    const min = Math.min(...finite, 0), max = Math.max(...finite, 0);
-    const pad = Math.max((max - min) * .16, Math.abs(max || min || 1) * .03, .000001);
-    const low = min - pad, high = max + pad, span = Math.max(high - low, .000001);
-    const y = (entry) => HEIGHT - (entry - low) / span * HEIGHT;
-    const reference = rows.map((row, index) => row.reference === null ? null : [x(index), y(row.reference)]);
-    const candidate = rows.map((row, index) => row.candidate === null ? null : [x(index), y(row.candidate)]);
-    const allMatch = !rows.some((_, index) => exactFailure(index));
-    if (allMatch) {
-      const match = paths(candidate).length ? paths(candidate) : paths(reference);
-      return `<div class="plot"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none">${bands(false, candidate)}${tickMarks}${match.map((path) => `<path d="${path}" fill="none" stroke="${GREEN}" stroke-width="1.5" opacity=".8" vector-effect="non-scaling-stroke"/>`).join("")}</svg>${tickLabels}</div>`;
-    }
-    const candidatePassing = [], candidateFailing = [], referenceFailing = [];
-    let referenceLength = 0;
-    let previousReferenceFailingIndex = -2;
-    for (let index = 0; index < rows.length - 1; index += 1) {
-      const failed = intervalFails(index);
-      const trimStart = !failed && index > 0 && intervalFails(index - 1) ? 1.2 : 0;
-      const trimEnd = !failed && index + 1 < rows.length - 1 && intervalFails(index + 1) ? 1.2 : 0;
-      if (candidate[index] && candidate[index + 1]) (failed ? candidateFailing : candidatePassing).push(segment(candidate[index], candidate[index + 1], trimStart, trimEnd).path);
-      if (failed && reference[index] && reference[index + 1]) {
-        const line = segment(reference[index], reference[index + 1], trimStart, trimEnd);
-        if (previousReferenceFailingIndex === index - 1) {
-          referenceFailing.at(-1).path += `L${line.x2.toFixed(1)},${line.y2.toFixed(1)}`;
-        } else {
-          referenceFailing.push({ path: line.path, offset: -(referenceLength % 9) });
-        }
-        referenceLength += line.length;
-        previousReferenceFailingIndex = index;
-      } else {
-        previousReferenceFailingIndex = -2;
-      }
-    }
-    return `<div class="plot"><svg viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="none">${bands(false, candidate)}${bands(true, candidate)}${tickMarks}${candidatePassing.length ? `<path d="${candidatePassing.join(" ")}" fill="none" stroke="${GREEN}" stroke-width="1.5" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}${candidateFailing.length ? `<path d="${candidateFailing.join(" ")}" fill="none" stroke="${RED}" stroke-width="1.6" opacity=".8" vector-effect="non-scaling-stroke"/>` : ""}${referenceFailing.map((line) => `<path d="${line.path}" fill="none" stroke="${GREEN}" stroke-width="1.25" stroke-dasharray="5 4" stroke-dashoffset="${line.offset.toFixed(2)}" opacity=".8" vector-effect="non-scaling-stroke"/>`).join("")}</svg>${tickLabels}</div>`;
-  }
-  function hybridField(field) {
-    const description = field.semantics?.meaning || field.driftReason || field.sourceOwner || "";
-    const result = fieldResult(field);
-    const segments = String(field.label || "").split(".");
-    const label = segments.map((segment, index) => {
-      const last = index === segments.length - 1;
-      const className = last ? "hybrid-field-tail" : "hybrid-field-segment";
-      const opacity = segments.length <= 1 ? 1 : .45 + .55 * Math.pow(index / (segments.length - 1), 1.8);
-      return `<span class="${className}" style="opacity:${opacity.toFixed(2)}">${escapeHtml(segment)}${last ? "" : "."}</span>`;
-    }).join("");
-    return `<span class="hybrid-cell hybrid-field" title="${escapeHtml(description)}"><span class="table-field-label">${label}</span><span class="hybrid-status">${result}</span></span>`;
-  }
-  function hybridMetric(field) {
-    const countValue = nonPass(field);
-    const telemetry = telemetryFor(field);
-    const frameDelta = telemetry ? Number(telemetry.passToFailCount || 0) - Number(telemetry.failToPassCount || 0) : null;
-    const deltaClass = frameDelta === null || frameDelta === 0 ? "" : frameDelta < 0 ? "up" : "down";
-    const deltaSymbol = frameDelta === null || frameDelta === 0 ? "" : frameDelta < 0 ? "▼" : "▲";
-    const deltaValue = frameDelta === null ? "" : frameDelta === 0 ? "0" : compact(Math.abs(frameDelta));
-    const transitionTitle = telemetry
-      ? `${count(telemetry.failToPassCount)} fail-to-pass; ${count(telemetry.passToFailCount)} pass-to-fail; ${count(telemetry.stayedPassCount)} stayed-pass; ${count(telemetry.stayedFailCount)} stayed-fail; residual ${count(telemetry.residualCount)}`
-      : "";
-    const valueDelta = field.maxDelta === null || !Number.isFinite(Number(field.maxDelta))
-      ? ""
-      : value(field.maxDelta);
-    return `<span class="hybrid-cell hybrid-metric"><span class="hybrid-count">${count(countValue)}</span><span class="hybrid-delta ${deltaClass}"${transitionTitle ? ` title="${escapeHtml(transitionTitle)}"` : ""}><span class="hybrid-delta-symbol">${deltaSymbol}</span><span class="hybrid-delta-value">${deltaValue}</span></span><span class="hybrid-value-delta">${escapeHtml(valueDelta)}</span></span>`;
-  }
-  function visibleFields() {
-    if (state.fieldPage) return state.payload.fields;
-    if (state.sort === "changed" && state.telemetryAvailability.status !== "comparable") return [];
-    const query = state.search.trim().toLowerCase();
-    let filtered = state.payload.fields.filter((field) => {
-      if (state.filter === "failing" && nonPass(field) === 0) return false;
-      return !query || [field.label, field.sourceOwner, field.driftClass, field.semantics?.kind].some((entry) => String(entry || "").toLowerCase().includes(query));
-    });
-    if (state.sort === "changed") {
-      filtered = filtered.filter((field) => telemetryChange(field) > 0);
-    }
-    if (state.sort !== "changed") return filtered;
-    return filtered.sort((left, right) => {
-      const leftTelemetry = telemetryFor(left), rightTelemetry = telemetryFor(right);
-      const leftImprovement = Number(leftTelemetry?.failToPassCount || 0) - Number(leftTelemetry?.passToFailCount || 0);
-      const rightImprovement = Number(rightTelemetry?.failToPassCount || 0) - Number(rightTelemetry?.passToFailCount || 0);
-      return telemetryChange(right) - telemetryChange(left)
-        || rightImprovement - leftImprovement
-        || (fieldOrder.get(left) ?? Number.MAX_SAFE_INTEGER) - (fieldOrder.get(right) ?? Number.MAX_SAFE_INTEGER);
-    });
-  }
-  function fieldRows(fields) {
-    if (!fields.length) {
-      const message = state.sort === "changed"
-          ? state.telemetryAvailability.status === "comparable"
-            ? "No changed fields in this telemetry."
-            : state.telemetryAvailability.reason
-          : "No fields match the current view.";
-      return `<div class="empty">${escapeHtml(message)}</div>`;
-    }
-    return `<div class="hybrid-list">${fields.map((field, index) => {
-      const expanded = state.expanded.has(field.id);
-      return `<section class="hybrid-row ${nonPass(field) ? "fail" : "pass"}${expanded ? " expanded" : ""}" data-row-expand-key="${escapeHtml(field.id)}" role="button" tabindex="0" aria-expanded="${expanded}" title="${escapeHtml(field.label)}">${hybridField(field)}${hybridMetric(field)}<div class="hybrid-chart">${chart(field, index === 0)}</div></section>`;
-    }).join("")}</div>`;
   }
   function paginationState(total) {
     const pageCount = Math.max(1, Math.ceil(total / state.pageSize));
@@ -1426,7 +1278,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
       return;
     }
-    const visible = visibleFields();
+    const visible = visibleFields(state, state.telemetryByField, fieldOrder);
     const serverPage = state.fieldPage;
     if (!serverPage) {
       state.pageIndex = Math.max(0, Math.min(state.pageIndex, Math.max(0, Math.ceil(visible.length / state.pageSize) - 1)));
@@ -1482,7 +1334,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
       .replace('<button type="button" data-driving-parity-filter="failing" aria-pressed="true">Failed</button>', `<button type="button" data-driving-parity-filter="failing" aria-pressed="${state.filter === "failing"}">Failed</button>`)
       .replace('<button type="button" data-progress-chart-mode="failed">', `<button type="button" data-progress-chart-mode="failed" aria-pressed="${state.progressChart === "failed"}">`)
       .replace('<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta">', `<button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed="${state.progressChart === "delta"}">`)
-      .replace('<div class="rows-view" id="hybrid-rows"></div>', `<div class="rows-view" id="hybrid-rows">${fieldRows(page)}</div>`)
+      .replace('<div class="rows-view" id="hybrid-rows"></div>', `<div class="rows-view" id="hybrid-rows">${fieldRows(page, { state, telemetryByField: state.telemetryByField, chartMode: state.chart })}</div>`)
       .replace(/<div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden>[\s\S]*?<\/div>\n  <\/main>/u, `${paginationHtml}\n  </main>`);
     root.innerHTML = html;
     const overviewTimestamp = root.querySelector("#differential-overview-time");
