@@ -6,7 +6,9 @@ import { adaptPerformanceTracingReport } from "../../../dashboard/src/lib/perfor
 import { buildPayload } from "../example/adapter.mjs";
 import {
   assertDifferentialTestingData,
+  buildDifferentialTelemetry,
   DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
+  differentialStateVectorSha256,
 } from "../engine/differential-testing-data-contract.mjs";
 import { assertPerformanceTracingData } from "../../performance-tracing/engine/performance-tracing-contract.mjs";
 import { mountDifferentialTestingDashboard } from "./differential-testing-renderer.js";
@@ -94,7 +96,7 @@ function fakeRoot() {
   };
 }
 
-export function captureDashboardRoot(oven, payload, mountOptions = {}) {
+export function captureDashboardRoot(oven, payload, mountOptions = {}, afterMount = null) {
   const previousTz = process.env.TZ;
   const previousDateNow = Date.now;
   const OriginalDTF = Intl.DateTimeFormat;
@@ -111,6 +113,7 @@ export function captureDashboardRoot(oven, payload, mountOptions = {}) {
   globalThis.Intl.DateTimeFormat = Shim;
   try {
     mountDifferentialTestingDashboard(root, oven, payload, mountOptions);
+    afterMount?.(root);
     return root;
   } finally {
     globalThis.Intl.DateTimeFormat = OriginalDTF;
@@ -161,6 +164,87 @@ function populatedCaptures() {
   ];
 }
 
+function populatedCapturesWithFields(fieldCount) {
+  const captures = populatedCaptures();
+  const [reference, candidate] = captures;
+  for (let index = reference.fields.length; index < fieldCount; index += 1) {
+    const id = `field-${String(index + 1).padStart(2, "0")}`;
+    reference.fields.push({
+      id,
+      label: `Field ${String(index + 1).padStart(2, "0")}`,
+      sourceOwner: "engine/state",
+      meaning: "Generated field after the update",
+      unit: "units",
+      tolerance: 0.01,
+    });
+    reference.samples.forEach((sample) => { sample.values[id] = sample.tick; });
+    candidate.samples.forEach((sample) => { sample.values[id] = sample.tick === 2 ? 2.1 : sample.tick; });
+  }
+  return captures;
+}
+
+function populatedCaptureFieldPage(fieldCount, start, end) {
+  const captures = populatedCapturesWithFields(fieldCount);
+  const [reference] = captures;
+  const ids = reference.fields.slice(start, end).map((field) => field.id);
+  reference.fields = reference.fields.slice(start, end);
+  for (const capture of captures) {
+    capture.samples = capture.samples.map((sample) => ({
+      ...sample,
+      values: Object.fromEntries(ids.map((id) => [id, sample.values[id]])),
+    }));
+  }
+  return captures;
+}
+
+const telemetryProvenance = Object.freeze({
+  comparison: {
+    referenceId: "reference-fixture",
+    referenceSha256: "f".repeat(64),
+    scenarioId: "fixture-scenario",
+    alignmentKey: "tick",
+  },
+  baseline: { id: "baseline-fixture", artifactSha256: "a".repeat(64), contractSha256: "c".repeat(64), check: { status: "pass", id: "baseline-check@1", sha256: "d".repeat(64), subjectSha256: "a".repeat(64) } },
+  candidate: { id: "candidate-fixture", artifactSha256: "b".repeat(64), contractSha256: "c".repeat(64), check: { status: "pass", id: "candidate-check@1", sha256: "e".repeat(64), subjectSha256: "b".repeat(64) } },
+});
+
+function telemetryPayloads({ baselineMode = "mixed", captures = populatedCaptures() } = {}) {
+  const [reference, candidateCapture] = captures;
+  const baselineCapture = structuredClone(candidateCapture);
+  baselineCapture.captureId = "baseline-fixture";
+  baselineCapture.generatedAt = "2026-01-01T11:59:00.000Z";
+  if (baselineMode === "passing") baselineCapture.samples = structuredClone(reference.samples);
+  else if (baselineMode === "directions") {
+    baselineCapture.samples = structuredClone(reference.samples);
+    baselineCapture.samples[1].values.active = false;
+  }
+  else if (baselineMode === "mixed") {
+    for (const field of reference.fields) {
+      const referenceValue = reference.samples[1].values[field.id];
+      baselineCapture.samples[1].values[field.id] = typeof referenceValue === "boolean" ? !referenceValue : 1.1;
+      baselineCapture.samples[2].values[field.id] = reference.samples[2].values[field.id];
+    }
+  }
+  const baseline = buildPayload(reference, baselineCapture);
+  const candidate = buildPayload(reference, candidateCapture);
+  const provenance = structuredClone(telemetryProvenance);
+  provenance.comparison.scenarioId = candidate.scenarioCatalog.selectedScenarioId;
+  provenance.baseline.contractSha256 = candidate.scenarioCatalog.scenarios[0].contractSha256;
+  provenance.candidate.contractSha256 = candidate.scenarioCatalog.scenarios[0].contractSha256;
+  for (const [label, payload] of [["baseline", baseline], ["candidate", candidate]]) {
+    const stateVectorSha256 = differentialStateVectorSha256(payload);
+    provenance[label].stateVectorSha256 = stateVectorSha256;
+    provenance[label].stateVectorCheck = {
+      status: "pass",
+      id: `${label}-state-vector-check@1`,
+      sha256: "8".repeat(64),
+      subjectSha256: stateVectorSha256,
+      artifactSha256: provenance[label].artifactSha256,
+    };
+  }
+  return { baseline, candidate, provenance };
+}
+
 export function differentialTestingPayload() {
   const base = buildPayload(...populatedCaptures());
   assertDifferentialTestingData(base);
@@ -180,6 +264,44 @@ export function differentialTestingIncomparableTelemetryPayload() {
     authority: DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
     blockers: ["Transition telemetry unavailable."],
   };
+  assertDifferentialTestingData(payload);
+  return payload;
+}
+
+export function differentialTestingComparableTelemetryPayload() {
+  const { baseline, candidate, provenance } = telemetryPayloads({ baselineMode: "directions" });
+  candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
+  assertDifferentialTestingData(candidate);
+  return candidate;
+}
+
+export function differentialTestingComparableNoChangedPayload() {
+  const captures = populatedCaptures();
+  captures[1].samples = structuredClone(captures[0].samples);
+  const { baseline, candidate, provenance } = telemetryPayloads({ baselineMode: "passing", captures });
+  candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
+  assertDifferentialTestingData(candidate);
+  return candidate;
+}
+
+export function differentialTestingPaginatedPayload() {
+  const { baseline, candidate, provenance } = telemetryPayloads({ captures: populatedCapturesWithFields(60) });
+  candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
+  assertDifferentialTestingData(candidate);
+  return candidate;
+}
+
+export function differentialTestingPaginatedMidPayload() {
+  const { baseline, candidate, provenance } = telemetryPayloads({ captures: populatedCaptureFieldPage(60, 25, 50) });
+  candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
+  assertDifferentialTestingData(candidate);
+  return candidate;
+}
+
+export function differentialTestingAllPassingPayload() {
+  const captures = populatedCaptures();
+  captures[1].samples = structuredClone(captures[0].samples);
+  const payload = buildPayload(...captures);
   assertDifferentialTestingData(payload);
   return payload;
 }
