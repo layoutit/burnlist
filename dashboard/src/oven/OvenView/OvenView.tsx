@@ -1,11 +1,11 @@
 /*
  * Tier-C limits: cells do not express event callbacks (DomainTabs.onSelect or
- * expand toggles), component-local React state, live-data subscriptions such as
+ * expand toggles), component-local React state, live subscriptions such as
  * useOvenLiveData, or arbitrary JSX fragments in rich multi-child value slots.
  * Keep those bespoke, or model a value as nested cells.
  */
 import { createElement, Fragment, type ReactElement } from "react";
-import { resolvePointer } from "./json-pointer.js";
+import { resolvePointer } from "../utils/json-pointer";
 import { componentRegistry, formatRegistry, iconRegistry } from "./registries";
 import type { CellDef, JsonValue, OvenViewDef, SlotDef } from "./types";
 

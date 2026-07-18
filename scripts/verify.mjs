@@ -404,6 +404,7 @@ assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
 run(process.execPath, ["--test", ...verificationTestFiles]);
+run(process.execPath, ["dashboard/src/oven/test-support/run-oven-tests.mjs"]);
 
 const {
   BURNLIST_CLAUDE_SKILLS_DIR: ignoredClaudeSkillsDir,

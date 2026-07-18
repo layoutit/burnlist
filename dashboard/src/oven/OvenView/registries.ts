@@ -14,7 +14,7 @@ import { MetricTiles } from "../MetricTiles";
 import { ProgressDonut } from "../ProgressDonut";
 import { SectionHeader } from "../SectionHeader";
 import { VerdictHeader } from "../VerdictHeader";
-import { delta as formatDelta, percent as formatPercent } from "../visual-parity-format";
+import { delta as formatDelta, percent as formatPercent } from "../utils/visual-parity-format";
 
 export const componentRegistry: Record<string, ComponentType<any>> = Object.freeze(Object.assign(Object.create(null), {
   KpiStrip,

@@ -1,7 +1,7 @@
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@layout";
 import { FileDiff } from "../FileDiff";
 import type { StreamingDiffCard } from "@lib";
-import { timestamp } from "../streaming-diff-time";
+import { timestamp } from "../utils/streaming-diff-time";
 
 export function DiffCard({ card }: { card: StreamingDiffCard }) {
   const partial = card.status === "partial";

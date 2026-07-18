@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { applyStreamingDiffUpdate, parseStreamingDiffCard } from "../../lib/streaming-diff.mjs";
-import { createPollTransport, createSseTransport } from "./transports.js";
+import { createPollTransport, createSseTransport } from "./transports";
 
 const waitForAsyncWork = () => new Promise((resolve) => setImmediate(resolve));
 

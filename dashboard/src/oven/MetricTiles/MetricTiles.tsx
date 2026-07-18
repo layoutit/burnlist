@@ -1,4 +1,4 @@
-import { delta, percent } from "../visual-parity-format";
+import { delta, percent } from "../utils/visual-parity-format";
 
 type MetricTilesProps = {
   passed: number;

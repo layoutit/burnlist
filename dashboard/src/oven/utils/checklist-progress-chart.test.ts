@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildChecklistProgressChart } from "./checklist-progress-chart.js";
+import { buildChecklistProgressChart } from "./checklist-progress-chart";
 
 const history = [
   { time: "2026-07-13T21:00:00Z", done: 3, remaining: 2, total: 5, percent: 60 },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DependencyList } from "react";
-import { createPollTransport, createSseTransport } from "./transports.js";
+import { createPollTransport, createSseTransport } from "./transports";
 
 type PropsConfig<T> = { transport: "props"; data: T };
 

@@ -1,4 +1,4 @@
-import { compactTimeScale, niceCeiling, stepPath } from "../oven/chart-core/compact-time-scale.js";
+import { compactTimeScale, niceCeiling, stepPath } from "./compact-time-scale";
 
 function finiteNumber(value, fallback = 0) {
   const number = Number(value);

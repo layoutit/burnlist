@@ -1,5 +1,5 @@
 import type { VisualParityDifference, VisualParityImage } from "@lib";
-import { delta, percent } from "../visual-parity-format";
+import { delta, percent } from "../utils/visual-parity-format";
 import { ImageTriptych } from "../ImageTriptych";
 
 type FrameCardProps = {

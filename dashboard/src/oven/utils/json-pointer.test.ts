@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { resolvePointer } from "./json-pointer.js";
+import { resolvePointer } from "./json-pointer";
 
 const payload = {
   summary: { passed: 2, label: "nested" },

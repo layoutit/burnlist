@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compactTimeScale, niceCeiling, stepPath } from "./compact-time-scale.js";
+import { compactTimeScale, niceCeiling, stepPath } from "./compact-time-scale";
 
 // FROZEN SNAPSHOT — original Checklist compactTimeScale (pre-extraction)
 const originalChecklistCompactTimeScale = (() => {

@@ -1,6 +1,6 @@
 import { streamingDiffFeedKey } from "@lib";
 import type { StreamingDiffFeed } from "@lib";
-import { timestamp } from "../streaming-diff-time";
+import { timestamp } from "../utils/streaming-diff-time";
 
 export function FeedList({ feeds, error, loading, showRepository }: { feeds: StreamingDiffFeed[]; error: string; loading: boolean; showRepository: boolean }) {
   return (

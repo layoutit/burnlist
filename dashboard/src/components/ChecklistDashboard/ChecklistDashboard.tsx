@@ -2,9 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
 import type { ChecklistProgressData, CompletedItem, HistoryPoint } from "@lib";
 import "./ChecklistDashboard.css";
-// @ts-expect-error The chart model is plain ESM so the dashboard and Node tests share it.
-import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.js";
-import { KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
+import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
 
 function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
