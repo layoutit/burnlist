@@ -1,16 +1,15 @@
 import { useEffect, useMemo } from "react";
 import { useStreamingDiffCards, useStreamingDiffFeeds } from "@hooks";
-import { DiffCardList, FeedList, StreamingDiffHeading } from "@oven";
+import { FeedList } from "@oven";
 import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffRepositories, streamingDiffSelection } from "@lib";
 import type { Project, StreamingDiffCard } from "@lib";
+import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
+import streamingDiffIr from "../../../../ovens/streaming-diff/streaming-diff.ir.json";
 import "./streaming-diff.css";
 
 export function SelectedFeed({ backHref, cards, error, session }: { backHref: string; cards: StreamingDiffCard[]; error: string; session: string }) {
-  return <section className="streaming-diff-view">
-    <StreamingDiffHeading backHref={backHref} session={session} />
-    {error && <p className="streaming-diff-message is-error">{error}</p>}
-    <DiffCardList cards={cards} />
-  </section>;
+  const payload = { identity: { session }, backHref, cards };
+  return <>{error && <p className="streaming-diff-message is-error">{error}</p>}<OvenRuntime ir={streamingDiffIr} payload={payload} /></>;
 }
 
 export function StreamingDiff({ projects, projectsLoading }: { projects: Project[]; projectsLoading: boolean }) {
