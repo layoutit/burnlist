@@ -1,0 +1,19 @@
+const aliases = Object.freeze({ plain: "identity" });
+export function deepFreeze(value, seen = new Set()) { if (!value || typeof value !== "object" || seen.has(value)) return value; seen.add(value); for (const key of Reflect.ownKeys(value)) deepFreeze(value[key], seen); return Object.freeze(value); }
+export function nullMap(values) { return Object.assign(Object.create(null), values); }
+export function assertIR(ir) {
+  if (!ir || ir.schema !== "burnlist-oven-ir@1" || !Array.isArray(ir.root) || !Array.isArray(ir.controls) || !Array.isArray(ir.collections)) throw new TypeError("Invalid burnlist oven IR");
+  const check = (value) => { if (value === null || ["string", "number", "boolean"].includes(typeof value)) return; if (Array.isArray(value)) return value.forEach(check); const proto = value && Object.getPrototypeOf(value); if (typeof value !== "object" || (proto !== Object.prototype && proto !== null)) throw new TypeError("IR must contain JSON data only"); for (const item of Object.values(value)) check(item); };
+  check(ir); return ir;
+}
+function typed(attrs) { const out = {}; for (const [key, value] of Object.entries(attrs)) out[toCamel(key)] = ["version", "refresh-seconds", "columns", "rows", "row-height", "column", "row", "column-span", "row-span", "page-size", "debounce-ms"].includes(key) ? Number(value) : (["optional", "default"].includes(key) ? value === "true" : value); return out; }
+const toCamel = (key) => key.replace(/-([a-z])/g, (_, x) => x.toUpperCase());
+export function buildIR(ast) {
+  const requirements = { components: new Set(), formats: new Set(), icons: new Set(), selectors: new Set() };
+  const convert = (node) => { const attrs = typed(node.attrs); if (attrs.format) { attrs.format = aliases[attrs.format] ?? attrs.format; requirements.formats.add(attrs.format); } if (node.name === "icon") requirements.icons.add(attrs.name); if (["sort-toggle", "filter-toggle"].includes(node.name)) requirements.selectors.add(attrs.key); if (!new Set(["oven","grid","stack","panel","switch","case","collection","each","bind","text","icon","column","field-toolbar","mode-toggle","option","search","sort-toggle","filter-toggle","pagination"]).has(node.name)) requirements.components.add(node.name); return { kind: node.name, attributes: attrs, bindings: bindingMap(node), children: node.children.map(convert), source: { offset: node.span.offset, line: node.span.line, column: node.span.column } }; };
+  const root = ast.children.map(convert), nodes = []; const visit = (n) => { nodes.push(n); n.children.forEach(visit); }; root.forEach(visit);
+  const controls = nodes.filter((n) => ["mode-toggle","search","sort-toggle","filter-toggle","domain-tabs"].includes(n.kind)).map((n) => ({ kind: n.kind, id: n.attributes.id, ...n.attributes }));
+  const collections = nodes.filter((n) => n.kind === "collection").map((n) => ({ id: n.attributes.id, source: n.attributes.source, itemKey: n.attributes.itemKey, paging: n.attributes.paging, pageSize: n.attributes.pageSize }));
+  return deepFreeze(assertIR({ schema: "burnlist-oven-ir@1", id: ast.attrs.id, version: Number(ast.attrs.version), contract: ast.attrs.contract, theme: ast.attrs.theme, ...(ast.attrs["refresh-seconds"] ? { refreshSeconds: Number(ast.attrs["refresh-seconds"]) } : {}), root, controls, collections, requirements: Object.fromEntries(Object.entries(requirements).map(([k, v]) => [k, [...v].sort()])) }));
+}
+function bindingMap(node) { const out = {}; for (const child of node.children) if (child.name === "bind") out[child.attrs.prop] = { source: child.attrs.source, ...(child.attrs.format ? { format: aliases[child.attrs.format] ?? child.attrs.format } : {}), ...(child.attrs.optional ? { optional: child.attrs.optional === "true" } : {}), ...(child.attrs.fallback !== undefined ? { fallback: child.attrs.fallback } : {}) }; return out; }
