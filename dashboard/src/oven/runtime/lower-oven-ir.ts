@@ -10,10 +10,12 @@ type IrNode = {
 type OvenIr = { id: string; theme?: string; root: IrNode[] };
 
 const components: Record<string, string> = Object.freeze({
+  box: "Box",
   "kpi-strip": "KpiStrip",
   "kpi-item": "KpiItem",
   "progress-donut": "ProgressDonut",
   "section-header": "SectionHeader",
+  "checklist-progress-value": "ChecklistProgressValue",
 });
 
 const unsupported = new Set([
@@ -68,8 +70,15 @@ function lowerCell(node: IrNode, path: string): CellDef {
   const props: Record<string, unknown> = {};
   const bind: Record<string, Binding> = { ...node.bindings };
   if (typeof attrs.id === "string") props.id = attrs.id;
-  if (typeof attrs.className === "string") props.className = attrs.className;
-  if (node.kind === "kpi-strip" && typeof attrs.ariaLabel === "string") props.ariaLabel = attrs.ariaLabel;
+  if (typeof attrs.class === "string") props.className = attrs.class;
+  if (node.kind === "box") {
+    props.element = attrs.element;
+    if (typeof attrs.text === "string") props.text = attrs.text;
+  }
+  if (node.kind === "kpi-strip") {
+    if (typeof attrs.ariaLabel === "string") props.ariaLabel = attrs.ariaLabel;
+    if (typeof attrs.title === "string") props.title = attrs.title;
+  }
   if (node.kind === "kpi-item") {
     if (typeof attrs.heading === "string") props.heading = attrs.heading;
     if (typeof attrs.title === "string") props.title = attrs.title;
@@ -116,6 +125,18 @@ function lowerSection(node: IrNode, path: string, inherited?: SectionDef): Secti
   if (node.kind === "stack" || node.kind === "panel") {
     const style = node.kind === "panel" ? panelStyle(node.attributes) : { display: "flex", flexDirection: node.attributes.direction === "row" ? "row" : "column" };
     const section: SectionDef = { element: node.kind === "panel" ? "section" : "div", className: `oven-${node.kind}`, props: jsonProps({ style }), cells: [], key: key(node, path), ...inherited };
+    for (let index = 0; index < node.children.length; index += 1) section.cells.push(lowerCell(node.children[index], `${path}-${index}`));
+    return [section];
+  }
+  if (node.kind === "box") {
+    const element = node.attributes.element;
+    const section: SectionDef = {
+      element: element === "section" || element === "main" || element === "span" ? element : "div",
+      ...(typeof node.attributes.class === "string" ? { className: node.attributes.class } : {}),
+      ...(typeof node.attributes.id === "string" ? { props: jsonProps({ id: node.attributes.id }) } : {}),
+      ...(typeof node.attributes.text === "string" ? { text: node.attributes.text } : {}),
+      cells: [], key: key(node, path), ...inherited,
+    };
     for (let index = 0; index < node.children.length; index += 1) section.cells.push(lowerCell(node.children[index], `${path}-${index}`));
     return [section];
   }

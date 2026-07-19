@@ -6,14 +6,15 @@ import { lowerOvenIr } from "./lower-oven-ir";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 import { selectCollection, selectMode } from "./oven-selectors";
 import { ControlAdapter } from "./control-adapters";
-import { WidgetAdapter } from "./widget-adapters";
+import { ChecklistWidgetAdapter, WidgetAdapter } from "./widget-adapters";
+import { Box } from "../Box/Box";
 import { LogTable } from "../LogTable";
 import { formatRegistry } from "../OvenView/registries";
 import { buildLogTableProps } from "./log-table-adapter";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
-const staticKinds = new Set(["grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "icon", "text", "bind"]);
+const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "checklist-progress-value", "icon", "text", "bind"]);
 const attrs = (node: OvenNodeDef) => node.attributes ?? {};
 
 function isStatic(node: OvenNodeDef): boolean { return staticKinds.has(node.kind) && (node.children ?? []).every(isStatic); }
@@ -51,8 +52,10 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
   }
   if (node.kind === "each") return <>{(node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
   if (node.kind === "log-table") return <LogTable {...buildLogTableProps(node, state.payload, { resolvePointer, formatRegistry })} />;
+  if (["checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) return <ChecklistWidgetAdapter node={node} payload={state.payload} />;
   if (["mode-toggle", "field-toolbar", "pagination"].includes(node.kind)) return <ControlAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;
   if (["field-list", "refresh-status"].includes(node.kind)) return <WidgetAdapter node={node} ir={ir} state={state} />;
+  if (node.kind === "box") return <Box element={String(attrs(node).element) as "div" | "section" | "main" | "span"} className={typeof attrs(node).class === "string" ? attrs(node).class : undefined} id={typeof attrs(node).id === "string" ? attrs(node).id : undefined} text={typeof attrs(node).text === "string" ? attrs(node).text : undefined}>{(node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</Box>;
   if (["grid", "panel", "stack"]) return createElement(node.kind === "panel" ? "section" : "div", { className: `oven-${node.kind}`, style: layoutStyle(node) }, (node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />));
   return null;
 }

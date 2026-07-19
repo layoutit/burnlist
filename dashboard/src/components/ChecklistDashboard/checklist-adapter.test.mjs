@@ -14,6 +14,7 @@ test("adaptChecklist precomputes the checklist oven payload", async () => {
     await build({ entryPoints: [adapterPath], bundle: true, format: "esm", outfile: outputPath, platform: "node", target: "node18" });
     const { adaptChecklist } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
     assert.deepEqual(adaptChecklist(checklistFixture), {
+      raw: checklistFixture,
       current: { value: "Complete", title: "No active task" },
       progress: { done: 2, total: 2, percent: 100 },
       durations: { elapsed: "10m", pace: "5m", timeLeft: "0m" },

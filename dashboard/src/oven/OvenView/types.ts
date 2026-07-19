@@ -18,8 +18,9 @@ export type CellDef = {
 };
 
 export type SectionDef = {
-  element?: "section" | "div" | "nav";
+  element?: "section" | "div" | "nav" | "main" | "span";
   className?: string;
+  text?: string;
   props?: Record<string, JsonValue>;
   cells: CellDef[];
   key?: string;

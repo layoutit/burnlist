@@ -48,11 +48,11 @@ export function ProgressChart({ history }: { history: HistoryPoint[] }) {
   </svg></div>;
 }
 
-function ProgressPanel({ data }: { data: ChecklistProgressData }) {
+export function ProgressPanel({ data }: { data: ChecklistProgressData }) {
   return <section className="panel progress-panel"><div className="panel-title-row"><span className="burn-chart-label">Burn</span></div><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
 }
 
-function ProgressLedger({ data }: { data: ChecklistProgressData }) {
+export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data).slice(0, 8);
   return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><LogTable
     columns={["Age", "Event", "Result", "Delta", "Done"]}

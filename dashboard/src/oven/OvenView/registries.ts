@@ -14,6 +14,11 @@ import { MetricTiles } from "../MetricTiles";
 import { ProgressDonut } from "../ProgressDonut";
 import { SectionHeader } from "../SectionHeader";
 import { VerdictHeader } from "../VerdictHeader";
+import { Box } from "../Box/Box";
+import { ChecklistBurnPanel } from "../ChecklistBurnPanel/ChecklistBurnPanel";
+import { ChecklistEventCards } from "../ChecklistEventCards/ChecklistEventCards";
+import { ChecklistLedger } from "../ChecklistLedger/ChecklistLedger";
+import { ChecklistProgressValue } from "../ChecklistProgressValue/ChecklistProgressValue";
 import { delta as formatDelta, percent as formatPercent } from "../utils/visual-parity-format";
 
 function number(value: unknown): string {
@@ -69,6 +74,11 @@ export const componentRegistry: Record<string, ComponentType<any>> = Object.free
   FeedList,
   DiffCard,
   FileDiff,
+  Box,
+  ChecklistBurnPanel,
+  ChecklistEventCards,
+  ChecklistLedger,
+  ChecklistProgressValue,
 }));
 
 export const formatRegistry: Record<string, (value: unknown) => unknown> = Object.freeze(Object.assign(Object.create(null), {

@@ -9,6 +9,8 @@ export type LogTableProps = {
   columns: string[];
   rows: { key?: string; className: string; cells: { className: string; content: ReactNode }[] }[];
   emptyState?: ReactNode;
+  className?: string;
+  title?: string;
 };
 
 function attributes(node: { attributes?: Record<string, unknown> }): Record<string, unknown> {
@@ -42,6 +44,8 @@ export function buildLogTableProps(node: LogTableNode, payload: unknown, { resol
   const emptyText = attrs.emptyText ?? attrs["empty-text"];
 
   return {
+    ...(typeof attrs.class === "string" ? { className: attrs.class } : {}),
+    ...(typeof attrs.title === "string" ? { title: attrs.title } : {}),
     columns: columns.map((column) => String(attributes(column).label ?? "")),
     rows: source.map((item, index) => ({
       key: rowKey(item, index, attrs.itemKey ?? attrs["item-key"], resolvePointer),

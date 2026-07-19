@@ -1,5 +1,8 @@
 import { HybridFieldList } from "../HybridFieldList/HybridFieldList";
 import { RefreshStatusChip } from "../RefreshStatusChip/RefreshStatusChip";
+import { ChecklistBurnPanel } from "../ChecklistBurnPanel/ChecklistBurnPanel";
+import { ChecklistEventCards } from "../ChecklistEventCards/ChecklistEventCards";
+import { ChecklistLedger } from "../ChecklistLedger/ChecklistLedger";
 import { formatRegistry } from "../OvenView/registries";
 import { resolvePointer } from "../utils/json-pointer";
 import type { OvenIr, OvenState } from "./oven-reducer";
@@ -24,5 +27,13 @@ export function WidgetAdapter({ node, ir, state }: { node: Node; ir: OvenIr; sta
     return <HybridFieldList fields={collection.pageItems as any[]} chartMode={mode} sort={state.controls[String(ir.collections.find((item) => item.id === collectionId)?.sortFrom ?? "")] === true ? "changed" : "default"}
       telemetryByField={bind(node, "telemetryByField", state.payload) as any} telemetryAvailability={bind(node, "telemetryAvailability", state.payload) as any} />;
   }
+  return null;
+}
+
+export function ChecklistWidgetAdapter({ node, payload }: { node: Node; payload: unknown }) {
+  const data = resolvePointer(payload, String(attrs(node).source ?? "/")) as any;
+  if (node.kind === "checklist-burn-panel") return <ChecklistBurnPanel data={data} />;
+  if (node.kind === "checklist-ledger") return <ChecklistLedger data={data} />;
+  if (node.kind === "checklist-event-cards") return <ChecklistEventCards data={data} />;
   return null;
 }
