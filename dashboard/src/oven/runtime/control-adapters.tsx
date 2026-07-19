@@ -1,4 +1,5 @@
 import { FieldToolbar } from "../FieldToolbar/FieldToolbar";
+import { formatRegistry } from "../OvenView/registries";
 import { PaginationBar } from "../PaginationBar/PaginationBar";
 import { ToggleGroup } from "../ToggleGroup/ToggleGroup";
 import { resolvePointer } from "../utils/json-pointer";
@@ -16,6 +17,12 @@ function control(ir: OvenIr, controlId: string): Record<string, unknown> { retur
 function available(node: Node, state: OvenState): boolean {
   const source = attrs(node).requiresSource, expected = attrs(node).requiresValue;
   return typeof source !== "string" || resolvePointer(state.payload, source) === expected;
+}
+function unavailableText(node: Node, state: OvenState): string {
+  const telemetry = formatRegistry["telemetry-availability"](resolvePointer(state.payload, "/telemetry"));
+  return telemetry && typeof telemetry === "object" && typeof (telemetry as { reason?: unknown }).reason === "string"
+    ? (telemetry as { reason: string }).reason
+    : String(attrs(node).unavailableText ?? "");
 }
 
 export function ModeToggleAdapter({ node, state, dispatch }: Props) {
@@ -37,7 +44,7 @@ export function FieldToolbarAdapter({ node, ir, state, dispatch }: Props) {
     sort={state.controls[sortId] === true ? String(attrs(sort!).key ?? "changed") : ""}
     filter={state.controls[filterId] === true ? "failing" : ""}
     changedUnavailable={!isAvailable}
-    changedReason={String(attrs(sort!).unavailableText ?? "")}
+    changedReason={sort ? unavailableText(sort, state) : ""}
     onSearchInput={search ? (query) => dispatch({ type: "queryChanged", id: id(search), query }) : undefined}
     onSelectChart={mode ? (value) => dispatch({ type: "modeSelected", id: id(mode), value }) : undefined}
     onToggleSort={sort && isAvailable ? () => dispatch({ type: "toggleChanged", id: sortId, active: state.controls[sortId] !== true }) : undefined}
@@ -49,7 +56,8 @@ export function PaginationAdapter({ node, ir, state, dispatch }: Props) {
   const collectionId = String(attrs(node).collectionFrom ?? "");
   const page = selectCollection(state, ir, collectionId, resolvePointer);
   const start = page.totalCount === 0 ? 0 : page.pageIndex * page.pageSize + 1;
-  return <PaginationBar pageSize={page.pageSize} pageIndex={page.pageIndex} pageCount={page.pageCount} start={start} end={Math.min(page.totalCount, start + page.pageItems.length - 1)} total={page.totalCount}
+  const end = page.totalCount === 0 ? 0 : Math.min(page.totalCount, start + page.pageItems.length - 1);
+  return <PaginationBar pageSize={page.pageSize} pageIndex={page.pageIndex} pageCount={page.pageCount} start={start} end={end} total={page.totalCount}
     onPrev={() => dispatch({ type: "pagePrevious", collectionId })} onNext={() => dispatch({ type: "pageNext", collectionId })}
     onPageSizeChange={(pageSize) => dispatch({ type: "pageSizeChanged", collectionId, pageSize })} />;
 }

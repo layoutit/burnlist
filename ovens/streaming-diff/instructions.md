@@ -2,8 +2,8 @@
 
 `streaming-diff.oven` is the declarative, read-only selected-feed view for
 recently published, session-scoped pre-to-post diff cards. It renders the
-heading and diff cards through the `.oven` engine at byte parity with the
-selected-feed component view.
+heading and diff cards through the `.oven` engine, byte-for-byte identical to
+the selected-feed component view.
 
 ## Payload contract
 

@@ -21,7 +21,14 @@ import { ChecklistBurnPanel } from "../ChecklistBurnPanel/ChecklistBurnPanel";
 import { ChecklistEventCards } from "../ChecklistEventCards/ChecklistEventCards";
 import { ChecklistLedger } from "../ChecklistLedger/ChecklistLedger";
 import { ChecklistProgressValue } from "../ChecklistProgressValue/ChecklistProgressValue";
+import { BurnDonut } from "../BurnDonut/BurnDonut";
+import { DifferentialKpiStrip } from "../DifferentialKpiStrip/DifferentialKpiStrip";
+import { DifferentialLogTable } from "../DifferentialLogTable/DifferentialLogTable";
+import { DifferentialEmptyState } from "../DifferentialEmptyState/DifferentialEmptyState";
+import { DifferentialFrameDeltaChart, DifferentialProgressChart } from "../DifferentialProgressChart";
+import { WaffleMetric } from "../WaffleMetric/WaffleMetric";
 import { delta as formatDelta, percent as formatPercent } from "../utils/visual-parity-format";
+import { differentialFormatRegistry } from "../runtime/differential-testing-formats";
 
 function number(value: unknown): string {
   if (value === null || value === undefined || value === "") return "";
@@ -83,6 +90,13 @@ export const componentRegistry: Record<string, ComponentType<any>> = Object.free
   ChecklistEventCards,
   ChecklistLedger,
   ChecklistProgressValue,
+  BurnDonut,
+  DifferentialKpiStrip,
+  DifferentialLogTable,
+  DifferentialEmptyState,
+  DifferentialFrameDeltaChart,
+  DifferentialProgressChart,
+  WaffleMetric,
 }));
 
 export const formatRegistry: Record<string, (value: unknown) => unknown> = Object.freeze(Object.assign(Object.create(null), {
@@ -95,6 +109,7 @@ export const formatRegistry: Record<string, (value: unknown) => unknown> = Objec
   length,
   "time-only": timeOnly,
   "relative-age": relativeAge,
+  ...differentialFormatRegistry,
 }));
 
 const kpiIconProps = { "aria-hidden": "true", className: "driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" };

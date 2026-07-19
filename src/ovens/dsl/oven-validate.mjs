@@ -30,7 +30,7 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
     if (a.format && !REGISTRY.formats.has(a.format)) add(d, "REGISTRY_FORMAT", `Unknown format ${a.format}`, node, "format");
     if (node.name === "icon" && !REGISTRY.icons.has(a.name)) add(d, "REGISTRY_ICON", `Unknown icon ${a.name}`, node, "name");
     if (node.name === "kpi-item" && a.icon && !REGISTRY.icons.has(a.icon)) add(d, "REGISTRY_ICON", `Unknown icon ${a.icon}`, node, "icon");
-    if (node.name === "kpi-item" && a.variant && a.variant !== "current") add(d, "SCALAR_VARIANT", "kpi-item variant must be current", node, "variant");
+    if (node.name === "kpi-item" && a.variant && !["current", "scenario", "burns", "fields", "frames"].includes(a.variant)) add(d, "SCALAR_VARIANT", "kpi-item variant is not registered", node, "variant");
     if (node.name === "oven") { if (!REGISTRY.themes.has(a.theme)) add(d, "REGISTRY_THEME", `Unknown theme ${a.theme}`, node, "theme"); if (!REGISTRY.contracts.has(a.contract)) add(d, "REGISTRY_CONTRACT", `Unknown contract ${a.contract}`, node, "contract"); if (a.version !== "1") add(d, "SCALAR_VERSION", "Only oven version 1 is supported", node, "version"); }
     if (node.name === "box" && !["div", "section", "main", "span"].includes(a.element)) add(d, "SCALAR_ELEMENT", "box element must be div, section, main, or span", node, "element");
     if (node.name === "sort-toggle" && !REGISTRY.sorts.has(a.key)) add(d, "REGISTRY_SORT", `Unknown sort ${a.key}`, node, "key");
@@ -39,6 +39,7 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
     for (const key of ["mode-from", "search-from", "filter-from", "sort-from", "collection-from", "selection-from"]) if (a[key]) refs.push([node, key, a[key]]);
     if (node.name === "text" && ((a.text === undefined) === (a.source === undefined))) add(d, "GRAMMAR_TEXT", "<text> requires exactly one of text or source", node);
     if (node.name === "case" && ((a.value !== undefined) === (a.default === "true"))) add(d, "GRAMMAR_CASE", "<case> requires value or default=true", node);
+    if (node.name === "switch" && ((a.source !== undefined) === (a["mode-from"] !== undefined))) add(d, "GRAMMAR_SWITCH_SOURCE", "<switch> requires exactly one of source or mode-from", node);
     if (node.name === "mode-toggle" && node.children.filter((x) => x.name === "option").length < 2) add(d, "STRUCTURE_OPTIONS", "<mode-toggle> requires at least two options", node);
     if (controls.has(node.name) && ancestors.some((x) => x.name === "each")) add(d, "INTERACTION_EACH", "Controls are not allowed inside <each>", node);
     if (node.name === "pagination" && !ancestors.some((x) => x.name === "collection")) add(d, "INTERACTION_PAGINATION", "<pagination> must be inside a collection", node);

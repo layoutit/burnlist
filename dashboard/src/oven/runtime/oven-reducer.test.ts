@@ -28,6 +28,25 @@ test("reducer initializes descriptors and resets only consuming collection contr
   assert.deepEqual(state.collections.view, { pageIndex: 0, pageSize: 3 });
 });
 
+test("initial control seeds override valid defaults and ignore invalid values", () => {
+  const state = initOvenState(ir, payload, { mode: "b", filter: true, sort: false, domain: "one", unknown: true, search: true });
+  assert.deepEqual(state.controls, { mode: "b", search: "", sort: false, filter: true, domain: "one" });
+  const unavailable = initOvenState(ir, { ...payload, available: false }, { sort: true });
+  assert.equal(unavailable.controls.sort, false);
+});
+
+test("initial page seeds attach metadata only to matching collections", () => {
+  const page = { page: 1, pageSize: 25, pageCount: 3, total: 60 };
+  const pagedIr: OvenIr = { ...ir, collections: [{ ...ir.collections[0], paging: "auto" }] };
+  const state = initOvenState(pagedIr, { ...payload, available: false }, { sort: true }, { view: page, unknown: { page: 9, pageSize: 1, pageCount: 10, total: 10 } });
+  assert.deepEqual(state.collections.view, { pageIndex: 0, pageSize: 2, serverPage: page });
+  assert.notEqual(state.collections.view.serverPage, page);
+  assert.equal(state.collections.unknown, undefined);
+  assert.equal(state.controls.sort, true);
+  const accepted = ovenReducer(state, { type: "payloadAccepted", payload: { ...payload, available: false } }, pagedIr);
+  assert.equal(accepted.controls.sort, true);
+});
+
 test("payload acceptance clamps pages and retains valid controls while dropping unavailable values", () => {
   let state = initOvenState(ir, payload);
   state = ovenReducer(state, { type: "modeSelected", id: "mode", value: "b" }, ir);

@@ -1,18 +1,21 @@
 import { resolvePointer } from "../utils/json-pointer";
-import { runCollection } from "./collection-pipeline";
+import { attachTransitionTelemetry, runCollection } from "./collection-pipeline";
 
 type Control = Record<string, unknown> & { id: string; kind: string };
 type Collection = Record<string, unknown> & { id: string; pageSize: number };
 type IrNode = { kind: string; attributes?: Record<string, unknown>; children?: IrNode[] };
-export type OvenIr = { contract: string; controls: Control[]; collections: Collection[]; root?: IrNode[] };
+export type OvenIr = { contract: string; theme?: string; controls: Control[]; collections: Collection[]; root?: IrNode[] };
 export type RefreshPhase = "idle" | "loading" | "queued" | "running" | "failed";
+export type OvenServerPage = { page: number; pageSize: number; pageCount: number; total: number };
 export type OvenState = {
   payload: unknown;
   payloadRevision: number;
   refresh: { phase: RefreshPhase; error: unknown; generation: number };
   controls: Record<string, string | boolean>;
-  collections: Record<string, { pageIndex: number; pageSize: number }>;
+  collections: Record<string, { pageIndex: number; pageSize: number; serverPage?: OvenServerPage }>;
 };
+export type OvenControlSeed = Record<string, string | boolean>;
+export type OvenPageSeed = Record<string, OvenServerPage>;
 export type OvenAction =
   | { type: "payloadRequested" }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
@@ -42,7 +45,7 @@ function collectionItems(payload: unknown, collection: Record<string, unknown>):
   return Array.isArray(value) ? value : [];
 }
 function pipelineItems(ir: OvenIr, payload: unknown, controls: OvenState["controls"], collection: Record<string, unknown>): unknown[] {
-  const source = collectionItems(payload, collection);
+  const source = attachTransitionTelemetry(collectionItems(payload, collection), resolvePointer(payload, "/telemetry/fields"));
   const search = typeof collection.searchFrom === "string" ? ir.controls.find((item) => item.id === collection.searchFrom) : undefined;
   const filter = typeof collection.filterFrom === "string" ? ir.controls.find((item) => item.id === collection.filterFrom) : undefined;
   const sort = typeof collection.sortFrom === "string" ? ir.controls.find((item) => item.id === collection.sortFrom) : undefined;
@@ -65,7 +68,18 @@ function domainInitial(control: Record<string, unknown>, payload: unknown, value
   const id = typeof candidate === "string" ? candidate : candidate && typeof candidate === "object" && typeof (candidate as Record<string, unknown>).id === "string" ? String((candidate as Record<string, unknown>).id) : undefined;
   return id && values.includes(id) ? id : values[0];
 }
-function normalizedControls(ir: OvenIr, payload: unknown, prior: OvenState["controls"] = {}): OvenState["controls"] {
+function serverControlIds(ir: OvenIr, collections: OvenState["collections"]): Set<string> {
+  const ids = new Set<string>();
+  for (const item of ir.collections) {
+    const collection = descriptor(ir, item);
+    if (!collections[item.id]?.serverPage || (collection.paging !== "auto" && collection.paging !== "server")) continue;
+    for (const id of [collection.searchFrom, collection.sortFrom, collection.filterFrom]) {
+      if (typeof id === "string") ids.add(id);
+    }
+  }
+  return ids;
+}
+function normalizedControls(ir: OvenIr, payload: unknown, prior: OvenState["controls"] = {}, serverControls = new Set<string>()): OvenState["controls"] {
   const next: OvenState["controls"] = {};
   for (const item of ir.controls) {
     const control = descriptor(ir, item);
@@ -80,7 +94,8 @@ function normalizedControls(ir: OvenIr, payload: unknown, prior: OvenState["cont
       next[item.id] = typeof previous === "string" && values.includes(previous) ? previous : domainInitial(control, payload, values) ?? "";
     } else {
       const available = payload === undefined || typeof control.requiresSource !== "string" || resolvePointer(payload, control.requiresSource) === control.requiresValue;
-      next[item.id] = available && typeof prior[item.id] === "boolean" ? prior[item.id] : available && active(control.initial);
+      const serverSeeded = serverControls.has(item.id) && typeof prior[item.id] === "boolean";
+      next[item.id] = serverSeeded ? prior[item.id] : available && typeof prior[item.id] === "boolean" ? prior[item.id] : available && active(control.initial);
     }
   }
   return next;
@@ -94,11 +109,19 @@ function resetConsumers(state: OvenState, ir: OvenIr, controlId: string): OvenSt
   return next;
 }
 
-export function initOvenState(ir: OvenIr, payload: unknown = undefined): OvenState {
+export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls: OvenControlSeed = {}, pages: OvenPageSeed = {}): OvenState {
+  const collections = Object.fromEntries(ir.collections.map((item) => {
+    const page = pages[item.id];
+    return [item.id, {
+      pageIndex: 0,
+      pageSize: Math.max(1, Number(descriptor(ir, item).pageSize) || 1),
+      ...(page ? { serverPage: { ...page } } : {}),
+    }];
+  }));
   return {
     payload, payloadRevision: 0, refresh: { phase: "idle", error: undefined, generation: 0 },
-    controls: normalizedControls(ir, payload),
-    collections: Object.fromEntries(ir.collections.map((item) => [item.id, { pageIndex: 0, pageSize: Math.max(1, Number(descriptor(ir, item).pageSize) || 1) }])),
+    controls: normalizedControls(ir, payload, controls, serverControlIds(ir, collections)),
+    collections,
   };
 }
 
@@ -110,7 +133,7 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
       return { ...state, refresh: { phase: state.refresh.phase === "queued" ? "running" : "loading", error: undefined, generation: state.refresh.generation + 1 } };
     case "payloadAccepted": {
       if (action.generation !== undefined && action.generation !== state.refresh.generation) return state;
-      const controls = normalizedControls(ir, action.payload, state.controls);
+      const controls = normalizedControls(ir, action.payload, state.controls, serverControlIds(ir, state.collections));
       const collections = Object.fromEntries(ir.collections.map((item) => {
         const collection = descriptor(ir, item), current = state.collections[item.id];
         return [item.id, { ...current, pageIndex: clamp(current.pageIndex, pageCount(pipelineItems(ir, action.payload, controls, collection), current.pageSize)) }];

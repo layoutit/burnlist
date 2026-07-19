@@ -20,7 +20,7 @@ function number(value: unknown): number {
 }
 
 function telemetry(item: Item): Item | undefined {
-  const value = item.telemetry ?? item.transitionTelemetry;
+  const value = item.transitionTelemetry ?? item.telemetry;
   return value && typeof value === "object" ? value as Item : undefined;
 }
 

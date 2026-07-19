@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { runCollection } from "./collection-pipeline";
+import { attachTransitionTelemetry, runCollection } from "./collection-pipeline";
 import { resolvePointer } from "../utils/json-pointer";
 
 const contract = "burnlist-differential-testing-data@1";
@@ -26,4 +26,15 @@ test("changed sort excludes unchanged rows and uses source index after equal DT 
   const tied = [...rows, { id: "fourth", label: "delta", failedSampleCount: 0, missingSampleCount: 0, telemetry: { failToPassCount: 1, passToFailCount: 1 } }];
   const result = runCollection(tied, { contract, sort: { key: "changed" } }, resolvePointer);
   assert.deepEqual(result.map((item) => (item as { id: string }).id), ["first", "second", "fourth"]);
+});
+
+test("sidecar telemetry is attached by id before a collection sort", () => {
+  const result = attachTransitionTelemetry(rows, [
+    { id: "first", failToPassCount: 0, passToFailCount: 0 },
+    { id: "second", failToPassCount: 3, passToFailCount: 0 },
+  ]);
+  assert.deepEqual(
+    runCollection(result, { contract, sort: { key: "changed" } }, resolvePointer).map((item) => (item as { id: string }).id),
+    ["second"],
+  );
 });

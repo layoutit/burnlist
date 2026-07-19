@@ -24,6 +24,13 @@ const components: Record<string, string> = Object.freeze({
   "streaming-diff-heading": "StreamingDiffHeading",
   "feed-list": "FeedList",
   "file-diff": "FileDiff",
+  "burn-donut": "BurnDonut",
+  "waffle-metric": "WaffleMetric",
+  "differential-kpi-strip": "DifferentialKpiStrip",
+  "differential-log-table": "DifferentialLogTable",
+  "progress-chart": "DifferentialProgressChart",
+  "frame-delta-chart": "DifferentialFrameDeltaChart",
+  "differential-empty-state": "DifferentialEmptyState",
 });
 
 const unsupported = new Set([
@@ -94,6 +101,33 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
   if (node.kind === "progress-donut") {
     const source = binding(attrs.source, attrs.format);
     if (source) bind.percent = source;
+  }
+  if (node.kind === "burn-donut") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.entries = source;
+  }
+  if (node.kind === "waffle-metric") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.metric = source;
+  }
+  if (node.kind === "differential-kpi-strip") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.payload = source;
+  }
+  if (node.kind === "differential-log-table") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.entries = source;
+  }
+  if (node.kind === "differential-empty-state") {
+    assignLiteralOrPointer(props, bind, "title", attrs.title);
+  }
+  if (node.kind === "progress-chart") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.history = source;
+  }
+  if (node.kind === "frame-delta-chart") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.metrics = source;
   }
   if (node.kind === "progress-value") {
     for (const name of ["done", "total", "percent"]) assignLiteralOrPointer(props, bind, name, attrs[name]);
