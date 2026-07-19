@@ -1,20 +1,15 @@
 import { useEffect, useMemo } from "react";
 import { useStreamingDiffCards, useStreamingDiffFeeds } from "@hooks";
-import { DiffCard, FeedList } from "@oven";
+import { DiffCardList, FeedList, StreamingDiffHeading } from "@oven";
 import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffRepositories, streamingDiffSelection } from "@lib";
 import type { Project, StreamingDiffCard } from "@lib";
 import "./streaming-diff.css";
 
-function SelectedFeed({ cards, error, session }: { cards: StreamingDiffCard[]; error: string; session: string }) {
+export function SelectedFeed({ backHref, cards, error, session }: { backHref: string; cards: StreamingDiffCard[]; error: string; session: string }) {
   return <section className="streaming-diff-view">
-    <header className="streaming-diff-heading">
-      <a className="streaming-diff-back" href={`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(ovenRepoKey() ?? "")}`}>Recent feeds</a>
-      <h1>Streaming Diff</h1>
-      <p>Session {session}</p>
-    </header>
+    <StreamingDiffHeading backHref={backHref} session={session} />
     {error && <p className="streaming-diff-message is-error">{error}</p>}
-    <div className="streaming-diff-cards">{cards.map((card) => <DiffCard card={card} key={card.revId} />)}</div>
-    {!cards.length && <p className="streaming-diff-message">Waiting for diff cards.</p>}
+    <DiffCardList cards={cards} />
   </section>;
 }
 
@@ -30,5 +25,5 @@ export function StreamingDiff({ projects, projectsLoading }: { projects: Project
     if (autoOpenHref) window.location.replace(autoOpenHref);
   }, [autoOpenHref]);
 
-  return selection ? <SelectedFeed cards={cards.cards} error={cards.error} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
+  return selection ? <SelectedFeed backHref={`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(selection.repoKey)}`} cards={cards.cards} error={cards.error} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
 }
