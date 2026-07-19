@@ -149,3 +149,35 @@ The shared renderer owns one project-neutral layout:
 - no separate exact-authority panel, alternate Cards/Table mode, or project-specific visual control
 
 There is no project-specific route, schema, title, path, command, or stylesheet in this recipe.
+
+## Oven Rendering
+
+The clean semantic template is `ovens/differential-testing/differential-testing.oven`.
+It declares contract `burnlist-differential-testing-data@1` and theme
+`differential-testing`, in the class-free, box-free style of
+`ovens/checklist/checklist.oven`: it has no `class=` attributes and no `<box>`
+wrappers. Shell and region chrome, default classes, and default ARIA come from
+the `differential-testing` theme entry in
+`dashboard/src/oven/runtime/theme-registry.ts` and the DT React components under
+`dashboard/src/oven/`, never from the `.oven`.
+
+The dashboard maps contract data to a pointer-addressable payload with
+`adaptDifferentialTesting` in `dashboard/src/lib/differential-testing-adapter.ts`.
+It renders `OvenRuntime({ ir, payload })` using the compiled IR at
+`ovens/differential-testing/differential-testing.ir.json`.
+
+The top-level data-driven `<switch source="/pageMode">` selects the empty shell
+or full detail. The adapter sets `pageMode` to `empty` when
+`scenarioCatalog.selectedScenarioId` is `null`, and to `detail` otherwise.
+
+Interactivity is pure semantic data wired by id: the `progress-mode` switch,
+the field collection's `search-from`, `sort-from`, and `filter-from` controls,
+the `value-mode` toggle, and pagination. These bindings describe state; the
+runtime and themed components implement the behavior.
+
+The DOM-golden gate is
+`dashboard/src/oven/runtime/differential-testing-oven-dom-golden.test.mjs`.
+It checks that the `OvenRuntime` render is DOM-normalized-equal to the 12
+byte-frozen goldens in `ovens/differential-testing/renderer/goldens/dt-*.html`,
+covering empty, main, paged, sorted-filtered, telemetry, chart-mode, and
+progress-mode states.
