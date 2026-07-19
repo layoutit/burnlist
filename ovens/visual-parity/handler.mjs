@@ -1,7 +1,7 @@
 import { basename } from "node:path";
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../../src/server/fs-safe.mjs";
-import { assertVisualParityData } from "./visual-parity-contract.mjs";
+import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { assertVisualParityData } from "./contract.mjs";
 
 function readVisualParityData(bindingPath, maxOvenDataBytes) {
   const stat = safeStat(bindingPath);

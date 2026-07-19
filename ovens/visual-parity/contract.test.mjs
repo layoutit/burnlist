@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPayload } from "../../differential-testing/example/adapter.mjs";
-import { assertVisualParityData } from "./visual-parity-contract.mjs";
+import { buildPayload } from "../differential-testing/example/adapter.mjs";
+import { assertVisualParityData } from "./contract.mjs";
 
 test("Visual Parity qualifies target domains without hiding failing context", () => {
   const payload = fixture();

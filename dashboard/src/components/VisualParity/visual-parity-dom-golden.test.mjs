@@ -5,7 +5,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
-import { assertVisualParityData } from "../../../../ovens/visual-parity/engine/visual-parity-contract.mjs";
+import { assertVisualParityData } from "../../../../ovens/visual-parity/contract.mjs";
 import { visualParityFixture } from "./VisualParity.fixture.mjs";
 
 const componentPath = new URL("./VisualParityView.tsx", import.meta.url).pathname;
