@@ -357,10 +357,7 @@ export function mountDifferentialTestingDashboard(root, oven, payload, {
     existingHeaderTimestamp?.remove();
     existingHeaderStatus?.remove();
     if (!state.oven || !state.payload) return;
-    const cells = new Map(state.oven.detail.cells.map((cell) => [cell.id, cell]));
-    const title = cells.get("title"), burns = cells.get("burns"), fields = cells.get("fields"), frames = cells.get("frames"), progressCell = cells.get("progress"), logCell = cells.get("log"), details = cells.get("field-details");
-    if (![title, burns, fields, frames, progressCell, logCell, details].every(Boolean)) { root.innerHTML = '<div class="empty">Differential Testing Oven layout is incomplete.</div>'; return; }
-    const titleText = String(title.title || state.oven.name || "Differential Testing");
+    const titleText = String(state.oven.name || "Differential Testing");
     if (state.payload.scenarioCatalog?.selectedScenarioId === null && state.payload.scenarioCatalog?.scenarios?.length === 0) {
       root.innerHTML = `<main class="differential-testing-empty-state"><div class="driving-parity-kpi-title-item"><span class="driving-parity-kpi-title">${escapeHtml(titleText)}</span><span class="driving-parity-kpi-title-subtitle"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option selected>No scenarios</option></select></span></span></div><div class="differential-testing-empty-message">No Differential Testing scenarios</div></main>`;
       return;

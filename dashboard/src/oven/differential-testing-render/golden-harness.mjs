@@ -146,8 +146,7 @@ export async function captureDashboardLoadError(error) {
 }
 
 export function ovenLayout() {
-  const detail = JSON.parse(readFileSync(resolve(here, "../../../../ovens/differential-testing/detail.json"), "utf8"));
-  return { id: "differential-testing", name: "Differential Testing", detail: { cells: detail.cells } };
+  return { id: "differential-testing", name: "Differential Testing" };
 }
 
 function emptyCaptures() {
