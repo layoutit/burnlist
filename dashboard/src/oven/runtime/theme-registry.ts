@@ -40,7 +40,17 @@ const checklist: OvenTheme = Object.freeze({
   progressKpiClassName: "driving-parity-kpi-progress",
 });
 
-const themes: Readonly<Record<string, OvenTheme>> = Object.freeze(Object.assign(Object.create(null), { checklist }));
+const streamingDiff: OvenTheme = Object.freeze({
+  view: Object.freeze({}),
+  components: Object.freeze({}),
+  regions: Object.freeze([
+    Object.freeze({ kinds: Object.freeze(["streaming-diff-heading", "diff-card"]), element: "section", className: "streaming-diff-view" }),
+  ]),
+  kpiItemVariants: Object.freeze({}),
+  progressKpiClassName: "",
+});
+
+const themes: Readonly<Record<string, OvenTheme>> = Object.freeze(Object.assign(Object.create(null), { checklist, "streaming-diff": streamingDiff }));
 
 export function getOvenTheme(theme: unknown): OvenTheme | undefined {
   return typeof theme === "string" ? themes[theme] : undefined;

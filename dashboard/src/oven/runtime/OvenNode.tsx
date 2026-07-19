@@ -15,7 +15,7 @@ import { buildLogTableProps } from "./log-table-adapter";
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
 const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "progress-value", "icon", "text", "bind"]);
-const documentStaticKinds = new Set([...staticKinds, "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"]);
+const documentStaticKinds = new Set([...staticKinds, "checklist-burn-panel", "checklist-ledger", "checklist-event-cards", "streaming-diff-heading", "diff-card", "feed-list", "file-diff"]);
 const attrs = (node: OvenNodeDef) => node.attributes ?? {};
 
 export function isStaticOvenNode(node: OvenNodeDef): boolean { return staticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenNode); }

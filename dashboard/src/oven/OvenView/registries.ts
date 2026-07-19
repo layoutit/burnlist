@@ -1,10 +1,12 @@
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { ArrowLeft, ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
 import { DiffCard } from "../DiffCard";
+import { DiffCardList } from "../DiffCardList";
 import { DomainNote } from "../DomainNote";
 import { DomainTabs } from "../DomainTabs";
 import { FeedList } from "../FeedList";
 import { FileDiff } from "../FileDiff";
+import { StreamingDiffHeading } from "../StreamingDiffHeading";
 import { FrameCard } from "../FrameCard";
 import { ImageTriptych } from "../ImageTriptych";
 import { KpiItem } from "../KpiItem";
@@ -73,7 +75,9 @@ export const componentRegistry: Record<string, ComponentType<any>> = Object.free
   ImageTriptych,
   FeedList,
   DiffCard,
+  DiffCardList,
   FileDiff,
+  StreamingDiffHeading,
   Box,
   ChecklistBurnPanel,
   ChecklistEventCards,

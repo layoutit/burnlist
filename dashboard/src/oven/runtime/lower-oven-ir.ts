@@ -20,6 +20,10 @@ const components: Record<string, string> = Object.freeze({
   "checklist-burn-panel": "ChecklistBurnPanel",
   "checklist-ledger": "ChecklistLedger",
   "checklist-event-cards": "ChecklistEventCards",
+  "diff-card": "DiffCardList",
+  "streaming-diff-heading": "StreamingDiffHeading",
+  "feed-list": "FeedList",
+  "file-diff": "FileDiff",
 });
 
 const unsupported = new Set([
@@ -97,6 +101,24 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
   if (["checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) {
     const source = binding(attrs.source, attrs.format);
     if (source) bind.data = source;
+  }
+  if (node.kind === "diff-card") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.cards = source;
+  }
+  if (node.kind === "streaming-diff-heading") {
+    assignLiteralOrPointer(props, bind, "session", attrs.session);
+    assignLiteralOrPointer(props, bind, "backHref", attrs.backHref);
+  }
+  if (node.kind === "feed-list") {
+    for (const name of ["feeds", "error", "loading", "showRepository"]) {
+      const value = node.bindings[name];
+      if (value) bind[name] = value;
+    }
+  }
+  if (node.kind === "file-diff") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.file = source;
   }
   if (node.kind === "section-header") {
     if (typeof attrs.title === "string") props.title = attrs.title;
