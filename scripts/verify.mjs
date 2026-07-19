@@ -82,6 +82,7 @@ const leakPatterns = [
 
 const sourceScanExcludes = [
   ".git/",
+  ".claude/",
   ".local/",
   "build/",
   "dist/",
@@ -89,6 +90,7 @@ const sourceScanExcludes = [
   ".playwright-cli/",
   "notes/burnlists/",
   "output/",
+  "research/",
   "website/node_modules/",
   "website/dist/",
   "website/.astro/",
