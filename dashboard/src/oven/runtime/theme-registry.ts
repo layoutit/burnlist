@@ -51,6 +51,16 @@ const streamingDiff: OvenTheme = Object.freeze({
   progressKpiClassName: "",
 });
 
+const visualParity: OvenTheme = Object.freeze({
+  view: Object.freeze({}),
+  components: Object.freeze({}),
+  regions: Object.freeze([
+    Object.freeze({ kinds: Object.freeze(["verdict-header", "domain-tabs", "metric-tiles", "domain-note", "frame-card"]), element: "section", className: "visual-parity-page" }),
+  ]),
+  kpiItemVariants: Object.freeze({}),
+  progressKpiClassName: "",
+});
+
 const differentialTesting: OvenTheme = Object.freeze({
   view: Object.freeze({
     shellClassName: "shell driving-parity-view",
@@ -98,6 +108,7 @@ const differentialTesting: OvenTheme = Object.freeze({
 const themes: Readonly<Record<string, OvenTheme>> = Object.freeze(Object.assign(Object.create(null), {
   checklist,
   "streaming-diff": streamingDiff,
+  "visual-parity": visualParity,
   "differential-testing": differentialTesting,
 }));
 

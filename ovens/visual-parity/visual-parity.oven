@@ -1,0 +1,20 @@
+<oven id="visual-parity" version="1" contract="burnlist-visual-parity-data@1" theme="visual-parity">
+  <verdict-header>
+    <bind prop="targetPass" source="/verdict/targetPass"/>
+    <bind prop="framesCount" source="/verdict/framesCount"/>
+    <bind prop="error" source="/verdict/error"/>
+  </verdict-header>
+  <domain-tabs id="domain-select" source="/domains" initial-source="/initialDomainId"/>
+  <metric-tiles selection-from="domain-select" source="/byDomain">
+    <bind prop="passed" source="/summary/passed"/>
+    <bind prop="total" source="/summary/total"/>
+    <bind prop="ratio" source="/summary/ratio"/>
+    <bind prop="meanAbsoluteDelta" source="/summary/meanAbsoluteDelta"/>
+    <bind prop="maximumAbsoluteDelta" source="/summary/maximumAbsoluteDelta"/>
+  </metric-tiles>
+  <domain-note selection-from="domain-select" source="/byDomain">
+    <bind prop="isTarget" source="/note/isTarget"/>
+    <bind prop="rationale" source="/note/rationale"/>
+  </domain-note>
+  <frame-card selection-from="domain-select" source="/byDomain"/>
+</oven>

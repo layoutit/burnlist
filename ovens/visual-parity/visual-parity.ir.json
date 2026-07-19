@@ -1,0 +1,274 @@
+{
+  "schema": "burnlist-oven-ir@1",
+  "id": "visual-parity",
+  "version": 1,
+  "contract": "burnlist-visual-parity-data@1",
+  "theme": "visual-parity",
+  "root": [
+    {
+      "kind": "verdict-header",
+      "attributes": {},
+      "bindings": {
+        "targetPass": {
+          "source": "/verdict/targetPass"
+        },
+        "framesCount": {
+          "source": "/verdict/framesCount"
+        },
+        "error": {
+          "source": "/verdict/error"
+        }
+      },
+      "children": [
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "targetPass",
+            "source": "/verdict/targetPass"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 124,
+            "line": 3,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "framesCount",
+            "source": "/verdict/framesCount"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 183,
+            "line": 4,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "error",
+            "source": "/verdict/error"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 244,
+            "line": 5,
+            "column": 5
+          }
+        }
+      ],
+      "source": {
+        "offset": 103,
+        "line": 2,
+        "column": 3
+      }
+    },
+    {
+      "kind": "domain-tabs",
+      "attributes": {
+        "id": "domain-select",
+        "source": "/domains",
+        "initialSource": "/initialDomainId"
+      },
+      "bindings": {},
+      "children": [],
+      "source": {
+        "offset": 311,
+        "line": 7,
+        "column": 3
+      }
+    },
+    {
+      "kind": "metric-tiles",
+      "attributes": {
+        "selectionFrom": "domain-select",
+        "source": "/byDomain"
+      },
+      "bindings": {
+        "passed": {
+          "source": "/summary/passed"
+        },
+        "total": {
+          "source": "/summary/total"
+        },
+        "ratio": {
+          "source": "/summary/ratio"
+        },
+        "meanAbsoluteDelta": {
+          "source": "/summary/meanAbsoluteDelta"
+        },
+        "maximumAbsoluteDelta": {
+          "source": "/summary/maximumAbsoluteDelta"
+        }
+      },
+      "children": [
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "passed",
+            "source": "/summary/passed"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 468,
+            "line": 9,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "total",
+            "source": "/summary/total"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 519,
+            "line": 10,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "ratio",
+            "source": "/summary/ratio"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 568,
+            "line": 11,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "meanAbsoluteDelta",
+            "source": "/summary/meanAbsoluteDelta"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 617,
+            "line": 12,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "maximumAbsoluteDelta",
+            "source": "/summary/maximumAbsoluteDelta"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 690,
+            "line": 13,
+            "column": 5
+          }
+        }
+      ],
+      "source": {
+        "offset": 399,
+        "line": 8,
+        "column": 3
+      }
+    },
+    {
+      "kind": "domain-note",
+      "attributes": {
+        "selectionFrom": "domain-select",
+        "source": "/byDomain"
+      },
+      "bindings": {
+        "isTarget": {
+          "source": "/note/isTarget"
+        },
+        "rationale": {
+          "source": "/note/rationale"
+        }
+      },
+      "children": [
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "isTarget",
+            "source": "/note/isTarget"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 853,
+            "line": 16,
+            "column": 5
+          }
+        },
+        {
+          "kind": "bind",
+          "attributes": {
+            "prop": "rationale",
+            "source": "/note/rationale"
+          },
+          "bindings": {},
+          "children": [],
+          "source": {
+            "offset": 905,
+            "line": 17,
+            "column": 5
+          }
+        }
+      ],
+      "source": {
+        "offset": 785,
+        "line": 15,
+        "column": 3
+      }
+    },
+    {
+      "kind": "frame-card",
+      "attributes": {
+        "selectionFrom": "domain-select",
+        "source": "/byDomain"
+      },
+      "bindings": {},
+      "children": [],
+      "source": {
+        "offset": 974,
+        "line": 19,
+        "column": 3
+      }
+    }
+  ],
+  "controls": [
+    {
+      "kind": "domain-tabs",
+      "id": "domain-select",
+      "source": "/domains",
+      "initialSource": "/initialDomainId"
+    }
+  ],
+  "collections": [],
+  "requirements": {
+    "components": [
+      "domain-note",
+      "domain-tabs",
+      "frame-card",
+      "metric-tiles",
+      "verdict-header"
+    ],
+    "formats": [],
+    "icons": [],
+    "selectors": []
+  }
+}

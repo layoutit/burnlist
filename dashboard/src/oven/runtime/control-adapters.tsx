@@ -1,10 +1,11 @@
 import { FieldToolbar } from "../FieldToolbar/FieldToolbar";
+import { DomainTabs } from "../DomainTabs";
 import { formatRegistry } from "../OvenView/registries";
 import { PaginationBar } from "../PaginationBar/PaginationBar";
 import { ToggleGroup } from "../ToggleGroup/ToggleGroup";
 import { resolvePointer } from "../utils/json-pointer";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
-import { selectCollection, selectMode } from "./oven-selectors";
+import { selectCollection, selectDomain, selectMode } from "./oven-selectors";
 
 type Node = { kind: string; attributes?: Record<string, unknown>; children?: Node[] };
 type Props = { node: Node; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void };
@@ -33,6 +34,11 @@ export function ModeToggleAdapter({ node, state, dispatch }: Props) {
       return <button key={value} type="button" aria-pressed={selected === value} onClick={() => dispatch({ type: "modeSelected", id: controlId, value })}>{label}</button>;
     })}
   </ToggleGroup>;
+}
+
+export function DomainTabsAdapter({ node, state, dispatch }: Props) {
+  const controlId = id(node);
+  return <DomainTabs tabs={resolvePointer(state.payload, String(attrs(node).source ?? "/")) as any[]} activeId={selectDomain(state, controlId) ?? ""} onSelect={(selectedId) => dispatch({ type: "domainSelected", id: controlId, selectedId })} />;
 }
 
 export function FieldToolbarAdapter({ node, ir, state, dispatch }: Props) {
@@ -65,6 +71,7 @@ export function PaginationAdapter({ node, ir, state, dispatch }: Props) {
 /** Generic direct control entry point, including controls not hosted by FieldToolbar. */
 export function ControlAdapter(props: Props) {
   if (props.node.kind === "mode-toggle") return <ModeToggleAdapter {...props} />;
+  if (props.node.kind === "domain-tabs") return <DomainTabsAdapter {...props} />;
   if (props.node.kind === "field-toolbar") return <FieldToolbarAdapter {...props} />;
   if (props.node.kind === "pagination") return <PaginationAdapter {...props} />;
   return null;
