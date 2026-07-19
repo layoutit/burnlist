@@ -31,7 +31,8 @@ function handwritten(component: ReturnType<typeof createElement>) {
 
 test("lowers kpi-strip and kpi-item icon bindings to handwritten markup", () => {
   const def = lower('<kpi-strip aria-label="Summary"><kpi-item heading="Done" source="/value"><icon slot="visual" name="ClipboardList" /></kpi-item></kpi-strip>');
-  assertDomEquivalent(render(def), handwritten(createElement(KpiStrip, { ariaLabel: "Summary" }, createElement(KpiItem, {
+  assertDomEquivalent(render(def), handwritten(createElement(KpiStrip, { ariaLabel: "Summary", className: "driving-parity-kpi-strip has-burns checklist-kpi-strip" }, createElement(KpiItem, {
+    className: "driving-parity-kpi-item driving-parity-kpi-section",
     heading: "Done", value: 7, visual: createElement(ClipboardList, { "aria-hidden": "true", className: "driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" }),
   }))));
 });
@@ -39,6 +40,7 @@ test("lowers kpi-strip and kpi-item icon bindings to handwritten markup", () => 
 test("lowers kpi-item progress visual and bound text value", () => {
   const def = lower('<stack><kpi-item heading="Progress"><progress-donut slot="visual" source="/ratio" format="ratio-to-percent" /><text slot="value" source="/ratio" format="percent" /></kpi-item></stack>');
   const expected = createElement("div", { className: "oven-stack", style: { display: "flex", flexDirection: "column" } }, createElement(KpiItem, {
+    className: "driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress",
     heading: "Progress", visual: createElement(ProgressDonut, { percent: 12.3 }), value: "12.30%",
   }));
   assertDomEquivalent(render(def), renderToStaticMarkup(expected));

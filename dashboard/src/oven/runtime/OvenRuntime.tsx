@@ -1,5 +1,7 @@
 import { createContext, useEffect, useMemo, useReducer } from "react";
-import { OvenNode } from "./OvenNode";
+import { OvenNode, isStaticOvenDocument } from "./OvenNode";
+import { OvenView } from "../OvenView/OvenView";
+import { lowerOvenIr } from "./lower-oven-ir";
 import { useOvenLiveData } from "./oven-live-data";
 import { initOvenState, ovenReducer, type OvenAction, type OvenIr, type OvenState } from "./oven-reducer";
 
@@ -12,5 +14,7 @@ export function OvenRuntime({ ir, initialPayload, payload }: { ir: OvenIr & { id
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });
   }, [payload]);
   const value = useMemo(() => ({ state, dispatch }), [state, dispatch]);
-  return <OvenRuntimeContext.Provider value={value}><>{(ir.root ?? []).map((node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />)}</></OvenRuntimeContext.Provider>;
+  const root = ir.root ?? [];
+  const staticView = root.every(isStaticOvenDocument) ? <OvenView def={lowerOvenIr(ir)} payload={state.payload as any} /> : null;
+  return <OvenRuntimeContext.Provider value={value}>{staticView ?? <>{root.map((node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />)}</>}</OvenRuntimeContext.Provider>;
 }

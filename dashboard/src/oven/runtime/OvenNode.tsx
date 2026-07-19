@@ -14,10 +14,12 @@ import { buildLogTableProps } from "./log-table-adapter";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
-const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "checklist-progress-value", "icon", "text", "bind"]);
+const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "progress-value", "icon", "text", "bind"]);
+const documentStaticKinds = new Set([...staticKinds, "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"]);
 const attrs = (node: OvenNodeDef) => node.attributes ?? {};
 
-function isStatic(node: OvenNodeDef): boolean { return staticKinds.has(node.kind) && (node.children ?? []).every(isStatic); }
+export function isStaticOvenNode(node: OvenNodeDef): boolean { return staticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenNode); }
+export function isStaticOvenDocument(node: OvenNodeDef): boolean { return documentStaticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenDocument); }
 function scopedNode(node: OvenNodeDef): OvenNodeDef {
   const pointer = (source: unknown) => typeof source !== "string" ? source : source === "@item" ? "/__ovenItem" : source.startsWith("@item/") ? `/__ovenItem${source.slice(5)}` : source.startsWith("/") || source === "" ? `/__ovenRoot${source || "/"}` : source;
   return { ...node, attributes: Object.fromEntries(Object.entries(attrs(node)).map(([key, value]) => [key, key === "source" ? pointer(value) : value])), bindings: Object.fromEntries(Object.entries(node.bindings ?? {}).map(([key, value]) => [key, value && typeof value === "object" ? { ...(value as object), source: pointer((value as { source?: unknown }).source) } : value])), children: (node.children ?? []).map(scopedNode) };
@@ -37,7 +39,7 @@ function layoutStyle(node: OvenNodeDef): Record<string, string> {
 
 /** Trusted dispatcher: static IR is lowered, while the closed interactive vocabulary uses adapters. */
 export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: OvenNodeProps) {
-  if (isStatic(node)) return <Fragment key={path}>{staticView(node, state.payload, item)}</Fragment>;
+  if (isStaticOvenNode(node)) return <Fragment key={path}>{staticView(node, state.payload, item)}</Fragment>;
   if (node.kind === "switch") {
     const selected = selectMode(state, String(attrs(node).modeFrom ?? ""));
     const branch = (node.children ?? []).find((child) => child.kind === "case" && attrs(child).value === selected) ?? (node.children ?? []).find((child) => child.kind === "default");

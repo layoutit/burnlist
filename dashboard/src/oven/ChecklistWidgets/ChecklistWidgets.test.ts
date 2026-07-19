@@ -31,7 +31,7 @@ test("box lowering preserves element, class, id, text, and children", () => {
 });
 
 test("checklist declarative vocabulary and passthrough attributes compile", () => {
-  const source = '<oven id="fragment" version="1" contract="checklist-progress@1" theme="checklist"><box element="div" class="shell"><kpi-strip class="strip" title="summary"><kpi-item class="item" title="detail" heading="Progress"><checklist-progress-value slot="value"><bind prop="done" source="/progress/done" /><bind prop="total" source="/progress/total" /><bind prop="percent" source="/progress/percent" /></checklist-progress-value></kpi-item></kpi-strip><section-header class="head" title="Events" source="/events" /><log-table class="table" title="ledger" source="/ledger"><column label="Event" source="@item/event" /></log-table><checklist-burn-panel source="/raw" /><checklist-ledger source="/raw" /><checklist-event-cards source="/raw" /></box></oven>';
+  const source = '<oven id="fragment" version="1" contract="checklist-progress@1" theme="checklist"><box element="div" class="shell"><kpi-strip class="strip" title="summary"><kpi-item class="item" title="detail" heading="Progress"><progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/></kpi-item></kpi-strip><section-header class="head" title="Events" source="/events" /><log-table class="table" title="ledger" source="/ledger"><column label="Event" source="@item/event" /></log-table><checklist-burn-panel source="/raw" /><checklist-ledger source="/raw" /><checklist-event-cards source="/raw" /></box></oven>';
   const result = compileOven(source);
   assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
 });

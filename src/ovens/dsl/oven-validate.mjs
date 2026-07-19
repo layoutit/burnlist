@@ -24,10 +24,13 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
       if (ints.has(key) && (!/^\d+$/.test(value) || Number(value) < 1 || (key === "refresh-seconds" && Number(value) > 3600) || (key === "columns" && Number(value) > 24))) add(d, "SCALAR_INTEGER", `${key} must be a valid positive integer`, node, key);
       if (["optional", "default"].includes(key) && !["true", "false"].includes(value)) add(d, "SCALAR_BOOLEAN", `${key} must be true or false`, node, key);
       if (["source", "item-key", "requires-source", "initial-source"].includes(key) && !pointer(value, itemScope || node.name === "column")) add(d, "SCALAR_POINTER", `${key} must be an RFC 6901 pointer${itemScope || node.name === "column" ? " or @item pointer" : ""}`, node, key);
+      if (["title", "value", "done", "total", "percent"].includes(key) && value.startsWith("/") && !pointer(value, false)) add(d, "SCALAR_POINTER", `${key} must be an RFC 6901 pointer when it starts with /`, node, key);
     }
     if (a.source?.startsWith("@item") && !itemScope && node.name !== "column") add(d, "SCALAR_ITEM_SCOPE", "@item may only be used in an item scope", node, "source");
     if (a.format && !REGISTRY.formats.has(a.format)) add(d, "REGISTRY_FORMAT", `Unknown format ${a.format}`, node, "format");
     if (node.name === "icon" && !REGISTRY.icons.has(a.name)) add(d, "REGISTRY_ICON", `Unknown icon ${a.name}`, node, "name");
+    if (node.name === "kpi-item" && a.icon && !REGISTRY.icons.has(a.icon)) add(d, "REGISTRY_ICON", `Unknown icon ${a.icon}`, node, "icon");
+    if (node.name === "kpi-item" && a.variant && a.variant !== "current") add(d, "SCALAR_VARIANT", "kpi-item variant must be current", node, "variant");
     if (node.name === "oven") { if (!REGISTRY.themes.has(a.theme)) add(d, "REGISTRY_THEME", `Unknown theme ${a.theme}`, node, "theme"); if (!REGISTRY.contracts.has(a.contract)) add(d, "REGISTRY_CONTRACT", `Unknown contract ${a.contract}`, node, "contract"); if (a.version !== "1") add(d, "SCALAR_VERSION", "Only oven version 1 is supported", node, "version"); }
     if (node.name === "box" && !["div", "section", "main", "span"].includes(a.element)) add(d, "SCALAR_ELEMENT", "box element must be div, section, main, or span", node, "element");
     if (node.name === "sort-toggle" && !REGISTRY.sorts.has(a.key)) add(d, "REGISTRY_SORT", `Unknown sort ${a.key}`, node, "key");

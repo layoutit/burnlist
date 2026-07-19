@@ -43,6 +43,7 @@ function resolveCell(cell: CellDef, payload: JsonValue): ReactElement {
 }
 
 function resolveSection(section: OvenViewDef["sections"][number], payload: JsonValue): ReactElement {
+  if (section.element === "fragment") return createElement(Fragment, { key: section.key }, section.text, ...section.cells.map((cell) => resolveCell(cell, payload)));
   const element = section.element ?? "section";
   const props: Record<string, unknown> = { className: section.className, ...section.props, key: section.key };
   return createElement(element, props, section.text, ...section.cells.map((cell) => resolveCell(cell, payload)));
