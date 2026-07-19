@@ -11,6 +11,14 @@ import { selectCollection, selectMode, selectRefreshStatus } from "./oven-select
 type Node = { kind: string; attributes?: Record<string, unknown>; children?: Node[] };
 const attrs = (node: Node) => node.attributes ?? {};
 
+function nodes(items: Node[] = []): Node[] { return items.flatMap((item) => [item, ...nodes(item.children)]); }
+
+function collectionControlId(ir: OvenIr, collectionId: string, name: string): string {
+  const collection = nodes(ir.root as Node[] ?? []).find((item) => item.kind === "collection" && attrs(item).id === collectionId);
+  const value = collection ? attrs(collection)[name] : ir.collections.find((item) => item.id === collectionId)?.[name];
+  return typeof value === "string" ? value : "";
+}
+
 function bind(node: Node, prop: string, payload: unknown): unknown {
   const child = (node.children ?? []).find((item) => item.kind === "bind" && item.attributes?.prop === prop);
   if (!child || typeof child.attributes?.source !== "string") return undefined;
@@ -24,7 +32,7 @@ export function WidgetAdapter({ node, ir, state }: { node: Node; ir: OvenIr; sta
     const collectionId = String(attrs(node).collectionFrom ?? "");
     const collection = selectCollection(state, ir, collectionId, resolvePointer);
     const mode = selectMode(state, String(attrs(node).modeFrom ?? "")) ?? "current";
-    return <HybridFieldList fields={collection.pageItems as any[]} chartMode={mode} sort={state.controls[String(ir.collections.find((item) => item.id === collectionId)?.sortFrom ?? "")] === true ? "changed" : "default"}
+    return <HybridFieldList fields={collection.pageItems as any[]} chartMode={mode} sort={state.controls[collectionControlId(ir, collectionId, "sortFrom")] === true ? "changed" : "default"}
       telemetryByField={bind(node, "telemetryByField", state.payload) as any} telemetryAvailability={bind(node, "telemetryAvailability", state.payload) as any} />;
   }
   return null;

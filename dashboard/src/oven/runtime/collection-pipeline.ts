@@ -36,6 +36,20 @@ function comparator(contract: string, control: ActiveControl): Comparator | unde
   return key ? getComparator(contract, key) : undefined;
 }
 
+export function attachTransitionTelemetry(items: unknown[], telemetry: unknown): unknown[] {
+  if (!Array.isArray(telemetry)) return items;
+  const byId = new Map(telemetry.flatMap((item) => item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string"
+    ? [[String((item as Record<string, unknown>).id), item] as const]
+    : []));
+  if (byId.size === 0) return items;
+  return items.map((item) => {
+    if (!item || typeof item !== "object") return item;
+    const value = item as Record<string, unknown>;
+    const detail = typeof value.id === "string" ? byId.get(value.id) : undefined;
+    return detail === undefined ? item : { ...value, transitionTelemetry: detail };
+  });
+}
+
 /** Runs source -> search -> registered filter -> stable registered sort. Paging is selector-owned. */
 export function runCollection(items: unknown[], options: CollectionPipelineOptions, resolvePointer: Pointer): unknown[] {
   let result = search(items.slice(), options.query ?? "", fields(options.matchFields), resolvePointer);

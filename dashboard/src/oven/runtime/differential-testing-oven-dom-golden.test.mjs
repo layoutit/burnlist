@@ -8,7 +8,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import {
+  differentialTestingAllPassingPayload,
+  differentialTestingComparableNoChangedPayload,
+  differentialTestingComparableTelemetryPayload,
   differentialTestingEmptyPayload,
+  differentialTestingIncomparableTelemetryPayload,
+  differentialTestingPaginatedPayload,
   differentialTestingPayload,
 } from "../../../../ovens/differential-testing/renderer/golden-harness.mjs";
 
@@ -23,6 +28,13 @@ const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
 const states = [
   { name: "dt-empty", payload: differentialTestingEmptyPayload },
   { name: "dt-main", payload: differentialTestingPayload },
+  { name: "dt-progress-mode", payload: differentialTestingPayload, controls: { "progress-mode": "progress" } },
+  { name: "dt-chart-current-failed", payload: differentialTestingPayload, controls: { "value-mode": "current", "progress-mode": "failed" } },
+  { name: "dt-no-match", payload: differentialTestingAllPassingPayload, controls: { "failed-filter": true } },
+  { name: "dt-paginated", payload: differentialTestingPaginatedPayload },
+  { name: "dt-telemetry-incomparable", payload: differentialTestingIncomparableTelemetryPayload },
+  { name: "dt-comparable-telemetry", payload: differentialTestingComparableTelemetryPayload },
+  { name: "dt-comparable-no-changed", payload: differentialTestingComparableNoChangedPayload },
 ];
 
 function deterministicRender(render) {
@@ -75,6 +87,7 @@ test("DT oven equals the frozen normalized DOM states", async () => {
       const markup = deterministicRender(() => renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,
         payload: adaptDifferentialTesting(state.payload()),
+        controls: state.controls,
       })));
       const actual = serializeCanonical(normalize(parseHtml(markup)));
       const golden = await readFile(`ovens/differential-testing/renderer/goldens/${state.name}.html`, "utf8");

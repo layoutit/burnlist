@@ -1,5 +1,5 @@
 import { resolvePointer } from "../utils/json-pointer";
-import { runCollection } from "./collection-pipeline";
+import { attachTransitionTelemetry, runCollection } from "./collection-pipeline";
 
 type Control = Record<string, unknown> & { id: string; kind: string };
 type Collection = Record<string, unknown> & { id: string; pageSize: number };
@@ -13,6 +13,7 @@ export type OvenState = {
   controls: Record<string, string | boolean>;
   collections: Record<string, { pageIndex: number; pageSize: number }>;
 };
+export type OvenControlSeed = Record<string, string | boolean>;
 export type OvenAction =
   | { type: "payloadRequested" }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
@@ -42,7 +43,7 @@ function collectionItems(payload: unknown, collection: Record<string, unknown>):
   return Array.isArray(value) ? value : [];
 }
 function pipelineItems(ir: OvenIr, payload: unknown, controls: OvenState["controls"], collection: Record<string, unknown>): unknown[] {
-  const source = collectionItems(payload, collection);
+  const source = attachTransitionTelemetry(collectionItems(payload, collection), resolvePointer(payload, "/telemetry/fields"));
   const search = typeof collection.searchFrom === "string" ? ir.controls.find((item) => item.id === collection.searchFrom) : undefined;
   const filter = typeof collection.filterFrom === "string" ? ir.controls.find((item) => item.id === collection.filterFrom) : undefined;
   const sort = typeof collection.sortFrom === "string" ? ir.controls.find((item) => item.id === collection.sortFrom) : undefined;
@@ -94,10 +95,10 @@ function resetConsumers(state: OvenState, ir: OvenIr, controlId: string): OvenSt
   return next;
 }
 
-export function initOvenState(ir: OvenIr, payload: unknown = undefined): OvenState {
+export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls: OvenControlSeed = {}): OvenState {
   return {
     payload, payloadRevision: 0, refresh: { phase: "idle", error: undefined, generation: 0 },
-    controls: normalizedControls(ir, payload),
+    controls: normalizedControls(ir, payload, controls),
     collections: Object.fromEntries(ir.collections.map((item) => [item.id, { pageIndex: 0, pageSize: Math.max(1, Number(descriptor(ir, item).pageSize) || 1) }])),
   };
 }

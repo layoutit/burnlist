@@ -62,6 +62,7 @@ export const verificationTestFiles = [
   "dashboard/src/components/ChecklistDashboard/ChecklistDashboard.test.mjs",
   "dashboard/src/components/ChecklistDashboard/checklist-dom-golden.test.mjs",
   "dashboard/src/components/ChecklistDashboard/checklist-adapter.test.mjs",
+  "dashboard/src/lib/differential-testing-adapter.test.mjs",
   "dashboard/src/oven/runtime/checklist-oven-golden.test.mjs",
   "dashboard/src/oven/runtime/differential-testing-oven-dom-golden.test.mjs",
   "dashboard/src/lib/streaming-diff.test.mjs",

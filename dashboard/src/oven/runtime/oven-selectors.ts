@@ -1,4 +1,4 @@
-import { runCollection } from "./collection-pipeline";
+import { attachTransitionTelemetry, runCollection } from "./collection-pipeline";
 import type { OvenIr, OvenState } from "./oven-reducer";
 
 type Pointer = (payload: unknown, pointer: string) => unknown;
@@ -33,7 +33,7 @@ export function selectCollection(state: OvenState, ir: OvenIr, collectionId: str
   if (!base) throw new Error(`Unknown collection: ${collectionId}`);
   const collection = descriptor(ir, base as Descriptor);
   const source = resolvePointer(state.payload, typeof collection.source === "string" ? collection.source : "/");
-  const items = Array.isArray(source) ? source : [];
+  const items = attachTransitionTelemetry(Array.isArray(source) ? source : [], resolvePointer(state.payload, "/telemetry/fields"));
   const search = control(ir, collection.searchFrom);
   const query = search ? String(state.controls[search.id] ?? "") : "";
   const visible = runCollection(items, {

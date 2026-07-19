@@ -28,6 +28,13 @@ test("reducer initializes descriptors and resets only consuming collection contr
   assert.deepEqual(state.collections.view, { pageIndex: 0, pageSize: 3 });
 });
 
+test("initial control seeds override valid defaults and ignore invalid values", () => {
+  const state = initOvenState(ir, payload, { mode: "b", filter: true, sort: false, domain: "one", unknown: true, search: true });
+  assert.deepEqual(state.controls, { mode: "b", search: "", sort: false, filter: true, domain: "one" });
+  const unavailable = initOvenState(ir, { ...payload, available: false }, { sort: true });
+  assert.equal(unavailable.controls.sort, false);
+});
+
 test("payload acceptance clamps pages and retains valid controls while dropping unavailable values", () => {
   let state = initOvenState(ir, payload);
   state = ovenReducer(state, { type: "modeSelected", id: "mode", value: "b" }, ir);
