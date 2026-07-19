@@ -1,4 +1,6 @@
 import { DifferentialEmptyState } from "../DifferentialEmptyState/DifferentialEmptyState";
+import { FieldMiniChart } from "../FieldMiniChart";
+import type { FieldMiniChartField } from "../FieldMiniChart";
 import { DifferentialKpiStrip } from "../DifferentialKpiStrip/DifferentialKpiStrip";
 import { DifferentialLogTable } from "../DifferentialLogTable/DifferentialLogTable";
 import { DifferentialFrameDeltaChart, DifferentialProgressChart } from "../DifferentialProgressChart";
@@ -75,10 +77,17 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
   const progressNode = root.find((node) => node.kind === "progress-chart" || node.kind === "frame-delta-chart");
   if (!progressNode) throw new Error("Differential Testing theme requires a chart node");
 
-  const chart = progressNode.kind === "frame-delta-chart"
-    ? <DifferentialFrameDeltaChart metrics={source(progressNode, state.payload) as any} {...componentDefaults(ir, progressNode.kind) as any} />
-    : <DifferentialProgressChart history={source(progressNode, state.payload) as any[]} {...componentDefaults(ir, progressNode.kind) as any} />;
   const payload = state.payload as Record<string, unknown>;
+  const progressMode = selectMode(state, "progress-mode") ?? "delta";
+  const primaryChartTitle = typeof payload.primaryChartTitle === "string" ? payload.primaryChartTitle : "";
+  const primaryChartField = payload.primaryChartField as FieldMiniChartField | undefined;
+  const chart = primaryChartField
+    ? <div id="progress-chart" className="chart hybrid-chart" role="img" aria-label={`${primaryChartTitle} over time`}>
+      <FieldMiniChart field={primaryChartField} showFrameLabels chartMode={progressMode === "delta" ? "delta" : "value"} />
+    </div>
+    : progressNode.kind === "frame-delta-chart"
+      ? <DifferentialFrameDeltaChart metrics={source(progressNode, state.payload) as any} {...componentDefaults(ir, progressNode.kind) as any} />
+      : <DifferentialProgressChart history={source(progressNode, state.payload) as any[]} {...componentDefaults(ir, progressNode.kind) as any} />;
   const fieldsMetric = payload.summary && typeof payload.summary === "object"
     ? (payload.summary as { fields?: { total?: unknown } }).fields
     : undefined;
@@ -87,7 +96,7 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
   return <>
     <DifferentialTestingDetail
       payload={payload}
-      progressMode={selectMode(state, "progress-mode") ?? "delta"}
+      progressMode={progressMode}
       refresh={<RefreshStatusChip refresh={source(refreshNode, state.payload) as any} clientStatus={refreshPhase === "idle" ? null : refreshPhase} />}
       kpis={<DifferentialKpiStrip payload={source(kpiNode, state.payload) as any} />}
       chart={chart}

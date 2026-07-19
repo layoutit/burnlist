@@ -24,3 +24,13 @@ Missing, malformed, partially written, contradictory, or unactionable evidence i
 ## Execution Boundary
 
 The Oven is read-only. Project tooling runs traces and atomically publishes the report. Burnlist only validates and displays it.
+
+## Rendering
+
+Performance Tracing is authored as the clean semantic
+`ovens/performance-tracing/performance-tracing.oven`. It renders through the
+React OvenRuntime engine while reusing the differential-testing theme,
+components, formats, and adapter. The DOM-golden gate at
+`dashboard/src/oven/runtime/performance-tracing-oven-dom-golden.test.mjs`
+verifies the rendered PT main state is byte-for-byte identical to the frozen
+`pt-main` golden.

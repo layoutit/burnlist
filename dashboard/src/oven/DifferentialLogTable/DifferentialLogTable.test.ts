@@ -95,6 +95,8 @@ test("DifferentialLogTable matches every full-dashboard golden log slice", async
     ["dt-chart-current-failed", harness.differentialTestingPayload],
     ["dt-progress-mode", harness.differentialTestingPayload],
     ["pt-main", harness.performanceTracingPayload],
+    ["pt-progress", harness.performanceTracingPayload],
+    ["pt-failed", harness.performanceTracingPayload],
   ]);
 
   withGoldenEnvironment(() => {
