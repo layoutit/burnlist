@@ -13,6 +13,7 @@ import {
   differentialTestingPayload,
   differentialTestingEmptyPayload,
   differentialTestingIncomparableTelemetryPayload,
+  differentialTestingMultiScenarioPayload,
   differentialTestingPaginatedMidPayload,
   differentialTestingPaginatedPayload,
   ovenLayout,
@@ -101,6 +102,7 @@ function dispatchRowExpand(root) {
 
 const states = [
   ["dt-main", dtOven, base, {}],
+  ["dt-scenario-multi", dtOven, differentialTestingMultiScenarioPayload(), {}],
   ["dt-row-expanded", dtOven, base, {}, dispatchRowExpand],
   ["dt-empty", dtOven, differentialTestingEmptyPayload(), {}],
   ["dt-server-paged", dtOven, base, { fieldPage: serverPage }],
@@ -172,6 +174,9 @@ test("DOM goldens contain the expected structural markers", async () => {
   assert.match(dtMain, /<span class="total">[1-9][0-9]*<\/span>/u);
   const realLogRows = dtMain.match(/<article class="log-row[^>]*>/gu)?.filter((row) => !row.includes("log-placeholder-row")) ?? [];
   assert.ok(realLogRows.length > 0, "dt-main must contain a real log row");
+  const multiSelector = captured.get("dt-scenario-multi").html.match(/<select id="differential-scenario-selector"[^>]*>.*?<\/select>/u)?.[0] ?? "";
+  assert.doesNotMatch(multiSelector, / disabled/u);
+  assert.equal((multiSelector.match(/<option\b/gu) ?? []).length, 2);
   assert.match(captured.get("dt-empty").html, /No Differential Testing scenarios/u);
   const serverHtml = captured.get("dt-server-paged").html;
   const serverStatus = serverHtml.match(/<span class="page-status" id="driving-parity-page-status">([^<]+)<\/span>/u)?.[1] ?? "";

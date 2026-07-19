@@ -4,11 +4,17 @@ import type { OvenAction } from "./oven-reducer";
 type FetchLike = (input: string, init: RequestInit) => Promise<{ ok: boolean; status: number; headers: { get(name: string): string | null }; json(): Promise<unknown> }>;
 export type OvenPoller = { refresh(): void; stop(): void };
 
-export function ovenDataUrl(id: string, search = typeof window === "undefined" ? "" : window.location.search): string {
-  const source = new URLSearchParams(search), target = new URLSearchParams();
-  for (const key of ["repoKey", "scenario"]) if (source.has(key)) target.set(key, source.get(key)!);
+export function scenarioSearch(currentSearch = typeof window === "undefined" ? "" : window.location.search, scenario?: string): string {
+  const source = new URLSearchParams(currentSearch), target = new URLSearchParams();
+  if (source.has("repoKey")) target.set("repoKey", source.get("repoKey")!);
+  const selected = scenario ?? (source.has("scenario") ? source.get("scenario")! : undefined);
+  if (selected !== undefined) target.set("scenario", selected);
   const query = target.toString();
-  return `/api/oven-data/${encodeURIComponent(id)}${query ? `?${query}` : ""}`;
+  return query ? `?${query}` : "";
+}
+
+export function ovenDataUrl(id: string, search = typeof window === "undefined" ? "" : window.location.search): string {
+  return `/api/oven-data/${encodeURIComponent(id)}${scenarioSearch(search)}`;
 }
 
 /** Poll coordinator kept outside React so request ordering is independently testable. */
@@ -35,15 +41,15 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
   return { refresh, stop: () => { stopped = true; } };
 }
 
-export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void) {
+export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void, scenario: string | undefined = undefined) {
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
   useEffect(() => {
     const seconds = Number(refreshSeconds);
     if (!id || !Number.isFinite(seconds) || seconds <= 0) return undefined;
-    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action) });
+    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search: scenarioSearch(undefined, scenario) });
     poller.refresh();
     const timer = setInterval(() => poller.refresh(), seconds * 1000);
     return () => { clearInterval(timer); poller.stop(); };
-  }, [id, refreshSeconds]);
+  }, [id, refreshSeconds, scenario]);
 }

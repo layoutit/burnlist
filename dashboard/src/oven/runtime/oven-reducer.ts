@@ -10,6 +10,7 @@ export type OvenServerPage = { page: number; pageSize: number; pageCount: number
 export type OvenState = {
   payload: unknown;
   payloadRevision: number;
+  scenario?: string; // User request key; accepted payloads remain the selector display authority.
   refresh: { phase: RefreshPhase; error: unknown; generation: number };
   controls: Record<string, string | boolean>;
   collections: Record<string, { pageIndex: number; pageSize: number; serverPage?: OvenServerPage }>;
@@ -21,6 +22,7 @@ export type OvenAction =
   | { type: "payloadRequested" }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
   | { type: "payloadRejected"; error: unknown; generation: number }
+  | { type: "scenarioSelected"; scenarioId: string }
   | { type: "modeSelected"; id: string; value: string }
   | { type: "queryChanged"; id: string; query: string }
   | { type: "toggleChanged"; id: string; active: boolean }
@@ -121,7 +123,7 @@ export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls
     }];
   }));
   return {
-    payload, payloadRevision: 0, refresh: { phase: "idle", error: undefined, generation: 0 },
+    payload, payloadRevision: 0, scenario: undefined, refresh: { phase: "idle", error: undefined, generation: 0 },
     controls: normalizedControls(ir, payload, controls, serverControlIds(ir, collections)),
     collections,
     expanded: new Set(),
@@ -145,6 +147,7 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
     }
     case "payloadRejected":
       return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "failed", error: action.error } };
+    case "scenarioSelected": return { ...state, scenario: action.scenarioId };
     case "modeSelected": return { ...state, controls: { ...state.controls, [action.id]: action.value } };
     case "queryChanged": return { ...state, controls: { ...state.controls, [action.id]: action.query }, collections: resetConsumers(state, ir, action.id) };
     case "toggleChanged": return { ...state, controls: { ...state.controls, [action.id]: action.active }, collections: resetConsumers(state, ir, action.id) };
@@ -157,6 +160,10 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
       if (expanded.has(action.key)) expanded.delete(action.key);
       else expanded.add(action.key);
       return { ...state, expanded };
+    }
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
     }
   }
 }

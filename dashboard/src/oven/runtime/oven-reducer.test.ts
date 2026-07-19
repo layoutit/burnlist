@@ -68,6 +68,30 @@ test("direct payload acceptance updates a supplied runtime payload", () => {
   assert.equal(state.payloadRevision, 1);
 });
 
+test("scenario selection is retained across every non-selection reducer action", () => {
+  const initial = initOvenState(ir, payload);
+  assert.equal(initial.scenario, undefined);
+  let state = ovenReducer(initial, { type: "scenarioSelected", scenarioId: "selected" }, ir);
+  assert.equal(state.scenario, "selected");
+  const actions = [
+    { type: "payloadRequested" } as const,
+    { type: "payloadAccepted", payload } as const,
+    { type: "payloadRejected", error: "offline", generation: 1 } as const,
+    { type: "modeSelected", id: "mode", value: "b" } as const,
+    { type: "queryChanged", id: "search", query: "x" } as const,
+    { type: "toggleChanged", id: "filter", active: true } as const,
+    { type: "domainSelected", id: "domain", selectedId: "one" } as const,
+    { type: "pagePrevious", collectionId: "view" } as const,
+    { type: "pageNext", collectionId: "view" } as const,
+    { type: "pageSizeChanged", collectionId: "view", pageSize: 3 } as const,
+    { type: "toggleExpanded", key: "position" } as const,
+  ];
+  for (const action of actions) {
+    state = ovenReducer(state, action, ir);
+    assert.equal(state.scenario, "selected", action.type);
+  }
+});
+
 test("reducer toggles independently expanded field keys with immutable sets", () => {
   const initial = initOvenState(ir, payload);
   const position = ovenReducer(initial, { type: "toggleExpanded", key: "position" }, ir);

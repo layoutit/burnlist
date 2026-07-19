@@ -104,7 +104,7 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
       payload={payload}
       progressMode={progressMode}
       refresh={<RefreshStatusChip refresh={source(refreshNode, state.payload) as any} clientStatus={refreshPhase === "idle" ? null : refreshPhase} />}
-      kpis={<DifferentialKpiStrip payload={source(kpiNode, state.payload) as any} />}
+      kpis={<DifferentialKpiStrip payload={source(kpiNode, state.payload) as any} onScenarioChange={(scenarioId) => dispatch({ type: "scenarioSelected", scenarioId })} />}
       chart={chart}
       log={<DifferentialLogTable entries={source(logNode, state.payload) as any[]} />}
     />

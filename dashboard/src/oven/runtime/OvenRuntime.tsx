@@ -32,7 +32,7 @@ export function OvenRuntime({ ir, initialPayload, payload, controls, pages, init
     const initialState = initOvenState(ir, nextPayload, controls, pages);
     return initialAction ? ovenReducer(initialState, initialAction, ir) : initialState;
   });
-  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch);
+  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, state.scenario);
   useEffect(() => {
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });
   }, [payload]);

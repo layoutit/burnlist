@@ -268,6 +268,14 @@ export function differentialTestingPayload() {
   return base;
 }
 
+export function differentialTestingMultiScenarioPayload() {
+  const payload = differentialTestingPayload();
+  const first = payload.scenarioCatalog.scenarios[0];
+  payload.scenarioCatalog.scenarios.push({ ...first, id: "0123456789abcdef", label: "second-fixture" });
+  assertDifferentialTestingData(payload);
+  return payload;
+}
+
 export function differentialTestingEmptyPayload() {
   const payload = buildPayload(...emptyCaptures());
   assertDifferentialTestingData(payload);

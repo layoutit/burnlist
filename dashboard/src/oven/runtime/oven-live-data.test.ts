@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createOvenPoller, ovenDataUrl } from "./oven-live-data";
+import { createOvenPoller, ovenDataUrl, scenarioSearch } from "./oven-live-data";
 import type { OvenAction } from "./oven-reducer";
 
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
@@ -25,4 +25,24 @@ test("oven poller reports failures without inventing an accepted replacement", a
   poller.refresh(); await Promise.resolve(); await Promise.resolve();
   assert.equal(actions.some((action) => action.type === "payloadAccepted"), false);
   assert.equal(actions.some((action) => action.type === "payloadRejected"), true);
+});
+
+test("scenario selection rekeys poller requests while retaining the repository key", async () => {
+  const urls: string[] = [], actions: OvenAction[] = [];
+  const fetchImpl = async (url: string) => { urls.push(url); return response({}); };
+  for (const scenario of ["A", "B"]) {
+    const poller = createOvenPoller({
+      id: "differential-testing",
+      dispatch: (action) => actions.push(action),
+      fetchImpl,
+      search: scenarioSearch("?repoKey=repo-1&scenario=old&ignored=x", scenario),
+    });
+    poller.refresh();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+  assert.deepEqual(urls, [
+    "/api/oven-data/differential-testing?repoKey=repo-1&scenario=A",
+    "/api/oven-data/differential-testing?repoKey=repo-1&scenario=B",
+  ]);
+  assert.equal(ovenDataUrl("differential-testing", scenarioSearch("", "X")), "/api/oven-data/differential-testing?scenario=X");
 });

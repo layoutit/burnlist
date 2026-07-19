@@ -84,6 +84,7 @@ test("DifferentialLogTable matches every full-dashboard golden log slice", async
   const harness = await import(goldenHarnessPath);
   const states = new Map<string, () => { log: DifferentialLogEntry[] }>([
     ["dt-main", harness.differentialTestingPayload],
+    ["dt-scenario-multi", harness.differentialTestingMultiScenarioPayload],
     ["dt-row-expanded", harness.differentialTestingPayload],
     ["dt-server-paged", harness.differentialTestingPayload],
     ["dt-sorted-filtered-paged", harness.differentialTestingPayload],
