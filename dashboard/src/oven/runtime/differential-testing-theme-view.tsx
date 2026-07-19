@@ -64,6 +64,7 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
     const message = String(error && typeof error === "object" && "message" in error ? error.message : error);
     return <div className="empty">{message}</div>;
   }
+  if (state.payload === undefined) return <div className="empty">Loading…</div>;
 
   const root = activeNodes(ir.root as Node[] ?? [], state);
   const empty = root.find((node) => node.kind === "differential-empty-state");

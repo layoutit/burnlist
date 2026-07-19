@@ -3,6 +3,7 @@ export { NewOvenPage, RunBurnPage } from "./BurnOvens";
 export { ChecklistDashboard, ChecklistOvenView } from "./ChecklistDashboard";
 export { DashboardError } from "./DashboardError";
 export { DifferentialTestingPage } from "./DifferentialTesting";
+export { DifferentialTestingOvenPage, PerformanceTracingOvenPage } from "./DifferentialTestingOven";
 export { EmptyState } from "./EmptyState";
 export { FILTERS, Filters } from "./Filters";
 export { ProjectGroup } from "./ProjectGroup";

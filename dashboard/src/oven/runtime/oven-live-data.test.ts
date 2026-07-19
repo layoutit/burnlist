@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "node:test";
+import { dtAdapt, ptAdapt } from "../../components/DifferentialTestingOven/DifferentialTestingOven";
+import { adaptDifferentialTesting } from "../../lib/differential-testing-adapter";
+import { adaptPerformanceTracingReport } from "../../lib/performance-tracing.mjs";
 import { createOvenPoller, ovenDataUrl, scenarioSearch } from "./oven-live-data";
 import type { OvenAction } from "./oven-reducer";
 
@@ -45,4 +50,33 @@ test("scenario selection rekeys poller requests while retaining the repository k
     "/api/oven-data/differential-testing?repoKey=repo-1&scenario=B",
   ]);
   assert.equal(ovenDataUrl("differential-testing", scenarioSearch("", "X")), "/api/oven-data/differential-testing?scenario=X");
+});
+
+test("oven poller adapts DT and PT envelopes while unadapted polls retain raw bodies", async () => {
+  const fixture = await import(pathToFileURL(resolve(process.cwd(), "ovens/differential-testing/renderer/golden-harness.mjs")).href);
+  const dtReport = fixture.differentialTestingPayload();
+  const ptReport = {
+    runId: "trace-fixture", generatedAt: "2026-07-15T12:00:00.000Z", status: "pass",
+    scenario: { id: "prepared" }, metrics: { p95FrameMs: 20 }, budgets: { p95FrameMs: 25 },
+    runs: [{ frameTiming: { series: [{ frame: 0, frameMs: 20 }] } }],
+  };
+  const envelopes = [
+    { ovenId: "differential-testing", path: "/api/oven-data/differential-testing", scenarioId: "fixture", payload: dtReport },
+    { ovenId: "performance-tracing", path: "/api/oven-data/performance-tracing", payload: ptReport, validated: true },
+  ];
+  const expected = [adaptDifferentialTesting(dtReport), adaptDifferentialTesting(adaptPerformanceTracingReport(ptReport))];
+
+  for (const [index, adapt] of [dtAdapt, ptAdapt].entries()) {
+    const actions: OvenAction[] = [];
+    const poller = createOvenPoller({ id: String(envelopes[index].ovenId), dispatch: (action) => actions.push(action), fetchImpl: async () => response(envelopes[index]), adapt });
+    poller.refresh();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.deepEqual(actions.find((action) => action.type === "payloadAccepted"), { type: "payloadAccepted", payload: expected[index], generation: 1 });
+  }
+
+  const rawActions: OvenAction[] = [];
+  const rawPoller = createOvenPoller({ id: "sample", dispatch: (action) => rawActions.push(action), fetchImpl: async () => response(envelopes[0]) });
+  rawPoller.refresh();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(rawActions.find((action) => action.type === "payloadAccepted"), { type: "payloadAccepted", payload: envelopes[0], generation: 1 });
 });

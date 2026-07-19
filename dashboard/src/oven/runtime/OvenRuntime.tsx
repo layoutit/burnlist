@@ -2,7 +2,7 @@ import { createContext, createElement, Fragment, useEffect, useMemo, useReducer,
 import { OvenNode, isStaticOvenDocument } from "./OvenNode";
 import { OvenView } from "../OvenView/OvenView";
 import { lowerOvenIr } from "./lower-oven-ir";
-import { useOvenLiveData } from "./oven-live-data";
+import { useOvenLiveData, type OvenPayloadAdapter } from "./oven-live-data";
 import { initOvenState, ovenReducer, type OvenAction, type OvenControlSeed, type OvenIr, type OvenPageSeed, type OvenState } from "./oven-reducer";
 import { getOvenTheme } from "./theme-registry";
 import { DifferentialTestingThemeView } from "./differential-testing-theme-view";
@@ -26,13 +26,13 @@ export function themedRegions(root: RootNode[], theme: ReturnType<typeof getOven
   });
 }
 
-export function OvenRuntime({ ir, initialPayload, payload, controls, pages, initialAction }: { ir: OvenIr & { id?: string; refreshSeconds?: number }; initialPayload?: unknown; payload?: unknown; controls?: OvenControlSeed; pages?: OvenPageSeed; initialAction?: OvenAction }) {
+export function OvenRuntime({ ir, initialPayload, payload, controls, pages, initialAction, adapt }: { ir: OvenIr & { id?: string; refreshSeconds?: number }; initialPayload?: unknown; payload?: unknown; controls?: OvenControlSeed; pages?: OvenPageSeed; initialAction?: OvenAction; adapt?: OvenPayloadAdapter }) {
   const inputPayload = payload === undefined ? initialPayload : payload;
   const [state, dispatch] = useReducer((current: OvenState, action: OvenAction) => ovenReducer(current, action, ir), inputPayload, (nextPayload) => {
     const initialState = initOvenState(ir, nextPayload, controls, pages);
     return initialAction ? ovenReducer(initialState, initialAction, ir) : initialState;
   });
-  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, state.scenario);
+  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, state.scenario, adapt);
   useEffect(() => {
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });
   }, [payload]);
