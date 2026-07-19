@@ -17,8 +17,8 @@ import {
   differentialTestingPaginatedMidPayload,
   differentialTestingPaginatedPayload,
   differentialTestingPayload,
-} from "../../../../ovens/differential-testing/renderer/golden-harness.mjs";
-import { differentialPagedPayload } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
+} from "../differential-testing-render/golden-harness.mjs";
+import { differentialPagedPayload } from "../differential-testing-render/differential-testing-renderer.js";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/differential-testing-adapter.ts", import.meta.url).pathname;
@@ -135,7 +135,7 @@ test("DT oven equals the frozen normalized DOM states", async () => {
         initialAction: state.initialAction,
       })));
       const actual = serializeCanonical(normalize(parseHtml(markup)));
-      const golden = await readFile(`ovens/differential-testing/renderer/goldens/${state.name}.html`, "utf8");
+      const golden = await readFile(`dashboard/src/oven/differential-testing-render/goldens/${state.name}.html`, "utf8");
       const expected = serializeCanonical(normalize(parseHtml(golden)));
       const comparison = domEquivalent(markup, golden);
       assert.equal(comparison.equal, true, `${state.name}: ${comparison.message}`);

@@ -19,7 +19,7 @@ import {
   ovenLayout,
   performanceTracingPayload,
 } from "./golden-harness.mjs";
-import { assertDifferentialTestingData } from "../engine/differential-testing-data-contract.mjs";
+import { assertDifferentialTestingData } from "../../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
 import { differentialTelemetryAvailability } from "./differential-testing-renderer.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -28,7 +28,7 @@ const dtOven = ovenLayout();
 const ptOven = {
   id: "performance-tracing",
   name: "Performance Tracing",
-  detail: { cells: JSON.parse(readFileSync(resolve(here, "../../performance-tracing/detail.json"), "utf8")).cells },
+  detail: { cells: JSON.parse(readFileSync(resolve(here, "../../../../ovens/performance-tracing/detail.json"), "utf8")).cells },
 };
 
 const base = differentialTestingPayload();

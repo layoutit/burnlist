@@ -20,8 +20,8 @@ import {
   differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
-} from "../renderer/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../renderer/differential-testing-progress-chart.js";
+} from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,

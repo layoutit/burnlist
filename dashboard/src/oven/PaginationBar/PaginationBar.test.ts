@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { assertDomEquivalent, extractById } from "../test-support/dom-normalize";
 import { PaginationBar, type PaginationBarProps } from "./PaginationBar";
 
-const goldenDir = resolve("ovens/differential-testing/renderer/goldens");
+const goldenDir = resolve("dashboard/src/oven/differential-testing-render/goldens");
 
 function render(props: PaginationBarProps): string {
   return renderToStaticMarkup(createElement(PaginationBar, props));

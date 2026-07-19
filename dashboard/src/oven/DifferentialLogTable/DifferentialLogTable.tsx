@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { count, formatLogRelativeMinutes, percent } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { count, formatLogRelativeMinutes, percent } from "../differential-testing-render/differential-testing-render.js";
 import { LogTable } from "../LogTable";
 
 const LOG_COLUMNS = ["Age", "Frame", "Result", "Delta", "Done"];

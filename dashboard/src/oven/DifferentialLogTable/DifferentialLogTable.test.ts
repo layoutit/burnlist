@@ -4,13 +4,13 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { log as vanillaLog } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { log as vanillaLog } from "../differential-testing-render/differential-testing-render.js";
 import { assertDomEquivalent, extractFirstByClass } from "../test-support/dom-normalize";
 import { buildDifferentialLogRows, DifferentialLogTable, type DifferentialLogEntry } from "./DifferentialLogTable";
 
 const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
-const goldenDir = resolve("ovens/differential-testing/renderer/goldens");
-const goldenHarnessPath = resolve("ovens/differential-testing/renderer/golden-harness.mjs");
+const goldenDir = resolve("dashboard/src/oven/differential-testing-render/goldens");
+const goldenHarnessPath = resolve("dashboard/src/oven/differential-testing-render/golden-harness.mjs");
 
 function withGoldenEnvironment<T>(callback: () => T): T {
   const previousTz = process.env.TZ;

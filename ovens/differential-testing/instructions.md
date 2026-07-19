@@ -178,6 +178,6 @@ runtime and themed components implement the behavior.
 The DOM-golden gate is
 `dashboard/src/oven/runtime/differential-testing-oven-dom-golden.test.mjs`.
 It checks that the `OvenRuntime` render is DOM-normalized-equal to the 12
-byte-frozen goldens in `ovens/differential-testing/renderer/goldens/dt-*.html`,
+byte-frozen goldens in `dashboard/src/oven/differential-testing-render/goldens/dt-*.html`,
 covering empty, main, paged, sorted-filtered, telemetry, chart-mode, and
 progress-mode states.

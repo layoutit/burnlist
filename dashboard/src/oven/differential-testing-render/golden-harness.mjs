@@ -2,19 +2,19 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { adaptPerformanceTracingReport } from "../../../dashboard/src/lib/performance-tracing.mjs";
-import { buildPayload } from "../example/adapter.mjs";
+import { adaptPerformanceTracingReport } from "../../lib/performance-tracing.mjs";
+import { buildPayload } from "../../../../ovens/differential-testing/example/adapter.mjs";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
   DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
   differentialStateVectorSha256,
-} from "../engine/differential-testing-data-contract.mjs";
-import { assertPerformanceTracingData } from "../../performance-tracing/engine/performance-tracing-contract.mjs";
+} from "../../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
+import { assertPerformanceTracingData } from "../../../../ovens/performance-tracing/engine/performance-tracing-contract.mjs";
 import { mountDifferentialTestingDashboard, startDifferentialTestingLiveUpdates } from "./differential-testing-renderer.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const exampleDir = resolve(here, "../example");
+const exampleDir = resolve(here, "../../../../ovens/differential-testing/example");
 const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
 const PERFORMANCE_TIMESTAMP = "2026-07-15T12:00:00.000Z";
 
@@ -146,7 +146,7 @@ export async function captureDashboardLoadError(error) {
 }
 
 export function ovenLayout() {
-  const detail = JSON.parse(readFileSync(resolve(here, "../detail.json"), "utf8"));
+  const detail = JSON.parse(readFileSync(resolve(here, "../../../../ovens/differential-testing/detail.json"), "utf8"));
   return { id: "differential-testing", name: "Differential Testing", detail: { cells: detail.cells } };
 }
 

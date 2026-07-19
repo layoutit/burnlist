@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { waffleMetric } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { waffleMetric } from "../differential-testing-render/differential-testing-render.js";
 import { createRecordingCanvas } from "../test-support/canvas-recorder";
 import { assertDomEquivalent, extractFirstByClass } from "../test-support/dom-normalize";
 import { WaffleCanvas } from "./WaffleCanvas";

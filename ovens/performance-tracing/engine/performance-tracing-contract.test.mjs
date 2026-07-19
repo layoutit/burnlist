@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { adaptPerformanceTracingReport } from "../../../dashboard/src/lib/performance-tracing.mjs";
-import { startDifferentialTestingLiveUpdates } from "../../differential-testing/renderer/differential-testing-renderer.js";
+import { startDifferentialTestingLiveUpdates } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
 import { assertPerformanceTracingData } from "./performance-tracing-contract.mjs";
 import { assertPerformanceTracingProvenanceCurrent } from "./performance-tracing-handler.mjs";
 import { createHash } from "node:crypto";

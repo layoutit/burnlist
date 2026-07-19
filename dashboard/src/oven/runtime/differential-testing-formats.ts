@@ -1,5 +1,5 @@
-import { count, percent } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
-import { differentialTelemetryAvailability } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
+import { count, percent } from "../differential-testing-render/differential-testing-render.js";
+import { differentialTelemetryAvailability } from "../differential-testing-render/differential-testing-renderer.js";
 
 type ResultRow = {
   frame?: number | null;

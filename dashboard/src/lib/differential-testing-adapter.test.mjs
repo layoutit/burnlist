@@ -6,7 +6,7 @@ import { build } from "esbuild";
 import {
   differentialTestingEmptyPayload,
   differentialTestingPayload,
-} from "../../../ovens/differential-testing/renderer/golden-harness.mjs";
+} from "../oven/differential-testing-render/golden-harness.mjs";
 
 const adapterPath = new URL("./differential-testing-adapter.ts", import.meta.url).pathname;
 

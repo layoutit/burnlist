@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { runInNewContext } from "node:vm";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { fieldRows } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { fieldRows } from "../differential-testing-render/differential-testing-render.js";
 import { assertDomEquivalent, extractById, normalize, parseHtml, serializeCanonical, type ElementNode } from "../test-support/dom-normalize";
 import { HybridFieldList, type HybridFieldData, type TelemetryAvailability } from "./HybridFieldList";
 import type { HybridTelemetry } from "../HybridMetric";
@@ -19,7 +19,7 @@ const {
   differentialTestingPaginatedMidPayload,
   differentialTestingPaginatedPayload,
   differentialTestingPayload,
-} = await import(pathToFileURL(resolve(process.cwd(), "ovens/differential-testing/renderer/golden-harness.mjs")).href);
+} = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
 
 const payloadFactories = [
   ["base", differentialTestingPayload],
@@ -83,7 +83,7 @@ test("HybridFieldList renders all three empty-list messages", () => {
 });
 
 test("HybridFieldList matches the child of the frozen server-page and paginated-mid goldens", () => {
-  const goldenDir = resolve(process.cwd(), "ovens/differential-testing/renderer/goldens");
+  const goldenDir = resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/goldens");
   const cases = [
     ["dt-server-paged", differentialTestingPayload()],
     ["dt-paginated-mid", differentialTestingPaginatedMidPayload()],
@@ -104,7 +104,7 @@ test("HybridFieldList matches the child of the frozen server-page and paginated-
 });
 
 test("HybridFieldList matches the empty-list children of the frozen empty goldens", () => {
-  const goldenDir = resolve(process.cwd(), "ovens/differential-testing/renderer/goldens");
+  const goldenDir = resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/goldens");
   const cases = [
     ["dt-no-match", "default", { status: "blocked", reason: "Transition telemetry unavailable." }],
     ["dt-comparable-no-changed", "changed", { status: "comparable", reason: "ignored" }],

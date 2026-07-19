@@ -4,12 +4,12 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { escapeHtml, kpiItem } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { escapeHtml, kpiItem } from "../differential-testing-render/differential-testing-render.js";
 import { assertDomEquivalent, extractById, extractFirstByClass } from "../test-support/dom-normalize";
 import { buildDifferentialKpiData, DifferentialKpiStrip, type DifferentialPayload } from "./DifferentialKpiStrip";
 
-const goldenDir = resolve("ovens/differential-testing/renderer/goldens");
-const goldenHarnessPath = resolve("ovens/differential-testing/renderer/golden-harness.mjs");
+const goldenDir = resolve("dashboard/src/oven/differential-testing-render/goldens");
+const goldenHarnessPath = resolve("dashboard/src/oven/differential-testing-render/golden-harness.mjs");
 const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
 const scenarioVisual = '<svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>';
 

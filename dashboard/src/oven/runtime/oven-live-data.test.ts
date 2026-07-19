@@ -53,7 +53,7 @@ test("scenario selection rekeys poller requests while retaining the repository k
 });
 
 test("oven poller adapts DT and PT envelopes while unadapted polls retain raw bodies", async () => {
-  const fixture = await import(pathToFileURL(resolve(process.cwd(), "ovens/differential-testing/renderer/golden-harness.mjs")).href);
+  const fixture = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
   const dtReport = fixture.differentialTestingPayload();
   const ptReport = {
     runId: "trace-fixture", generatedAt: "2026-07-15T12:00:00.000Z", status: "pass",

@@ -7,7 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
-import { performanceTracingPayload } from "../../../../ovens/differential-testing/renderer/golden-harness.mjs";
+import { performanceTracingPayload } from "../differential-testing-render/golden-harness.mjs";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/differential-testing-adapter.ts", import.meta.url).pathname;
@@ -71,7 +71,7 @@ test("PT oven equals the frozen normalized DOM state", async () => {
         payload: adaptDifferentialTesting(performanceTracingPayload()),
         controls: state.controls,
       })));
-      const golden = await readFile(`ovens/differential-testing/renderer/goldens/${state.name}.html`, "utf8");
+      const golden = await readFile(`dashboard/src/oven/differential-testing-render/goldens/${state.name}.html`, "utf8");
       const actual = serializeCanonical(normalize(parseHtml(markup)));
       const expected = serializeCanonical(normalize(parseHtml(golden)));
       const comparison = domEquivalent(markup, golden);

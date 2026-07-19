@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { progressDonut } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { progressDonut } from "../differential-testing-render/differential-testing-render.js";
 import { assertDomEquivalent, extractFirstByClass } from "../test-support/dom-normalize";
 import { ProgressDonut } from "./ProgressDonut";
 

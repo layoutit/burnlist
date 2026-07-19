@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
-import { differentialProgressChartHistory } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
-import { renderDifferentialTestingFrameDeltaChart, renderDifferentialTestingProgressChart } from "../../../../ovens/differential-testing/renderer/differential-testing-progress-chart.js";
+import { differentialProgressChartHistory } from "../differential-testing-render/differential-testing-renderer.js";
+import { renderDifferentialTestingFrameDeltaChart, renderDifferentialTestingProgressChart } from "../differential-testing-render/differential-testing-progress-chart.js";
 
-const { differentialTestingPayload } = await import(resolve(process.cwd(), "ovens/differential-testing/renderer/golden-harness.mjs"));
+const { differentialTestingPayload } = await import(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs"));
 const realHistory = differentialProgressChartHistory(differentialTestingPayload(), { mode: "value" });
 const baseTime = "2026-01-01T12:00:00.000Z";
 

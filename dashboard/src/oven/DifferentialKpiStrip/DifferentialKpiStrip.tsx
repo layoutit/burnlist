@@ -4,7 +4,7 @@ import { DifferentialKpiItem } from "../DifferentialKpiItem/DifferentialKpiItem"
 import { KpiStrip } from "../KpiStrip/KpiStrip";
 import { ProgressDonut } from "../ProgressDonut/ProgressDonut";
 import { WaffleMetric } from "../WaffleMetric/WaffleMetric";
-import { blockers, count, dateTime, kpiTotal, percent, unique } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { blockers, count, dateTime, kpiTotal, percent, unique } from "../differential-testing-render/differential-testing-render.js";
 
 type Scenario = { id: string };
 type ProgressEntry = { frames?: number; frame?: number };

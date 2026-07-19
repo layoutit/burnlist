@@ -1,4 +1,4 @@
-import { nonPass } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { nonPass } from "../differential-testing-render/differential-testing-render.js";
 import { FieldMiniChart } from "../FieldMiniChart";
 import type { HybridFieldData } from "../HybridField";
 import { HybridField } from "../HybridField";

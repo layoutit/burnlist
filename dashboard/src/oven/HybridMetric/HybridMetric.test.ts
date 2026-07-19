@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { hybridMetric } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { hybridMetric } from "../differential-testing-render/differential-testing-render.js";
 import { assertDomEquivalent } from "../test-support/dom-normalize";
 import { HybridMetric, type HybridTelemetry } from "./HybridMetric";
 
@@ -17,7 +17,7 @@ const {
   differentialTestingPaginatedPayload,
   differentialTestingPayload,
   performanceTracingPayload,
-} = await import(pathToFileURL(resolve(process.cwd(), "ovens/differential-testing/renderer/golden-harness.mjs")).href);
+} = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
 
 const payloadFactories = [
   ["base", differentialTestingPayload],

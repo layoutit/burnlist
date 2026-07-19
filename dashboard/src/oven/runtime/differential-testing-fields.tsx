@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { count } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
-import { templateHtml } from "../../../../ovens/differential-testing/renderer/differential-testing-template.js";
+import { count } from "../differential-testing-render/differential-testing-render.js";
+import { templateHtml } from "../differential-testing-render/differential-testing-template.js";
 
 type FieldsProps = {
   total: unknown;

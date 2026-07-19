@@ -1,4 +1,4 @@
-import { fieldResult } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { fieldResult } from "../differential-testing-render/differential-testing-render.js";
 import type { FieldMiniChartField } from "../FieldMiniChart/field-mini-chart-geometry";
 
 export type HybridFieldData = FieldMiniChartField & {

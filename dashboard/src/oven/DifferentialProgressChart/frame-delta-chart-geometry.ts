@@ -1,4 +1,4 @@
-import { rollingStandardDeviationScores } from "../../../../ovens/differential-testing/renderer/differential-testing-progress-chart.js";
+import { rollingStandardDeviationScores } from "../differential-testing-render/differential-testing-progress-chart.js";
 
 export const FRAME_DELTA_CHART_WIDTH = 640;
 export const FRAME_DELTA_CHART_HEIGHT = 200;

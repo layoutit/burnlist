@@ -4,11 +4,11 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { differentialRefreshStatusLabel as oracleLabel } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
+import { differentialRefreshStatusLabel as oracleLabel } from "../differential-testing-render/differential-testing-renderer.js";
 import { assertDomEquivalent, extractById } from "../test-support/dom-normalize";
 import { differentialRefreshStatusLabel, RefreshStatusChip, type RefreshStatusChipProps } from "./RefreshStatusChip";
 
-const goldenDir = resolve("ovens/differential-testing/renderer/goldens");
+const goldenDir = resolve("dashboard/src/oven/differential-testing-render/goldens");
 
 function render(props: RefreshStatusChipProps): string {
   return renderToStaticMarkup(createElement(RefreshStatusChip, props));

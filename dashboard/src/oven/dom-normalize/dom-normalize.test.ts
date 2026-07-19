@@ -55,7 +55,7 @@ test("extracts an element by id and class token", () => {
 });
 
 test("extracts a region from the renderer golden", () => {
-  const golden = readFileSync("ovens/differential-testing/renderer/goldens/dt-main.html", "utf8");
+  const golden = readFileSync("dashboard/src/oven/differential-testing-render/goldens/dt-main.html", "utf8");
   const slice = extractById(golden, "driving-parity-kpi-strip");
   assert.ok(slice.length > 0);
   assert.match(slice, /driving-parity-kpi-item/u);

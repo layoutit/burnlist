@@ -1,4 +1,4 @@
-import { compact, count, nonPass, value } from "../../../../ovens/differential-testing/renderer/differential-testing-render.js";
+import { compact, count, nonPass, value } from "../differential-testing-render/differential-testing-render.js";
 import type { HybridFieldData } from "../HybridField/HybridField";
 
 export type HybridTelemetry = {

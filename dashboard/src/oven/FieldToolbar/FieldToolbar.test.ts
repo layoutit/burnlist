@@ -4,12 +4,12 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { differentialTelemetryAvailability } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
+import { differentialTelemetryAvailability } from "../differential-testing-render/differential-testing-renderer.js";
 import { assertDomEquivalent, extractById } from "../test-support/dom-normalize";
 import { FieldToolbar, type FieldToolbarProps } from "./FieldToolbar";
 
-const goldenDir = resolve("ovens/differential-testing/renderer/goldens");
-const goldenHarnessPath = resolve("ovens/differential-testing/renderer/golden-harness.mjs");
+const goldenDir = resolve("dashboard/src/oven/differential-testing-render/goldens");
+const goldenHarnessPath = resolve("dashboard/src/oven/differential-testing-render/golden-harness.mjs");
 const CHANGED_REASON = "Changed is unavailable until comparable transition telemetry is published.";
 
 function render(props: FieldToolbarProps): string {
