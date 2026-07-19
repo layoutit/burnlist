@@ -137,7 +137,7 @@ function assertSourceExcludes(path, needle, message) {
 
 
 function assertDifferentialTestingContractAssets() {
-  const schemaPath = resolve(repoRoot, "ovens/differential-testing/schema/differential-testing-data.schema.json");
+  const schemaPath = resolve(repoRoot, "ovens/differential-testing/data.schema.json");
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
   if (schema.$id !== "urn:burnlist:differential-testing-data:1" || schema.properties?.schema?.const !== "burnlist-differential-testing-data@1") {
     console.error("Differential Testing JSON Schema id and payload version must describe burnlist-differential-testing-data@1.");
@@ -215,9 +215,9 @@ function assertPublishablePackage() {
     console.error("package.json does not expose the Burnlist CLI.");
     process.exit(1);
   }
-  if (packageJson.exports?.["./differential-testing"] !== "./ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs"
-    || packageJson.exports?.["./differential-testing/contract"] !== "./ovens/differential-testing/engine/differential-testing-contract.mjs"
-    || packageJson.exports?.["./differential-testing/transport"] !== "./ovens/differential-testing/engine/differential-testing-transport.mjs") {
+  if (packageJson.exports?.["./differential-testing"] !== "./ovens/differential-testing/adapter-sdk.mjs"
+    || packageJson.exports?.["./differential-testing/contract"] !== "./ovens/differential-testing/contract.mjs"
+    || packageJson.exports?.["./differential-testing/transport"] !== "./ovens/differential-testing/transport.mjs") {
     console.error("package.json does not expose the stable Differential Testing worker, contract, and transport subpaths.");
     process.exit(1);
   }
@@ -239,14 +239,14 @@ const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "bin"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
-  ...walkFiles(resolve(repoRoot, "ovens/differential-testing/engine"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "ovens/differential-testing"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/performance-tracing/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/streaming-diff/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/visual-parity/engine"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "src/ovens/oven-registry.mjs"),
   resolve(repoRoot, "src/ovens/built-in-handlers.mjs"),
   resolve(repoRoot, "src/ovens/handlers/generic-json-handler.mjs"),
-  resolve(repoRoot, "ovens/differential-testing/engine/differential-testing-handler.mjs"),
+  resolve(repoRoot, "ovens/differential-testing/handler.mjs"),
   resolve(repoRoot, "dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js"),
   resolve(repoRoot, "dashboard/src/oven/differential-testing-render/differential-testing-renderer.js"),
 ])].sort();
@@ -272,11 +272,11 @@ assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKey
 assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
-assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/differential-testing/handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/performance-tracing/engine/performance-tracing-handler.mjs", "assertPerformanceTracingData(payload)", "Performance Tracing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/visual-parity/engine/visual-parity-handler.mjs", "assertVisualParityData(payload)", "Visual Parity data is not validated at the server boundary.");
-assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
-assertSourceIncludes("ovens/differential-testing/engine/differential-testing-handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
+assertSourceIncludes("ovens/differential-testing/handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
+assertSourceIncludes("ovens/differential-testing/handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'id === "differential-testing"', "Dashboard server still hardcodes the Differential Testing Oven.");
 assertSourceIncludes("dashboard/src/lib/hrefs.ts", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", '<th className="burnlist-table-heading">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
@@ -334,7 +334,7 @@ assertSourceIncludes("ovens/differential-testing/instructions.md", "Every newly 
 assertSourceIncludes("ovens/differential-testing/instructions.md", "No per-candidate ledger", "Differential Testing still requires per-candidate history ceremony.");
 assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
 assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
-assertSourceIncludes("ovens/differential-testing/engine/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
+assertSourceIncludes("ovens/differential-testing/data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");

@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../../src/server/fs-safe.mjs";
-import { assertDifferentialTestingData } from "./differential-testing-data-contract.mjs";
+import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { assertDifferentialTestingData } from "./data-contract.mjs";
 import {
   DIFFERENTIAL_TESTING_PAGE_SCHEMA,
   isDifferentialTestingBundle,
   queryDifferentialTestingFieldPage,
   readDifferentialTestingBundleManifest,
   readDifferentialTestingBundleScenario,
-} from "./differential-testing-transport.mjs";
+} from "./transport.mjs";
 
 function differentialTestingIndexCache(ctx, path) {
   const readPath = resolve(realpathSync(dirname(path)), basename(path));

@@ -9,7 +9,7 @@ import {
   buildDifferentialTelemetry,
   DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
   differentialStateVectorSha256,
-} from "../../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
+} from "../../../../ovens/differential-testing/data-contract.mjs";
 import { assertPerformanceTracingData } from "../../../../ovens/performance-tracing/engine/performance-tracing-contract.mjs";
 import { mountDifferentialTestingDashboard, startDifferentialTestingLiveUpdates } from "./differential-testing-renderer.js";
 

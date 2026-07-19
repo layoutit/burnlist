@@ -19,7 +19,7 @@ import {
   ovenLayout,
   performanceTracingPayload,
 } from "./golden-harness.mjs";
-import { assertDifferentialTestingData } from "../../../../ovens/differential-testing/engine/differential-testing-data-contract.mjs";
+import { assertDifferentialTestingData } from "../../../../ovens/differential-testing/data-contract.mjs";
 import { differentialTelemetryAvailability } from "./differential-testing-renderer.js";
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -13,7 +13,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import {
   DIFFERENTIAL_TESTING_DATA_SCHEMA,
   assertDifferentialTestingData,
-} from "./differential-testing-data-contract.mjs";
+} from "./data-contract.mjs";
 
 export const DIFFERENTIAL_TESTING_BUNDLE_SCHEMA = "burnlist-differential-testing-bundle@1";
 export const DIFFERENTIAL_TESTING_SCENARIO_SCHEMA = "burnlist-differential-testing-scenario@1";

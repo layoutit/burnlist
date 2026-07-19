@@ -8,7 +8,7 @@ import {
   DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION,
   DIFFERENTIAL_TESTING_WORKER_STATE_SCHEMA,
   createDifferentialTestingWorker,
-} from "./differential-testing-adapter-sdk.mjs";
+} from "./adapter-sdk.mjs";
 
 test("SDK v3 persists one state before inbox deletion and handles projection-only events", async () => {
   assert.equal(DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION, 3);

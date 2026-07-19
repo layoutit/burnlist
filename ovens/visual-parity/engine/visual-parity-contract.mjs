@@ -1,4 +1,4 @@
-import { assertDifferentialTestingData } from "../../differential-testing/engine/differential-testing-data-contract.mjs";
+import { assertDifferentialTestingData } from "../../differential-testing/data-contract.mjs";
 
 export const VISUAL_PARITY_SCHEMA = "burnlist-visual-parity-data@1";
 

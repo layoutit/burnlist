@@ -11,9 +11,9 @@
     "burnlist": "bin/burnlist.mjs"
   },
   "exports": {
-    "./differential-testing": "./ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs",
-    "./differential-testing/contract": "./ovens/differential-testing/engine/differential-testing-contract.mjs",
-    "./differential-testing/transport": "./ovens/differential-testing/engine/differential-testing-transport.mjs"
+    "./differential-testing": "./ovens/differential-testing/adapter-sdk.mjs",
+    "./differential-testing/contract": "./ovens/differential-testing/contract.mjs",
+    "./differential-testing/transport": "./ovens/differential-testing/transport.mjs"
   },
   "files": [
     "bin/",
@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
-    "test:differential-testing": "node --test ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs ovens/differential-testing/engine/differential-testing-contract.test.mjs ovens/differential-testing/engine/differential-testing-data-contract.test.mjs ovens/differential-testing/engine/differential-testing-transport-renderer.test.mjs ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
+    "test:differential-testing": "node --test ovens/differential-testing/adapter-sdk.test.mjs ovens/differential-testing/contract.test.mjs ovens/differential-testing/data-contract.test.mjs ovens/differential-testing/transport-renderer.test.mjs ovens/differential-testing/transport-server.test.mjs",
     "test:performance-tracing": "node --test ovens/performance-tracing/engine/performance-tracing-contract.test.mjs",
     "test:visual-parity": "node --test ovens/visual-parity/engine/visual-parity-contract.test.mjs",
     "verify": "node scripts/verify.mjs",

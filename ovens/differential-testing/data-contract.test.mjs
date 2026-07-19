@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildPayload } from "../example/adapter.mjs";
+import { buildPayload } from "./example/adapter.mjs";
 import {
   DIFFERENTIAL_TESTING_REFRESH_MS,
   differentialExactPrefixFrameDeltaMetrics,
@@ -20,8 +20,8 @@ import {
   differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
-} from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js";
+} from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../../dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
@@ -29,9 +29,9 @@ import {
   DIFFERENTIAL_TESTING_EXACT_AUTHORITY,
   DIFFERENTIAL_TESTING_TELEMETRY_AUTHORITY,
   validateDifferentialTestingData,
-} from "./differential-testing-data-contract.mjs";
+} from "./data-contract.mjs";
 
-const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../example");
+const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "example");
 
 test("frame delta residuals normalize against their rolling standard deviation", () => {
   const scores = rollingStandardDeviationScores(
@@ -1067,7 +1067,7 @@ test("result and status consistency is strict", async (t) => {
 });
 
 test("removed ceremony keys are rejected with no compatibility path", async (t) => {
-  const schemaText = readFileSync(resolve(exampleDir, "../schema/differential-testing-data.schema.json"), "utf8");
+  const schemaText = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "data.schema.json"), "utf8");
   for (const removedDefinition of ["exactCycles", "exactComparison", "exactBinding", "exactLifecycle", "telemetryGate", "cadenceFrames", "nextBoundary", "gateId"]) {
     assert.doesNotMatch(schemaText, new RegExp(`"${removedDefinition}"`, "u"));
   }

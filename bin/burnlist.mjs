@@ -44,12 +44,12 @@ if (args[0] === "install" || args[0] === "uninstall") {
 }
 
 if (args[0] === "differential-testing" && args[1] === "schema") {
-  console.log(resolve(packageRoot, "ovens", "differential-testing", "schema", "differential-testing-data.schema.json"));
+  console.log(resolve(packageRoot, "ovens", "differential-testing", "data.schema.json"));
   return;
 }
 
 if (args[0] === "differential-testing" && args[1] === "sdk") {
-  console.log(resolve(packageRoot, "ovens", "differential-testing", "engine", "differential-testing-adapter-sdk.mjs"));
+  console.log(resolve(packageRoot, "ovens", "differential-testing", "adapter-sdk.mjs"));
   return;
 }
 
@@ -62,11 +62,11 @@ if (args[0] === "differential-testing" && ["validate", "validate-bundle"].includ
     const path = resolve(process.cwd(), args[2]);
     const document = JSON.parse(readFileSync(path, "utf8"));
     if (document?.schema === "burnlist-differential-testing-bundle@1") {
-      const { assertDifferentialTestingBundle } = await import("../ovens/differential-testing/engine/differential-testing-transport.mjs");
+      const { assertDifferentialTestingBundle } = await import("../ovens/differential-testing/transport.mjs");
       const bundle = assertDifferentialTestingBundle(path);
       console.log(`Valid Differential Testing bundle: ${bundle.scenarios.length} scenarios; selected ${bundle.selectedScenarioId ?? "none"}.`);
     } else {
-      const { assertDifferentialTestingData } = await import("../ovens/differential-testing/engine/differential-testing-data-contract.mjs");
+      const { assertDifferentialTestingData } = await import("../ovens/differential-testing/data-contract.mjs");
       assertDifferentialTestingData(document);
       const sampleCount = document.fields.reduce((total, field) => total + field.sampleCount, 0);
       console.log(`Valid Differential Testing data: ${document.fields.length} fields, ${sampleCount} samples, ${document.summary.frames.uniqueTicks} aligned ticks.`);

@@ -9,4 +9,4 @@ export {
   buildDifferentialTelemetry,
   differentialStateVectorSha256,
   validateDifferentialTestingData,
-} from "./differential-testing-data-contract.mjs";
+} from "./data-contract.mjs";
