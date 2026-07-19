@@ -1,0 +1,52 @@
+---
+title: The .oven system
+description: How declarative Oven source becomes a rendered detail page.
+---
+
+A `.oven` file is declarative, non-executable detail-page data. Its XML-like `<oven id version contract theme refresh-seconds>` root names the Oven, its data contract, its theme, and an optional refresh interval:
+
+```xml
+<oven id="streaming-diff"
+      version="1"
+      contract="burnlist-streaming-diff-data@2"
+      theme="streaming-diff">
+  <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
+  <diff-card source="/cards"/>
+</oven>
+```
+
+This is the complete committed `streaming-diff.oven`. It describes what to render; it cannot run commands, evaluate code, import UI, or inject a renderer.
+
+## Rendering pipeline
+
+```text
+<id>.oven (human source)
+  -> compileOven
+  -> <id>.ir.json (compiled IR)
+  -> OvenRuntime + theme-registry
+  -> rendered detail page
+```
+
+`compileOven(source)` validates the source against the DSL grammar and emits JSON-only IR. The dashboard browser imports that `<id>.ir.json`, then the shared `OvenRuntime` renders it with the selected theme from the theme registry. The result is composable detail-page UI without executable Oven content.
+
+## An Oven directory has two layers
+
+Each Oven directory contains both the established package layer and the rendering layer:
+
+```text
+<oven-id>/
+  instructions.md     # outcome, state, inputs, and evidence rules
+  detail.json         # package/detail skeleton
+  <id>.oven           # declarative detail-page source
+  <id>.ir.json        # compiled browser-imported IR
+```
+
+`instructions.md` and `detail.json` remain the packaging and detail-skeleton layer described in the [Ovens overview](/ovens). The `.oven` pair is specifically the detail-page rendering DSL.
+
+## Why use a DSL
+
+- **Composable:** the grammar combines registered layout, display, binding, and control elements.
+- **Safe:** Ovens ship data, not code. The compiler accepts a closed vocabulary and the runtime owns rendering.
+- **Consumer-authorable:** a project can author a declarative view over its normalized data without importing project UI into the dashboard.
+
+See the [.oven DSL reference](/ovens/dsl-reference) for the complete vocabulary, or [create your own Oven](/ovens/authoring) for the authoring path.

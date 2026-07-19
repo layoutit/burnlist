@@ -1,0 +1,44 @@
+---
+title: Create your own oven
+description: Author, compile, and verify a declarative Oven detail page.
+---
+
+An Oven author supplies declarative rendering data; the project continues to own the data producer and its evidence. Start with the small committed Streaming Diff source:
+
+```xml
+<oven id="streaming-diff" version="1"
+      contract="burnlist-streaming-diff-data@2" theme="streaming-diff">
+  <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
+  <diff-card source="/cards"/>
+</oven>
+```
+
+## 1. Author `<id>.oven`
+
+Create a file named for the Oven id, with an `<oven>` root. `id`, `version`, `contract`, and `theme` are required; `refresh-seconds` is optional. Use only the registered vocabulary and values in the [.oven DSL reference](/ovens/dsl-reference).
+
+The root `theme` must be one of the registered themes. Theme-owned chrome and component defaults belong to the shared runtime; normal Oven source should not add `class=` or `<box>` wrappers.
+
+## 2. Provide normalized project data
+
+Provide a project adapter that produces the normalized data document described by the chosen contract. The adapter is not part of the Oven. Source-value shapes are the renderer and adapter authority, so point each binding at the documented normalized document rather than embedding transformations in `.oven`.
+
+For the example above, `/identity/session`, `/backHref`, and `/cards` are paths in the streaming-diff contract document. The same separation applies to the interactive Differential Testing Oven: its adapter produces `/pageMode`, `/progress`, `/fields`, `/telemetry`, and the other normalized values, while the `.oven` file only declares controls and bindings.
+
+## 3. Compile to IR
+
+Compile the source with `compileOven(source)` or `compileOvenFile(path)`. A successful compile produces the `<id>.ir.json` IR that the dashboard browser imports:
+
+```text
+<id>.oven -> compileOven -> <id>.ir.json -> OvenRuntime
+```
+
+Compilation validates the root metadata, closed element vocabulary, pointers, control references, formats, and required widget properties. It does not execute the Oven or the project adapter.
+
+## 4. Gate the rendered result
+
+Keep the compiled rendering covered by the existing driving-parity and visual-parity DOM-golden tests. Those tests protect the rendered DOM of the committed Oven views while the declarative source and shared runtime evolve.
+
+For interactive patterns, use `differential-testing.oven` as the reference: a `<mode-toggle id="progress-mode">` drives `<switch mode-from="progress-mode">`, and its field toolbar feeds a `<collection>` through control ids. This is id wiring in declarative data, not custom event code.
+
+See [The .oven system](/ovens/oven-system) for the rendering boundary and the [.oven DSL reference](/ovens/dsl-reference) for every allowed element and binding.

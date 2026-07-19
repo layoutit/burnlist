@@ -25,4 +25,8 @@ Completion is proven by canonical checklist state and the checks each item requi
 
 The normalized detail payload may expose `summary`, `active`, `completed`, `timeline`, and `log` fields. Detail-block bindings use JSON-pointer-like source paths and never execute code.
 
+## Rendering
+
+The detail page renders through the `.oven` engine: `checklist.oven` compiles to `checklist.ir.json`. See [The .oven system](/ovens/oven-system) and the [.oven DSL reference](/ovens/dsl-reference).
+
 See [Ovens](/ovens) and the [dashboard](/dashboard).

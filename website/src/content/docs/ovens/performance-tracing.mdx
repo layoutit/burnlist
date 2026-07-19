@@ -29,3 +29,7 @@ Missing, malformed, partially written, contradictory, or unactionable evidence i
 ## Execution boundary
 
 The Oven is read-only. Project tooling runs traces and atomically publishes the report; Burnlist only validates and displays it. See [Ovens](/ovens) and the [dashboard](/dashboard).
+
+## Rendering
+
+The detail page renders through the `.oven` engine: `performance-tracing.oven` compiles to `performance-tracing.ir.json`. See [The .oven system](/ovens/oven-system) and the [.oven DSL reference](/ovens/dsl-reference).

@@ -74,4 +74,8 @@ burnlist --oven-data differential-testing=<path>
 
 Small comparisons may bind the data document directly. Large comparisons use the `burnlist-differential-testing-bundle@1` transport so Burnlist validates field records sequentially and range-reads only the visible page. `burnlist differential-testing sdk` prints the packaged worker module path.
 
+## Rendering
+
+The detail page renders through the `.oven` engine: `differential-testing.oven` compiles to `differential-testing.ir.json`. See [The .oven system](/ovens/oven-system) and the [.oven DSL reference](/ovens/dsl-reference).
+
 See [Ovens](/ovens) and the [CLI reference](/cli).
