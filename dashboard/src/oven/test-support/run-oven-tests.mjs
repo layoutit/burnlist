@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { compileOvenIrForJsonPath } from "../../../oven-ir-compile.mjs";
 
 const testSupportDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testSupportDir, "../../../..");
@@ -17,6 +18,20 @@ const alias = {
   "@hooks": resolve(sourceDir, "hooks"),
   "@lib": resolve(sourceDir, "lib"),
   "@oven": ovenDir,
+};
+
+const ovenIrPlugin = {
+  name: "oven-ir",
+  setup(buildContext) {
+    buildContext.onResolve({ filter: /\.ir\.json$/ }, (args) => ({
+      path: isAbsolute(args.path) ? args.path : resolve(args.resolveDir, args.path),
+      namespace: "oven-ir",
+    }));
+    buildContext.onLoad({ filter: /.*/, namespace: "oven-ir" }, (args) => ({
+      contents: JSON.stringify(compileOvenIrForJsonPath(args.path)),
+      loader: "json",
+    }));
+  },
 };
 
 function discoverTests(directory) {
@@ -65,6 +80,7 @@ try {
     entryNames: "[dir]/[name]",
     outExtension: { ".js": ".mjs" },
     alias,
+    plugins: [ovenIrPlugin],
   });
 
   const bundledTests = discoverBundledTests(outputDir);

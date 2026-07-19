@@ -126,9 +126,6 @@ test("DT oven equals the frozen normalized DOM states", async () => {
     const compiled = compileOven(source, { file: "ovens/differential-testing/differential-testing.oven" });
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
-    const committedIr = JSON.parse(await readFile("ovens/differential-testing/differential-testing.ir.json", "utf8"));
-    assert.deepEqual(committedIr, compiled.ir);
-
     for (const state of states) {
       const markup = deterministicRender(() => renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,

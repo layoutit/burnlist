@@ -65,9 +65,6 @@ test("PT oven equals the frozen normalized DOM state", async () => {
     const compiled = compileOven(source, { file: "ovens/performance-tracing/performance-tracing.oven" });
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
-    const committedIr = JSON.parse(await readFile("ovens/performance-tracing/performance-tracing.ir.json", "utf8"));
-    assert.deepEqual(committedIr, compiled.ir);
-
     for (const state of states) {
       const markup = deterministicRender(() => renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,

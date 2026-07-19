@@ -41,8 +41,6 @@ test("visual-parity oven equals the frozen DOM golden states", async () => {
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const committedIr = JSON.parse(await readFile("ovens/visual-parity/visual-parity.ir.json", "utf8"));
-    assert.deepEqual(committedIr, compiled.ir);
     for (const state of states) {
       const markup = renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,

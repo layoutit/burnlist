@@ -1,16 +1,31 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
+import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { streamingDiffFixture } from "./StreamingDiff.fixture.mjs";
 
 const componentPath = new URL("./StreamingDiff.tsx", import.meta.url).pathname;
 const normalizerPath = new URL("../../oven/test-support/dom-normalize.ts", import.meta.url).pathname;
 const sourcePath = new URL("../../", import.meta.url).pathname;
 const goldenPath = new URL("./streaming-diff-dom.golden.html", import.meta.url);
+const ovenPath = new URL("../../../../ovens/streaming-diff/streaming-diff.oven", import.meta.url).pathname;
+
+const ovenIrPlugin = {
+  name: "oven-ir",
+  setup(build) {
+    build.onResolve({ filter: /streaming-diff\.ir\.json$/ }, () => ({ path: ovenPath, namespace: "oven-ir" }));
+    build.onLoad({ filter: /.*/, namespace: "oven-ir" }, () => {
+      const compiled = compileOven(readFileSync(ovenPath, "utf8"), { file: "ovens/streaming-diff/streaming-diff.oven" });
+      if (!compiled.ok) throw new Error(JSON.stringify(compiled.diagnostics));
+      return { contents: `export default ${JSON.stringify(compiled.ir)};`, loader: "js" };
+    });
+  },
+};
 
 test("selected streaming-diff static DOM matches the frozen byte golden", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".streaming-diff-dom-golden-test-"));
@@ -34,6 +49,7 @@ test("selected streaming-diff static DOM matches the frozen byte golden", async 
         },
         jsx: "automatic",
         packages: "external",
+        plugins: [ovenIrPlugin],
         target: "node18",
       }),
       build({ entryPoints: [normalizerPath], bundle: true, format: "esm", outfile: normalizerOutput, platform: "node", target: "node18" }),

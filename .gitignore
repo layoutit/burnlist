@@ -12,3 +12,4 @@ build/
 *.zip
 *.tgz
 *.log
+ovens/**/*.ir.json

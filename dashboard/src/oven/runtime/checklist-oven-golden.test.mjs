@@ -36,8 +36,6 @@ test("checklist oven equals the frozen DOM golden", async () => {
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const committedIr = JSON.parse(await readFile("ovens/checklist/checklist.ir.json", "utf8"));
-    assert.deepEqual(committedIr, compiled.ir);
     const markup = renderToStaticMarkup(createElement(OvenRuntime, { ir: compiled.ir, payload: adaptChecklist(checklistFixture) }));
     const actual = serializeCanonical(normalize(parseHtml(markup)));
     const expected = (await readFile("dashboard/src/components/ChecklistDashboard/checklist-dom.golden.html", "utf8")).trimEnd();
