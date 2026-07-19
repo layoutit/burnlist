@@ -15,6 +15,7 @@ export type TelemetryByField = ReadonlyMap<string, HybridTelemetry> | Record<str
 export type HybridFieldListProps = {
   fields: HybridFieldData[];
   expanded?: ReadonlySet<string>;
+  onToggle?: (id: string) => void;
   telemetryByField?: TelemetryByField;
   chartMode: string;
   sort?: string;
@@ -29,6 +30,7 @@ function telemetryForField(telemetryByField: TelemetryByField | undefined, id: s
 export function HybridFieldList({
   fields,
   expanded = new Set<string>(),
+  onToggle,
   telemetryByField,
   chartMode,
   sort = "default",
@@ -54,6 +56,12 @@ export function HybridFieldList({
         tabIndex={0}
         aria-expanded={String(isExpanded)}
         title={field.label}
+        onClick={() => onToggle?.(field.id)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onToggle?.(field.id);
+        }}
       >
         <HybridField field={field} />
         <HybridMetric field={field} telemetry={telemetryForField(telemetryByField, field.id)} />

@@ -9,7 +9,7 @@ import { MetricTiles } from "../MetricTiles";
 import { VerdictHeader } from "../VerdictHeader";
 import { formatRegistry } from "../OvenView/registries";
 import { resolvePointer } from "../utils/json-pointer";
-import type { OvenIr, OvenState } from "./oven-reducer";
+import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 import { selectCollection, selectDomain, selectMode, selectRefreshStatus } from "./oven-selectors";
 
 type Node = { kind: string; attributes?: Record<string, unknown>; children?: Node[] };
@@ -30,13 +30,14 @@ function bind(node: Node, prop: string, payload: unknown): unknown {
   return format?.(resolvePointer(payload, child.attributes.source));
 }
 
-export function WidgetAdapter({ node, ir, state }: { node: Node; ir: OvenIr; state: OvenState }) {
+export function WidgetAdapter({ node, ir, state, dispatch }: { node: Node; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void }) {
   if (node.kind === "refresh-status") return <RefreshStatusChip refresh={resolvePointer(state.payload, String(attrs(node).source ?? "/")) as { status?: string; error?: string }} clientStatus={selectRefreshStatus(state).phase} />;
   if (node.kind === "field-list") {
     const collectionId = String(attrs(node).collectionFrom ?? "");
     const collection = selectCollection(state, ir, collectionId, resolvePointer);
     const mode = selectMode(state, String(attrs(node).modeFrom ?? "")) ?? "current";
     return <HybridFieldList fields={collection.pageItems as any[]} chartMode={mode} sort={state.controls[collectionControlId(ir, collectionId, "sortFrom")] === true ? "changed" : "default"}
+      expanded={state.expanded} onToggle={(id) => dispatch({ type: "toggleExpanded", key: id })}
       telemetryByField={bind(node, "telemetryByField", state.payload) as any} telemetryAvailability={bind(node, "telemetryAvailability", state.payload) as any} />;
   }
   if (node.kind === "verdict-header") return <VerdictHeader targetPass={bind(node, "targetPass", state.payload) as boolean} framesCount={bind(node, "framesCount", state.payload) as number} error={bind(node, "error", state.payload) as string} />;

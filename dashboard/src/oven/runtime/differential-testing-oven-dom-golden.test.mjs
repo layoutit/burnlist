@@ -53,6 +53,7 @@ const states = [
   { name: "dt-load-error", initialAction: { type: "payloadRejected", error: loadError, generation: 0 } },
   { name: "dt-empty", payload: differentialTestingEmptyPayload },
   { name: "dt-main", payload: differentialTestingPayload },
+  { name: "dt-row-expanded", payload: differentialTestingPayload, initialAction: { type: "toggleExpanded", key: "position" } },
   { name: "dt-progress-mode", payload: differentialTestingPayload, controls: { "progress-mode": "progress" } },
   { name: "dt-chart-current-failed", payload: differentialTestingPayload, controls: { "value-mode": "current", "progress-mode": "failed" } },
   { name: "dt-no-match", payload: differentialTestingAllPassingPayload, controls: { "failed-filter": true } },

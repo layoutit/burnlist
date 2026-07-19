@@ -68,6 +68,36 @@ test("direct payload acceptance updates a supplied runtime payload", () => {
   assert.equal(state.payloadRevision, 1);
 });
 
+test("reducer toggles independently expanded field keys with immutable sets", () => {
+  const initial = initOvenState(ir, payload);
+  const position = ovenReducer(initial, { type: "toggleExpanded", key: "position" }, ir);
+  assert.deepEqual([...position.expanded], ["position"]);
+  assert.notEqual(position.expanded, initial.expanded);
+  const multiple = ovenReducer(position, { type: "toggleExpanded", key: "active" }, ir);
+  assert.deepEqual([...multiple.expanded].sort(), ["active", "position"]);
+  const collapsed = ovenReducer(multiple, { type: "toggleExpanded", key: "position" }, ir);
+  assert.deepEqual([...collapsed.expanded], ["active"]);
+  assert.notEqual(collapsed.expanded, multiple.expanded);
+});
+
+test("non-expansion actions retain expanded fields", () => {
+  const expanded = new Set(["position"]);
+  const state = { ...initOvenState(ir, payload), expanded };
+  const actions = [
+    { type: "payloadRequested" } as const,
+    { type: "payloadAccepted", payload } as const,
+    { type: "payloadRejected", error: "offline", generation: 0 } as const,
+    { type: "modeSelected", id: "mode", value: "b" } as const,
+    { type: "queryChanged", id: "search", query: "x" } as const,
+    { type: "toggleChanged", id: "filter", active: true } as const,
+    { type: "domainSelected", id: "domain", selectedId: "one" } as const,
+    { type: "pagePrevious", collectionId: "view" } as const,
+    { type: "pageNext", collectionId: "view" } as const,
+    { type: "pageSizeChanged", collectionId: "view", pageSize: 3 } as const,
+  ];
+  for (const action of actions) assert.equal(ovenReducer(state, action, ir).expanded, expanded, action.type);
+});
+
 test("refresh permits one queued request, rejects stale responses, and keeps last good payload on failure", () => {
   let state = initOvenState(ir, payload);
   state = ovenReducer(state, { type: "payloadRequested" }, ir);

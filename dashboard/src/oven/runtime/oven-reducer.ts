@@ -13,6 +13,7 @@ export type OvenState = {
   refresh: { phase: RefreshPhase; error: unknown; generation: number };
   controls: Record<string, string | boolean>;
   collections: Record<string, { pageIndex: number; pageSize: number; serverPage?: OvenServerPage }>;
+  expanded: ReadonlySet<string>;
 };
 export type OvenControlSeed = Record<string, string | boolean>;
 export type OvenPageSeed = Record<string, OvenServerPage>;
@@ -26,7 +27,8 @@ export type OvenAction =
   | { type: "domainSelected"; id: string; selectedId: string }
   | { type: "pagePrevious"; collectionId: string }
   | { type: "pageNext"; collectionId: string }
-  | { type: "pageSizeChanged"; collectionId: string; pageSize: number };
+  | { type: "pageSizeChanged"; collectionId: string; pageSize: number }
+  | { type: "toggleExpanded"; key: string };
 
 function nodes(items: IrNode[] = []): IrNode[] {
   return items.flatMap((node) => [node, ...nodes(node.children)]);
@@ -122,6 +124,7 @@ export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls
     payload, payloadRevision: 0, refresh: { phase: "idle", error: undefined, generation: 0 },
     controls: normalizedControls(ir, payload, controls, serverControlIds(ir, collections)),
     collections,
+    expanded: new Set(),
   };
 }
 
@@ -149,5 +152,11 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
     case "pagePrevious": return { ...state, collections: { ...state.collections, [action.collectionId]: { ...state.collections[action.collectionId], pageIndex: Math.max(0, state.collections[action.collectionId].pageIndex - 1) } } };
     case "pageNext": return { ...state, collections: { ...state.collections, [action.collectionId]: { ...state.collections[action.collectionId], pageIndex: state.collections[action.collectionId].pageIndex + 1 } } };
     case "pageSizeChanged": return { ...state, collections: { ...state.collections, [action.collectionId]: { pageIndex: 0, pageSize: Math.max(1, action.pageSize) } } };
+    case "toggleExpanded": {
+      const expanded = new Set(state.expanded);
+      if (expanded.has(action.key)) expanded.delete(action.key);
+      else expanded.add(action.key);
+      return { ...state, expanded };
+    }
   }
 }

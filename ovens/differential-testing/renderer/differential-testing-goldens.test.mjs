@@ -85,8 +85,23 @@ function dispatchFailedFilter(root) {
   });
 }
 
+function dispatchRowExpand(root) {
+  const click = root._handlers?.click;
+  assert.ok(click, "capture root must retain its click handler");
+  click({
+    target: {
+      closest(selector) {
+        return selector === "[data-row-expand-key]"
+          ? { dataset: { rowExpandKey: "position" } }
+          : null;
+      },
+    },
+  });
+}
+
 const states = [
   ["dt-main", dtOven, base, {}],
+  ["dt-row-expanded", dtOven, base, {}, dispatchRowExpand],
   ["dt-empty", dtOven, differentialTestingEmptyPayload(), {}],
   ["dt-server-paged", dtOven, base, { fieldPage: serverPage }],
   ["dt-sorted-filtered-paged", dtOven, base, { fieldPage: sortedFilteredPage }],

@@ -111,7 +111,7 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
     <DifferentialTestingFields
       total={fieldsMetric?.total}
       toolbar={<ControlAdapter node={toolbarNode} ir={ir} state={state} dispatch={dispatch} />}
-      fields={<WidgetAdapter node={fieldNode} ir={ir} state={state} />}
+      fields={<WidgetAdapter node={fieldNode} ir={ir} state={state} dispatch={dispatch} />}
       pagination={<ControlAdapter node={paginationNode} ir={ir} state={state} dispatch={dispatch} />}
     />
   </>;
