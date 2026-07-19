@@ -13,9 +13,11 @@ import {
   differentialTestingComparableTelemetryPayload,
   differentialTestingEmptyPayload,
   differentialTestingIncomparableTelemetryPayload,
+  differentialTestingPaginatedMidPayload,
   differentialTestingPaginatedPayload,
   differentialTestingPayload,
 } from "../../../../ovens/differential-testing/renderer/golden-harness.mjs";
+import { differentialPagedPayload } from "../../../../ovens/differential-testing/renderer/differential-testing-renderer.js";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/differential-testing-adapter.ts", import.meta.url).pathname;
@@ -24,6 +26,27 @@ const sourceDir = new URL("../../", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
 const ovenPath = new URL("..", import.meta.url).pathname;
 const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
+
+const base = differentialTestingPayload();
+const failingFields = base.fields.filter((field) => field.failedSampleCount > 0 || field.missingSampleCount > 0);
+const paginatedMid = differentialTestingPaginatedMidPayload();
+const serverPage = {
+  search: "", filter: "all", sort: "changed", page: 0, pageSize: 25,
+  pageCount: Math.max(1, Math.ceil(base.fields.length / 25)), total: base.fields.length,
+  fields: base.fields, telemetryFields: base.telemetry?.fields ?? [],
+};
+const sortedFilteredPage = {
+  search: "", filter: "failing", sort: "default", page: 0, pageSize: 25,
+  pageCount: Math.max(1, Math.ceil(failingFields.length / 25)), total: failingFields.length,
+  fields: failingFields, telemetryFields: base.telemetry?.fields ?? [],
+};
+const paginatedMidPage = {
+  search: "", filter: "all", sort: "changed", page: 1, pageSize: 25, pageCount: 3, total: 60,
+  fields: paginatedMid.fields, telemetryFields: paginatedMid.telemetry?.fields ?? [],
+};
+const pageSeed = (page) => ({ "field-view": {
+  page: page.page, pageSize: page.pageSize, pageCount: page.pageCount, total: page.total,
+} });
 
 const states = [
   { name: "dt-empty", payload: differentialTestingEmptyPayload },
@@ -35,6 +58,24 @@ const states = [
   { name: "dt-telemetry-incomparable", payload: differentialTestingIncomparableTelemetryPayload },
   { name: "dt-comparable-telemetry", payload: differentialTestingComparableTelemetryPayload },
   { name: "dt-comparable-no-changed", payload: differentialTestingComparableNoChangedPayload },
+  {
+    name: "dt-server-paged",
+    payload: () => differentialPagedPayload(base, serverPage),
+    controls: { "failed-filter": false, "changed-sort": true },
+    pages: pageSeed(serverPage),
+  },
+  {
+    name: "dt-sorted-filtered-paged",
+    payload: () => differentialPagedPayload(base, { ...sortedFilteredPage, fields: base.fields }),
+    controls: { "failed-filter": true, "changed-sort": false },
+    pages: pageSeed(sortedFilteredPage),
+  },
+  {
+    name: "dt-paginated-mid",
+    payload: () => differentialPagedPayload(paginatedMid, paginatedMidPage),
+    controls: { "failed-filter": false, "changed-sort": true },
+    pages: pageSeed(paginatedMidPage),
+  },
 ];
 
 function deterministicRender(render) {
@@ -88,6 +129,7 @@ test("DT oven equals the frozen normalized DOM states", async () => {
         ir: compiled.ir,
         payload: adaptDifferentialTesting(state.payload()),
         controls: state.controls,
+        pages: state.pages,
       })));
       const actual = serializeCanonical(normalize(parseHtml(markup)));
       const golden = await readFile(`ovens/differential-testing/renderer/goldens/${state.name}.html`, "utf8");

@@ -34,6 +34,18 @@ export function selectCollection(state: OvenState, ir: OvenIr, collectionId: str
   const collection = descriptor(ir, base as Descriptor);
   const source = resolvePointer(state.payload, typeof collection.source === "string" ? collection.source : "/");
   const items = attachTransitionTelemetry(Array.isArray(source) ? source : [], resolvePointer(state.payload, "/telemetry/fields"));
+  const current = state.collections[collectionId];
+  if (!current) throw new Error(`Missing collection state: ${collectionId}`);
+  const serverPage = current.serverPage;
+  if (serverPage && (collection.paging === "auto" || collection.paging === "server")) {
+    return {
+      pageItems: items,
+      pageIndex: serverPage.page,
+      pageCount: serverPage.pageCount,
+      pageSize: serverPage.pageSize,
+      totalCount: serverPage.total,
+    };
+  }
   const search = control(ir, collection.searchFrom);
   const query = search ? String(state.controls[search.id] ?? "") : "";
   const visible = runCollection(items, {
@@ -41,8 +53,6 @@ export function selectCollection(state: OvenState, ir: OvenIr, collectionId: str
     filter: activeControl(ir, state, collection.filterFrom),
     sort: activeControl(ir, state, collection.sortFrom), contract: ir.contract,
   }, resolvePointer);
-  const current = state.collections[collectionId];
-  if (!current) throw new Error(`Missing collection state: ${collectionId}`);
   const count = pageCount(visible.length, current.pageSize);
   const pageIndex = Math.max(0, Math.min(current.pageIndex, count - 1));
   const start = pageIndex * current.pageSize;
