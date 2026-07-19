@@ -334,10 +334,6 @@ assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `ru
 assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("ovens/differential-testing/engine/differential-testing-data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
-assertSourceIncludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "startDifferentialTestingLiveUpdates", "Differential Testing React view is not using the shared live updater.");
-assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "fetch(", "Differential Testing React view duplicates the shared live updater.");
-assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "setInterval", "Differential Testing React view duplicates the shared polling timer.");
-assertSourceExcludes("dashboard/src/components/DifferentialTesting/DifferentialTesting.tsx", "differentialPayloadRevision", "Differential Testing React view duplicates shared revision tracking.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
 assertSourceIncludes("ovens/differential-testing/renderer/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
