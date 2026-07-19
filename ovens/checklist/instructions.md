@@ -1,23 +1,19 @@
 # Checklist
 
-Checklist is the default queue-completion Oven. It preserves the current Burnlist Progress behavior, observes a shrinking Markdown checklist, and answers: how much of the work queue has been burned down?
+`checklist.oven` is the declarative, read-only detail view for a Burnlist checklist. It renders the current task, progress KPIs, completion ledger, burn chart, and completed-event cards without changing canonical Burnlist state.
 
-## State Contract
+## Payload contract
 
-The canonical run state is `burnlist.md` with an ordered `## Active Checklist` and a terse `## Completed` ledger. The dashboard is an observer; it does not replace or silently mutate that state.
+The view binds `checklist-progress@1` data after `adaptChecklist(data)` in `dashboard/src/lib/checklist-adapter.ts`. The payload contains:
 
-## Direction
+- `raw`: the original checklist progress data consumed by the ledger, burn panel, and event cards.
+- `current`: `{ title, value }` for the active-task KPI.
+- `progress`: `{ done, total, percent, title }` for the progress KPI.
+- `durations`: formatted `{ elapsed, pace, timeLeft }` KPI strings.
+- `ledger`, `history`, and `events`: precomputed read models available to future declarative widgets.
 
-Progress normally moves from `0%` toward `100%`. Completed count comes from the completed ledger, remaining count comes from the active checklist, and total is completed plus remaining.
+The engine receives this payload from the dashboard on each data refresh. The oven has no write controls and never mutates the checklist, lifecycle folders, or registry.
 
-## Run Inputs
+## Active Checklist
 
-A Run needs a repository, a concise title, and an objective. Planning and execution remain governed by the Burnlist protocol.
-
-## Evidence
-
-Completion is proven by canonical checklist state and the checks required by each item. Dashboard percentages, charts, and logs are reader views, not implementation proof.
-
-## Detail Page Data
-
-The normalized detail payload may expose `summary`, `active`, `completed`, `timeline`, and `log` fields. Detail-block bindings use JSON-pointer-like source paths and never execute code from these instructions.
+The canonical `burnlist.md` Active Checklist remains the ordered source of pending work. Its completed ledger supplies the burned items shown by this read-only view; the dashboard never replaces or silently mutates either source of truth.

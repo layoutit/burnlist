@@ -16,7 +16,7 @@ test("adaptChecklist precomputes the checklist oven payload", async () => {
     assert.deepEqual(adaptChecklist(checklistFixture), {
       raw: checklistFixture,
       current: { value: "Complete", title: "No active task" },
-      progress: { done: 2, total: 2, percent: 100 },
+      progress: { done: 2, total: 2, percent: 100, title: "2 of 2 tasks complete" },
       durations: { elapsed: "10m", pace: "5m", timeLeft: "0m" },
       ledger: [
         { key: "B2/2026-07-15T11:50:00Z", age: "10m", event: "B2", result: "Done", delta: "+1", donePercent: 100 },

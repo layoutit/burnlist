@@ -42,6 +42,13 @@ test("payload acceptance clamps pages and retains valid controls while dropping 
   assert.equal(state.collections.view.pageIndex, 0);
 });
 
+test("direct payload acceptance updates a supplied runtime payload", () => {
+  const nextPayload = { available: false, domains: [{ id: "one" }], initial: "one", items: [1] };
+  const state = ovenReducer(initOvenState(ir, payload), { type: "payloadAccepted", payload: nextPayload }, ir);
+  assert.equal(state.payload, nextPayload);
+  assert.equal(state.payloadRevision, 1);
+});
+
 test("refresh permits one queued request, rejects stale responses, and keeps last good payload on failure", () => {
   let state = initOvenState(ir, payload);
   state = ovenReducer(state, { type: "payloadRequested" }, ir);

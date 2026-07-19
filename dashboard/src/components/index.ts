@@ -1,6 +1,6 @@
 export { AppHeader } from "./AppHeader";
 export { NewOvenPage, RunBurnPage } from "./BurnOvens";
-export { ChecklistDashboard } from "./ChecklistDashboard";
+export { ChecklistDashboard, ChecklistOvenView } from "./ChecklistDashboard";
 export { DashboardError } from "./DashboardError";
 export { DifferentialTestingPage } from "./DifferentialTesting";
 export { EmptyState } from "./EmptyState";

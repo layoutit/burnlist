@@ -1,0 +1,38 @@
+<oven id="checklist" version="1" contract="checklist-progress@1" theme="checklist">
+  <box element="div" class="shell detail-view-shell driving-parity-view checklist-detail-shell">
+    <box element="main" id="burnlist-detail" class="detail-view">
+      <box element="section" class="differential-overview checklist-overview">
+        <kpi-strip aria-label="Burnlist progress KPIs" class="driving-parity-kpi-strip has-burns checklist-kpi-strip">
+          <kpi-item class="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" heading="Current">
+            <text slot="title" source="/current/title" />
+            <icon slot="visual" name="ClipboardList" />
+            <text slot="value" source="/current/value" />
+          </kpi-item>
+          <kpi-item class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" heading="Progress">
+            <text slot="title" source="/progress/title" />
+            <progress-donut slot="visual" source="/progress/percent" />
+            <checklist-progress-value slot="value">
+              <bind prop="done" source="/progress/done" />
+              <bind prop="total" source="/progress/total" />
+              <bind prop="percent" source="/progress/percent" />
+            </checklist-progress-value>
+          </kpi-item>
+          <kpi-item class="driving-parity-kpi-item driving-parity-kpi-section" heading="Elapsed" source="/durations/elapsed">
+            <icon slot="visual" name="Clock3" />
+          </kpi-item>
+          <kpi-item class="driving-parity-kpi-item driving-parity-kpi-section" heading="Avg pace" source="/durations/pace">
+            <icon slot="visual" name="Gauge" />
+          </kpi-item>
+          <kpi-item class="driving-parity-kpi-item driving-parity-kpi-section" heading="Time left" source="/durations/timeLeft">
+            <icon slot="visual" name="TimerReset" />
+          </kpi-item>
+        </kpi-strip>
+      </box>
+      <box element="div" class="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard">
+        <checklist-ledger source="/raw" />
+        <checklist-burn-panel source="/raw" />
+      </box>
+      <checklist-event-cards source="/raw" />
+    </box>
+  </box>
+</oven>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Clock3, ListChecks } from "lucide-react";
-import { AppHeader, ChecklistDashboard, DashboardError, DifferentialTestingPage, EmptyState, FILTERS, Filters, NewOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
+import { AppHeader, ChecklistOvenView, DashboardError, DifferentialTestingPage, EmptyState, FILTERS, Filters, NewOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
 import { useDashboardData } from "@hooks";
 import { currentSection, filterFromUrl, selectedBurnlist } from "@lib";
 import type { Filter } from "@lib";
@@ -27,7 +27,7 @@ export function App() {
       <main className="dashboard-main" data-layout={section === "differential-testing" || section === "performance-tracing" || section === "streaming-diff" || section === "visual-parity" || selected ? "full" : "index"} data-section={section}>
         {section === "differential-testing" ? <DifferentialTestingPage /> : section === "performance-tracing" ? <DifferentialTestingPage ovenId="performance-tracing" /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
-            <ChecklistDashboard data={progress} />
+            <ChecklistOvenView data={progress} />
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
         ) : (
           <section className="dashboard-index">

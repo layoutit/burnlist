@@ -5,9 +5,10 @@ type BoxProps = {
   className?: string;
   id?: string;
   text?: string;
+  dataDetailTab?: string;
   children?: ReactNode;
 };
 
-export function Box({ element, className, id, text, children }: BoxProps) {
-  return createElement(element, { className, id }, text, children);
+export function Box({ element, className, id, text, dataDetailTab, children }: BoxProps) {
+  return createElement(element, { className, id, "data-detail-tab": dataDetailTab }, text, children);
 }

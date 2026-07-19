@@ -73,6 +73,7 @@ function lowerCell(node: IrNode, path: string): CellDef {
   if (typeof attrs.class === "string") props.className = attrs.class;
   if (node.kind === "box") {
     props.element = attrs.element;
+    if (typeof attrs.dataDetailTab === "string") props.dataDetailTab = attrs.dataDetailTab;
     if (typeof attrs.text === "string") props.text = attrs.text;
   }
   if (node.kind === "kpi-strip") {

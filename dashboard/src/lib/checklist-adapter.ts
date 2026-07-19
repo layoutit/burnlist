@@ -6,7 +6,7 @@ export type EventDetailField = { label: string; values: string[] };
 export type ChecklistOvenPayload = {
   raw: ChecklistProgressData;
   current: { value: string; title: string };
-  progress: { done: number; total: number; percent: number };
+  progress: { done: number; total: number; percent: number; title: string };
   durations: { elapsed: string; pace: string; timeLeft: string };
   ledger: Array<{ key: string; age: string; event: string; result: "Done"; delta: "+1"; donePercent: number }>;
   history: HistoryPoint[];
@@ -97,7 +97,7 @@ export function adaptChecklist(data: ChecklistProgressData): ChecklistOvenPayloa
   return {
     raw: data,
     current: { value: current ? `${current.id} · Active` : "Complete", title: current?.title ?? "No active task" },
-    progress: { done: data.done, total: data.total, percent: data.percent },
+    progress: { done: data.done, total: data.total, percent: data.percent, title: `${data.done} of ${data.total} tasks complete` },
     durations: { elapsed: formatDuration(durations.elapsed), pace: formatDuration(durations.pace), timeLeft: formatDuration(durations.timeLeft) },
     ledger: rows.slice(0, 8).map((item) => ({ key: `${item.id}/${item.completedAt}`, age: compactAge(item.completedAt, data.generatedAt), event: item.id, result: "Done", delta: "+1", donePercent: item.percent })),
     history: progressHistory(data),
