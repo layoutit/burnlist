@@ -3,6 +3,10 @@ import type { FrameDeltaLabel, FrameDeltaLine, FrameDeltaMetrics } from "./frame
 
 export type DifferentialFrameDeltaChartProps = {
   metrics: FrameDeltaMetrics;
+  hostOnly?: boolean;
+  hostClassName?: string;
+  hostRole?: "img";
+  hostAriaLabel?: string;
 };
 
 function ChartLine({ line }: { line: FrameDeltaLine }) {
@@ -13,7 +17,8 @@ function ChartLabel({ label }: { label: FrameDeltaLabel }) {
   return <text className={label.className} x={label.x} y={label.y} textAnchor={label.textAnchor} dominantBaseline={label.dominantBaseline}>{label.text}</text>;
 }
 
-export function DifferentialFrameDeltaChart({ metrics }: DifferentialFrameDeltaChartProps) {
+export function DifferentialFrameDeltaChart({ metrics, hostOnly = false, hostClassName, hostRole, hostAriaLabel }: DifferentialFrameDeltaChartProps) {
+  if (hostOnly) return <svg id="progress-chart" className={hostClassName} viewBox="0 0 640 200" role={hostRole} aria-label={hostAriaLabel ?? "Exact-prefix frame delta metrics unavailable"} />;
   const geometry = buildFrameDeltaChart(metrics);
   return <svg id={geometry.root.id} viewBox={geometry.root.viewBox} aria-label={geometry.root.ariaLabel} className={geometry.root.className}>
     {!geometry.cleared && <>

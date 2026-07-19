@@ -16,6 +16,7 @@ export type OvenTheme = Readonly<{
   regions: readonly ThemeRegion[];
   kpiItemVariants: Readonly<Record<string, string>>;
   progressKpiClassName: string;
+  runtimeLayout?: "differential-testing";
 }>;
 
 const checklist: OvenTheme = Object.freeze({
@@ -40,7 +41,54 @@ const checklist: OvenTheme = Object.freeze({
   progressKpiClassName: "driving-parity-kpi-progress",
 });
 
-const themes: Readonly<Record<string, OvenTheme>> = Object.freeze(Object.assign(Object.create(null), { checklist }));
+const differentialTesting: OvenTheme = Object.freeze({
+  view: Object.freeze({
+    shellClassName: "shell driving-parity-view",
+  }),
+  components: Object.freeze({
+    "kpi-strip": Object.freeze({
+      id: "driving-parity-kpi-strip",
+      ariaLabel: "Differential Testing field KPIs",
+      className: "driving-parity-kpi-strip has-burns",
+    }),
+    "kpi-item": Object.freeze({
+      className: "driving-parity-kpi-item driving-parity-kpi-section",
+    }),
+    "progress-donut": Object.freeze({
+      className: "driving-parity-kpi-gauge driving-parity-kpi-progress-donut",
+    }),
+    "progress-chart": Object.freeze({
+      hostOnly: true,
+      hostClassName: "chart",
+      hostRole: "img",
+      hostAriaLabel: "Completion percentage over time",
+    }),
+    "frame-delta-chart": Object.freeze({
+      hostOnly: true,
+      hostClassName: "chart",
+      hostRole: "img",
+      hostAriaLabel: "Completion percentage over time",
+    }),
+  }),
+  regions: Object.freeze([
+    Object.freeze({ kinds: Object.freeze(["refresh-status", "differential-kpi-strip"]), element: "section", className: "differential-overview", props: Object.freeze({ id: "differential-overview" }) }),
+    Object.freeze({ kinds: Object.freeze(["mode-toggle", "switch", "differential-log-table"]), element: "div", className: "detail-workspace", props: Object.freeze({ id: "detail-workspace", "data-detail-tab": "dashboard" }) }),
+    Object.freeze({ kinds: Object.freeze(["field-toolbar", "collection"]), element: "main", className: "driving-parity-page", props: Object.freeze({ id: "driving-parity-page" }) }),
+  ]),
+  kpiItemVariants: Object.freeze({
+    scenario: "driving-parity-kpi-scenario",
+    burns: "driving-parity-kpi-burns",
+    fields: "driving-parity-kpi-fields",
+    frames: "driving-parity-kpi-frames",
+  }),
+  progressKpiClassName: "driving-parity-kpi-progress",
+  runtimeLayout: "differential-testing",
+});
+
+const themes: Readonly<Record<string, OvenTheme>> = Object.freeze(Object.assign(Object.create(null), {
+  checklist,
+  "differential-testing": differentialTesting,
+}));
 
 export function getOvenTheme(theme: unknown): OvenTheme | undefined {
   return typeof theme === "string" ? themes[theme] : undefined;

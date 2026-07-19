@@ -14,7 +14,7 @@ import { buildLogTableProps } from "./log-table-adapter";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
-const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "section-header", "progress-value", "icon", "text", "bind"]);
+const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "section-header", "progress-value", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "differential-empty-state", "icon", "text", "bind"]);
 const documentStaticKinds = new Set([...staticKinds, "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"]);
 const attrs = (node: OvenNodeDef) => node.attributes ?? {};
 
@@ -24,8 +24,8 @@ function scopedNode(node: OvenNodeDef): OvenNodeDef {
   const pointer = (source: unknown) => typeof source !== "string" ? source : source === "@item" ? "/__ovenItem" : source.startsWith("@item/") ? `/__ovenItem${source.slice(5)}` : source.startsWith("/") || source === "" ? `/__ovenRoot${source || "/"}` : source;
   return { ...node, attributes: Object.fromEntries(Object.entries(attrs(node)).map(([key, value]) => [key, key === "source" ? pointer(value) : value])), bindings: Object.fromEntries(Object.entries(node.bindings ?? {}).map(([key, value]) => [key, value && typeof value === "object" ? { ...(value as object), source: pointer((value as { source?: unknown }).source) } : value])), children: (node.children ?? []).map(scopedNode) };
 }
-function staticView(node: OvenNodeDef, root: unknown, item?: unknown) {
-  const lowered = lowerOvenIr({ id: "runtime", root: [item === undefined ? node : scopedNode(node)] });
+function staticView(node: OvenNodeDef, ir: OvenIr, root: unknown, item?: unknown) {
+  const lowered = lowerOvenIr({ id: "runtime", theme: ir.theme, root: [item === undefined ? node : scopedNode(node)] });
   const payload = item === undefined ? root : { __ovenRoot: root, __ovenItem: item };
   return <OvenView def={lowered} payload={payload as JsonValue} />;
 }
@@ -39,9 +39,12 @@ function layoutStyle(node: OvenNodeDef): Record<string, string> {
 
 /** Trusted dispatcher: static IR is lowered, while the closed interactive vocabulary uses adapters. */
 export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: OvenNodeProps) {
-  if (isStaticOvenNode(node)) return <Fragment key={path}>{staticView(node, state.payload, item)}</Fragment>;
+  if (isStaticOvenNode(node)) return <Fragment key={path}>{staticView(node, ir, state.payload, item)}</Fragment>;
   if (node.kind === "switch") {
-    const selected = selectMode(state, String(attrs(node).modeFrom ?? ""));
+    const source = attrs(node).source;
+    const selected = typeof source === "string"
+      ? resolvePointer(state.payload, source)
+      : selectMode(state, String(attrs(node).modeFrom ?? ""));
     const branch = (node.children ?? []).find((child) => child.kind === "case" && attrs(child).value === selected) ?? (node.children ?? []).find((child) => child.kind === "default");
     return <>{(branch?.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
   }

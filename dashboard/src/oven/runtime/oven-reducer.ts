@@ -4,7 +4,7 @@ import { runCollection } from "./collection-pipeline";
 type Control = Record<string, unknown> & { id: string; kind: string };
 type Collection = Record<string, unknown> & { id: string; pageSize: number };
 type IrNode = { kind: string; attributes?: Record<string, unknown>; children?: IrNode[] };
-export type OvenIr = { contract: string; controls: Control[]; collections: Collection[]; root?: IrNode[] };
+export type OvenIr = { contract: string; theme?: string; controls: Control[]; collections: Collection[]; root?: IrNode[] };
 export type RefreshPhase = "idle" | "loading" | "queued" | "running" | "failed";
 export type OvenState = {
   payload: unknown;

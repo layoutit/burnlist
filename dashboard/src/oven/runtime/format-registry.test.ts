@@ -26,3 +26,28 @@ test("time formats are local and compact", () => {
     Date.now = originalNow;
   }
 });
+
+test("DT formats use the newest report and preserve renderer formatting", () => {
+  const rows = [
+    { frame: 2, frames: 8, failedFieldCount: 3, fieldCount: 12, frameDelta: -2 },
+    { frame: 5, frames: 10, failedFieldCount: 2, fieldCount: 8, frameDelta: -1 },
+  ];
+  assert.equal(formatRegistry["progress-headline"](rows), "5/10");
+  assert.equal(formatRegistry["last-progress-percent"](rows), 50);
+  assert.equal(formatRegistry["last-failed-count"](rows), "2");
+  assert.equal(formatRegistry["last-failed-percent"](rows), 25);
+  assert.equal(formatRegistry["last-frame-delta"](rows), "1");
+  assert.equal(formatRegistry["last-delta-percent"](rows), 10);
+});
+
+test("DT telemetry formats index fields and explain availability", () => {
+  const first = { id: "position", failToPassCount: 1 };
+  const second = { id: "active", passToFailCount: 1 };
+  const indexed = formatRegistry["index-by-id"]([first, second]) as Record<string, unknown>;
+  assert.equal(indexed.position, first);
+  assert.equal(indexed.active, second);
+  assert.deepEqual(
+    formatRegistry["telemetry-availability"]({ status: "comparable", fields: [] }),
+    { status: "comparable", reason: "" },
+  );
+});

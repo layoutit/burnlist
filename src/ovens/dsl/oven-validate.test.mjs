@@ -22,4 +22,12 @@ test("structure and interaction validation", () => {
   invalid(root("<switch mode-from='m'/><mode-toggle id='m' initial='a' aria-label='m'><option value='a' label='a'/><option value='b' label='b'/></mode-toggle>"), "STRUCTURE_SWITCH");
   invalid(root("<mode-toggle id='m' initial='a' aria-label='m'><option value='a' label='a'/><option value='b' label='b'/></mode-toggle><switch mode-from='m'><case default='true'/><case default='true'/></switch>"), "STRUCTURE_SWITCH");
   invalid(root("<collection id='rows' source='/' item-key='/id' paging='client' page-size='1'><each><mode-toggle id='m' initial='a' aria-label='m'><option value='a' label='a'/><option value='b' label='b'/></mode-toggle></each></collection>"), "INTERACTION_EACH");
+  invalid(root("<switch><case value='a'/></switch>"), "GRAMMAR_SWITCH_SOURCE");
+  invalid(root("<mode-toggle id='m' initial='a' aria-label='m'><option value='a' label='a'/><option value='b' label='b'/></mode-toggle><switch source='/' mode-from='m'><case value='a'/></switch>"), "GRAMMAR_SWITCH_SOURCE");
+});
+
+test("switch accepts a payload pointer without a control reference", () => {
+  const result = compileOven(root("<switch source='/pageMode'><case value='detail'><section-header title='Fields'/></case></switch>"));
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
+  assert.equal(result.ir.root[0].attributes.source, "/pageMode");
 });
