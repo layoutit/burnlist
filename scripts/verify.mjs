@@ -240,7 +240,7 @@ const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing"), (path) => path.endsWith(".mjs")),
-  ...walkFiles(resolve(repoRoot, "ovens/performance-tracing/engine"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "ovens/performance-tracing"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/streaming-diff/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/visual-parity/engine"), (path) => path.endsWith(".mjs")),
   resolve(repoRoot, "src/ovens/oven-registry.mjs"),
@@ -273,7 +273,7 @@ assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("ovens/differential-testing/handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
-assertSourceIncludes("ovens/performance-tracing/engine/performance-tracing-handler.mjs", "assertPerformanceTracingData(payload)", "Performance Tracing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/performance-tracing/handler.mjs", "assertPerformanceTracingData(payload)", "Performance Tracing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/visual-parity/engine/visual-parity-handler.mjs", "assertVisualParityData(payload)", "Visual Parity data is not validated at the server boundary.");
 assertSourceIncludes("ovens/differential-testing/handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
 assertSourceIncludes("ovens/differential-testing/handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");

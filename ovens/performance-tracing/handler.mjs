@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../../src/server/fs-safe.mjs";
-import { assertPerformanceTracingData } from "./performance-tracing-contract.mjs";
+import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { assertPerformanceTracingData } from "./contract.mjs";
 
 export const performanceTracingHandler = Object.freeze({
   id: "performance-tracing",

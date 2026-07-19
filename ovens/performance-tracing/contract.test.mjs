@@ -3,10 +3,10 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { adaptPerformanceTracingReport } from "../../../dashboard/src/lib/performance-tracing.mjs";
-import { startDifferentialTestingLiveUpdates } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
-import { assertPerformanceTracingData } from "./performance-tracing-contract.mjs";
-import { assertPerformanceTracingProvenanceCurrent } from "./performance-tracing-handler.mjs";
+import { adaptPerformanceTracingReport } from "../../dashboard/src/lib/performance-tracing.mjs";
+import { startDifferentialTestingLiveUpdates } from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+import { assertPerformanceTracingData } from "./contract.mjs";
+import { assertPerformanceTracingProvenanceCurrent } from "./handler.mjs";
 import { createHash } from "node:crypto";
 
 test("Performance Tracing validates reconciled browser-output reports", () => {

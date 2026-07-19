@@ -29,7 +29,7 @@
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
     "test:differential-testing": "node --test ovens/differential-testing/adapter-sdk.test.mjs ovens/differential-testing/contract.test.mjs ovens/differential-testing/data-contract.test.mjs ovens/differential-testing/transport-renderer.test.mjs ovens/differential-testing/transport-server.test.mjs",
-    "test:performance-tracing": "node --test ovens/performance-tracing/engine/performance-tracing-contract.test.mjs",
+    "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
     "test:visual-parity": "node --test ovens/visual-parity/engine/visual-parity-contract.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",

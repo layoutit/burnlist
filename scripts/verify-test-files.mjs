@@ -17,7 +17,7 @@ export const verificationTestFiles = [
   "ovens/differential-testing/transport-poll.test.mjs",
   "ovens/differential-testing/transport-server.test.mjs",
   "dashboard/src/oven/differential-testing-render/differential-testing-goldens.test.mjs",
-  "ovens/performance-tracing/engine/performance-tracing-contract.test.mjs",
+  "ovens/performance-tracing/contract.test.mjs",
   "ovens/visual-parity/engine/visual-parity-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-data-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture.test.mjs",
