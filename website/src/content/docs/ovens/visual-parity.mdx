@@ -20,3 +20,7 @@ Do not widen a tolerance to make a regression green. Calibrate only a determinis
 ## State contract
 
 Canonical state stays in the project's own captures and render output. A project adapter maps that into `burnlist-visual-parity-data@1`; Burnlist validates and renders only that normalized document, and the adapter remains the final authority on pixel evidence. Record the expected document shape in the Oven's `instructions.md`.
+
+## Rendering
+
+The detail page renders through the `.oven` engine: `visual-parity.oven` compiles to `visual-parity.ir.json`. See [The .oven system](/ovens/oven-system) and the [.oven DSL reference](/ovens/dsl-reference).

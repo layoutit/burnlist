@@ -51,6 +51,9 @@ export default defineConfig({
           label: 'Ovens',
           items: [
             { slug: 'ovens', label: 'Overview' },
+            { slug: 'ovens/oven-system' },
+            { slug: 'ovens/dsl-reference' },
+            { slug: 'ovens/authoring' },
             { slug: 'ovens/checklist' },
             { slug: 'ovens/differential-testing' },
             { slug: 'ovens/streaming-diff' },
