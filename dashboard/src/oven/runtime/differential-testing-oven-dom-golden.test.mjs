@@ -47,8 +47,10 @@ const paginatedMidPage = {
 const pageSeed = (page) => ({ "field-view": {
   page: page.page, pageSize: page.pageSize, pageCount: page.pageCount, total: page.total,
 } });
+const loadError = new Error("network unreachable");
 
 const states = [
+  { name: "dt-load-error", initialAction: { type: "payloadRejected", error: loadError, generation: 0 } },
   { name: "dt-empty", payload: differentialTestingEmptyPayload },
   { name: "dt-main", payload: differentialTestingPayload },
   { name: "dt-progress-mode", payload: differentialTestingPayload, controls: { "progress-mode": "progress" } },
@@ -127,9 +129,10 @@ test("DT oven equals the frozen normalized DOM states", async () => {
     for (const state of states) {
       const markup = deterministicRender(() => renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,
-        payload: adaptDifferentialTesting(state.payload()),
+        payload: state.payload ? adaptDifferentialTesting(state.payload()) : undefined,
         controls: state.controls,
         pages: state.pages,
+        initialAction: state.initialAction,
       })));
       const actual = serializeCanonical(normalize(parseHtml(markup)));
       const golden = await readFile(`ovens/differential-testing/renderer/goldens/${state.name}.html`, "utf8");

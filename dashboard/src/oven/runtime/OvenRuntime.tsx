@@ -26,9 +26,12 @@ export function themedRegions(root: RootNode[], theme: ReturnType<typeof getOven
   });
 }
 
-export function OvenRuntime({ ir, initialPayload, payload, controls, pages }: { ir: OvenIr & { id?: string; refreshSeconds?: number }; initialPayload?: unknown; payload?: unknown; controls?: OvenControlSeed; pages?: OvenPageSeed }) {
+export function OvenRuntime({ ir, initialPayload, payload, controls, pages, initialAction }: { ir: OvenIr & { id?: string; refreshSeconds?: number }; initialPayload?: unknown; payload?: unknown; controls?: OvenControlSeed; pages?: OvenPageSeed; initialAction?: OvenAction }) {
   const inputPayload = payload === undefined ? initialPayload : payload;
-  const [state, dispatch] = useReducer((current: OvenState, action: OvenAction) => ovenReducer(current, action, ir), inputPayload, (nextPayload) => initOvenState(ir, nextPayload, controls, pages));
+  const [state, dispatch] = useReducer((current: OvenState, action: OvenAction) => ovenReducer(current, action, ir), inputPayload, (nextPayload) => {
+    const initialState = initOvenState(ir, nextPayload, controls, pages);
+    return initialAction ? ovenReducer(initialState, initialAction, ir) : initialState;
+  });
   useOvenLiveData(ir.id, ir.refreshSeconds, dispatch);
   useEffect(() => {
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });

@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  captureDashboardLoadError,
   captureDashboardRoot,
   differentialTestingAllPassingPayload,
   differentialTestingComparableNoChangedPayload,
@@ -100,16 +101,27 @@ const states = [
   ["pt-main", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "delta" }],
   ["pt-progress", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "progress" }],
   ["pt-failed", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "failed" }],
+  ["dt-load-error"],
 ];
 
-function liveState([name, oven, payload, options, afterCapture]) {
+async function liveState([name, oven, payload, options, afterCapture]) {
+  if (name === "dt-load-error") {
+    const root = await captureDashboardLoadError(new Error("network unreachable"));
+    return { name, html: root.innerHTML, className: root.className };
+  }
   const root = captureDashboardRoot(oven, payload, options, afterCapture);
   return { name, html: root.innerHTML, className: root.className };
 }
 
-test("DOM goldens remain exact for the captured dashboard states", () => {
+async function capturedStates() {
+  const captured = [];
+  for (const state of states) captured.push(await liveState(state));
+  return captured;
+}
+
+test("DOM goldens remain exact for the captured dashboard states", async () => {
   mkdirSync(goldens, { recursive: true });
-  for (const state of states.map(liveState)) {
+  for (const state of await capturedStates()) {
     const path = resolve(goldens, `${state.name}.html`);
     // WRITE_DT_GOLDENS must NEVER be set in CI/verify: it regenerates goldens instead of asserting them.
     if (process.env.WRITE_DT_GOLDENS === "1") {
@@ -123,16 +135,16 @@ test("DOM goldens remain exact for the captured dashboard states", () => {
 
 test("every DT golden payload satisfies the data contract", () => {
   for (const [name, oven, payload] of states) {
-    if (name.startsWith("dt-")) assert.doesNotThrow(() => assertDifferentialTestingData(payload), name);
+    if (name.startsWith("dt-") && payload) assert.doesNotThrow(() => assertDifferentialTestingData(payload), name);
   }
 });
 
-test("DOM goldens contain the expected structural markers", () => {
-  const captured = new Map(states.map((state) => {
-    const live = liveState(state);
-    return [live.name, live];
-  }));
-  for (const [name, state] of captured) assert.ok(state.html.length > 100, `${name} capture is unexpectedly small`);
+test("DOM goldens contain the expected structural markers", async () => {
+  const captured = new Map((await capturedStates()).map((state) => [state.name, state]));
+  for (const [name, state] of captured) {
+    if (name !== "dt-load-error") assert.ok(state.html.length > 100, `${name} capture is unexpectedly small`);
+  }
+  assert.equal(captured.get("dt-load-error").html, '<div class="empty">network unreachable</div>');
   const dtMain = captured.get("dt-main").html;
   assert.equal(captured.get("dt-main").className, "shell driving-parity-view");
   assert.equal(captured.get("dt-comparable-telemetry").className, "shell driving-parity-view");

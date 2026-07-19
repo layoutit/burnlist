@@ -59,6 +59,12 @@ function componentDefaults(ir: OvenIr, kind: string): Record<string, unknown> {
 }
 
 export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
+  if (state.refresh.phase === "failed" && state.payloadRevision === 0) {
+    const error = state.refresh.error;
+    const message = String(error && typeof error === "object" && "message" in error ? error.message : error);
+    return <div className="empty">{message}</div>;
+  }
+
   const root = activeNodes(ir.root as Node[] ?? [], state);
   const empty = root.find((node) => node.kind === "differential-empty-state");
   if (empty) {
