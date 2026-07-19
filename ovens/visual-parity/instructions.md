@@ -5,3 +5,11 @@ Visual Parity compares trusted reference and candidate frames as isolated render
 The project adapter publishes `burnlist-visual-parity-data@1`. A passing domain must satisfy its explicit calibrated channel, mean-delta, and changed-pixel bounds. Context domains remain visible and retain their own pass/fail state, but do not decide the target scenario verdict.
 
 Do not widen a tolerance to make a regression green. Calibrate only a deterministic renderer-boundary residual with a written rationale, preserve the zero-tolerance default, and keep gameplay/state authority in the linked Differential Testing payload.
+
+The visual-parity detail view renders through the `.oven` engine
+(`ovens/visual-parity/visual-parity.oven`), byte-for-byte identical to the React
+`VerdictHeader` / `DomainTabs` / `MetricTiles` / `DomainNote` / `FrameCard` /
+`ImageTriptych` components, as verified by dom-golden coverage. Domain-tab
+selection is wired declaratively by id with a `domain-tabs` control and
+`selection-from`; the engine is a read-only observer and never mutates canonical
+state.
