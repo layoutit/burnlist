@@ -1,0 +1,84 @@
+<oven id="performance-tracing"
+      version="1"
+      contract="burnlist-differential-testing-data@1"
+      refresh-seconds="2"
+      theme="differential-testing">
+  <switch source="/pageMode">
+    <case value="empty">
+      <differential-empty-state title="Differential Testing"/>
+    </case>
+    <case value="detail">
+      <refresh-status source="/refresh"/>
+      <differential-kpi-strip source="/"/>
+
+      <mode-toggle id="progress-mode"
+                   initial="delta"
+                   aria-label="Differential Testing progress view">
+        <option value="progress" label="Progress"/>
+        <option value="failed" label="Failed"/>
+        <option value="delta" label="Delta"/>
+      </mode-toggle>
+      <switch mode-from="progress-mode">
+        <case value="progress">
+          <progress-chart source="/progress"/>
+        </case>
+        <case value="failed">
+          <progress-chart source="/progress"/>
+        </case>
+        <case value="delta">
+          <frame-delta-chart source="/progress"/>
+        </case>
+      </switch>
+
+      <differential-log-table source="/log"/>
+
+      <field-toolbar id="field-controls">
+        <search id="field-search"
+                placeholder="Search Fields..."
+                aria-label="Differential Testing search fields"
+                match-fields="/label /sourceOwner /driftClass /semantics/kind"
+                debounce-ms="150"/>
+        <mode-toggle id="value-mode"
+                     initial="current"
+                     aria-label="Differential Testing chart mode">
+          <option value="current" label="Value"/>
+          <option value="delta" label="Delta"/>
+        </mode-toggle>
+        <sort-toggle id="changed-sort"
+                     key="changed"
+                     label="Changed"
+                     initial="on"
+                     requires-source="/telemetry/status"
+                     requires-value="comparable"
+                     unavailable-text="Changed is unavailable until comparable transition telemetry is published."/>
+        <filter-toggle id="failed-filter"
+                       key="non-pass"
+                       label="Failed"
+                       initial="off"/>
+      </field-toolbar>
+
+      <collection id="field-view"
+                  source="/fields"
+                  item-key="/id"
+                  search-from="field-search"
+                  sort-from="changed-sort"
+                  filter-from="failed-filter"
+                  paging="auto"
+                  page-size="25">
+        <field-list collection-from="field-view"
+                    mode-from="value-mode">
+          <bind prop="telemetryByField"
+                source="/telemetry/fields"
+                format="index-by-id"
+                optional="true"/>
+          <bind prop="telemetryAvailability"
+                source="/telemetry"
+                format="telemetry-availability"
+                optional="true"/>
+        </field-list>
+        <pagination collection-from="field-view"
+                    page-sizes="25 50 100 200"/>
+      </collection>
+    </case>
+  </switch>
+</oven>

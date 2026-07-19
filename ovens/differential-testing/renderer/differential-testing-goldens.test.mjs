@@ -98,6 +98,8 @@ const states = [
   ["dt-chart-current-failed", dtOven, base, { initialChart: "current", initialProgressChart: "failed" }],
   ["dt-progress-mode", dtOven, base, { initialProgressChart: "progress" }],
   ["pt-main", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "delta" }],
+  ["pt-progress", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "progress" }],
+  ["pt-failed", ptOven, performanceTracingPayload(), { initialChart: "current", initialProgressChart: "failed" }],
 ];
 
 function liveState([name, oven, payload, options, afterCapture]) {
