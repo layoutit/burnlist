@@ -7,6 +7,9 @@ import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 import { selectCollection, selectMode } from "./oven-selectors";
 import { ControlAdapter } from "./control-adapters";
 import { WidgetAdapter } from "./widget-adapters";
+import { LogTable } from "../LogTable";
+import { formatRegistry } from "../OvenView/registries";
+import { buildLogTableProps } from "./log-table-adapter";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
@@ -47,6 +50,7 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
     })}</>;
   }
   if (node.kind === "each") return <>{(node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
+  if (node.kind === "log-table") return <LogTable {...buildLogTableProps(node, state.payload, { resolvePointer, formatRegistry })} />;
   if (["mode-toggle", "field-toolbar", "pagination"].includes(node.kind)) return <ControlAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;
   if (["field-list", "refresh-status"].includes(node.kind)) return <WidgetAdapter node={node} ir={ir} state={state} />;
   if (["grid", "panel", "stack"]) return createElement(node.kind === "panel" ? "section" : "div", { className: `oven-${node.kind}`, style: layoutStyle(node) }, (node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />));
