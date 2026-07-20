@@ -1,9 +1,10 @@
 # Creating `.oven` Sources
 
-Practical guide to the current declarative `.oven` source path. Read
-`references/oven-authoring.md` and `references/oven-contract.md` for the older
-`detail.json` skeleton and its package contract; `.oven` is the current
-source-of-truth path for the built-in dashboard views.
+Practical guide to the declarative `.oven` source path. `.oven` is the sole
+canonical Oven structure; `detail.json` is retired and survives only in a
+read-only legacy path for old run snapshots. Read
+`references/oven-authoring.md` and `references/oven-contract.md` for the
+current package contract and CLI guidance.
 
 ## What an Oven Is
 
@@ -14,7 +15,7 @@ the Oven only declares how the shared runtime presents that payload.
 ```text
 human .oven source
   -> compileOven: scanXml -> validateOven -> buildIR
-  -> frozen burnlist-oven-ir@1 JSON (<id>.ir.json, committed)
+  -> frozen burnlist-oven-ir@1 JSON (build-generated)
   -> browser imports IR; OvenRuntime renders it through the shared engine + theme
 ```
 
@@ -180,10 +181,8 @@ corresponding super-custom escape hatch. Keep both out of ordinary sources.
    ```text
    ovens/<id>/
      <id>.oven
-     <id>.ir.json
      instructions.md
-     engine/
-       contract + handler + adapter
+     contract.mjs / handler.mjs / adapter / data.schema.json  # optional, flat data layer
    ```
 
    ```xml
@@ -194,33 +193,29 @@ corresponding super-custom escape hatch. Keep both out of ordinary sources.
    </oven>
    ```
 
-2. Provide the data contract and adapter in `ovens/<id>/engine/`. Record the
-   payload shape and pointer meanings in `ovens/<id>/instructions.md`. The
-   source stays declarative; the adapter owns producing the read-only document.
+2. If the Oven has a custom data source, provide its contract, handler, adapter,
+   and schema as a flat data layer at `ovens/<id>/`. Record the payload shape
+   and pointer meanings in `ovens/<id>/instructions.md`. Checklist needs no
+   data layer; Streaming Diff is the exception that keeps a large `engine/`.
+   The source stays declarative; the adapter owns producing the read-only
+   document.
 
 3. Reuse a registered theme when its chrome fits. The four registered entries
    live in `dashboard/src/oven/runtime/theme-registry.ts`: `checklist`,
    `streaming-diff`, `visual-parity`, and `differential-testing`. Add a theme
    entry only when the chrome must differ.
 
-4. Compile `<id>.oven` with `compileOvenFile`, fail on diagnostics, write the
-   resulting `ir` atomically as `<id>.ir.json`, and commit the artifact beside
-   the source:
-
-   ```js
-   import { compileOvenFile } from "./src/ovens/dsl/oven-compile.mjs";
-
-   const result = await compileOvenFile("ovens/<id>/<id>.oven");
-   if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
-   // Atomically write JSON.stringify(result.ir) to ovens/<id>/<id>.ir.json.
-   ```
+4. The build's oven-ir Vite plugin compiles `<id>.oven` to IR. Never create or
+   commit an `.ir.json` file.
 
 5. Add a byte-golden gate. Follow
    `dashboard/src/oven/runtime/streaming-diff-oven-dom-golden.test.mjs` and
    `dashboard/src/oven/runtime/checklist-oven-golden.test.mjs`: compile the
-   `.oven`, deep-equal its IR to committed `<id>.ir.json`, render
-   `OvenRuntime` with an adapted fixture, normalize the DOM, and compare it to
-   the committed `*.golden.html`.
+   `.oven` at test time, render `OvenRuntime` with an adapted fixture, normalize
+   the DOM, and compare it to the committed `*.golden.html`.
+
+The dashboard's `New Oven` flow (`{id, name, instructions}`) and the CLI both
+scaffold a starter `.oven`.
 
 For a collection with id-wired controls, use
 `ovens/differential-testing/differential-testing.oven` as the compact pattern:

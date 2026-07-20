@@ -22,26 +22,31 @@ This is the complete committed `streaming-diff.oven`. It describes what to rende
 ```text
 <id>.oven (human source)
   -> compileOven
-  -> <id>.ir.json (compiled IR)
+  -> build-generated IR
   -> OvenRuntime + theme-registry
   -> rendered detail page
 ```
 
-`compileOven(source)` validates the source against the DSL grammar and emits JSON-only IR. The dashboard browser imports that `<id>.ir.json`, then the shared `OvenRuntime` renders it with the selected theme from the theme registry. The result is composable detail-page UI without executable Oven content.
+The build's oven-ir Vite plugin compiles `<id>.oven` at build or import time. `compileOven(source)` validates the source against the DSL grammar and emits JSON-only IR; the shared `OvenRuntime` renders it with the selected theme from the theme registry. The IR is never a committed file. The result is composable detail-page UI without executable Oven content.
 
-## An Oven directory has two layers
+## Minimal footprint
 
-Each Oven directory contains both the established package layer and the rendering layer:
+Every Oven directory contains its two canonical files. It has a flat data layer
+only when it needs a custom data source:
 
 ```text
 <oven-id>/
   instructions.md     # outcome, state, inputs, and evidence rules
-  detail.json         # package/detail skeleton
   <id>.oven           # declarative detail-page source
-  <id>.ir.json        # compiled browser-imported IR
+  contract.mjs / handler.mjs / adapter / data.schema.json  # optional, flat data layer
 ```
 
-`instructions.md` and `detail.json` remain the packaging and detail-skeleton layer described in the [Ovens overview](/ovens). The `.oven` pair is specifically the detail-page rendering DSL.
+The oven-ir Vite plugin generates IR from `<id>.oven`; authors never create or commit `.ir.json`. Checklist has no data layer. Performance Tracing and `visual-parity` have flat `contract.mjs` and `handler.mjs` files; Differential Testing has a flat data layer of `contract.mjs`, `handler.mjs`, `data-contract.mjs`, `adapter-sdk.mjs`, `transport.mjs`, `worker-runtime.mjs`, and `data.schema.json`. Streaming Diff is the one Oven that keeps a large `engine/` directory and `e2e/`.
+
+## Creating an oven
+
+`New Oven` takes `{id, name, instructions}` and the server scaffolds a starter
+`.oven`. The former drag-grid builder was removed.
 
 ## Why use a DSL
 

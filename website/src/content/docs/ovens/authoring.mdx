@@ -21,19 +21,19 @@ The root `theme` must be one of the registered themes. Theme-owned chrome and co
 
 ## 2. Provide normalized project data
 
-Provide a project adapter that produces the normalized data document described by the chosen contract. The adapter is not part of the Oven. Source-value shapes are the renderer and adapter authority, so point each binding at the documented normalized document rather than embedding transformations in `.oven`.
+When an Oven has a custom data source, provide its project handler and contract as a flat data layer in the Oven directory. The adapter is not part of the `.oven` source. Source-value shapes are the renderer and adapter authority, so point each binding at the documented normalized document rather than embedding transformations in `.oven`.
 
 For the example above, `/identity/session`, `/backHref`, and `/cards` are paths in the streaming-diff contract document. The same separation applies to the interactive Differential Testing Oven: its adapter produces `/pageMode`, `/progress`, `/fields`, `/telemetry`, and the other normalized values, while the `.oven` file only declares controls and bindings.
 
 ## 3. Compile to IR
 
-Compile the source with `compileOven(source)` or `compileOvenFile(path)`. A successful compile produces the `<id>.ir.json` IR that the dashboard browser imports:
+The build's oven-ir Vite plugin compiles the source automatically at build or import time:
 
 ```text
-<id>.oven -> compileOven -> <id>.ir.json -> OvenRuntime
+<id>.oven -> compileOven -> build-generated IR -> OvenRuntime
 ```
 
-Compilation validates the root metadata, closed element vocabulary, pointers, control references, formats, and required widget properties. It does not execute the Oven or the project adapter.
+Compilation validates the root metadata, closed element vocabulary, pointers, control references, formats, and required widget properties. It does not execute the Oven or the project adapter. Authors do not create or commit `<id>.ir.json`.
 
 ## 4. Gate the rendered result
 
