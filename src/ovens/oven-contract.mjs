@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { compileOven } from "./dsl/oven-compile.mjs";
 
 const ovenWidgets = new Set([
   "metric",
@@ -107,17 +108,18 @@ export function normalizeOvenDetail(value) {
 }
 
 export function normalizeOvenPackage(value) {
-  assertKnownKeys(value, new Set(["id", "instructions", "detail"]), "Oven package");
+  assertKnownKeys(value, new Set(["id", "instructions", "oven"]), "Oven package");
   const id = ovenId(value.id);
   const instructions = boundedText(value.instructions, `Oven ${id} instructions`, 65536);
   if (!/^#\s+\S/mu.test(instructions)) {
     throw new Error(`Oven ${id} instructions must contain a level-one heading.`);
   }
-  return {
-    id,
-    instructions,
-    detail: normalizeOvenDetail(value.detail),
-  };
+  const oven = String(value.oven);
+  const compiled = compileOven(oven);
+  if (!compiled.ok) {
+    throw new Error(`Oven ${id} .oven source is invalid: ${compiled.diagnostics[0].message}`);
+  }
+  return { id, instructions, oven };
 }
 
 function canonicalJson(value) {
@@ -128,9 +130,21 @@ function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
-// Callers pass an Oven package whose instructions and detail have already been
+// Callers pass an Oven package whose instructions and source have already been
 // normalized by normalizeOvenPackage. Only its portable content defines this id.
 export function ovenRevision(pkg) {
+  const instructions = String(pkg.instructions ?? "").replace(/\r\n?/gu, "\n");
+  const oven = String(pkg.oven ?? "").replace(/\r\n?/gu, "\n");
+  const contents = canonicalJson({
+    format: "burnlist-oven-content@2",
+    id: pkg.id,
+    instructions,
+    oven,
+  });
+  return `o1-sha256:${createHash("sha256").update(contents).digest("hex")}`;
+}
+
+export function legacyOvenRevision(pkg) {
   const instructions = String(pkg.instructions ?? "").replace(/\r\n?/gu, "\n");
   const contents = canonicalJson({
     format: "burnlist-oven-content@1",

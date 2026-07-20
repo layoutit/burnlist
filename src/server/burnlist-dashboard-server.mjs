@@ -24,12 +24,15 @@ import { assertGitIgnored } from "../cli/git-ignore.mjs";
 import {
   assertKnownKeys,
   boundedText,
+  legacyOvenRevision,
   normalizeOvenDetail,
   normalizeOvenForkedFrom,
   normalizeOvenPackage,
   ovenId,
   ovenRevision,
 } from "../ovens/oven-contract.mjs";
+import { compileOven } from "../ovens/dsl/oven-compile.mjs";
+import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
@@ -40,9 +43,9 @@ import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenP
 import {
   assertCustomOvensDir,
   assertCustomOvenPath,
-  OVEN_DETAIL_MAX_BYTES,
   OVEN_INSTRUCTIONS_MAX_BYTES,
   OVEN_LINEAGE_MAX_BYTES,
+  OVEN_SOURCE_MAX_BYTES,
   resolveCustomOvensDir,
   serializeOvenPackage,
 } from "./oven-storage.mjs";
@@ -140,7 +143,8 @@ const repoMapCache = new Map();
 const ovenHandlerCaches = new Map();
 const REPO_MAP_CACHE_MS = 2_000;
 const RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES = 262144;
-const RUN_SNAPSHOT_DETAIL_MAX_BYTES = 393216;
+const RUN_SNAPSHOT_SOURCE_MAX_BYTES = 393216;
+const RUN_SNAPSHOT_DETAIL_MAX_BYTES = RUN_SNAPSHOT_SOURCE_MAX_BYTES;
 
 function cachedRepoMap(repo) {
   const key = repo.root;
@@ -411,12 +415,12 @@ function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
   }
   try {
     const instructionsPath = join(ovenRoot, "instructions.md");
-    const detailPath = join(ovenRoot, "detail.json");
-    if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
+    const ovenPath = join(ovenRoot, `${safeId}.oven`);
+    if (!safeStat(instructionsPath)?.isFile() || !safeStat(ovenPath)?.isFile()) return null;
     const ovenPackage = normalizeOvenPackage({
       id: safeId,
       instructions: readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions"),
-      detail: JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template")),
+      oven: readTextFileWithLimit(ovenPath, OVEN_SOURCE_MAX_BYTES, "Oven source"),
     });
     const lineagePath = join(ovenRoot, "oven.json");
     let forkedFrom;
@@ -435,7 +439,8 @@ function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
       description: instructionsDescription(ovenPackage.instructions),
       builtIn,
       instructions: ovenPackage.instructions,
-      detail: ovenPackage.detail,
+      oven: ovenPackage.oven,
+      ir: compileOven(ovenPackage.oven).ir,
       ovenRevision: ovenRevision(ovenPackage),
       ...(forkedFrom ? { forkedFrom } : {}),
     };
@@ -511,16 +516,11 @@ function ovenSummary(oven) {
     repoKey: oven.repoKey,
     ovenRevision: oven.ovenRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
-    detail: {
-      columns: oven.detail.columns,
-      rows: oven.detail.rows,
-      sections: oven.detail.cells.length,
-    },
   };
 }
 
 function assertOvenInput(value) {
-  assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven");
+  assertKnownKeys(value, new Set(["id", "name", "instructions"]), "Oven");
 }
 
 function createOven(value) {
@@ -547,8 +547,8 @@ function createOven(value) {
   if (titleLine === -1) instructionLines.unshift(`# ${name}`, "");
   else instructionLines[titleLine] = `# ${name}`;
   instructions = instructionLines.join("\n");
-  const detail = normalizeOvenDetail(ovenValue.detail);
-  const ovenPackage = normalizeOvenPackage({ id, instructions, detail });
+  const oven = starterOvenSource(id, name);
+  const ovenPackage = normalizeOvenPackage({ id, instructions, oven });
   const files = serializeOvenPackage(ovenPackage);
   assertCustomOvenPath(repo.root, customOvensDir, id, { unsafe: unsafeOvensDir });
   assertGitIgnored(repo.root, customOvensDir);
@@ -630,7 +630,7 @@ function createBurnRun(value) {
   const id = runId();
   const createdAt = new Date().toISOString();
   const record = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     id,
     ovenId: selectedOvenId,
     ovenRepoKey: selectedOvenRepoKey,
@@ -646,13 +646,13 @@ function createBurnRun(value) {
     sections: [],
   };
   const instructionsSnapshot = `${oven.instructions.trim()}\n`;
-  const detailSnapshot = `${JSON.stringify(oven.detail, null, 2)}\n`;
+  const sourceSnapshot = oven.oven;
   assertSnapshotSize(instructionsSnapshot, RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions");
-  assertSnapshotSize(detailSnapshot, RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template");
+  assertSnapshotSize(sourceSnapshot, RUN_SNAPSHOT_SOURCE_MAX_BYTES, "Run Oven source");
   const files = {
     "run.json": `${JSON.stringify(record, null, 2)}\n`,
     "instructions.md": instructionsSnapshot,
-    "detail.json": detailSnapshot,
+    [`${oven.id}.oven`]: sourceSnapshot,
   };
   const path = withRepoStateLock(repo.root, () => {
     if (legacyRunsDir) return atomicDirectory(legacyRunsDir, id, files);
@@ -689,20 +689,47 @@ function readBurnRun(id) {
       "sections",
     ]), "Burn run");
     ovenId(record.ovenId);
-    if (![3, 4].includes(record.schemaVersion)) {
-      throw new Error("Burn run schemaVersion must be 3 or 4.");
+    if (![3, 4, 5].includes(record.schemaVersion)) {
+      throw new Error("Burn run schemaVersion must be 3, 4, or 5.");
     }
     const runRoot = dirname(path);
-    const ovenPackage = normalizeOvenPackage({
-      id: record.ovenId,
-      instructions: readTextFileWithLimit(join(runRoot, "instructions.md"), RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES, "Run Oven instructions"),
-      detail: JSON.parse(readTextFileWithLimit(join(runRoot, "detail.json"), RUN_SNAPSHOT_DETAIL_MAX_BYTES, "Run Oven detail template")),
-    });
-    const snapshotRevision = ovenRevision(ovenPackage);
-    if (record.schemaVersion === 4) {
+    const instructions = readTextFileWithLimit(
+      join(runRoot, "instructions.md"),
+      RUN_SNAPSHOT_INSTRUCTIONS_MAX_BYTES,
+      "Run Oven instructions",
+    );
+    if (record.schemaVersion >= 4) {
       if (Object.hasOwn(record, "ovenRepoKey") && record.ovenRepoKey !== null && typeof record.ovenRepoKey !== "string") {
         throw new Error("Burn run ovenRepoKey must be null or a repository key.");
       }
+    }
+    if (record.schemaVersion === 5) {
+      const ovenPackage = normalizeOvenPackage({
+        id: record.ovenId,
+        instructions,
+        oven: readTextFileWithLimit(
+          join(runRoot, `${record.ovenId}.oven`),
+          RUN_SNAPSHOT_SOURCE_MAX_BYTES,
+          "Run Oven source",
+        ),
+      });
+      const snapshotRevision = ovenRevision(ovenPackage);
+      const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
+      if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
+        throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
+      }
+      if (ovenRevisionValue !== snapshotRevision) {
+        throw new Error(`Burn run ${safeId} revision does not match its snapshot.`);
+      }
+      return record;
+    }
+    const detail = normalizeOvenDetail(JSON.parse(readTextFileWithLimit(
+      join(runRoot, "detail.json"),
+      RUN_SNAPSHOT_DETAIL_MAX_BYTES,
+      "Run Oven detail template",
+    )));
+    const snapshotRevision = legacyOvenRevision({ instructions, detail });
+    if (record.schemaVersion === 4) {
       const ovenRevisionValue = boundedText(record.ovenRevision, "Burn run ovenRevision", 74);
       if (!/^o1-sha256:[a-f0-9]{64}$/u.test(ovenRevisionValue)) {
         throw new Error("Burn run ovenRevision must be an o1-sha256 digest.");
@@ -1085,7 +1112,7 @@ const server = createServer(async (req, res) => {
       if (method === "POST") {
         assertWriteRequest(req);
         const oven = createOven(await readJsonRequest(req));
-        json(res, 201, { oven: { ...ovenSummary(oven), instructions: oven.instructions, detail: oven.detail, path: oven.path } });
+        json(res, 201, { oven: { ...ovenSummary(oven), instructions: oven.instructions, oven: oven.oven, path: oven.path } });
         return;
       }
       return json(res, 405, { error: "method not allowed" });

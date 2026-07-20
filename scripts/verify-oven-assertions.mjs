@@ -6,7 +6,9 @@ export function assertBuiltInOvenSet(repoRoot, expected) {
   const ovensRoot = resolve(repoRoot, "ovens");
   const actual = readdirSync(ovensRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .filter((entry) => ["instructions.md", "detail.json"].every((name) => existsSync(join(ovensRoot, entry.name, name))))
+    .filter((entry) => existsSync(join(ovensRoot, entry.name, "instructions.md")))
+    .filter((entry) => readdirSync(join(ovensRoot, entry.name))
+      .some((name) => name.endsWith(".oven") && name === `${entry.name}.oven`))
     .map((entry) => entry.name)
     .sort();
   const wanted = [...expected].sort();
@@ -35,7 +37,7 @@ export function assertBuiltInOven(repoRoot, id, expectedName) {
     const ovenPackage = normalizeOvenPackage({
       id,
       instructions: readFileSync(resolve(root, "instructions.md"), "utf8"),
-      detail: JSON.parse(readFileSync(resolve(root, "detail.json"), "utf8")),
+      oven: readFileSync(resolve(root, `${id}.oven`), "utf8"),
     });
     const heading = ovenPackage.instructions
       .split(/\r?\n/u)

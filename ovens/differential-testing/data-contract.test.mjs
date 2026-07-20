@@ -417,7 +417,7 @@ test("empty scenario state rejects fake selection and retained data", async (t) 
 
 test("renderer shows the clean no-scenarios state without a fake id", () => {
   const payload = buildPayload(...emptyCaptures());
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => null, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
   globalThis.window = { addEventListener() {}, removeEventListener() {}, devicePixelRatio: 1, clearTimeout() {}, setTimeout() {} };
@@ -1198,7 +1198,7 @@ test("Changed renders telemetry transitions while primary field status stays fai
   candidate.telemetry = buildDifferentialTelemetry(baseline, candidate, provenance);
   assert.equal(differentialTelemetryFieldMap(candidate).size, candidate.fields.length);
 
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = {
     innerHTML: "",
@@ -1224,7 +1224,7 @@ test("Changed renders telemetry transitions while primary field status stays fai
 
 test("exact authority stays in the data contract without adding a non-template panel", () => {
   const payload = attachReadyExactSession(buildPayload(...populatedCaptures()));
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = {
     innerHTML: "",
@@ -1274,7 +1274,7 @@ test("dashboard Delta chart stays source-backed while the log reports frame adva
     validateDifferentialTestingData(payload).issues.filter((issue) => issue.path.endsWith(".frameDelta")),
     [],
   );
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1344,7 +1344,7 @@ test("KPI failed totals use the same million compaction as total samples", () =>
     blocked: 463_605,
     uniqueTicks: 1_000,
   };
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1360,7 +1360,7 @@ test("KPI failed totals use the same million compaction as total samples", () =>
 test("project payloads cannot rename the generic Differential Testing Oven", () => {
   const payload = buildPayload(...populatedCaptures());
   payload.title = "Project Alpha Differential Testing";
-  const oven = { name: "Differential Testing", detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = { name: "Differential Testing" };
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1383,7 +1383,7 @@ test("Value charts merge contiguous failing reference intervals into bounded SVG
     field.samples = states.map((state, tick) => [tick, tick, tick + 1, state]);
     field.failedSampleCount = states.filter((state) => state !== 0).length;
     payload.fields = [field];
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
     const controls = { value: "", focus() {}, setSelectionRange() {} };
     const listeners = new Map();
     const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1411,7 +1411,7 @@ test("Value charts merge contiguous failing reference intervals into bounded SVG
 test("default field ordering does not rescan the payload inside a sort comparator", () => {
   const payload = buildPayload(...populatedCaptures());
   payload.fields.indexOf = () => { throw new Error("quadratic field-order lookup"); };
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;
@@ -1427,7 +1427,7 @@ test("scenario selector requests another published scenario and shows Loading", 
   const payload = buildPayload(...populatedCaptures());
   const secondScenario = { ...payload.scenarioCatalog.scenarios[0], id: "fedcba9876543210", label: "Second scenario" };
   payload.scenarioCatalog.scenarios.push(secondScenario);
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const listeners = new Map();
   const root = { innerHTML: "", addEventListener(type, listener) { listeners.set(type, listener); }, querySelector: () => controls, querySelectorAll: () => [] };
@@ -1452,7 +1452,7 @@ test("first-row tick cadence and label clearance match the shared hybrid referen
   reference.samples = Array.from({ length: 21 }, (_, tick) => ({ tick, values: { position: tick, active: tick > 0 } }));
   candidate.samples = structuredClone(reference.samples);
   const payload = buildPayload(reference, candidate);
-  const oven = { detail: JSON.parse(readFileSync(resolve(exampleDir, "../detail.json"), "utf8")) };
+  const oven = {};
   const controls = { value: "", focus() {}, setSelectionRange() {} };
   const root = { innerHTML: "", addEventListener() {}, querySelector: () => controls, querySelectorAll: () => [] };
   const previousWindow = globalThis.window;

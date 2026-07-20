@@ -83,7 +83,7 @@ test("Oven package cleanup failures do not undo a published revision, while pre-
     'import { syncBuiltinESMExports } from "node:module";',
     'const [root, moduleUrl] = process.argv.slice(1);',
     'const { atomicOvenPackage, resolveOvenPackageDir } = await import(moduleUrl);',
-    'const files = (name) => ({ "instructions.md": "# " + name + "\\n", "detail.json": "{}\\n" });',
+    'const files = (name) => ({ "instructions.md": "# " + name + "\\n", "oven.oven": "<oven />\\n" });',
     'atomicOvenPackage(root, "oven", files("first"));',
     'const nativeReaddir = fs.readdirSync;',
     'fs.readdirSync = (path, ...rest) => path === root + "/oven" ? (() => { throw new Error("gc blocked"); })() : nativeReaddir(path, ...rest);',
@@ -100,7 +100,7 @@ test("Oven package cleanup failures do not undo a published revision, while pre-
     'const nativeWrite = fs.writeFileSync;',
     'fs.writeFileSync = (path, ...rest) => { if (String(path).includes("instructions.md")) throw new Error("stage blocked"); return nativeWrite(path, ...rest); };',
     'syncBuiltinESMExports();',
-    'try { atomicOvenPackage(root, "pre-swap", { "instructions.md": "# blocked\\n", "detail.json": "{}\\n" }); } catch (error) { process.stdout.write(error.message); }',
+    'try { atomicOvenPackage(root, "pre-swap", { "instructions.md": "# blocked\\n", "pre-swap.oven": "<oven />\\n" }); } catch (error) { process.stdout.write(error.message); }',
   ].join("\n");
   try {
     const published = spawnSync(process.execPath, ["--input-type=module", "--eval", script, context.root, new URL("./fs-safe.mjs", import.meta.url).href], { encoding: "utf8" });
@@ -118,10 +118,10 @@ test("Oven package cleanup failures do not undo a published revision, while pre-
   }
 });
 
-function ovenFiles(version) {
+function ovenFiles(version, id = "oven") {
   return {
     "instructions.md": `# Oven ${version}\n`,
-    "detail.json": `{ "version": "${version}" }\n`,
+    [`${id}.oven`]: `<oven version="${version}" />\n`,
     "oven.json": `{ "source": "${version}" }\n`,
   };
 }
@@ -235,7 +235,10 @@ test("legacy migration stays readable on either side of current and recovery tru
   const crashed = join(context.root, "crashed");
   const orphanRoot = join(context.root, "orphan");
   try {
-    atomicDirectory(context.root, "legacy", ovenFiles("legacy"));
+    atomicDirectory(context.root, "legacy", {
+      ...ovenFiles("legacy", "legacy"),
+      "detail.json": `{ "version": "legacy" }\n`,
+    });
     assert.equal(resolveOvenPackageDir(target), target);
     assert.equal(readFileSync(join(resolveOvenPackageDir(target), "instructions.md"), "utf8"), "# Oven legacy\n");
     withOvenPackageLock(context.root, "legacy", () => (
@@ -243,6 +246,9 @@ test("legacy migration stays readable on either side of current and recovery tru
     ));
     assert.equal(readFileSync(join(resolveOvenPackageDir(target), "instructions.md"), "utf8"), "# Oven updated\n");
     assert.equal(existsSync(join(target, "instructions.md")), false);
+    assert.equal(existsSync(join(target, "legacy.oven")), false);
+    assert.equal(existsSync(join(target, "detail.json")), false);
+    assert.equal(readFileSync(join(resolveOvenPackageDir(target), "detail.json"), "utf8"), `{ "version": "legacy" }\n`);
 
     atomicDirectory(context.root, "crashed", ovenFiles("old"));
     const publishedBeforeCleanup = join(crashed, "rev-cafebabe");

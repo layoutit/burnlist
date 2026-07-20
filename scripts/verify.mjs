@@ -267,7 +267,7 @@ assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname =
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
 assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions", "detail"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
 assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
@@ -283,7 +283,6 @@ assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", 
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate-bundle <bundle/current.json>", "Burnlist CLI is missing Differential Testing bundle validation help.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Oven detail page skeleton", "Oven detail skeleton is missing.");
 assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'className="dashboard-header"', "Dashboard header is missing its semantic style hook.");
 assertSourceIncludes("dashboard/src/index.css", "height: 50px;", "Dashboard header is not fixed at 50px.");
 assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'aria-label="Burnlist home"', "Dashboard header logo does not link home.");
@@ -302,13 +301,6 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"typeId"', "Bu
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'record.typeId', "Burn run reads still accept retired typeId records.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "/assets/fallback-burn-types.js", "Burnlist still exposes the retired type asset alias.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '["api", "ovens", "types", "runs"]', "Burnlist still reserves the retired types route.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "setPointerCapture", "Oven detail skeleton pointer capture is missing.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'aria-label="New detail section"', "Oven inline detail-section editor is missing.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "DetailTypePicker", "Oven chart-type icon picker is missing.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Describe the metric", "Oven metric-description textarea is missing.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "const NEW_OVEN_ROW_HEIGHT = 50", "New Oven row height is not defined as a fixed implementation constant.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'className="oven-fields-row"', "React New Oven metadata fields are missing their semantic layout hook.");
-assertSourceIncludes("dashboard/src/index.css", "grid-template-columns: repeat(4, minmax(0, 1fr));", "React New Oven metadata fields are not arranged in columns.");
 assertSourceExcludes("dashboard/src/index.css", "tailwindcss", "Dashboard stylesheet still imports Tailwind.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "grid-area-title", "Oven detail sections still expose a separate title field.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "grid-area-source", "Oven detail sections still expose a source-path field.");
@@ -320,7 +312,7 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "builder-hint",
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "Drag to place a detail section", "React New Oven still renders the removed skeleton helper text.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "grid-ruler", "Oven detail skeleton still renders grid ruler numbers.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'class="form-card oven-builder"', "Oven detail skeleton is still wrapped in a card container.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "schemaVersion: 4", "Burn runs do not write manifest schema version 4.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "schemaVersion: 5", "Burn runs do not write manifest schema version 5.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenRevision: oven.ovenRevision", "Burn runs do not pin the Oven revision.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'useState("checklist")', "React Run Burn does not default to Checklist.");
 assertSourceIncludes("ovens/checklist/instructions.md", "## Active Checklist", "Checklist no longer preserves the Burnlist active queue contract.");
@@ -335,7 +327,6 @@ assertSourceIncludes("ovens/differential-testing/instructions.md", "No per-candi
 assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
 assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("ovens/differential-testing/data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
-assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", 'value: "comparison"', "React New Oven is missing the controlled Comparison widget.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");

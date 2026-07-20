@@ -28,7 +28,6 @@ const dtOven = ovenLayout();
 const ptOven = {
   id: "performance-tracing",
   name: "Performance Tracing",
-  detail: { cells: JSON.parse(readFileSync(resolve(here, "../../../../ovens/performance-tracing/detail.json"), "utf8")).cells },
 };
 
 const base = differentialTestingPayload();
