@@ -1,5 +1,5 @@
 export { formatTime } from "./format";
-export { burnlistHref, currentSection, filterFromUrl, listHref, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
+export { burnlistHref, currentSection, customOvenSelection, filterFromUrl, listHref, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
 export { visualParityDomainSummary } from "./visual-parity";

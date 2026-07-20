@@ -1,13 +1,29 @@
 import type { Burnlist, Filter, SelectedBurnlist } from "./types";
 
+const BUILT_IN_OVEN_IDS = new Set([
+  "checklist",
+  "differential-testing",
+  "performance-tracing",
+  "streaming-diff",
+  "visual-parity",
+]);
+
 export function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
   if (window.location.pathname === "/ovens/performance-tracing/view") return "performance-tracing";
   if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
   if (window.location.pathname === "/ovens/visual-parity/view") return "visual-parity";
+  const customOvenMatch = window.location.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
+  if (customOvenMatch && !BUILT_IN_OVEN_IDS.has(customOvenMatch[1])) return "custom-oven";
   if (window.location.pathname === "/runs/new") return "run-burn";
   return "burnlists";
+}
+
+export function customOvenSelection(): { id: string; repoKey: string | null } | null {
+  if (currentSection() !== "custom-oven") return null;
+  const match = window.location.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
+  return match ? { id: match[1], repoKey: new URLSearchParams(window.location.search).get("repoKey") } : null;
 }
 
 export function ovenRepoKey() {
