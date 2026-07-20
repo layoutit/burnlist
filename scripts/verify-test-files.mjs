@@ -48,6 +48,7 @@ export const verificationTestFiles = [
   "src/cli/skills-install-cli-purge.test.mjs",
   "src/cli/commands-help.test.mjs",
   "src/cli/oven-cli.test.mjs",
+  "src/cli/oven-fork-id.test.mjs",
   "src/cli/oven-cli-stdout.test.mjs",
   "src/cli/oven-storage.test.mjs",
   "src/cli/umbrella.test.mjs",

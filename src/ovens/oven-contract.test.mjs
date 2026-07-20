@@ -11,7 +11,7 @@ function packageFixture(id = "sample-oven") {
   return {
     id,
     instructions: "# Sample Oven\n\nFollow the checklist.\n",
-    oven: '<oven id="sample-oven" version="1" contract="checklist-progress@1" theme="checklist">\n  <section-header title="Sample Oven"/>\n</oven>\n',
+    oven: `<oven id="${id}" version="1" contract="checklist-progress@1" theme="checklist">\n  <section-header title="Sample Oven"/>\n</oven>\n`,
   };
 }
 
@@ -46,6 +46,13 @@ test("normalizeOvenDetail retains legacy detail validation", () => {
 
 test("id-is-part-of-revision", () => {
   assert.notEqual(ovenRevision(normalizedFixture("original-oven")), ovenRevision(normalizedFixture("forked-oven")));
+});
+
+test("normalizeOvenPackage rejects a root id that differs from the package id", () => {
+  assert.throws(
+    () => normalizeOvenPackage({ ...packageFixture("other-oven"), oven: packageFixture("sample-oven").oven }),
+    /Oven other-oven .oven root id "sample-oven" must match the package id\./u,
+  );
 });
 
 test("content-change-changes-revision", () => {

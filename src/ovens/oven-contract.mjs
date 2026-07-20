@@ -119,6 +119,9 @@ export function normalizeOvenPackage(value) {
   if (!compiled.ok) {
     throw new Error(`Oven ${id} .oven source is invalid: ${compiled.diagnostics[0].message}`);
   }
+  if (compiled.ir.id !== id) {
+    throw new Error(`Oven ${id} .oven root id "${compiled.ir.id}" must match the package id.`);
+  }
   return { id, instructions, oven };
 }
 

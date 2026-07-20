@@ -10,6 +10,7 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
 import { renderOvenTree, sourceTable } from "./oven-cli-render.mjs";
@@ -101,6 +102,18 @@ function assertCustomTarget(id, verb) {
     throw new Error(`Oven ${id} is built-in and read-only. Fork it: \`oven fork ${id} <new-id>\`.`);
   }
   if (verb === "update" && !existing) throw new Error(`Oven ${id} does not exist. Use \`oven create\` instead.`);
+}
+
+function rewriteRootOvenId(source, id) {
+  const parsed = scanXml(source);
+  const byteOffset = parsed.ast?.name === "oven" ? parsed.ast.attrSpans.id?.offset : undefined;
+  if (!parsed.ok || byteOffset === undefined) throw new Error("Oven source must have a valid root id to fork.");
+  const attrStart = Buffer.from(source).subarray(0, byteOffset).toString("utf8").length;
+  const attribute = /^id\s*=\s*(["'])/u.exec(source.slice(attrStart));
+  if (!attribute) throw new Error("Oven source must have a valid root id to fork.");
+  const valueStart = attrStart + attribute[0].length;
+  const valueEnd = source.indexOf(attribute[1], valueStart);
+  return `${source.slice(0, valueStart)}${id}${source.slice(valueEnd)}`;
 }
 
 // ── subcommands ───────────────────────────────────────────────────────────────
@@ -236,7 +249,8 @@ try {
     if (!sourceId || !newId) fail("Usage: burnlist oven fork <id> <newId>");
     const source = findOven(sourceId);
     if (!source) fail(`Unknown Oven "${sourceId}". Run \`burnlist oven list\`.`);
-    const pkg = normalizeOvenPackage({ id: ovenId(newId), instructions: source.instructions, oven: source.oven });
+    const id = ovenId(newId);
+    const pkg = normalizeOvenPackage({ id, instructions: source.instructions, oven: rewriteRootOvenId(source.oven, id) });
     const sourceRevision = ovenRevision(source);
     if (findOven(pkg.id)) throw new Error(`Oven ${pkg.id} already exists.`);
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, {

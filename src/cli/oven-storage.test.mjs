@@ -20,8 +20,8 @@ function run(context, args, input) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd: context.repo, encoding: "utf8", input });
 }
 
-function ovenWithStoredBytes(targetBytes) {
-  const prefix = '<oven id="stored-source" version="1" contract="checklist-progress@1" theme="checklist">\n  <!--';
+function ovenWithStoredBytes(targetBytes, id) {
+  const prefix = `<oven id="${id}" version="1" contract="checklist-progress@1" theme="checklist">\n  <!--`;
   const suffix = '-->\n  <section-header title="Stored source"/>\n</oven>\n';
   const fillBytes = targetBytes - Buffer.byteLength(prefix) - Buffer.byteLength(suffix);
   assert.ok(fillBytes >= 0, "test fixture must leave room for a valid Oven");
@@ -32,12 +32,13 @@ test("--package accepts a 133KB envelope when each stored component fits", () =>
   const context = fixture();
   try {
     const instructions = `# ${"x".repeat(65_533)}`;
-    const oven = ovenWithStoredBytes(69 * 1024);
+    const oven = ovenWithStoredBytes(69 * 1024, "from-package");
+    const fileOven = ovenWithStoredBytes(69 * 1024, "from-files");
     const packageInput = JSON.stringify({ instructions, oven });
     const instructionsPath = join(context.repo, "instructions.md");
     const ovenPath = join(context.repo, "from-files.oven");
     writeFileSync(instructionsPath, instructions);
-    writeFileSync(ovenPath, oven);
+    writeFileSync(ovenPath, fileOven);
 
     run(context, ["oven", "create", "from-package", "--package", "-"], packageInput);
     run(context, ["oven", "create", "from-files", "--instructions", instructionsPath, "--oven", ovenPath]);
@@ -50,21 +51,22 @@ test("--package accepts a 133KB envelope when each stored component fits", () =>
     assert.equal(Buffer.byteLength(packageOven), 69 * 1024);
     assert.ok(Buffer.byteLength(packageInput) > 128 * 1024);
     assert.equal(packageInstructions, readFileSync(join(filesDir, "instructions.md"), "utf8"));
-    assert.equal(packageOven, readFileSync(join(filesDir, "from-files.oven"), "utf8"));
+    assert.equal(packageOven, oven);
+    assert.equal(readFileSync(join(filesDir, "from-files.oven"), "utf8"), fileOven);
   } finally { context.cleanup(); }
 });
 
 test("--package rejects oversized stored instructions and Oven source independently", () => {
   const context = fixture();
   try {
-    const oven = ovenWithStoredBytes(69 * 1024);
+    const oven = ovenWithStoredBytes(69 * 1024, "large-instructions");
     assert.throws(
       () => run(context, ["oven", "create", "large-instructions", "--package", "-"], JSON.stringify({
         instructions: `# ${"\u0800".repeat(21_845)}`, oven,
       })),
       (error) => String(error.stderr).includes("instructions.md") && String(error.stderr).includes("65536 byte limit"),
     );
-    const oversizedOven = ovenWithStoredBytes(131_073);
+    const oversizedOven = ovenWithStoredBytes(131_073, "large-oven");
     assert.throws(
       () => run(context, ["oven", "create", "large-oven", "--package", "-"], JSON.stringify({
         instructions: "# Valid", oven: oversizedOven,
