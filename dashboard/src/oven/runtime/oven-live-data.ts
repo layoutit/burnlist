@@ -29,6 +29,12 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
     dispatch({ type: "payloadRequested" });
     const requestGeneration = generation;
     void fetchImpl(ovenDataUrl(id, search), { cache: "no-store", headers: etag ? { "If-None-Match": etag } : undefined }).then(async (response) => {
+      if (response.status === 304) {
+        const nextEtag = response.headers.get("etag");
+        if (nextEtag) etag = nextEtag;
+        if (!stopped && requestGeneration === generation) dispatch({ type: "payloadUnchanged", generation: requestGeneration });
+        return;
+      }
       if (!response.ok) throw new Error(`Oven data request failed (${response.status})`);
       const raw = await response.json();
       const nextEtag = response.headers.get("etag");

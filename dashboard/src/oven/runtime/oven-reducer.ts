@@ -22,6 +22,7 @@ export type OvenPageSeed = Record<string, OvenServerPage>;
 export type OvenAction =
   | { type: "payloadRequested" }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
+  | { type: "payloadUnchanged"; generation: number }
   | { type: "payloadRejected"; error: unknown; generation: number }
   | { type: "scenarioSelected"; scenarioId: string }
   | { type: "modeSelected"; id: string; value: string }
@@ -168,6 +169,8 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
       }));
       return { ...state, payload: action.payload, payloadRevision: state.payloadRevision + 1, controls, collections, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined } };
     }
+    case "payloadUnchanged":
+      return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined } };
     case "payloadRejected":
       return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "failed", error: action.error } };
     case "scenarioSelected": return { ...state, scenario: action.scenarioId };
