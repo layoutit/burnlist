@@ -161,9 +161,11 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
       const collections = Object.fromEntries(ir.collections.map((item) => {
         const collection = descriptor(ir, item), current = state.collections[item.id];
         const serverPage = payloadServerPage(action.payload, collection);
+        const serverPaged = !!serverPage && (collection.paging === "auto" || collection.paging === "server");
         return [item.id, {
           ...current,
-          pageIndex: clamp(current.pageIndex, pageCount(pipelineItems(ir, action.payload, controls, collection), current.pageSize)),
+          pageIndex: serverPaged ? serverPage.page : clamp(current.pageIndex, pageCount(pipelineItems(ir, action.payload, controls, collection), current.pageSize)),
+          pageSize: serverPaged ? serverPage.pageSize : current.pageSize,
           ...(serverPage ? { serverPage } : {}),
         }];
       }));
@@ -180,7 +182,7 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
     case "domainSelected": return { ...state, controls: { ...state.controls, [action.id]: action.selectedId } };
     case "pagePrevious": return { ...state, collections: { ...state.collections, [action.collectionId]: { ...state.collections[action.collectionId], pageIndex: Math.max(0, state.collections[action.collectionId].pageIndex - 1) } } };
     case "pageNext": return { ...state, collections: { ...state.collections, [action.collectionId]: { ...state.collections[action.collectionId], pageIndex: state.collections[action.collectionId].pageIndex + 1 } } };
-    case "pageSizeChanged": return { ...state, collections: { ...state.collections, [action.collectionId]: { pageIndex: 0, pageSize: Math.max(1, action.pageSize) } } };
+    case "pageSizeChanged": return { ...state, collections: { ...state.collections, [action.collectionId]: { ...state.collections[action.collectionId], pageIndex: 0, pageSize: Math.max(1, action.pageSize) } } };
     case "toggleExpanded": {
       const expanded = new Set(state.expanded);
       if (expanded.has(action.key)) expanded.delete(action.key);

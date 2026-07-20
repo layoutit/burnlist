@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { OvenAction } from "./oven-reducer";
+import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 
 type FetchLike = (input: string, init: RequestInit) => Promise<{ ok: boolean; status: number; headers: { get(name: string): string | null }; json(): Promise<unknown> }>;
 export type OvenPoller = { refresh(): void; stop(): void };
@@ -12,6 +12,33 @@ export function scenarioSearch(currentSearch = typeof window === "undefined" ? "
   if (selected !== undefined) target.set("scenario", selected);
   const query = target.toString();
   return query ? `?${query}` : "";
+}
+
+type IrNode = { attributes?: Record<string, unknown>; children?: IrNode[] };
+
+function nodes(items: IrNode[] = []): IrNode[] { return items.flatMap((node) => [node, ...nodes(node.children)]); }
+function attributes(ir: OvenIr, id: string): Record<string, unknown> {
+  return nodes(ir.root).find((node) => node.attributes?.id === id)?.attributes ?? {};
+}
+
+export function ovenPollSearch({ ir, state, scenario }: { ir: OvenIr; state: OvenState; scenario?: string }): string {
+  const base = scenarioSearch(undefined, scenario);
+  for (const item of ir.collections) {
+    const collection = { ...attributes(ir, item.id), ...item };
+    const current = state.collections[item.id];
+    if (!current?.serverPage || (collection.paging !== "auto" && collection.paging !== "server")) continue;
+    const searchId = typeof collection.searchFrom === "string" ? collection.searchFrom : undefined;
+    const filterId = typeof collection.filterFrom === "string" ? collection.filterFrom : undefined;
+    const sortId = typeof collection.sortFrom === "string" ? collection.sortFrom : undefined;
+    const query = new URLSearchParams(base);
+    query.set("search", String(searchId ? state.controls[searchId] ?? "" : ""));
+    query.set("filter", filterId && state.controls[filterId] === true ? "failing" : "all");
+    query.set("sort", sortId && state.controls[sortId] === true ? "changed" : "default");
+    query.set("page", String(current.pageIndex));
+    query.set("pageSize", String(current.pageSize));
+    return `?${query.toString()}`;
+  }
+  return base;
 }
 
 export function ovenDataUrl(id: string, search = typeof window === "undefined" ? "" : window.location.search): string {
@@ -28,7 +55,8 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
     generation += 1;
     dispatch({ type: "payloadRequested" });
     const requestGeneration = generation;
-    void fetchImpl(ovenDataUrl(id, search), { cache: "no-store", headers: etag ? { "If-None-Match": etag } : undefined }).then(async (response) => {
+    const url = search === undefined ? ovenDataUrl(id) : `/api/oven-data/${encodeURIComponent(id)}${search}`;
+    void fetchImpl(url, { cache: "no-store", headers: etag ? { "If-None-Match": etag } : undefined }).then(async (response) => {
       if (response.status === 304) {
         const nextEtag = response.headers.get("etag");
         if (nextEtag) etag = nextEtag;
@@ -48,15 +76,15 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
   return { refresh, stop: () => { stopped = true; } };
 }
 
-export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void, scenario: string | undefined = undefined, adapt: OvenPayloadAdapter | undefined = undefined) {
+export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void, search: string, adapt: OvenPayloadAdapter | undefined = undefined) {
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
   useEffect(() => {
     const seconds = Number(refreshSeconds);
     if (!id || !Number.isFinite(seconds) || seconds <= 0) return undefined;
-    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search: scenarioSearch(undefined, scenario), adapt });
+    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search, adapt });
     poller.refresh();
     const timer = setInterval(() => poller.refresh(), seconds * 1000);
     return () => { clearInterval(timer); poller.stop(); };
-  }, [id, refreshSeconds, scenario, adapt]);
+  }, [id, refreshSeconds, search, adapt]);
 }

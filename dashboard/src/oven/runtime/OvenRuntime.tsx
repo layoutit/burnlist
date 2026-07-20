@@ -2,7 +2,7 @@ import { createContext, createElement, Fragment, useEffect, useMemo, useReducer,
 import { OvenNode, isStaticOvenDocument } from "./OvenNode";
 import { OvenView } from "../OvenView/OvenView";
 import { lowerOvenIr } from "./lower-oven-ir";
-import { useOvenLiveData, type OvenPayloadAdapter } from "./oven-live-data";
+import { ovenPollSearch, useOvenLiveData, type OvenPayloadAdapter } from "./oven-live-data";
 import { initOvenState, ovenReducer, type OvenAction, type OvenControlSeed, type OvenIr, type OvenPageSeed, type OvenState } from "./oven-reducer";
 import { getOvenTheme } from "./theme-registry";
 import { DifferentialTestingThemeView } from "./differential-testing-theme-view";
@@ -32,7 +32,8 @@ export function OvenRuntime({ ir, initialPayload, payload, controls, pages, init
     const initialState = initOvenState(ir, nextPayload, controls, pages);
     return initialAction ? ovenReducer(initialState, initialAction, ir) : initialState;
   });
-  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, state.scenario, adapt);
+  const pollSearch = useMemo(() => ovenPollSearch({ ir, state, scenario: state.scenario }), [ir, state, state.scenario]);
+  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, pollSearch, adapt);
   useEffect(() => {
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });
   }, [payload]);
