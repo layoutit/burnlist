@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { startDifferentialTestingLiveUpdates } from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+import { startDifferentialTestingLiveUpdates } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
 
 const ovenUrl = "/api/ovens/differential-testing";
 const payloadUrl = "/api/oven-data/differential-testing";

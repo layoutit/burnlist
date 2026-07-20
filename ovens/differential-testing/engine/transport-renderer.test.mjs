@@ -13,7 +13,7 @@ import {
 import {
   differentialPagedPayload,
   startDifferentialTestingLiveUpdates,
-} from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+} from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
 
 test("the package transport subpath exposes the stable bundle API", () => {
   assert.equal(DIFFERENTIAL_TESTING_BUNDLE_SCHEMA, "burnlist-differential-testing-bundle@1");

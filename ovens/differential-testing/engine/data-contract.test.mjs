@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildPayload } from "./example/adapter.mjs";
+import { buildPayload } from "../example/adapter.mjs";
 import {
   DIFFERENTIAL_TESTING_REFRESH_MS,
   differentialExactPrefixFrameDeltaMetrics,
@@ -20,8 +20,8 @@ import {
   differentialTestingLoadingMarkup,
   mountDifferentialTestingDashboard,
   startDifferentialTestingLiveUpdates,
-} from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
-import { rollingStandardDeviationScores } from "../../dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js";
+} from "../../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
+import { rollingStandardDeviationScores } from "../../../dashboard/src/oven/differential-testing-render/differential-testing-progress-chart.js";
 import {
   assertDifferentialTestingData,
   buildDifferentialTelemetry,
@@ -31,7 +31,7 @@ import {
   validateDifferentialTestingData,
 } from "./data-contract.mjs";
 
-const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "example");
+const exampleDir = resolve(dirname(fileURLToPath(import.meta.url)), "../example");
 
 test("frame delta residuals normalize against their rolling standard deviation", () => {
   const scores = rollingStandardDeviationScores(
