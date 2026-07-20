@@ -1,6 +1,7 @@
 export const verificationTestFiles = [
   "src/server/dashboard-routes.test.mjs",
   "src/server/custom-oven-view-routes.test.mjs",
+  "src/server/custom-oven-index.test.mjs",
   "src/server/oven-routes.test.mjs",
   "src/server/run-routes.test.mjs",
   "src/server/dashboard-entry-isolation.test.mjs",

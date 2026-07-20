@@ -303,11 +303,51 @@ function discoverBurnlists() {
 
 function dashboardEntries(ovenDataBindings) {
   return isolatedDashboardEntries({
-    handlers: listOvenHandlers(),
+    handlers: [...listOvenHandlers(), { id: "custom-oven", dashboardEntries: customOvenDashboardEntries }],
     contextForHandler: (handler) => ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings }),
     repoKeyForRoot: (root) => repoKey(realpathSync(root)),
     blockedEntry: blockedDashboardEntry,
   });
+}
+
+function customOvenDashboardEntries(ctx) {
+  const repos = ovenScopeRepos();
+  const entries = [];
+  for (const oven of discoverOvens().filter((candidate) => !candidate.builtIn)) {
+    try {
+      const bindings = ctx.ovenDataBindings.get(oven.id) ?? [];
+      const binding = bindings.find((candidate) => candidate.repoKey === oven.repoKey)
+        ?? bindings.find((candidate) => candidate.repoKey === null);
+      if (!binding) continue;
+      const repo = repos.find((candidate) => candidate.repoKey === oven.repoKey);
+      entries.push({
+        id: oven.id,
+        repo: repo?.name ?? oven.id,
+        repoKey: oven.repoKey,
+        repoRoot: oven.repoRoot,
+        planPath: null,
+        planLabel: null,
+        title: oven.name,
+        status: "active",
+        statusLabel: "Oven",
+        total: 0,
+        done: null,
+        remaining: null,
+        percent: null,
+        errors: 0,
+        warnings: 0,
+        lastCompletedAt: null,
+        updatedAt: null,
+        ovenId: oven.id,
+        ovenName: oven.name,
+        href: `/ovens/${encodeURIComponent(oven.id)}/view?repoKey=${encodeURIComponent(oven.repoKey)}`,
+        progressLabel: "Custom Oven",
+      });
+    } catch {
+      // A malformed custom Oven must not hide the rest of the dashboard index.
+    }
+  }
+  return entries;
 }
 
 function blockedDashboardEntry(handler, error) {
