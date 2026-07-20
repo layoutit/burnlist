@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { performanceTracingPayload } from "../differential-testing-render/golden-harness.mjs";
+import { withDeterministicTime } from "../test-support/deterministic-time.mjs";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/differential-testing-adapter.ts", import.meta.url).pathname;
@@ -15,34 +16,11 @@ const normalizerPath = new URL("../test-support/dom-normalize.ts", import.meta.u
 const sourceDir = new URL("../../", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
 const ovenPath = new URL("..", import.meta.url).pathname;
-const FIXED_NOW = Date.parse("2026-01-01T12:30:00.000Z");
 const states = [
   { name: "pt-main" },
   { name: "pt-progress", controls: { "value-mode": "current", "progress-mode": "progress" } },
   { name: "pt-failed", controls: { "value-mode": "current", "progress-mode": "failed" } },
 ];
-
-function deterministicRender(render) {
-  const previousTz = process.env.TZ;
-  const previousDateNow = Date.now;
-  const OriginalDTF = Intl.DateTimeFormat;
-  const Shim = function DateTimeFormat(locales, options) {
-    return new OriginalDTF(locales == null ? "en-US" : locales, { timeZone: "UTC", ...(options || {}) });
-  };
-  Shim.prototype = OriginalDTF.prototype;
-  Object.setPrototypeOf(Shim, OriginalDTF);
-  process.env.TZ = "UTC";
-  Date.now = () => FIXED_NOW;
-  globalThis.Intl.DateTimeFormat = Shim;
-  try {
-    return render();
-  } finally {
-    globalThis.Intl.DateTimeFormat = OriginalDTF;
-    Date.now = previousDateNow;
-    if (previousTz === undefined) delete process.env.TZ;
-    else process.env.TZ = previousTz;
-  }
-}
 
 test("PT oven equals the frozen normalized DOM state", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".pt-oven-dom-golden-test-"));
@@ -66,7 +44,7 @@ test("PT oven equals the frozen normalized DOM state", async () => {
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
     for (const state of states) {
-      const markup = deterministicRender(() => renderToStaticMarkup(createElement(OvenRuntime, {
+      const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(OvenRuntime, {
         ir: compiled.ir,
         payload: adaptDifferentialTesting(performanceTracingPayload()),
         controls: state.controls,

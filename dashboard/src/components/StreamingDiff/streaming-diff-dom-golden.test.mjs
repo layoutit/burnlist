@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { streamingDiffFixture } from "./StreamingDiff.fixture.mjs";
+import { withDeterministicTime } from "../../oven/test-support/deterministic-time.mjs";
 
 const componentPath = new URL("./StreamingDiff.tsx", import.meta.url).pathname;
 const normalizerPath = new URL("../../oven/test-support/dom-normalize.ts", import.meta.url).pathname;
@@ -59,12 +60,12 @@ test("selected streaming-diff static DOM matches the frozen byte golden", async 
       import(`${new URL(`file://${normalizerOutput}`).href}?test=${Date.now()}`),
     ]);
     const backHref = `/ovens/streaming-diff/view?repoKey=${encodeURIComponent(streamingDiffFixture.identity.logicalRepoKey)}`;
-    const markup = renderToStaticMarkup(createElement(SelectedFeed, {
+    const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(SelectedFeed, {
       backHref,
       cards: streamingDiffFixture.cards,
       error: "",
       session: streamingDiffFixture.identity.session,
-    }));
+    })));
     const actual = serializeCanonical(normalize(parseHtml(markup)));
     const expected = (await readFile(goldenPath, "utf8")).trimEnd();
     assert.equal(actual, expected);

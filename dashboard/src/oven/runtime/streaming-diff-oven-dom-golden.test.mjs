@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { streamingDiffFixture } from "../../components/StreamingDiff/StreamingDiff.fixture.mjs";
+import { withDeterministicTime } from "../test-support/deterministic-time.mjs";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/streaming-diff-oven-adapter.ts", import.meta.url).pathname;
@@ -36,7 +37,7 @@ test("streaming-diff oven equals the frozen DOM golden", async () => {
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const markup = renderToStaticMarkup(createElement(OvenRuntime, { ir: compiled.ir, payload: adaptStreamingDiff(streamingDiffFixture) }));
+    const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(OvenRuntime, { ir: compiled.ir, payload: adaptStreamingDiff(streamingDiffFixture) })));
     const actual = serializeCanonical(normalize(parseHtml(markup)));
     const expected = (await readFile("dashboard/src/components/StreamingDiff/streaming-diff-dom.golden.html", "utf8")).trimEnd();
     assert.equal(actual, expected);

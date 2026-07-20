@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { checklistFixture } from "../../components/ChecklistDashboard/ChecklistDashboard.fixture.mjs";
+import { withDeterministicTime } from "../test-support/deterministic-time.mjs";
 
 const runtimePath = new URL("./OvenRuntime.tsx", import.meta.url).pathname;
 const adapterPath = new URL("../../lib/checklist-adapter.ts", import.meta.url).pathname;
@@ -36,7 +37,7 @@ test("checklist oven equals the frozen DOM golden", async () => {
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const markup = renderToStaticMarkup(createElement(OvenRuntime, { ir: compiled.ir, payload: adaptChecklist(checklistFixture) }));
+    const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(OvenRuntime, { ir: compiled.ir, payload: adaptChecklist(checklistFixture) })));
     const actual = serializeCanonical(normalize(parseHtml(markup)));
     const expected = (await readFile("dashboard/src/components/ChecklistDashboard/checklist-dom.golden.html", "utf8")).trimEnd();
     assert.equal(actual, expected);

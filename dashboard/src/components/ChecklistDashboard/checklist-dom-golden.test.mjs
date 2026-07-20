@@ -6,6 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { checklistFixture } from "./ChecklistDashboard.fixture.mjs";
+import { withDeterministicTime } from "../../oven/test-support/deterministic-time.mjs";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const normalizerPath = new URL("../../oven/test-support/dom-normalize.ts", import.meta.url).pathname;
@@ -26,7 +27,7 @@ test("checklist detail static DOM matches the frozen byte golden", async () => {
       import(`${new URL(`file://${componentOutput}`).href}?test=${Date.now()}`),
       import(`${new URL(`file://${normalizerOutput}`).href}?test=${Date.now()}`),
     ]);
-    const markup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: checklistFixture }));
+    const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(ChecklistDashboard, { data: checklistFixture })));
     const actual = serializeCanonical(normalize(parseHtml(markup)));
     const expected = (await readFile(goldenPath, "utf8")).replace(/\n$/u, "");
     assert.equal(actual, expected);
