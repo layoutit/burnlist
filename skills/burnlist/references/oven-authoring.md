@@ -12,7 +12,7 @@ ignored `.local/burnlist/ovens/` state, and changes affect only future Runs.
 
 ```sh
 burnlist oven list [--json]
-burnlist oven view   <id> [--json] [--cell-width <n>] [--cell-height <n>]
+burnlist oven view   <id> [--json]
 burnlist oven create <id> --dir <dir>            # reads instructions.md + <id>.oven
 burnlist oven create <id> --package <file|->     # JSON: {name?, instructions, oven}
 burnlist oven create <id> --instructions <f|-> [--oven <f|->] [--name <text>]
