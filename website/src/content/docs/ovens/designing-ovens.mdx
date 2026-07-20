@@ -43,4 +43,42 @@ The real values come from a data adapter: a small, project-owned step that compu
 
 For the [.oven DSL reference](/ovens/dsl-reference), see the full grammar and examples. For creating and binding an Oven from the CLI—`burnlist oven create`, `burnlist oven bind`, and `burnlist oven view`—see [authoring](/ovens/authoring).
 
+## The adapter: compute honest numbers, don't type them
+
+The Oven is only the view. Between reality and the view sits the **adapter**: a small, project-owned script that reads a source of truth, computes the numbers, and writes the single read-only JSON document the Oven binds to. Hand-edit that JSON and you defeat the whole point—a number you typed proves nothing.
+
+A minimal adapter for a generic `checklist-progress@1` Oven (Node built-ins only) counts validated rows and writes the bound document:
+
+```js
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+
+const rows = new URL('./migrated-rows/', import.meta.url);
+const files = (await readdir(rows)).filter((n) => n.endsWith('.json'));
+
+let validated = 0, schemaFailures = 0;
+for (const name of files) {
+  const row = JSON.parse(await readFile(new URL(name, rows), 'utf8'));
+  if (row && typeof row.id === 'string') validated += 1; else schemaFailures += 1;
+}
+
+const out = new URL('./.local/burnlist/', import.meta.url);
+await mkdir(out, { recursive: true });
+await writeFile(new URL('migration-status-data.json', out), JSON.stringify({
+  validatedFraction: files.length ? validated / files.length : 0,
+  schemaFailures,
+  legacyReadGreen: null, // unwired: never fabricate it — make wiring it the next item
+  events: files.map((n) => `validated ${n}`),
+}, null, 2) + '\n');
+```
+
+Bind it with `burnlist oven bind migration-status .local/burnlist/migration-status-data.json`; the CLI is in [authoring](/ovens/authoring).
+
+**An unwired number is worse than no number.** `legacyReadGreen` is `null` because no adapter reads the legacy path yet: an Oven is only as honest as its adapter, and a real gap that reads as a fabricated pass makes the agent trust a lie. Report `null` (or `"wired": false`), never a guess, and make wiring that signal the next Burnlist item.
+
+**The project owns and runs the adapter—Burnlist never does.** `burnlist oven bind` only records where the JSON lives; the dashboard only reads it. Re-run the adapter after each batch, on a schedule, or in CI—a stale adapter is a stale Oven.
+
+## Point a Burnlist item at an Oven number
+
+An Oven signal is only evidence if a Burnlist item cites it. Write the done/delete condition to point at the number: "Done/delete when Oven `migration-status` shows `validatedFraction = 100%` and `schemaFailures = 0`." This is advisory evidence a human or agent reads—Burnlist does not execute the Oven or auto-verify the number; `burnlist burn` and `--check` never read Oven data. The honesty is structural: the proof points at an adapter-computed signal the worker cannot type by hand.
+
 If a number can be typed by hand without doing the work, it is not evidence.

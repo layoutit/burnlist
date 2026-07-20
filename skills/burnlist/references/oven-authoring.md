@@ -164,7 +164,10 @@ attributes, and bindings. A `.oven` source or binding is a JSON-pointer into one
 read-only data document an adapter produces at view time. The adapter is not
 part of the Oven, so author and adapter must agree on the document shape. Record
 that expected shape in `instructions.md`, for example in a `## State Contract`
-section.
+section. For choosing what an Oven should measure and a runnable adapter that
+computes it, see [Designing Ovens](designing-ovens.md); to cite an Oven number
+as a Burnlist item's proof, see the Proof Authority guidance in
+[Burnlist Creation](burnlist-creation.md).
 
 Rich built-in Ovens instead use a renderer-defined, versioned normalized-data
 contract. Differential Testing uses `burnlist-differential-testing-data@1` and

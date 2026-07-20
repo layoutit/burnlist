@@ -123,6 +123,47 @@ An Oven makes progress objective so an agent cannot fool itself — the antidote
 
 The built-in ovens embody this: Differential Testing measures byte-identical goldens, Visual Parity measures pixel diffs, Streaming Diff captures real pre-to-post diffs, and Performance Tracing measures real timings against a budget — never self-assessment. Map your signals onto the view vocabulary — headline numbers to a kpi-strip, the event stream to a log-table, the burn-down to a progress-donut — and compute the real values in a project-owned data adapter that emits one read-only JSON document the Oven binds to. If a number can be typed by hand without doing the work, it is not evidence.
 
+### The adapter: compute honest numbers
+
+The adapter is a project-owned script that reads reality, computes the numbers, and writes the bound JSON. Hand-editing that JSON defeats the point: a number you typed proves nothing.
+
+\`\`\`js
+#!/usr/bin/env node
+// migration-adapter.mjs — computes honest numbers from reality and writes the
+// oven's bound JSON. Node built-ins only. The project runs this, not Burnlist.
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+
+const rows = new URL('./migrated-rows/', import.meta.url);
+const files = (await readdir(rows)).filter((n) => n.endsWith('.json'));
+
+let validated = 0, schemaFailures = 0;
+for (const name of files) {
+  try {
+    const row = JSON.parse(await readFile(new URL(name, rows), 'utf8'));
+    if (row && typeof row.id === 'string') validated += 1; else schemaFailures += 1;
+  } catch { schemaFailures += 1; }
+}
+
+const out = new URL('./.local/burnlist/', import.meta.url);
+await mkdir(out, { recursive: true });
+await writeFile(new URL('migration-status-data.json', out), JSON.stringify({
+  validatedFraction: files.length ? validated / files.length : 0,
+  schemaFailures,
+  legacyReadGreen: null,   // unwired: no adapter reads the legacy path yet — never fabricate it
+  events: files.map((n) => \`validated \${n}\`),
+}, null, 2) + '\\n');
+\`\`\`
+
+An Oven is only as honest as its adapter; an unwired number is worse than no number. When a signal is not wired to reality, the adapter reports \`null\` or \`"wired": false\`, never a fabricated number, and that unwired signal becomes the next Burnlist item.
+
+The project owns and runs the adapter after each batch, on a schedule, or in CI—Burnlist never runs it, and \`burnlist oven bind\` only records the path.
+
+### Point a Burnlist item at an Oven number
+
+Write the done/delete condition against the signal: "Done/delete when Oven \`migration-status\` shows \`validatedFraction = 100%\` and \`schemaFailures = 0\`."
+
+This is advisory evidence a human or agent reads—Burnlist does not execute the Oven or auto-verify the number; \`burnlist burn\` and \`burnlist --check\` never read Oven data. The honesty is that the proof points at an adapter-computed signal instead of a self-report.
+
 ## CLI surface
 
 Authoritative output of \`burnlist --help\`:
