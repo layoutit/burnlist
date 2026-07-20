@@ -3,64 +3,173 @@
 Practical companion to `references/oven-contract.md`. The contract is normative
 for the package shape and validation; this reference documents the controlled
 vocabulary and the `burnlist oven` CLI so an Oven can be authored without
-hand-writing JSON. Read it when creating, updating, or inspecting an Oven.
+hand-writing JSON. Read it when creating, updating, binding, or inspecting an
+Oven.
+
+## Closed contract and theme allowlist
+
+**A custom Oven cannot define a new contract, theme, or icon.** It must reuse a
+built-in contract and theme pair. For a generic KPI-and-table Oven that reads
+arbitrary project JSON, use `contract="checklist-progress@1"` and
+`theme="checklist"`. The choice governs the chrome and normalized-data contract
+the built-in renderer validates.
+
+The complete closed registries are:
+
+| Registry | Exact allowed values |
+| --- | --- |
+| contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
+| icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
+
+Creation rejects unknown entries before writing, for example:
+
+```text
+burnlist oven: Oven <id> .oven source is invalid: Unknown theme <x>
+burnlist oven: Oven <id> .oven source is invalid: Unknown contract <x>
+```
+
+The differential-testing, streaming-diff, and visual-parity widgets and the
+eight Differential-Testing-only formats are for their matching contracts. A
+generic Oven should use `kpi-strip`/`kpi-item`, `section-header`,
+`log-table`/`column`, and the plain formats described in
+`references/creating-ovens.md`.
 
 An Oven never executes anything. Authoring writes only custom Ovens under
 ignored `.local/burnlist/ovens/` state, and changes affect only future Runs.
+
+## Start with `burnlist init`
+
+Run `burnlist init` once from the repository before `oven create`. In a Git
+repository, create refuses to write until `.local/` is ignored:
+
+```text
+burnlist oven: refusing to write .local/burnlist/ovens: not git-ignored; run `burnlist init` or add it to .gitignore
+```
+
+`burnlist init` fixes that local prerequisite and registers the repository as a
+dashboard scan root:
+
+```text
+Initialized 4 lifecycle folders in <repo>.
+Ignored /notes/burnlists/ and /.local/ locally.
+Registered <repo>.
+```
+
+It adds `/.local/` and `/notes/burnlists/` to `.git/info/exclude`. In a non-Git
+directory that ignore step is skipped; creation works because the gate applies
+only inside a Git repository that does not ignore the path.
 
 ## CLI
 
 ```sh
 burnlist oven list [--json]
-burnlist oven view   <id> [--json]
-burnlist oven create <id> --dir <dir>            # reads instructions.md + <id>.oven
-burnlist oven create <id> --package <file|->     # JSON: {name?, instructions, oven}
-burnlist oven create <id> --instructions <f|-> [--oven <f|->] [--name <text>]
+burnlist oven view <id> [--json]
+burnlist oven bind <id> <path> [--repo <path>]
+burnlist oven unbind <id> [--repo <path>]
+burnlist oven bindings [--repo <path>]
+burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
+burnlist oven create <id> --dir <dir>
+burnlist oven create <id> --package <file|->
 burnlist oven update <id> [same inputs as create]
+burnlist oven fork <id> <newId>
 ```
 
-- `view` derives structure from the compiled IR. Use it to inspect the Oven
-  before and after authoring.
-- Any file input accepts `-` to read stdin.
-- `--name` owns the level-one heading; without it the instructions must already
-  contain one.
-- `create` scaffolds a starter `.oven` when one is omitted and refuses an
-  existing id (use `update`, or `--force` to replace).
-- `update` targets an existing custom Oven only. Built-in Ovens are read-only;
-  fork one with `create <new-id> --dir <built-in path>`.
-- Validation is identical to the dashboard: it reuses `oven-contract.mjs`.
-  Invalid source or a missing H1 is rejected before anything is written.
+- `list` lists custom and built-in Ovens; `--json` emits JSON.
+- `view` prints compiled structure only; it never prints bound data values.
+- `bind` records an Oven-to-data-file binding.
+- `unbind` removes an Oven-to-data-file binding.
+- `bindings` lists all recorded bindings.
+- `create` adds a custom Oven; `update` changes an existing custom Oven only.
+- `fork` copies a built-in or custom Oven into a new custom id and records its
+  `forkedFrom` provenance. Built-in Ovens are read-only and cannot be updated.
 
-## DSL Structure
+For `create`, `--dir` reads `instructions.md` and `<id>.oven`; `--package`
+reads JSON `{name?, instructions, oven}`. Any file input accepts `-` for stdin.
+`--name` owns the level-one heading; without it, instructions must already
+contain one. Creation scaffolds a starter `.oven` when omitted, rejects an
+existing id unless `--force` is given, and validates before writing. `--repo`
+selects the repository whose binding storage is used.
 
-The `.oven` grammar in `src/ovens/dsl/oven-grammar.mjs` defines the allowed
-elements, attributes, and bindings. See `references/creating-ovens.md` and the
-website [.oven DSL reference](/ovens/dsl-reference) for the full author-facing
-vocabulary.
+## Binding & viewing
 
-## Widgets and formats
+`burnlist oven bind <id> <path>` stores the path exactly as supplied. The record
+lives at `.local/burnlist/bindings.json` with this schema:
 
-Widgets and formats are the `.oven` DSL vocabulary. See
-`references/creating-ovens.md` and the website [.oven DSL
-reference](/ovens/dsl-reference).
+```json
+{
+  "schemaVersion": 1,
+  "bindings": {
+    "<id>": {
+      "path": "<path>",
+      "boundAt": "<iso>"
+    }
+  }
+}
+```
 
-## Binding Contract
+A relative path resolves from the repository root when read. Successful binding
+prints `Bound Oven <id> to <path>` and `Store: <repo>/.local/burnlist/bindings.json`.
+`bindings` prints `<id>  <path>  <boundAt>` per line. `unbind` reports either
+`Unbound…` or `No binding exists…`.
 
-A `.oven` source or binding is a JSON-pointer into a single read-only data
-document that a project-specific adapter produces at view time. The adapter is
-not part of the Oven, and the contract deliberately leaves the value shape
-uncanonicalized. So the author and the adapter must agree on the document
-shape out of band. Record the expected document in the Oven's `instructions.md`
-(e.g. a `## State Contract` section) so the agreement is discoverable.
+The bound file is arbitrary JSON. Its shape must match the Oven's `source=` and
+`<bind source=>` RFC 6901 pointers. Generic checklist-theme Ovens do not
+validate that payload at creation: pointers resolve when viewed, and missing
+pointers render as empty or fallback values.
 
-For a **rich built-in Oven** the shape is *not* left open: the renderer defines a
-**versioned normalized-data contract** validated in code — e.g. Differential
-Testing uses `burnlist-differential-testing-data@1`
-(`differential-testing-data-contract.mjs`), bound via `--oven-data`. Producing a
-conforming payload has a packaged **adapter SDK**
-(`burnlist differential-testing sdk` → `differential-testing-adapter-sdk.mjs`)
-that owns the mechanical refresh/lock/atomic-publish plumbing while the project
-keeps evidence authority. See `references/differential-testing-adapter-sdk.md`.
+`burnlist oven view <id>` prints the compiled node tree plus a `node / prop /
+source` pointer table. It is for inspecting structure, never rendered data.
+To render with data, start the dashboard:
+
+```sh
+burnlist --scan-root <repo>
+```
+
+The server is loopback-only and normally opens at `http://127.0.0.1:4510/`; add
+`--auto-port` to select a free port. A bound custom Oven appears in the index as
+a **Custom Oven** with status **Oven**. Clicking it opens
+`/ovens/<id>/view?repoKey=<key>` and renders it through the shared engine using
+the bound JSON. An unbound custom Oven is authored but does not appear there.
+
+For a one-dashboard-session alternative that does not write `bindings.json`,
+launch with:
+
+```sh
+burnlist --scan-root <repo> --oven-data <id>=<path>
+```
+
+This read-only payload binding also makes the custom Oven appear and render.
+
+## End-to-end generic Oven
+
+This complete sequence creates and views the `deploy-status` example in
+`references/creating-ovens.md`:
+
+```sh
+cd <repo>                                   # a git repo
+burnlist init                               # ignore .local/, register root
+# author kpi.oven (generic checklist-theme Oven) and instr.md, then:
+burnlist oven create deploy-status --instructions instr.md --oven kpi.oven
+burnlist oven bind deploy-status deploy-data.json
+burnlist oven bindings                       # confirm the binding
+burnlist oven view deploy-status             # structure only
+burnlist --scan-root <repo>                  # dashboard; open the "Custom Oven" row
+```
+
+## DSL structure and binding contract
+
+The DSL reference in `references/creating-ovens.md` defines allowed elements,
+attributes, and bindings. A `.oven` source or binding is a JSON-pointer into one
+read-only data document an adapter produces at view time. The adapter is not
+part of the Oven, so author and adapter must agree on the document shape. Record
+that expected shape in `instructions.md`, for example in a `## State Contract`
+section.
+
+Rich built-in Ovens instead use a renderer-defined, versioned normalized-data
+contract. Differential Testing uses `burnlist-differential-testing-data@1` and
+has a packaged adapter SDK for refresh, locking, and atomic publishing; projects
+retain evidence authority. See `references/differential-testing-adapter-sdk.md`.
 
 ## Worked Example: `loop-status`
 
@@ -81,7 +190,7 @@ Its `.oven` source reads the `/loop/*` document the orchestrator adapter serves:
 </oven>
 ```
 
-The adapter contract — the document those pointers read:
+The adapter document those pointers read:
 
 ```json
 {
@@ -90,23 +199,13 @@ The adapter contract — the document those pointers read:
     "role": "Luna",
     "backend": "claude",
     "rounds": 2,
-    "lanes": [
-      "contract/compatibility — pass",
-      "resilience/security — pass",
-      "performance/resources — running",
-      "visual/interaction — pass",
-      "integration/regression — fail"
-    ],
-    "defects": [
-      "2026-07-10T01:12:03+02:00 integration/regression: session rotation drops CSRF token"
-    ]
+    "lanes": ["contract/compatibility — pass", "resilience/security — pass", "performance/resources — running", "visual/interaction — pass", "integration/regression — fail"],
+    "defects": ["2026-07-10T01:12:03+02:00 integration/regression: session rotation drops CSRF token"]
   }
 }
 ```
 
-The Oven only reads this. Loop policy — required Terra lanes must all pass
-before an item is accepted, separate direction-Sol and final-Sol contexts,
-escalation on a repeated defect — lives in the orchestrator, not the Oven.
+The Oven only reads this. Loop policy lives in the orchestrator, not the Oven.
 
 ## Boundaries
 

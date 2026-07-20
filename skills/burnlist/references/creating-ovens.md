@@ -33,7 +33,20 @@ column-span, row-span, page-size, debounce-ms
 `optional` and `default` become booleans. `plain` is stored in IR as the
 `identity` format alias.
 
-## Root and Registry
+## Closed contract and theme allowlist
+
+**A custom Oven cannot define a new contract, theme, or icon.** It must reuse a
+built-in pair. For a generic KPI-and-table Oven over arbitrary project JSON,
+use `contract="checklist-progress@1"` and `theme="checklist"`. The remaining
+contracts, themes, and the specialized widgets belong to their matching
+normalized-data contracts.
+
+Unknown values are rejected when creating the Oven:
+
+```text
+burnlist oven: Oven <id> .oven source is invalid: Unknown theme <x>
+burnlist oven: Oven <id> .oven source is invalid: Unknown contract <x>
+```
 
 Every source has exactly one root:
 
@@ -49,7 +62,7 @@ Every source has exactly one root:
 
 `id`, `version`, `contract`, and `theme` are required. `refresh-seconds` is
 optional. Version is currently `1`; `refresh-seconds` is a positive integer no
-greater than 3600.
+greater than 3600. The complete closed registries are:
 
 | Registry | Exact allowed values |
 | --- | --- |
@@ -128,21 +141,60 @@ telemetry-availability
 ```
 
 Inside an `each` or a `column` scope, `@item/...` reads the current collection
-item. The richer fixture at `src/ovens/dsl/__fixtures__/checklist.oven` shows
-both forms:
+item. This self-contained collection and table example shows both forms:
 
 ```xml
+<collection id="active-items" source="/active" item-key="/id" paging="client" page-size="25">
 <each>
   <kpi-item>
     <bind prop="heading" source="@item/title" format="plain"/>
     <bind prop="value" source="@item/id" format="plain"/>
   </kpi-item>
 </each>
+</collection>
 
-<log-table source="/timeline">
+<log-table source="/timeline" empty-text="No timeline events yet.">
   <column label="Time" source="@item/time" format="time-only"/>
+  <column label="Event" source="@item/title" format="plain"/>
 </log-table>
 ```
+
+`tone` on a `<column>` is appended verbatim as an extra CSS class on the
+rendered cell, alongside `log-table-cell` and the column-label slug. It has no
+fixed enum and is visible only when the active theme stylesheet defines that
+class. In a generic checklist-theme Oven, leave `tone` unset unless the chosen
+theme styles the token.
+
+### Format semantics
+
+Formats transform a `source` or `bind` value before display. The generic formats
+are appropriate for generic custom Ovens:
+
+| Format | Input shape → output |
+| --- | --- |
+| `identity` / `plain` | Any value → unchanged. `plain` is the identity alias stored in IR as `identity`; use it for verbatim strings and ids. |
+| `number` | Numeric value or numeric string → integer-grouped string with no decimals; `1234.7` → `"1,235"`. Empty or non-finite → `""`. |
+| `percent` | Fraction from 0 through 1 → percentage string with two decimals, or three below `0.01`; `0.96` → `"96.00%"`, `0.005` → `"0.500%"`. Null or undefined → `""`. |
+| `delta` | Number → up to four decimals with trailing zeroes trimmed; `0.5` → `"0.5"`, `1.25` → `"1.25"`. Null or undefined → `""`. |
+| `ratio-to-percent` | Fraction number from 0 through 1 → numeric value ×100, not a string; `0.96` → `96`. Null or non-finite → undefined. |
+| `length` | String or array → numeric `.length`; any other type → undefined. |
+| `time-only` | ISO timestamp, date string, or epoch → local 24-hour `"HH:MM"`; `"2026-07-20T09:05:00Z"` → `"09:05"`. Unparseable → `""`. |
+| `relative-age` | Timestamp → compact age from now: under 60 seconds `"Ns"`, under 60 minutes `"Nm"`, under 24 hours `"Nh"`, otherwise `"Nd"`; about three hours ago → `"3h"`. Unparseable → `""`. |
+
+The following eight formats are **Differential-Testing-only**. They read the
+last row of a Differential-Testing result-row array unless noted otherwise.
+Generic Oven authors should not use them.
+
+| Format | Input shape → output |
+| --- | --- |
+| `progress-headline` | Last row → `"frame/frames"` string. |
+| `last-progress-percent` | Last row's `frame/frames` ratio → number ×100. |
+| `last-failed-count` | Last row's failed-field count → string. |
+| `last-failed-percent` | Last row's `failed/total` field ratio → number ×100. |
+| `last-frame-delta` | Last row's absolute frame delta → string, or `"—"` when absent. |
+| `last-delta-percent` | Last row's absolute frame delta divided by frames → number ×100. |
+| `index-by-id` | Array of `{id, …}` objects → object keyed by each `id`. |
+| `telemetry-availability` | Telemetry payload → its availability descriptor. |
 
 Declare controls with an `id`, then name that id from consumers:
 `search-from` targets `search`, `sort-from` targets `sort-toggle`,
@@ -175,50 +227,43 @@ corresponding super-custom escape hatch. Keep both out of ordinary sources.
 
 ## Author a New Oven
 
-1. Create this package layout and begin with the simple pattern in
-   `ovens/streaming-diff/streaming-diff.oven`:
+First run `burnlist init` from the repository; then author an `instructions.md`
+with a level-one heading and a `.oven` file. Create the package with
+`burnlist oven create <id> --instructions <file> --oven <file>`, then bind the
+JSON payload with `burnlist oven bind <id> <path>`. The CLI and dashboard details
+are in `references/oven-authoring.md`.
 
-   ```text
-   ovens/<id>/
-     <id>.oven
-     instructions.md
-     contract.mjs / handler.mjs / adapter / data.schema.json  # optional, flat data layer
-   ```
+Here is a complete generic KPI-and-table source, `kpi.oven`:
 
-   ```xml
-   <oven id="streaming-diff" version="1"
-         contract="burnlist-streaming-diff-data@2" theme="streaming-diff">
-     <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
-     <diff-card source="/cards"/>
-   </oven>
-   ```
+```xml
+<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+  <section-header title="Deploy status"/>
+  <kpi-strip>
+    <kpi-item heading="Service" source="/service"/>
+    <kpi-item heading="Healthy" source="/healthyPct" format="percent"/>
+    <kpi-item heading="Last deploy" source="/deployedAt" format="relative-age"/>
+  </kpi-strip>
+  <log-table source="/events"><column label="Event" source="@item"/></log-table>
+</oven>
+```
 
-2. If the Oven has a custom data source, provide its contract, handler, adapter,
-   and schema as a flat data layer at `ovens/<id>/`. Record the payload shape
-   and pointer meanings in `ovens/<id>/instructions.md`. Checklist needs no
-   data layer; Streaming Diff is the exception that keeps a large `engine/`.
-   The source stays declarative; the adapter owns producing the read-only
-   document.
+Bind it to `deploy-data.json`:
 
-3. Reuse a registered theme when its chrome fits. The four registered entries
-   live in `dashboard/src/oven/runtime/theme-registry.ts`: `checklist`,
-   `streaming-diff`, `visual-parity`, and `differential-testing`. Add a theme
-   entry only when the chrome must differ.
+```json
+{
+  "service": "checkout-api",
+  "healthyPct": 0.96,
+  "deployedAt": "2026-07-20T09:00:00Z",
+  "events": ["09:00 deploy started", "09:02 healthy", "09:05 traffic shifted"]
+}
+```
 
-4. The build's oven-ir Vite plugin compiles `<id>.oven` to IR. Never create or
-   commit an `.ir.json` file.
+`healthyPct` renders as `"96.00%"`; `deployedAt` renders a compact age such as
+`"3h"`. The source remains declarative; an adapter, if needed, only produces
+the read-only JSON document. Record pointer meanings and payload shape in the
+Oven instructions so the agreement is discoverable.
 
-5. Add a byte-golden gate. Follow
-   `dashboard/src/oven/runtime/streaming-diff-oven-dom-golden.test.mjs` and
-   `dashboard/src/oven/runtime/checklist-oven-golden.test.mjs`: compile the
-   `.oven` at test time, render `OvenRuntime` with an adapted fixture, normalize
-   the DOM, and compare it to the committed `*.golden.html`.
-
-The dashboard's `New Oven` flow (`{id, name, instructions}`) and the CLI both
-scaffold a starter `.oven`.
-
-For a collection with id-wired controls, use
-`ovens/differential-testing/differential-testing.oven` as the compact pattern:
+For a collection with id-wired controls, use this compact pattern:
 
 ```xml
 <field-toolbar id="field-controls">
@@ -235,5 +280,5 @@ For a collection with id-wired controls, use
 </collection>
 ```
 
-For grid placement, collection iteration, `@item`, and the optional `box` /
-`class` escape hatches, see `src/ovens/dsl/__fixtures__/checklist.oven`.
+Use the earlier collection example for iteration and `@item`. `box` and `class`
+remain optional escape hatches; ordinary sources should not need either.

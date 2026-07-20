@@ -31,7 +31,7 @@ An Oven directory is identified by a lowercase slug and contains these two canon
 
 An Oven's identity revision is `o1-sha256` over canonical JSON `{format:"burnlist-oven-content@2", id, instructions, oven}`. `detail.json` is retired from the data model and survives only in a read-only legacy path for old detail-based run snapshots.
 
-Default Ovens ship with the skill. Custom Ovens are created once under ignored `.local/burnlist/ovens/` state. The dashboard has no update endpoint, but the `burnlist oven` CLI can create, update, view, and list custom Ovens under the same validation; built-in Ovens stay read-only there. Manual changes affect only future Runs. A built-in renderer may define and validate a versioned normalized-data contract; Differential Testing uses `burnlist-differential-testing-data@1`. For the controlled DSL vocabulary and source-binding conventions, see `creating-ovens.md`.
+Default Ovens ship with the skill. Custom Ovens are created under ignored `.local/burnlist/ovens/` state. The dashboard has no update endpoint, but the `burnlist oven` CLI can create, update, fork, list, view, bind, unbind, and show bindings under the same validation; built-in Ovens stay read-only there. Manual changes affect only future Runs. A built-in renderer may define and validate a versioned normalized-data contract; Differential Testing uses `burnlist-differential-testing-data@1`. For the controlled DSL vocabulary and source-binding conventions, see `creating-ovens.md`.
 
 ## Run Boundary
 
