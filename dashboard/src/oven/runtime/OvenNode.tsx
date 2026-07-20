@@ -45,7 +45,7 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
     const selected = typeof source === "string"
       ? resolvePointer(state.payload, source)
       : selectMode(state, String(attrs(node).modeFrom ?? ""));
-    const branch = (node.children ?? []).find((child) => child.kind === "case" && attrs(child).value === selected) ?? (node.children ?? []).find((child) => child.kind === "default");
+    const branch = (node.children ?? []).find((child) => child.kind === "case" && attrs(child).value === selected) ?? (node.children ?? []).find((child) => child.kind === "case" && attrs(child).default === true);
     return <>{(branch?.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
   }
   if (node.kind === "collection") {

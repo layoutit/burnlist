@@ -71,6 +71,7 @@ export const verificationTestFiles = [
   "dashboard/src/components/StreamingDiff/streaming-diff-dom-golden.test.mjs",
   "dashboard/src/oven/runtime/streaming-diff-oven-dom-golden.test.mjs",
   "dashboard/src/oven/runtime/differential-testing-oven-dom-golden.test.mjs",
+  "dashboard/src/oven/runtime/oven-node-default-case.test.mjs",
   "dashboard/src/oven/runtime/differential-testing-live-compact.test.mjs",
   "dashboard/src/oven/runtime/oven-live-data-304.test.mjs",
   "dashboard/src/oven/runtime/performance-tracing-oven-dom-golden.test.mjs",
