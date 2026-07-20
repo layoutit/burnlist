@@ -31,3 +31,11 @@ test("switch accepts a payload pointer without a control reference", () => {
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
   assert.equal(result.ir.root[0].attributes.source, "/pageMode");
 });
+
+test("pagination without page-sizes returns a required-attribute diagnostic", () => {
+  const xml = root("<collection id='rows' source='/' item-key='/id' paging='client' page-size='1'><pagination collection-from='rows'/></collection>");
+  let result;
+  assert.doesNotThrow(() => { result = compileOven(xml); });
+  assert.equal(result.ok, false);
+  assert.ok(result.diagnostics.some((x) => x.code === "GRAMMAR_REQUIRED"), JSON.stringify(result.diagnostics));
+});
