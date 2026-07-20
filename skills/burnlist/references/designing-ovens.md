@@ -1,0 +1,43 @@
+# Designing Your Oven: Measure What You Can't Fake
+
+## Why an Oven exists
+
+An Oven makes progress objective so an agent cannot fool itself. It is the antidote to “I think it’s done”: a read-only view over evidence you compute, never a self-report.
+
+## The design question
+
+For your problem, ask: “What signal proves this is working, that I cannot fake or hand-wave?” Design the Oven around that signal.
+
+## Measure proxy-resistant evidence
+
+| Bad: self-reported and gameable | Good: objective and verifiable |
+| --- | --- |
+| “~80% done” | “142/200 tests pass” |
+| “Looks good” | “3 byte-diffs remain” or “0 pixel drift” |
+| “Should work” | “1,240/1,500 rows migrated and validated” |
+
+The built-ins follow this rule. Differential Testing measures byte-identical goldens. Visual Parity measures pixel diffs. Streaming Diff captures the real pre-to-post diffs. Performance Tracing measures real timings against a budget. None accepts self-assessment. Your Oven should apply the same standard to your domain.
+
+## What could you measure? (cheat-sheet)
+
+| Problem type | Honest signal |
+| --- | --- |
+| Refactor | Test pass count, byte-diff against a frozen golden, and 0 type errors |
+| Migration | Rows migrated and validated, schema conformance, and the legacy read still green |
+| Feature | Acceptance checks passing |
+| Bug fix | The failing reproduction now passes, with 0 regressions |
+| Performance | Real measured timings against a baseline—never “feels faster” |
+
+## From signal to Oven
+
+Map each signal onto the built-in view vocabulary:
+
+- Headline numbers → `kpi-strip`
+- The event stream—what happened and when → `log-table`
+- Burn-down → `progress-donut`
+
+The real values come from a data adapter: a small, project-owned step that computes the honest numbers and writes them as one read-only JSON document. The Oven binds to those values by JSON pointer. Keep the Oven declarative: it says how to present the numbers and never computes them.
+
+For the `.oven` grammar and a full worked example, see [Creating Ovens](creating-ovens.md). For creating and binding an Oven from the CLI—`burnlist oven create`, `burnlist oven bind`, and `burnlist oven view`—see [Oven Authoring](oven-authoring.md).
+
+If a number can be typed by hand without doing the work, it is not evidence—measure the thing the work would have to produce.
