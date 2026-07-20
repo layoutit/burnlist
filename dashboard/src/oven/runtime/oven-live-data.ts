@@ -46,29 +46,30 @@ export function ovenDataUrl(id: string, search = typeof window === "undefined" ?
 }
 
 /** Poll coordinator kept outside React so request ordering is independently testable. */
-export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike, search, adapt }: { id: string; dispatch: (action: OvenAction) => void; fetchImpl?: FetchLike; search?: string; adapt?: OvenPayloadAdapter }): OvenPoller {
-  let stopped = false, inFlight = false, queued = false, generation = 0, etag: string | undefined;
+export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike, search, adapt, generationRef }: { id: string; dispatch: (action: OvenAction) => void; fetchImpl?: FetchLike; search?: string; adapt?: OvenPayloadAdapter; generationRef?: { current: number } }): OvenPoller {
+  let stopped = false, inFlight = false, queued = false, etag: string | undefined;
+  const generation = generationRef ?? { current: 0 };
   const refresh = () => {
     if (stopped) return;
     if (inFlight) { queued = true; dispatch({ type: "payloadRequested" }); return; }
     inFlight = true;
-    generation += 1;
+    generation.current += 1;
     dispatch({ type: "payloadRequested" });
-    const requestGeneration = generation;
+    const requestGeneration = generation.current;
     const url = search === undefined ? ovenDataUrl(id) : `/api/oven-data/${encodeURIComponent(id)}${search}`;
     void fetchImpl(url, { cache: "no-store", headers: etag ? { "If-None-Match": etag } : undefined }).then(async (response) => {
       if (response.status === 304) {
         const nextEtag = response.headers.get("etag");
         if (nextEtag) etag = nextEtag;
-        if (!stopped && requestGeneration === generation) dispatch({ type: "payloadUnchanged", generation: requestGeneration });
+        if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadUnchanged", generation: requestGeneration });
         return;
       }
       if (!response.ok) throw new Error(`Oven data request failed (${response.status})`);
       const raw = await response.json();
       const nextEtag = response.headers.get("etag");
       if (nextEtag) etag = nextEtag;
-      if (!stopped && requestGeneration === generation) dispatch({ type: "payloadAccepted", payload: adapt ? adapt(raw) : raw, generation: requestGeneration });
-    }).catch((error: unknown) => { if (!stopped && requestGeneration === generation) dispatch({ type: "payloadRejected", error, generation: requestGeneration }); }).finally(() => {
+      if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadAccepted", payload: adapt ? adapt(raw) : raw, generation: requestGeneration });
+    }).catch((error: unknown) => { if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadRejected", error, generation: requestGeneration }); }).finally(() => {
       inFlight = false;
       if (!stopped && queued) { queued = false; refresh(); }
     });
@@ -78,11 +79,12 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
 
 export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void, search: string, adapt: OvenPayloadAdapter | undefined = undefined) {
   const dispatchRef = useRef(dispatch);
+  const generationRef = useRef(0);
   dispatchRef.current = dispatch;
   useEffect(() => {
     const seconds = Number(refreshSeconds);
     if (!id || !Number.isFinite(seconds) || seconds <= 0) return undefined;
-    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search, adapt });
+    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search, adapt, generationRef });
     poller.refresh();
     const timer = setInterval(() => poller.refresh(), seconds * 1000);
     return () => { clearInterval(timer); poller.stop(); };

@@ -161,7 +161,7 @@ test("DT compact live controls derive server queries and replace field pages", a
       pageSize: "25",
     });
 
-    async function drive(action, fromState = initialState) {
+    async function drive(action, fromState = initialState, generationRef = { current: fromState.refresh.generation }) {
       let state = ovenReducer(fromState, action, ir);
       let responseEnvelope;
       const search = ovenPollSearch({ ir, state, scenario: undefined });
@@ -169,6 +169,7 @@ test("DT compact live controls derive server queries and replace field pages", a
         id: "differential-testing",
         search,
         adapt: dtAdapt,
+        generationRef,
         dispatch(nextAction) { state = ovenReducer(state, nextAction, ir); },
         async fetchImpl(input) {
           requests.push(input);
@@ -203,6 +204,11 @@ test("DT compact live controls derive server queries and replace field pages", a
     const chainedNext = await drive({ type: "pageNext", collectionId: "field-view" }, next.state);
     assertParam(chainedNext.url, "page", 2);
     assertRenderedPage(markupFor(OvenRuntime, ir, dtAdapt, chainedNext.envelope), 10, "51-60 / 60");
+    assert.equal(chainedNext.state.refresh.phase, 'idle');
+    const chainedPage = selectCollection(chainedNext.state, ir, 'field-view', resolvePointer);
+    assert.equal(chainedPage.pageIndex, 2);
+    assert.equal(chainedPage.pageItems.length, 10);
+    assert.equal(chainedPage.totalCount, 60);
 
     const resized = await drive({ type: "pageSizeChanged", collectionId: "field-view", pageSize: 50 });
     assertParam(resized.url, "pageSize", 50);
