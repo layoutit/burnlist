@@ -1,5 +1,6 @@
 import { resolvePointer } from "../utils/json-pointer";
 import { attachTransitionTelemetry, runCollection } from "./collection-pipeline";
+import { runtimeCollectionPage } from "./oven-payload-metadata";
 
 type Control = Record<string, unknown> & { id: string; kind: string };
 type Collection = Record<string, unknown> & { id: string; pageSize: number };
@@ -61,6 +62,22 @@ function pipelineItems(ir: OvenIr, payload: unknown, controls: OvenState["contro
 }
 function clamp(index: number, count: number): number { return Math.max(0, Math.min(index, count - 1)); }
 function active(value: unknown): boolean { return value === true || value === "on"; }
+function payloadServerPage(payload: unknown, collection: Record<string, unknown>): OvenServerPage | undefined {
+  const page = runtimeCollectionPage(payload, collection.source);
+  if (!page) return undefined;
+  const serverPage = {
+    page: Number(page.page),
+    pageSize: Number(page.pageSize),
+    pageCount: Number(page.pageCount),
+    total: Number(page.total),
+  };
+  return Number.isSafeInteger(serverPage.page) && serverPage.page >= 0
+    && Number.isSafeInteger(serverPage.pageSize) && serverPage.pageSize > 0
+    && Number.isSafeInteger(serverPage.pageCount) && serverPage.pageCount > 0
+    && Number.isSafeInteger(serverPage.total) && serverPage.total >= 0
+    ? serverPage
+    : undefined;
+}
 
 function domainValues(control: Record<string, unknown>, payload: unknown): string[] {
   const source = typeof control.source === "string" ? resolvePointer(payload, control.source) : [];
@@ -115,10 +132,11 @@ function resetConsumers(state: OvenState, ir: OvenIr, controlId: string): OvenSt
 
 export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls: OvenControlSeed = {}, pages: OvenPageSeed = {}): OvenState {
   const collections = Object.fromEntries(ir.collections.map((item) => {
-    const page = pages[item.id];
+    const collection = descriptor(ir, item);
+    const page = pages[item.id] ?? payloadServerPage(payload, collection);
     return [item.id, {
       pageIndex: 0,
-      pageSize: Math.max(1, Number(descriptor(ir, item).pageSize) || 1),
+      pageSize: Math.max(1, Number(collection.pageSize) || 1),
       ...(page ? { serverPage: { ...page } } : {}),
     }];
   }));
@@ -141,7 +159,12 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
       const controls = normalizedControls(ir, action.payload, state.controls, serverControlIds(ir, state.collections));
       const collections = Object.fromEntries(ir.collections.map((item) => {
         const collection = descriptor(ir, item), current = state.collections[item.id];
-        return [item.id, { ...current, pageIndex: clamp(current.pageIndex, pageCount(pipelineItems(ir, action.payload, controls, collection), current.pageSize)) }];
+        const serverPage = payloadServerPage(action.payload, collection);
+        return [item.id, {
+          ...current,
+          pageIndex: clamp(current.pageIndex, pageCount(pipelineItems(ir, action.payload, controls, collection), current.pageSize)),
+          ...(serverPage ? { serverPage } : {}),
+        }];
       }));
       return { ...state, payload: action.payload, payloadRevision: state.payloadRevision + 1, controls, collections, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined } };
     }

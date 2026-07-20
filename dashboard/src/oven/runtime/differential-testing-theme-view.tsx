@@ -10,6 +10,7 @@ import { ControlAdapter } from "./control-adapters";
 import { DifferentialTestingDetail } from "./differential-testing-detail";
 import { DifferentialTestingFields } from "./differential-testing-fields";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
+import { differentialExactPrefixFrameDeltaMetrics, runtimeFrameDeltaMetrics } from "./oven-payload-metadata";
 import { selectMode, selectRefreshStatus } from "./oven-selectors";
 import { getOvenTheme } from "./theme-registry";
 import { WidgetAdapter } from "./widget-adapters";
@@ -88,12 +89,22 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
   const progressMode = selectMode(state, "progress-mode") ?? "delta";
   const primaryChartTitle = typeof payload.primaryChartTitle === "string" ? payload.primaryChartTitle : "";
   const primaryChartField = payload.primaryChartField as FieldMiniChartField | undefined;
+  const deliveredFrameDeltaMetrics = runtimeFrameDeltaMetrics(state.payload);
+  const exactFrameDeltaMetrics = deliveredFrameDeltaMetrics.present
+    ? differentialExactPrefixFrameDeltaMetrics(state.payload, deliveredFrameDeltaMetrics.value)
+    : undefined;
+  const frameDeltaDefaults = componentDefaults(ir, progressNode.kind);
   const chart = primaryChartField
     ? <div id="progress-chart" className="chart hybrid-chart" role="img" aria-label={`${primaryChartTitle} over time`}>
       <FieldMiniChart field={primaryChartField} showFrameLabels chartMode={progressMode === "delta" ? "delta" : "value"} />
     </div>
     : progressNode.kind === "frame-delta-chart"
-      ? <DifferentialFrameDeltaChart metrics={source(progressNode, state.payload) as any} {...componentDefaults(ir, progressNode.kind) as any} />
+      ? <DifferentialFrameDeltaChart
+        metrics={(deliveredFrameDeltaMetrics.present ? exactFrameDeltaMetrics : source(progressNode, state.payload)) as any}
+        {...frameDeltaDefaults as any}
+        {...(deliveredFrameDeltaMetrics.present && exactFrameDeltaMetrics ? { hostOnly: false } : {})}
+        {...(deliveredFrameDeltaMetrics.present && !exactFrameDeltaMetrics ? { hostAriaLabel: "Exact-prefix frame delta metrics unavailable" } : {})}
+      />
       : <DifferentialProgressChart history={source(progressNode, state.payload) as any[]} {...componentDefaults(ir, progressNode.kind) as any} />;
   const fieldsMetric = payload.summary && typeof payload.summary === "object"
     ? (payload.summary as { fields?: { total?: unknown } }).fields
