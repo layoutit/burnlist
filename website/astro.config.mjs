@@ -51,6 +51,7 @@ export default defineConfig({
           label: 'Ovens',
           items: [
             { slug: 'ovens', label: 'Overview' },
+            { slug: 'ovens/designing-ovens', label: 'Designing Ovens' },
             { slug: 'ovens/oven-system' },
             { slug: 'ovens/dsl-reference' },
             { slug: 'ovens/authoring' },

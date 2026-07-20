@@ -7,11 +7,21 @@ Burnlist is a repo-local burndown tracker with a read-only observer dashboard an
 
 Burnlist has zero runtime dependencies: it uses pure Node built-ins and ES modules, and runs on Node.js 18 or newer.
 
+## The three concepts
+
+- **Burnlist** — your list of work. Items complete atomically on evidence and leave the active list only once truly done; the list burns down to zero. It answers "what do I do next, and is it really done?"
+- **Oven** — a read-only dashboard view that renders honest signals over your own data (progress, metrics, diffs) so you see truth, not vibes. It answers "how are we actually doing?"
+- **Lane** — a split of one large Burnlist into parallel sub-lists so independent tracks burn down side by side. Reach for it when a plan has genuinely independent work streams.
+
+To design an Oven that measures honest evidence, see [Designing Ovens](/ovens/designing-ovens).
+
 ## Explore the CLI
 
-Use the built-in help to see every available command, then create a burnlist in your repository.
+Install the CLI, initialize the repository, then create a burnlist. Use the built-in help to see every available command.
 
 ```sh
+npm install --global burnlist
+burnlist init
 burnlist --help
 burnlist new
 ```
