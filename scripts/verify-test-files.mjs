@@ -14,6 +14,7 @@ export const verificationTestFiles = [
   "src/server/burnlist-discovery.test.mjs",
   "src/ovens/oven-contract.test.mjs",
   "src/ovens/oven-registry.test.mjs",
+  "src/ovens/oven-data-validate.test.mjs",
   "src/ovens/dsl/xml-scan.test.mjs",
   "src/ovens/dsl/oven-validate.test.mjs",
   "src/ovens/dsl/oven-compile.test.mjs",
