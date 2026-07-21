@@ -1,6 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ovenId, normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
+import { atomicDirectory, withOvenPackageLock } from "./fs-safe.mjs";
 
 function isWithin(parent, child) {
   const pathFromParent = relative(parent, child);
@@ -111,21 +112,14 @@ export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "
     source,
     pinnedAt: (now ?? new Date()).toISOString(),
   };
-  const directory = assertVendoredOvenPath(repoRoot, safeId);
   const root = vendoredOvensDir(repoRoot);
-  let temporary;
-  try {
-    mkdirSync(root, { recursive: true });
-    temporary = mkdtempSync(join(root, `${safeId}.tmp-`));
-    writeFileSync(join(temporary, "instructions.md"), instructions);
-    writeFileSync(join(temporary, `${safeId}.oven`), oven);
-    writeFileSync(join(temporary, "pin.json"), `${JSON.stringify(pin, null, 2)}\n`);
-    rmSync(directory, { recursive: true, force: true });
-    renameSync(temporary, directory);
-    temporary = null;
-  } finally {
-    if (temporary) rmSync(temporary, { recursive: true, force: true });
-  }
+  mkdirSync(root, { recursive: true });
+  assertVendoredOvenPath(repoRoot, safeId);
+  withOvenPackageLock(root, safeId, () => atomicDirectory(root, safeId, {
+    "instructions.md": instructions,
+    [`${safeId}.oven`]: oven,
+    "pin.json": `${JSON.stringify(pin, null, 2)}\n`,
+  }, { replace: true }));
   return { ...pkg, revision, pin };
 }
 

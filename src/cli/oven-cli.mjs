@@ -17,7 +17,9 @@ import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from 
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
 import { readVendoredOven, vendoredOvenPath, writeVendoredOven } from "../server/oven-vendor.mjs";
 import { renderOvenTree, sourceTable } from "./oven-cli-render.mjs";
+import { setOvenDataFromCli } from "./oven-set.mjs";
 import { createOvenCatalog, persistOven, resolvePackageInput } from "./oven-storage.mjs";
+import { useShippedOven } from "./oven-use.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
 // ── argv ────────────────────────────────────────────────────────────────────
@@ -134,6 +136,8 @@ const HELP = `burnlist oven — author and inspect Ovens
 Usage:
   burnlist oven list [--json]
   burnlist oven view <id> [--json]
+  burnlist oven use <id> [--repo <path>] [--force]
+  burnlist oven set <id> <path|-|json> [--repo <path>]
   burnlist oven bind <id> <path> [--repo <path>]
   burnlist oven unbind <id> [--repo <path>]
   burnlist oven bindings [--repo <path>]
@@ -161,12 +165,16 @@ Options:
   --payload <json>     Optional compact JSON event payload.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
-  --force              On create or adopt, replace an existing Oven.
+  --force              On create, adopt, or use, replace an existing Oven.
   --json               Machine-readable output for list/view.
 
 Custom Ovens live under ignored local state and only affect future Runs.
 Create scaffolds a minimal .oven source when --oven, --dir, and --package omit one.
-Built-in Ovens are read-only; this command never executes Oven instructions.`;
+Built-in Ovens are read-only; this command never executes Oven instructions.
+Use adopts a shipped Oven and binds only an existing, validated example/data.json.
+Set validates first with the same runtime validator, then atomically publishes
+.local/burnlist/data/<id>.json and its binding. Custom Ovens without a runtime
+validator receive shape-only source-pointer validation, which does not prove truth.`;
 
 function main() {
 try {
@@ -253,6 +261,28 @@ try {
       console.log(`Oven bindings: ${bindingStorePath(repoRoot)}`);
       for (const [id, binding] of entries) console.log(`${id}  ${binding.path}  ${binding.boundAt}`);
     }
+    return;
+  }
+
+  if (subcommand === "set") {
+    const result = setOvenDataFromCli({ positionals, repoRoot: bindingRepo(), launchCwd, findOven });
+    for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
+    console.log(result.output);
+    return;
+  }
+
+  if (subcommand === "use") {
+    const [id, ...extra] = positionals;
+    if (!id || extra.length > 0) fail("Usage: burnlist oven use <id> [--repo <path>] [--force]");
+    const result = useShippedOven({
+      id,
+      repoRoot: repoRoot(),
+      builtInOvensDir,
+      readOvenDir,
+      force: flags.has("force"),
+    });
+    for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
+    console.log(result.output);
     return;
   }
 

@@ -133,7 +133,7 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
   };
 }
 
-function readInput(spec, maxBytes, label) {
+export function readBoundedInput(spec, maxBytes, label) {
   if (spec === "-") {
     const chunks = [];
     let total = 0;
@@ -152,15 +152,15 @@ function readInput(spec, maxBytes, label) {
 
 export function resolvePackageInput({ flags, positionals, scaffold = false }) {
   const pkg = {};
-  if (flags.has("package")) Object.assign(pkg, JSON.parse(readInput(flags.get("package"), OVEN_PACKAGE_MAX_BYTES, "Oven package")));
+  if (flags.has("package")) Object.assign(pkg, JSON.parse(readBoundedInput(flags.get("package"), OVEN_PACKAGE_MAX_BYTES, "Oven package")));
   const id = ovenId(positionals[0] ?? pkg.id ?? flags.get("id") ?? "");
   if (flags.has("dir")) {
     const dir = resolve(flags.get("dir"));
     pkg.instructions = readTextFileWithLimit(join(dir, "instructions.md"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
     pkg.oven = readTextFileWithLimit(join(dir, `${id}.oven`), OVEN_SOURCE_MAX_BYTES, "Oven source");
   }
-  if (flags.has("instructions")) pkg.instructions = readInput(flags.get("instructions"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
-  if (flags.has("oven")) pkg.oven = readInput(flags.get("oven"), OVEN_SOURCE_MAX_BYTES, "Oven source");
+  if (flags.has("instructions")) pkg.instructions = readBoundedInput(flags.get("instructions"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
+  if (flags.has("oven")) pkg.oven = readBoundedInput(flags.get("oven"), OVEN_SOURCE_MAX_BYTES, "Oven source");
 
   const name = flags.has("name") ? String(flags.get("name")).trim() : String(pkg.name ?? "").trim();
   if (pkg.instructions === undefined) throw new Error("Provide instructions via --instructions, --package, or --dir.");
