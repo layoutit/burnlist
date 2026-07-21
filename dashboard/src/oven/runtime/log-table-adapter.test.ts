@@ -11,7 +11,7 @@ import { buildLogTableProps } from "./log-table-adapter";
 import { OvenNode } from "./OvenNode";
 import { initOvenState, type OvenIr } from "./oven-reducer";
 
-const source = `<oven id="log-table-test" version="1" contract="checklist-progress@1" theme="checklist"><grid id="log-grid" columns="1"><log-table source="/events" empty-text="Nothing here."><column label="Time" source="@item/time" format="time-only"/><column label="Name" source="@item/name"/><column label="Note" source="@item/note" optional="true" fallback="—"/></log-table></grid></oven>`;
+const source = `<oven id="log-table-test" version="0.1.0" contract="checklist-progress@1" theme="checklist"><grid id="log-grid" columns="1"><log-table source="/events" empty-text="Nothing here."><column label="Time" source="@item/time" format="time-only"/><column label="Name" source="@item/name"/><column label="Note" source="@item/note" optional="true" fallback="—"/></log-table></grid></oven>`;
 const compiled = compileOven(source);
 if (!compiled.ok) throw new Error(compiled.diagnostics.map((item: { message: string }) => item.message).join("\n"));
 const table = compiled.ir.root[0].children[0];

@@ -180,7 +180,7 @@ An Oven that observes the role-separated execution loop for one Burnlist item.
 Its `.oven` source reads the `/loop/*` document the orchestrator adapter serves:
 
 ```xml
-<oven id="loop-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="loop-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Loop status"/>
   <kpi-strip>
     <kpi-item heading="Profile" source="/loop/profile"/>

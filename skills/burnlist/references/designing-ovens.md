@@ -74,7 +74,7 @@ await writeFile(new URL('migration-status-data.json', out), JSON.stringify({
 The Oven that binds to that document reads each pointer by name:
 
 ```xml
-<oven id="migration-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="migration-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Migration status"/>
   <kpi-strip>
     <kpi-item heading="Rows validated" source="/validatedFraction" format="percent"/>

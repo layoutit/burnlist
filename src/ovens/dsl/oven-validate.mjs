@@ -4,7 +4,7 @@ import { ELEMENTS, REGISTRY, REQUIRED_PROPS } from "./oven-grammar.mjs";
 const idRE = /^[a-z][a-z0-9-]{0,63}$/;
 const pointer = (value, itemOk) => value === "" || value === "/" || /^\/(?:[^~/]|~[01])*(?:\/(?:[^~/]|~[01])*)*$/.test(value) || (itemOk && /^@item(?:\/(?:[^~/]|~[01])*(?:\/(?:[^~/]|~[01])*)*)?$/.test(value));
 const controls = new Set(["mode-toggle", "search", "sort-toggle", "filter-toggle", "domain-tabs"]);
-const ints = new Set(["version", "refresh-seconds", "columns", "rows", "row-height", "column", "row", "column-span", "row-span", "page-size", "debounce-ms"]);
+const ints = new Set(["refresh-seconds", "columns", "rows", "row-height", "column", "row", "column-span", "row-span", "page-size", "debounce-ms"]);
 
 function walk(node, fn, parent = null, itemScope = false, ancestors = []) { fn(node, parent, itemScope, ancestors); for (const child of node.children) walk(child, fn, node, itemScope || node.name === "each" || node.name === "column", [...ancestors, node]); }
 function add(d, code, msg, node, attr) { d.add(code, msg, { ...(attr ? node.attrSpans[attr] : node.span), path: node.path }); }
@@ -31,7 +31,7 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
     if (node.name === "icon" && !REGISTRY.icons.has(a.name)) add(d, "REGISTRY_ICON", `Unknown icon ${a.name}`, node, "name");
     if (node.name === "kpi-item" && a.icon && !REGISTRY.icons.has(a.icon)) add(d, "REGISTRY_ICON", `Unknown icon ${a.icon}`, node, "icon");
     if (node.name === "kpi-item" && a.variant && !["current", "scenario", "burns", "fields", "frames"].includes(a.variant)) add(d, "SCALAR_VARIANT", "kpi-item variant is not registered", node, "variant");
-    if (node.name === "oven") { if (!REGISTRY.themes.has(a.theme)) add(d, "REGISTRY_THEME", `Unknown theme ${a.theme}`, node, "theme"); if (!REGISTRY.contracts.has(a.contract)) add(d, "REGISTRY_CONTRACT", `Unknown contract ${a.contract}`, node, "contract"); if (a.version !== "1") add(d, "SCALAR_VERSION", "Only oven version 1 is supported", node, "version"); }
+    if (node.name === "oven") { if (!REGISTRY.themes.has(a.theme)) add(d, "REGISTRY_THEME", `Unknown theme ${a.theme}`, node, "theme"); if (!REGISTRY.contracts.has(a.contract)) add(d, "REGISTRY_CONTRACT", `Unknown contract ${a.contract}`, node, "contract"); if (!/^\d+\.\d+\.\d+$/u.test(a.version)) add(d, "SCALAR_VERSION", "Oven version must use major.minor.patch", node, "version"); }
     if (node.name === "box" && !["div", "section", "main", "span"].includes(a.element)) add(d, "SCALAR_ELEMENT", "box element must be div, section, main, or span", node, "element");
     if (node.name === "sort-toggle" && !REGISTRY.sorts.has(a.key)) add(d, "REGISTRY_SORT", `Unknown sort ${a.key}`, node, "key");
     if (node.name === "filter-toggle" && !REGISTRY.filters.has(a.key)) add(d, "REGISTRY_FILTER", `Unknown filter ${a.key}`, node, "key");

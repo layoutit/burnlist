@@ -1,7 +1,7 @@
 <!-- Demonstrates the hardest oven: live DT KPIs, mode branches, log rows, and a searchable,
      sortable, filterable, pageable field collection. Every interaction is id-wired data. -->
 <oven id="differential-testing"
-      version="1"
+      version="0.1.0"
       contract="burnlist-differential-testing-data@1"
       refresh-seconds="2"
       theme="differential-testing">

@@ -52,7 +52,7 @@ Every source has exactly one root:
 
 ```xml
 <oven id="streaming-diff"
-      version="1"
+      version="0.1.0"
       contract="burnlist-streaming-diff-data@2"
       refresh-seconds="2"
       theme="streaming-diff">
@@ -236,7 +236,7 @@ are in `references/oven-authoring.md`.
 Here is a complete generic KPI-and-table source, `kpi.oven`:
 
 ```xml
-<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="deploy-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Deploy status"/>
   <kpi-strip>
     <kpi-item heading="Service" source="/service"/>

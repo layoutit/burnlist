@@ -60,7 +60,7 @@ JSON document; it cannot execute code or transform project data.
 Here is a complete generic `deploy-status` Oven, `kpi.oven`:
 
 ```xml
-<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="deploy-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Deploy status"/>
   <kpi-strip>
     <kpi-item heading="Service" source="/service"/>
@@ -91,7 +91,7 @@ fallback values.
 The small Streaming Diff illustration uses its matching built-in pair:
 
 ```xml
-<oven id="streaming-diff" version="1"
+<oven id="streaming-diff" version="0.1.0"
       contract="burnlist-streaming-diff-data@2" theme="streaming-diff">
   <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
   <diff-card source="/cards"/>

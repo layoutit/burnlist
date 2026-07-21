@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { httpGet, withServer } from "./dashboard-routes-fixtures.mjs";
 
-const ovenSource = `<oven id="widget-oven" version="1" contract="checklist-progress@1" theme="checklist">
+const ovenSource = `<oven id="widget-oven" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <kpi-strip>
     <kpi-item variant="current" heading="Widget" title="/widget/name" value="/widget/count"/>
   </kpi-strip>

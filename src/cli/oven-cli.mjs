@@ -95,9 +95,9 @@ function printOven(oven) {
   };
   countNodes(oven.ir.root);
   const kind = oven.builtIn ? "built-in" : "custom";
-  console.log(`${oven.name}  (${oven.id} · ${kind})`);
+  console.log(`${oven.name}  (${oven.id}@${oven.ir.version} · ${kind})`);
   if (oven.description) console.log(oven.description);
-  console.log(`nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
+  console.log(`version: ${oven.ir.version} · nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
   console.log(`revision: ${oven.ovenRevision}`);
   console.log(`path: ${oven.path}`);
   console.log("");
@@ -174,7 +174,7 @@ try {
   if (subcommand === "list") {
     const ovens = discoverOvens();
     if (flags.has("json")) {
-      console.log(JSON.stringify(ovens.map(({ instructions, ir, ...rest }) => rest), null, 2));
+      console.log(JSON.stringify(ovens.map(({ instructions, ir, ...rest }) => ({ ...rest, version: ir.version })), null, 2));
       return;
     }
     if (ovens.length === 0) {
@@ -184,13 +184,14 @@ try {
     const nodeCount = (nodes) => nodes.reduce((count, node) => count + 1 + nodeCount(node.children), 0);
     const rows = ovens.map((oven) => [
       oven.id,
+      oven.ir.version,
       oven.name,
       oven.builtIn ? "built-in" : "custom",
       oven.ir.contract,
       String(nodeCount(oven.ir.root)),
       oven.ovenRevision,
     ]);
-    const header = ["id", "name", "kind", "contract", "nodes", "revision"];
+    const header = ["id", "version", "name", "kind", "contract", "nodes", "revision"];
     const widths = header.map((label, index) => Math.max(label.length, ...rows.map((row) => row[index].length)));
     const line = (cols) => cols.map((value, index) => value.padEnd(widths[index])).join("  ").trimEnd();
     console.log(line(header));
@@ -207,6 +208,7 @@ try {
     if (flags.has("json")) {
       console.log(JSON.stringify({
         id: oven.id,
+        version: oven.ir.version,
         name: oven.name,
         builtIn: oven.builtIn,
         instructions: oven.instructions,

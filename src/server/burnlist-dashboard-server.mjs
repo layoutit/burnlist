@@ -551,6 +551,7 @@ function findOven(id, selectedKey = null) {
 function ovenSummary(oven) {
   return {
     id: oven.id,
+    version: oven.ir.version,
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,

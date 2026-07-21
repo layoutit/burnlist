@@ -178,7 +178,7 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     assert.equal(new Set(shared.map((oven) => oven.repoKey)).size, 2);
     assert.deepEqual(
       Object.keys(shared[0]).sort(),
-      ["builtIn", "description", "id", "name", "ovenRevision", "repoKey"],
+      ["builtIn", "description", "id", "name", "ovenRevision", "repoKey", "version"],
     );
     assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
     assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);

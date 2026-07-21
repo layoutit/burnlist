@@ -21,7 +21,7 @@ function run(context, args, input) {
 }
 
 function ovenWithStoredBytes(targetBytes, id) {
-  const prefix = `<oven id="${id}" version="1" contract="checklist-progress@1" theme="checklist">\n  <!--`;
+  const prefix = `<oven id="${id}" version="0.1.0" contract="checklist-progress@1" theme="checklist">\n  <!--`;
   const suffix = '-->\n  <section-header title="Stored source"/>\n</oven>\n';
   const fillBytes = targetBytes - Buffer.byteLength(prefix) - Buffer.byteLength(suffix);
   assert.ok(fillBytes >= 0, "test fixture must leave room for a valid Oven");

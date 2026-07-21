@@ -1,4 +1,4 @@
-<oven id="checklist" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="checklist" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <kpi-strip>
     <kpi-item variant="current" heading="Current" icon="ClipboardList" title="/current/title" value="/current/value"/>
     <kpi-item heading="Progress" title="/progress/title">
