@@ -10,6 +10,7 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
@@ -59,21 +60,30 @@ function bindingRepo() {
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const launchCwd = process.cwd();
-const customRepoRoot = repoRoot();
-if (flags.get("ovens-dir") === "true") fail("--ovens-dir requires a path.");
-const unsafeOvensDir = flags.has("unsafe-ovens-dir");
-const customOvensDir = resolveCustomOvensDir(
-  customRepoRoot,
-  flags.has("ovens-dir") ? flags.get("ovens-dir") : undefined,
-  { unsafe: unsafeOvensDir },
-);
+let cachedOvenContext;
 
-const { readOvenDir, discoverOvens, findOven } = createOvenCatalog({
-  builtInOvensDir,
-  customOvensDir,
-  customRepoRoot,
-  unsafeOvensDir,
-});
+function ovenContext() {
+  if (cachedOvenContext) return cachedOvenContext;
+  const customRepoRoot = repoRoot();
+  if (flags.get("ovens-dir") === "true") fail("--ovens-dir requires a path.");
+  const unsafeOvensDir = flags.has("unsafe-ovens-dir");
+  const customOvensDir = resolveCustomOvensDir(
+    customRepoRoot,
+    flags.has("ovens-dir") ? flags.get("ovens-dir") : undefined,
+    { unsafe: unsafeOvensDir },
+  );
+  cachedOvenContext = {
+    customRepoRoot,
+    customOvensDir,
+    unsafeOvensDir,
+    ...createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoRoot, unsafeOvensDir }),
+  };
+  return cachedOvenContext;
+}
+
+const readOvenDir = (...args) => ovenContext().readOvenDir(...args);
+const discoverOvens = (...args) => ovenContext().discoverOvens(...args);
+const findOven = (...args) => ovenContext().findOven(...args);
 
 function printOven(oven) {
   let nodeCount = 0;
@@ -125,6 +135,7 @@ Usage:
   burnlist oven bind <id> <path> [--repo <path>]
   burnlist oven unbind <id> [--repo <path>]
   burnlist oven bindings [--repo <path>]
+  burnlist oven event <id> --subject <id> --kind <kind> --phase <phase> --cursor <cursor> [--payload <json>]
   burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
   burnlist oven create <id> --dir <dir>            (reads instructions.md + <id>.oven)
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, oven})
@@ -138,6 +149,12 @@ Options:
   --dir <p>            Directory containing instructions.md and <id>.oven.
   --package <p>        JSON package file, or - for stdin.
   --repo <p>           Repository whose local Oven bindings to use.
+  --subject <id>       Event subject such as a Burnlist or scenario id.
+  --kind <slug>        Generic event kind.
+  --phase <slug>       Generic event phase.
+  --cursor <text>      Stable cursor for one logical event.
+  --occurred-at <iso>  Optional event timestamp; defaults to now.
+  --payload <json>     Optional compact JSON event payload.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
   --force              On create, replace an existing custom Oven.
@@ -233,10 +250,42 @@ try {
     return;
   }
 
+  if (subcommand === "event") {
+    const id = positionals[0];
+    const eventFlag = (name) => {
+      const value = flags.get(name);
+      return value && value !== "true" ? value : null;
+    };
+    const subjectId = eventFlag("subject");
+    const kind = eventFlag("kind");
+    const phase = eventFlag("phase");
+    const cursor = eventFlag("cursor");
+    if (!id || !subjectId || !kind || !phase || !cursor) {
+      fail("Usage: burnlist oven event <id> --subject <id> --kind <kind> --phase <phase> --cursor <cursor> [--payload <json>]");
+    }
+    let payload = {};
+    if (flags.has("payload")) {
+      try { payload = JSON.parse(flags.get("payload")); }
+      catch (error) { throw new Error(`--payload must be valid JSON: ${error.message}`); }
+    }
+    const result = publishOvenEvent(repoRoot(), {
+      ovenId: id,
+      subjectId,
+      kind,
+      phase,
+      cursor,
+      occurredAt: flags.get("occurred-at"),
+      payload,
+    });
+    console.log(JSON.stringify({ created: result.created, event: result.event }));
+    return;
+  }
+
   if (subcommand === "create" || subcommand === "update") {
     const pkg = resolvePackageInput({ flags, positionals, scaffold: subcommand === "create" });
     assertCustomTarget(pkg.id, subcommand);
     const allowReplace = subcommand === "update" || flags.has("force");
+    const { customRepoRoot, customOvensDir, unsafeOvensDir } = ovenContext();
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, { allowReplace });
     const saved = readOvenDir(customOvensDir, pkg.id, false);
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
@@ -253,6 +302,7 @@ try {
     const pkg = normalizeOvenPackage({ id, instructions: source.instructions, oven: rewriteRootOvenId(source.oven, id) });
     const sourceRevision = ovenRevision(source);
     if (findOven(pkg.id)) throw new Error(`Oven ${pkg.id} already exists.`);
+    const { customRepoRoot, customOvensDir, unsafeOvensDir } = ovenContext();
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, {
       allowReplace: false,
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },

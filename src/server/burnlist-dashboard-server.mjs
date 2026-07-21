@@ -38,6 +38,7 @@ import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
+import { serveOvenEventFeed } from "../events/oven-event-feed.mjs";
 import { isolatedDashboardEntries } from "./dashboard-entry-isolation.mjs";
 import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import {
@@ -1142,6 +1143,11 @@ const server = createServer(async (req, res) => {
       } catch (err) {
         json(res, 500, { error: err.message });
       }
+      return;
+    }
+    if (url.pathname === "/api/events") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      serveOvenEventFeed({ req, res, url, repos: ovenScopeRepos(), json });
       return;
     }
     if (url.pathname === "/api/ovens") {

@@ -97,9 +97,14 @@ try {
       "createDifferentialTestingWorker",
       "readDifferentialTestingWorkerState",
     ];
-    if (sdk.DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION !== 3
+    if (sdk.DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION !== 4
       || JSON.stringify(Object.keys(sdk).sort()) !== JSON.stringify(expected.sort())) process.exit(1);
   `]);
+  run(process.execPath, ["--input-type=module", "--eval", `
+    const events = await import("burnlist/oven-events");
+    const expected = ["normalizeOvenEvent", "publishOvenEvent", "readOvenEvents"];
+    if (!expected.every((name) => typeof events[name] === "function")) process.exit(1);
+  `], { cwd: packageRoot });
 
   run(cli, ["uninstall", "--global", "--purge"]);
   for (const agentDirectory of [".claude", ".agents"]) {

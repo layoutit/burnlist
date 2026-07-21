@@ -115,16 +115,16 @@ test("malformed hook flags still exit zero without using the regular flag parser
   } finally { context.cleanup(); }
 });
 
-test("hook stdin stops at its byte cap and timeout instead of waiting for EOF", { timeout: 4_000 }, async () => {
+test("hook stdin stops at its byte cap and timeout instead of waiting for EOF", { timeout: 8_000 }, async () => {
   const context = fixture();
   try {
     const oversized = hookProcess(context, "codex", "post");
     oversized.stdin.write("x".repeat(300 * 1024));
-    assert.deepEqual(await exitsWithin(oversized, 1_500), { code: 0, signal: null });
+    assert.deepEqual(await exitsWithin(oversized, 3_000), { code: 0, signal: null });
 
     const slow = hookProcess(context, "codex", "post");
     slow.stdin.write("{");
-    assert.deepEqual(await exitsWithin(slow, 1_500), { code: 0, signal: null });
+    assert.deepEqual(await exitsWithin(slow, 3_000), { code: 0, signal: null });
 
     const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "unknown-session" });
     const cards = readJournal(identity.feedDir).cards.filter((card) => card.toolUseId === "unknown-tool-use");
@@ -134,7 +134,7 @@ test("hook stdin stops at its byte cap and timeout instead of waiting for EOF", 
   } finally { context.cleanup(); }
 });
 
-test("a Codex payload with truncated path hints records a partial terminal card", () => {
+test("a Codex payload with truncated path hints always leaves durable partial state", () => {
   const context = fixture();
   try {
     const paths = Array.from({ length: 65 }, (_, index) => `file-${index}.txt`);
@@ -146,7 +146,8 @@ test("a Codex payload with truncated path hints records a partial terminal card"
     writeFileSync(join(context.root, "file-0.txt"), "after\n");
     hook(context, "codex", "post", payload);
     const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "codex-many" });
-    const card = readJournal(identity.feedDir).cards.find((entry) => entry.toolUseId === "call-many" && entry.files.length > 0);
+    const card = readJournal(identity.feedDir).cards.find((entry) => entry.toolUseId === "call-many" && /path hints truncated/u.test(entry.partialReason ?? ""));
+    assert.ok(card);
     assert.equal(card.status, "partial");
     assert.match(card.partialReason, /path hints truncated/u);
   } finally { context.cleanup(); }

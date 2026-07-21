@@ -11,6 +11,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { publishOvenEvent as publishRepoOvenEvent } from "../../../src/events/oven-event-store.mjs";
 
 export const DIFFERENTIAL_TESTING_WORKER_STATE_SCHEMA = "burnlist-differential-testing-worker-state@1";
 
@@ -75,6 +76,8 @@ export function createDifferentialTestingWorker({
   classifyTelemetryError,
   project,
   onFatal = () => {},
+  emitOvenEvent = null,
+  onOvenEventError = () => {},
   now = () => new Date().toISOString(),
   pollIntervalMs = 250,
   telemetryTimeoutMs = 5 * 60_000,
@@ -108,6 +111,7 @@ export function createDifferentialTestingWorker({
     [classifyTelemetryError, "classifyTelemetryError"],
     [project, "project"],
     [onFatal, "onFatal"],
+    [onOvenEventError, "onOvenEventError"],
   ]) {
     if (typeof callback !== "function") throw new Error(`${label} is required.`);
   }
@@ -134,6 +138,8 @@ export function createDifferentialTestingWorker({
   }
 
   const repoRoot = resolve(root);
+  if (emitOvenEvent !== null && typeof emitOvenEvent !== "function") throw new Error("emitOvenEvent must be a function or null.");
+  const eventPublisher = emitOvenEvent ?? ((event) => publishRepoOvenEvent(repoRoot, event));
   const storeRoot = containedPath(repoRoot, storeDirectory, "Differential Testing store");
   const statePath = containedPath(storeRoot, stateFile, "Differential Testing worker state");
   const scratchRoot = resolve(storeRoot, ".scratch");
@@ -396,10 +402,13 @@ export function createDifferentialTestingWorker({
       run: { id: runId, scratchDirectory: displayPath(repoRoot, scratchDirectory) },
     });
     state.telemetry.active = { scenarioId, requestId: request.requestId, runId, startedAt };
+    const iterationAttempt = scenario.attempts;
     queueProjection("telemetry-running", scenarioId);
     bumpAndPersist();
     let preserveScratch = false;
     let quarantined = false;
+    let iterationPhase = "failed";
+    let iterationError = null;
     try {
       const staged = await runWithTimeout(runTelemetry, {
         root: repoRoot,
@@ -408,6 +417,7 @@ export function createDifferentialTestingWorker({
         request: structuredClone(request),
       }, telemetryTimeoutMs, telemetryAbortGraceMs);
       if (scenario.pendingRequest) {
+        iterationPhase = "superseded";
         queuePendingScenario(scenario, { superseded: true }, timestamp(now(), "successor timestamp"));
         if (!state.telemetry.queue.includes(scenarioId)) state.telemetry.queue.push(scenarioId);
       } else {
@@ -430,13 +440,16 @@ export function createDifferentialTestingWorker({
         scenario.nextAttemptAt = null;
         scenario.publication = structuredClone(publication);
         scenario.run = { ...scenario.run, exitCode: staged.exitCode ?? null };
+        iterationPhase = "complete";
       }
     } catch (error) {
+      iterationError = String(error?.message ?? error).slice(0, 1_000);
       preserveScratch = error?.preserveScratch === true;
       if (error?.workerFatal === true) {
         quarantined = true;
         throw error;
       } else if (scenario.pendingRequest) {
+        iterationPhase = "superseded";
         queuePendingScenario(scenario, { superseded: true, discardedError: error?.message ?? String(error) }, timestamp(now(), "successor timestamp"));
         if (!state.telemetry.queue.includes(scenarioId)) state.telemetry.queue.push(scenarioId);
       } else {
@@ -453,11 +466,13 @@ export function createDifferentialTestingWorker({
         scenario.run = { ...scenario.run, exitCode: error?.exitCode ?? null };
         if (classification === "permanent" || scenario.attempts >= telemetryMaxAttempts) {
           scenario.status = "failed";
+          iterationPhase = "failed";
           scenario.finishedAt = timestamp(now(), "telemetry failure timestamp");
           scenario.nextAttemptAt = null;
           if (classification !== "permanent") scenario.error += ` Telemetry retry exhausted after ${scenario.attempts} attempts.`;
         } else {
           scenario.status = "retrying";
+          iterationPhase = "retrying";
           scenario.startedAt = null;
           scenario.finishedAt = null;
           scenario.nextAttemptAt = timestampAfter(now(), retryDelay(scenario.attempts, telemetryRetryBaseMs, telemetryRetryMaxMs));
@@ -471,6 +486,30 @@ export function createDifferentialTestingWorker({
         scenario.updatedAt = timestamp(now(), "scenario update timestamp");
         queueProjection(`telemetry-${scenario.status}`, scenarioId);
         bumpAndPersist();
+        try {
+          const emitted = eventPublisher({
+            ovenId: "differential-testing",
+            subjectId: scenarioId,
+            kind: "iteration",
+            phase: iterationPhase,
+            cursor: runId,
+            occurredAt: scenario.updatedAt,
+            payload: {
+              requestId: request.requestId,
+              runId,
+              attempt: iterationAttempt,
+              status: iterationPhase,
+              published: iterationPhase === "complete",
+              ...(iterationError ? { error: iterationError } : {}),
+            },
+          });
+          if (emitted && typeof emitted.then === "function") {
+            void Promise.resolve(emitted).catch(() => {});
+            throw new Error("emitOvenEvent must complete synchronously.");
+          }
+        } catch (error) {
+          try { onOvenEventError(error, { scenarioId, requestId: request.requestId, runId, phase: iterationPhase }); } catch {}
+        }
       }
     }
   }

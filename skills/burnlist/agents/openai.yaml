@@ -1,4 +1,4 @@
 interface:
   display_name: "Burnlist"
-  short_description: "Create and run shrinking Burnlists"
-  default_prompt: "Use $burnlist to create, harden, or execute a repo-local Burnlist."
+  short_description: "Plan, run, and coordinate shrinking Burnlists"
+  default_prompt: "Use $burnlist to plan, execute, or coordinate repo-local Burnlists and their Oven progress."

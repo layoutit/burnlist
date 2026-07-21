@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertBuiltInOven, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
-import { verificationTestFiles } from "./verify-test-files.mjs";
+import { verificationSerialTestFiles, verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
@@ -217,8 +217,9 @@ function assertPublishablePackage() {
   }
   if (packageJson.exports?.["./differential-testing"] !== "./ovens/differential-testing/engine/adapter-sdk.mjs"
     || packageJson.exports?.["./differential-testing/contract"] !== "./ovens/differential-testing/engine/contract.mjs"
-    || packageJson.exports?.["./differential-testing/transport"] !== "./ovens/differential-testing/engine/transport.mjs") {
-    console.error("package.json does not expose the stable Differential Testing worker, contract, and transport subpaths.");
+    || packageJson.exports?.["./differential-testing/transport"] !== "./ovens/differential-testing/engine/transport.mjs"
+    || packageJson.exports?.["./oven-events"] !== "./src/events/oven-events.mjs") {
+    console.error("package.json does not expose the stable Differential Testing and Oven event subpaths.");
     process.exit(1);
   }
   if (packageJson.scripts?.postinstall !== "node scripts/register-skills.mjs") {
@@ -266,6 +267,7 @@ assertSourceExcludes("dashboard/src/App.tsx", "function Detail(", "Dashboard sti
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/events"', "Replayable generic Oven event API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
 assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
@@ -389,6 +391,7 @@ assertSourceExcludes("dashboard/src/oven/differential-testing-render/differentia
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "exact comparator when used", "Fallback Run Burn still requests the superseded manual comparator workflow.");
 assertSourceExcludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "exact comparator when used", "React Run Burn still requests the superseded manual comparator workflow.");
 assertSourceIncludes("skills/burnlist/SKILL.md", "references/burnlist-creation.md", "The Burnlist skill does not route creation work.");
+assertSourceIncludes("skills/burnlist/SKILL.md", "references/oven-event-coordination.md", "The Burnlist skill does not route coordinator event work.");
 assertSourceIncludes("src/cli/skills-register.mjs", 'join(home, ".claude", "skills")', "Global npm install does not use the Claude skill directory.");
 assertSourceIncludes("src/cli/skills-register.mjs", 'join(home, ".agents", "skills")', "Global npm install does not use the Codex skill directory.");
 assertSourceIncludes("bin/burnlist.mjs", "Usage:", "Burnlist CLI help is missing.");
@@ -409,6 +412,7 @@ assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
 run(process.execPath, ["--test", ...verificationTestFiles]);
+for (const file of verificationSerialTestFiles) run(process.execPath, ["--test", file]);
 run(process.execPath, ["dashboard/src/oven/test-support/run-oven-tests.mjs"]);
 
 const {

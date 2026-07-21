@@ -1,5 +1,16 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  rmdirSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -9,6 +20,7 @@ import {
   validatePlan,
 } from "../server/plan-model.mjs";
 import { safeStat, withLock } from "../server/fs-safe.mjs";
+import { publishOvenEvent } from "../events/oven-event-store.mjs";
 
 export { withLock } from "../server/fs-safe.mjs";
 
@@ -18,13 +30,29 @@ function lifecycleRoot(repoRoot, lifecycle) {
 
 function atomicWrite(path, contents) {
   const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
+  let descriptor;
   try {
-    writeFileSync(temporary, contents);
+    descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o666);
+    writeFileSync(descriptor, contents);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
     renameSync(temporary, path);
-  } catch (error) {
+    fsyncDirectory(dirname(path));
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
     rmSync(temporary, { force: true });
-    throw error;
   }
+}
+
+function fsyncDirectory(path) {
+  const descriptor = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
+}
+
+function fsyncFile(path) {
+  const descriptor = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
 }
 
 function validateOrThrow(plan) {
@@ -197,6 +225,34 @@ function appendCompleted(lines, entry) {
   lines.splice(end < 0 ? lines.length : end, 0, entry);
 }
 
+function checklistCompletion(id, item, completedAt, plan) {
+  const total = plan.items.length + plan.completed.length;
+  return {
+    ovenId: "checklist",
+    subjectId: id,
+    kind: "item-burned",
+    phase: "completed",
+    cursor: `${id}:${item.id}:${completedAt}`,
+    occurredAt: completedAt,
+    payload: {
+      itemId: item.id,
+      title: item.title,
+      done: plan.completed.length,
+      remaining: plan.items.length,
+      total,
+      percent: total ? Math.round((plan.completed.length / total) * 100) : 100,
+    },
+  };
+}
+
+function printBurnCheck(plan, issues) {
+  for (const issue of issues) {
+    const stream = issue.severity === "error" ? console.error : console.warn;
+    stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
+  }
+  console.log(`Burnlist check passed: ${plan.items.length} active, ${plan.completed.length} completed.`);
+}
+
 export function burnItem(repoRoot, id, itemId, check = false) {
   assertValidBurnlistId(id);
   const found = findBurnlistDir(repoRoot, id);
@@ -204,32 +260,43 @@ export function burnItem(repoRoot, id, itemId, check = false) {
     throw new Error(`burnlist ${id} is not in inprogress; it is in ${found.lifecycle.folder}`);
   }
   const planPath = join(found.dir, "burnlist.md");
-  return withLock(found.dir, () => {
+  const completion = withLock(found.dir, () => {
     const plan = parsePlan(planPath);
-    validateOrThrow(plan);
+    const currentIssues = validateOrThrow(plan);
     const item = plan.items.find((entry) => entry.id === itemId);
-    if (!item) throw new Error(`Active item ${itemId} was not found.`);
+    if (!item) {
+      const completed = plan.completed.find((entry) => entry.id === itemId);
+      if (!completed) throw new Error(`Active item ${itemId} was not found.`);
+      fsyncFile(planPath);
+      fsyncDirectory(dirname(planPath));
+      if (check) printBurnCheck(plan, currentIssues);
+      return checklistCompletion(id, completed, completed.completedAt, plan);
+    }
     const lines = removeActiveItem(plan.markdown, itemId);
-    appendCompleted(lines, `- ${item.id} | ${localIsoTimestamp()} | ${item.title}`);
+    const completedAt = localIsoTimestamp();
+    appendCompleted(lines, `- ${item.id} | ${completedAt} | ${item.title}`);
     const nextMarkdown = `${lines.join("\n").replace(/\s*$/u, "")}\n`;
     const temporary = join(dirname(planPath), `.${basename(planPath)}.${randomBytes(8).toString("hex")}.tmp`);
     let checked;
     try {
-      writeFileSync(temporary, nextMarkdown);
+      const descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o666);
+      try {
+        writeFileSync(descriptor, nextMarkdown);
+        fsyncSync(descriptor);
+      } finally { closeSync(descriptor); }
       checked = parsePlan(temporary);
       const issues = validateOrThrow(checked);
       renameSync(temporary, planPath);
+      fsyncDirectory(dirname(planPath));
       checked = { plan: checked, issues };
     } catch (error) {
       rmSync(temporary, { force: true });
       throw error;
     }
-    if (!check) return true;
-    for (const issue of checked.issues) {
-      const stream = issue.severity === "error" ? console.error : console.warn;
-      stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
-    }
-    console.log(`Burnlist check passed: ${checked.plan.items.length} active, ${checked.plan.completed.length} completed.`);
-    return true;
+    if (check) printBurnCheck(checked.plan, checked.issues);
+    return checklistCompletion(id, item, completedAt, checked.plan);
   });
+  try { publishOvenEvent(repoRoot, completion); }
+  catch (error) { console.warn(`Burned ${itemId}, but could not publish its observational Oven event: ${error.message}`); }
+  return true;
 }

@@ -1,7 +1,7 @@
 ---
 name: burnlist
 description: >-
-  Create, harden, execute, maintain, and repair repo-local Burnlists: turn goals into strict shrinking checklists, finalize draft-to-ready plans, run active items with atomic completion, split or reorder work, coordinate parent and lane Burnlists, manage lifecycle folders and terse completed ledgers, and repair the local dashboard/tracker. Use for both planning a new Burnlist and implementing or continuing an existing one.
+  Create, harden, execute, coordinate, maintain, and repair repo-local Burnlists: turn goals into strict shrinking checklists, run active items with atomic completion, split or reorder work, coordinate independent worker tasks and queues, monitor generic Oven progress events, manage lifecycle folders and terse completed ledgers, and repair the local dashboard/tracker. Use for planning, execution, multi-Burnlist coordination, or live worker supervision.
 ---
 
 # Burnlist
@@ -14,6 +14,7 @@ Use one skill for the full Burnlist lifecycle. Burnlist is task state, not imple
 
 - **Creation mode:** when creating, hardening, restructuring, or readying a Burnlist, read `references/burnlist-creation.md` completely before editing Burnlist files. Creation owns `draft -> ready` and does not implement the planned work unless the user also asks to continue into execution.
 - **Execution mode:** when implementing or continuing a ready/in-progress Burnlist, follow the execution path below. Keep the hot working set small: the active item, relevant `goal.md` guardrails, current implementation evidence, and the state mutation being performed.
+- **Coordination mode:** when selecting independent Burnlists, opening worker tasks, monitoring active workers, or assigning the next queue, read `references/oven-event-coordination.md` completely before acting. Retain exact task handles and use canonical Burnlist state plus Oven events; do not use model heartbeats as a status loop.
 - **Combined request:** finish and validate creation first, park the folder in `ready/`, then switch explicitly to execution mode and move the whole folder to `inprogress/`.
 
 ## Cold References
@@ -30,6 +31,7 @@ Read references only when their trigger applies:
 - `references/designing-ovens.md`: choosing what an Oven should measure through proxy-resistant evidence, before touching the DSL.
 - `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
+- `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -134,6 +136,8 @@ A burnlist in an unregistered repo is still visible when the dashboard is launch
 `New Oven` and `Run Burn` are explicit user-controlled local controller surfaces. For Oven contract, UI, validation, or Run-snapshot work, read `references/oven-contract.md`. Preserve its two-file declarative package and ownership boundary: custom Ovens may be created under ignored `.local/burnlist/ovens/` state and snapshotted under `.local/burnlist/runs/`, but neither surface may execute instructions, produce project data, own canonical project state, mutate Burnlists, import arbitrary UI code, or start an agent.
 
 Ovens can also be authored and inspected from the CLI: `burnlist oven <list|view|create|update>`. It writes only custom Ovens, keeps built-in Ovens read-only, reuses the same contract validation, and never executes instructions. `burnlist oven view <id>` renders the detail skeleton as a box-drawing grid for quick inspection. Read `references/oven-authoring.md` for the widget/format vocabulary and source-binding conventions.
+
+Oven progress events are a separate observational surface under ignored repo-local state. They never replace Burnlist files or an Oven's proof artifacts. Checklist burns and Differential Testing worker iterations publish them automatically; future adapters use the same package API or `burnlist oven event`. The dashboard exposes one replayable `/api/events` feed across Ovens and repos. Read `references/oven-event-coordination.md` before using events to supervise worker tasks or wake a coordinator.
 
 Do not embed repo/domain dashboards inside the Burnlist dashboard. Domain-specific viewers must live in their repo-local tools and may be linked or launched separately. Share state only through Burnlist lifecycle files, explicit URLs, or a narrow message contract; do not share CSS, layout code, routes, or polling loops.
 
