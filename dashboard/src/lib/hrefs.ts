@@ -3,6 +3,7 @@ import type { Burnlist, Filter, SelectedBurnlist } from "./types";
 const BUILT_IN_OVEN_IDS = new Set([
   "checklist",
   "differential-testing",
+  "model-lab",
   "performance-tracing",
   "streaming-diff",
   "visual-parity",
@@ -11,6 +12,7 @@ const BUILT_IN_OVEN_IDS = new Set([
 export function currentSection() {
   if (window.location.pathname === "/ovens/new") return "new-oven";
   if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
+  if (window.location.pathname === "/ovens/model-lab/view") return "model-lab";
   if (window.location.pathname === "/ovens/performance-tracing/view") return "performance-tracing";
   if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
   if (window.location.pathname === "/ovens/visual-parity/view") return "visual-parity";
@@ -27,7 +29,7 @@ export function customOvenSelection(): { id: string; repoKey: string | null } | 
 }
 
 export function ovenRepoKey() {
-  return ["differential-testing", "performance-tracing", "streaming-diff", "visual-parity"].includes(currentSection())
+  return ["differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"].includes(currentSection())
     ? new URLSearchParams(window.location.search).get("repoKey")
     : null;
 }

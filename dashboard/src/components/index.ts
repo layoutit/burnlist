@@ -6,6 +6,7 @@ export { DashboardError } from "./DashboardError";
 export { DifferentialTestingOvenPage, PerformanceTracingOvenPage } from "./DifferentialTestingOven";
 export { EmptyState } from "./EmptyState";
 export { FILTERS, Filters } from "./Filters";
-export { ProjectGroup } from "./ProjectGroup";
+export { ModelLabPage } from "./ModelLab";
+export { BurnlistTable, ProjectGroup } from "./ProjectGroup";
 export { StreamingDiff } from "./StreamingDiff";
 export { VisualParityPage } from "./VisualParity";

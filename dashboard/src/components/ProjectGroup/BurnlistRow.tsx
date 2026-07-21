@@ -1,21 +1,13 @@
-import type { KeyboardEvent, MouseEvent } from "react";
-import { Button, Progress } from "@layout";
-import { burnlistHref, formatTime } from "@lib";
+import type { KeyboardEvent } from "react";
+import { Badge } from "@layout";
+import { burnlistHref, formatListTime, formatTime } from "@lib";
 import type { Burnlist, Filter } from "@lib";
 
-export function BurnlistRow({ entry, filter, ambiguous }: { entry: Burnlist; filter: Filter; ambiguous: boolean }) {
+export function BurnlistRow({ entry, filter, ambiguous, projectLabel, projectRowSpan }: { entry: Burnlist; filter: Filter; ambiguous: boolean; projectLabel: string | null; projectRowSpan: number }) {
   const blocked = entry.statusLabel === "Blocked";
+  const progressLabel = entry.done != null ? `${entry.done} / ${entry.total}` : entry.progressLabel;
   const href = blocked ? entry.href : entry.ovenId === "checklist" ? burnlistHref(entry, filter, ambiguous) : entry.href;
   const open = () => { window.location.href = href; };
-  const copy = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    const url = window.location.origin + (entry.ovenId === "checklist" && ambiguous
-      ? href
-      : entry.ovenId === "checklist"
-      ? (entry.repoKey ? `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}` : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`)
-      : entry.href);
-    void navigator.clipboard?.writeText(url);
-  };
 
   return (
     <tr
@@ -36,19 +28,22 @@ export function BurnlistRow({ entry, filter, ambiguous }: { entry: Burnlist; fil
         tabIndex: 0,
       })}
     >
+      {projectLabel && <th className="burnlist-table-cell burnlist-table-cell-project" rowSpan={projectRowSpan} scope="rowgroup" title={projectLabel}>{projectLabel}</th>}
       <td className="burnlist-table-cell burnlist-table-cell-primary">
-        <p className="burnlist-table-repo">{entry.repo}/{entry.id}</p>
-        <p className="burnlist-table-title">{entry.title}</p>
-        {blocked && <p className="burnlist-table-title" data-blocked-reason="true">Blocked: {entry.blockers ?? entry.statusLabel}</p>}
-        {!blocked && <Button aria-label={`Copy ${entry.repoKey ?? entry.repo}/${entry.id} and title`} className="burnlist-copy-button" onClick={copy} size="xs" type="button" variant="ghost">Copy</Button>}
+        <span className="burnlist-table-title" title={`${entry.title} · ${entry.ovenName}`}>{entry.title}</span>
+        {blocked && <span className="burnlist-table-row-state"> · Blocked</span>}
+        {blocked && <span className="visually-hidden" data-blocked-reason="true">{entry.blockers ?? entry.statusLabel}</span>}
       </td>
-      <td className="burnlist-table-cell burnlist-table-cell-oven">{entry.ovenName}</td>
-      <td className="burnlist-table-cell burnlist-table-cell-status" data-status={entry.status}>{entry.statusLabel}</td>
+      <td className="burnlist-table-cell burnlist-table-cell-oven">
+        <Badge data-oven={entry.ovenId} title={entry.ovenName} variant="outline">{entry.ovenName}</Badge>
+      </td>
+      {filter === "all" && <td className="burnlist-table-cell burnlist-table-cell-status">
+        <span className="burnlist-table-status" data-blocked={blocked || undefined} data-status={entry.status}>{entry.statusLabel}</span>
+      </td>}
       <td className="burnlist-table-cell burnlist-table-cell-progress">
-        <div className="burnlist-table-progress-meta"><span>{entry.progressLabel}</span>{entry.percent != null && <span>{entry.percent}%</span>}</div>
-        {entry.percent != null && <Progress className="burnlist-table-progress" value={entry.percent} />}
+        {blocked ? "—" : <><span>{progressLabel}</span>{entry.percent != null && <span className="burnlist-table-percent"> · {entry.percent}%</span>}</>}
       </td>
-      <td className="burnlist-table-cell burnlist-table-cell-updated timestamp">{formatTime(entry.updatedAt)}</td>
+      <td className="burnlist-table-cell burnlist-table-cell-updated"><time className="timestamp" dateTime={entry.updatedAt ?? undefined} title={formatTime(entry.updatedAt)}>{entry.updatedAt ? formatListTime(entry.updatedAt) : "—"}</time></td>
     </tr>
   );
 }

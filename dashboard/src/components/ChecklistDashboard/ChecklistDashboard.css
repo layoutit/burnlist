@@ -18,14 +18,18 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .checklist-detail-shell #burnlist-detail .checklist-progress-workspace {
   width: 100%;
-  height: 340px;
-  min-height: 340px;
+  height: 232px;
+  min-height: 232px;
+  max-height: 232px;
+  flex: 0 0 232px;
   grid-template-columns: 30% minmax(0, 70%);
 }
 
 .checklist-detail-shell .checklist-progress-workspace .event-ledger-panel,
 .checklist-detail-shell .checklist-progress-workspace .progress-panel {
-  height: 340px;
+  height: 232px;
+  min-height: 232px;
+  max-height: 232px;
 }
 
 .checklist-detail-shell .checklist-progress-workspace .work-panel-body { min-height: 0; }
@@ -229,11 +233,12 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .event-card:hover .event-card-cell { background: #1c1c1c; }
 
+@media (max-width: 640px) {
   body.checklist-detail-view .dashboard-oven-title { max-width: calc(100% - 190px); font-size: 14px; }
   .dashboard-detail-time { display: none; }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace { height: auto; min-height: 612px; grid-template-rows: 320px 282px; }
+  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace { height: auto; min-height: 612px; max-height: none; flex: none; grid-template-rows: 320px 282px; }
   .checklist-detail-shell .checklist-progress-workspace .event-ledger-panel,
-  .checklist-detail-shell .checklist-progress-workspace .progress-panel { height: auto; }
+  .checklist-detail-shell .checklist-progress-workspace .progress-panel { height: auto; min-height: 0; max-height: none; }
   .event-card-list { min-width: 0; }
   .event-card {
     grid-template-columns: 1fr;
@@ -245,3 +250,4 @@ body.checklist-detail-view .dashboard-oven-title {
   .event-card-field { grid-template-columns: 1fr; gap: 3px; }
   .event-card-field-collapsible summary { grid-template-columns: max-content max-content minmax(0, 1fr); }
   .event-card-field-collapsible ul { margin-left: 0; }
+}

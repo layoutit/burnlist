@@ -300,6 +300,7 @@ body.driving-parity-view .dashboard-header {
 .repo-browser-entry.selected { background: rgba(90,162,255,.09); color: var(--text); }
 .driving-parity-view #burnlist-detail:not([hidden]) {
   --driving-parity-card: #111111;
+  --driving-parity-top-card-height: 310px;
   display: block;
   height: auto;
   min-height: 0;
@@ -342,7 +343,9 @@ body.driving-parity-view .dashboard-header {
   border-radius: 8px;
 }
 .shell.driving-parity-view #burnlist-detail .differential-overview:not([hidden]) + .detail-workspace {
-  height: auto;
+  height: var(--driving-parity-top-card-height);
+  min-height: var(--driving-parity-top-card-height);
+  max-height: var(--driving-parity-top-card-height);
 }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-title-item {
   grid-column: auto;
@@ -782,6 +785,39 @@ body.driving-parity-view .dashboard-header {
 .driving-parity-view #burnlist-detail .stat-label {
   font-size: 11px;
 }
+/* Compact dashboard: preserve the dense two-pane view until the phone stack. */
+@media (max-width: 760px) {
+  .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
+  .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip.has-burns {
+    height: auto;
+    min-height: 112px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(52px, auto));
+    gap: 0;
+    padding: 4px 12px;
+  }
+  .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-section,
+  .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-burns {
+    padding: 0 8px;
+  }
+  .driving-parity-view #burnlist-detail .detail-workspace {
+    grid-template-columns: minmax(248px, 40%) minmax(360px, 1fr);
+  }
+  .driving-parity-view #burnlist-detail .work-panel-body {
+    padding: 12px 8px;
+  }
+  .driving-parity-view #burnlist-detail .checklist-log {
+    padding-right: 0;
+  }
+  .driving-parity-view .checklist-log-table-header,
+  .driving-parity-view .log-row.log-table-row {
+    font-size: 13px;
+  }
+  .driving-parity-view .checklist-log-table-header span + span,
+  .driving-parity-view .log-row.log-table-row .log-table-cell + .log-table-cell {
+    padding-left: 6px;
+  }
+}
 @media (max-width: 640px) {
   .shell.driving-parity-view {
     width: calc(100% - 20px);
@@ -802,10 +838,12 @@ body.driving-parity-view .dashboard-header {
     grid-column: 1 / -1;
     justify-items: start;
   }
+  .shell.driving-parity-view #burnlist-detail .differential-overview:not([hidden]) + .detail-workspace,
   .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip:not([hidden]) + .detail-workspace,
   .driving-parity-view #burnlist-detail .detail-workspace {
     height: auto;
     min-height: 612px;
+    max-height: none;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 320px 282px;
   }
@@ -1217,3 +1255,135 @@ body.driving-parity-view .dashboard-header {
 .log-row.start .log-title { color: rgba(210,216,224,.72); }
 h2 { margin: 0 0 12px; font-size: 16px; font-weight: 400; letter-spacing: 0; }
 code { color: #e8e8e8; background: #2a2a2a; padding: 1px 5px; border-radius: 4px; }
+
+/* Canonical Oven time-series rows. Differential Testing and other source-backed
+   Ovens share this exact label / metric / timeline treatment. */
+.driving-parity-view .hybrid-list {
+  display: grid;
+  min-width: 760px;
+  gap: 0;
+}
+.driving-parity-view .hybrid-row {
+  display: grid;
+  height: 90px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  grid-template-columns: 20% 10% minmax(0, 70%);
+  align-items: stretch;
+  border-radius: 8px;
+  background: var(--card);
+  contain-intrinsic-size: 90px;
+  content-visibility: auto;
+}
+.driving-parity-view .hybrid-row:last-child { margin-bottom: 0; }
+.driving-parity-view .hybrid-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--muted);
+  line-height: 1.25;
+}
+.driving-parity-view .hybrid-field {
+  display: grid;
+  overflow: hidden;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 4px;
+}
+.driving-parity-view .hybrid-field .table-field-label {
+  min-width: 0;
+  width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.driving-parity-view .hybrid-field-segment,
+.driving-parity-view .hybrid-field-tail {
+  width: auto;
+  display: inline;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+.driving-parity-view .hybrid-status {
+  flex: 0 0 auto;
+  font-size: 12px;
+  line-height: 1.25;
+}
+.driving-parity-view .hybrid-row.pass .hybrid-status { color: var(--green); }
+.driving-parity-view .hybrid-row.fail .hybrid-status { color: var(--red-muted); }
+.driving-parity-view .hybrid-metric {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding-right: 17px;
+  color: rgba(210,216,224,.62);
+  text-align: right;
+}
+.driving-parity-view .hybrid-count,
+.driving-parity-view .hybrid-delta,
+.driving-parity-view .hybrid-value-delta {
+  width: 100%;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.driving-parity-view .hybrid-chart {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.driving-parity-view .hybrid-chart > .plot,
+.driving-parity-view .hybrid-chart > svg {
+  width: 100%;
+  height: 100%;
+}
+.driving-parity-view .plot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 58px;
+  overflow: hidden;
+  background: #0f0f0f;
+}
+.driving-parity-view .plot > svg {
+  width: 100%;
+  height: 100%;
+  min-height: 58px;
+  display: block;
+  background: transparent;
+}
+.driving-parity-view .frame-tick-label {
+  position: absolute;
+  top: 5px;
+  color: rgba(168,168,168,.5);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  user-select: none;
+  white-space: nowrap;
+}
+/* Compact Oven rows: shrink their chart canvas instead of widening the page. */
+@media (max-width: 760px) {
+  .driving-parity-view .hybrid-list { min-width: 0; }
+}
+@media (max-width: 520px) {
+  .driving-parity-view .hybrid-list { min-width: 0; }
+  .driving-parity-view .hybrid-row {
+    height: 180px;
+    grid-template-columns: minmax(0, 62%) minmax(88px, 38%);
+    grid-template-rows: 90px 90px;
+    contain-intrinsic-size: 180px;
+  }
+  .driving-parity-view .hybrid-chart {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

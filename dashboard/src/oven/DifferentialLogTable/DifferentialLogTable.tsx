@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { count, formatLogRelativeMinutes, percent } from "../differential-testing-render/differential-testing-render.js";
 import { LogTable } from "../LogTable";
 
@@ -65,5 +65,11 @@ export type DifferentialLogTableProps = {
 };
 
 export function DifferentialLogTable({ entries, now }: DifferentialLogTableProps) {
-  return <LogTable {...buildDifferentialLogRows(entries, now)} />;
+  const [clock, setClock] = useState(Date.now);
+  useEffect(() => {
+    if (now !== undefined) return;
+    const timer = globalThis.setInterval(() => setClock(Date.now()), 60_000);
+    return () => globalThis.clearInterval(timer);
+  }, [now]);
+  return <LogTable {...buildDifferentialLogRows(entries, now ?? clock)} />;
 }

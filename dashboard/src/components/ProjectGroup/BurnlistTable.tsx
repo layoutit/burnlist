@@ -1,36 +1,29 @@
-import { BurnlistRow } from "./BurnlistRow";
-import type { Filter, Project } from "@lib";
+import type { ReactNode } from "react";
 
-export function BurnlistTable({ entries, filter, emptyLabel, ambiguousIds }: { entries: Project["entries"]; filter: Filter; emptyLabel: string; ambiguousIds: string[] }) {
+export function BurnlistTable({ children, showStatus }: { children: ReactNode; showStatus: boolean }) {
   return (
     <div className="burnlist-table-card">
       <div className="burnlist-table-scroll">
-        <table className="burnlist-table">
+        <table aria-label="Burnlists" className="burnlist-table" data-show-status={showStatus}>
           <colgroup>
+            <col className="burnlist-table-column-project" />
             <col className="burnlist-table-column-primary" />
             <col className="burnlist-table-column-oven" />
-            <col className="burnlist-table-column-status" />
+            {showStatus && <col className="burnlist-table-column-status" />}
             <col className="burnlist-table-column-progress" />
             <col className="burnlist-table-column-updated" />
           </colgroup>
           <thead className="burnlist-table-head">
             <tr>
-              <th className="burnlist-table-heading">Burnlist</th>
-              <th className="burnlist-table-heading">Oven</th>
-              <th className="burnlist-table-heading">Lifecycle</th>
-              <th className="burnlist-table-heading">Progress</th>
-              <th className="burnlist-table-heading">Updated</th>
+              <th className="burnlist-table-heading burnlist-table-heading-project">Project</th>
+              <th className="burnlist-table-heading burnlist-table-heading-primary">Burnlist</th>
+              <th className="burnlist-table-heading burnlist-table-heading-oven">Oven</th>
+              {showStatus && <th className="burnlist-table-heading burnlist-table-heading-status">Status</th>}
+              <th className="burnlist-table-heading burnlist-table-heading-progress">Progress</th>
+              <th className="burnlist-table-heading burnlist-table-heading-updated">Updated</th>
             </tr>
           </thead>
-          <tbody className="burnlist-table-body">
-            {entries.length ? entries.map((entry) => <BurnlistRow ambiguous={ambiguousIds.includes(entry.id)} entry={entry} filter={filter} key={`${entry.repoKey ?? entry.repo}/${entry.status}/${entry.id}/${entry.planLabel}`} />) : (
-              <tr className="burnlist-table-row">
-                <td className="burnlist-table-cell burnlist-table-cell-primary" colSpan={5}>
-                  <p className="burnlist-table-title">{emptyLabel}</p>
-                </td>
-              </tr>
-            )}
-          </tbody>
+          {children}
         </table>
       </div>
     </div>

@@ -240,6 +240,7 @@ const jsFiles = [...new Set([
   ...walkFiles(resolve(repoRoot, "scripts"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "src"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/differential-testing"), (path) => path.endsWith(".mjs")),
+  ...walkFiles(resolve(repoRoot, "ovens/model-lab"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/performance-tracing"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/streaming-diff/engine"), (path) => path.endsWith(".mjs")),
   ...walkFiles(resolve(repoRoot, "ovens/visual-parity"), (path) => path.endsWith(".mjs")),
@@ -255,7 +256,7 @@ for (const file of jsFiles) {
   run(process.execPath, ["--check", relative(repoRoot, file)]);
 }
 
-assertSourceIncludes("dashboard/src/App.tsx", ">Ovens</h1>", "Dashboard page is missing.");
+assertSourceIncludes("dashboard/src/App.tsx", ">Burnlists</h1>", "Dashboard landing page is missing.");
 assertSourceIncludes("dashboard/src/App.tsx", "<ChecklistOvenView", "Checklist Oven is not rendered through its declarative engine view.");
 for (const surface of ["ChecklistKpis", "ProgressPanel", "ProgressLedger", "EventCardList"]) {
   assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashboard.tsx", `function ${surface}`, `Checklist dashboard is missing ${surface}.`);
@@ -279,7 +280,13 @@ assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", 'ovenName:
 assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'id === "differential-testing"', "Dashboard server still hardcodes the Differential Testing Oven.");
 assertSourceIncludes("dashboard/src/lib/hrefs.ts", '? value! : "active"', "Dashboard table is not filtered to Active by default.");
-assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", '<th className="burnlist-table-heading">Oven</th>', "Shared dashboard table does not identify each row's Oven.");
+assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", '<table aria-label="Burnlists"', "Dashboard landing is missing its semantic Burnlist table.");
+assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistTable.tsx", ">Oven</th>", "Dashboard landing is missing its Oven identity column.");
+assertSourceIncludes("dashboard/src/App.tsx", '<BurnlistTable showStatus={filter === "all"}>{projects.map', "Dashboard projects do not share one calm table surface.");
+assertSourceExcludes("dashboard/src/components/ProjectGroup/ProjectGroup.tsx", "<table", "Dashboard project groups still repeat the table header.");
+assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", "rowSpan={projectRowSpan}", "Dashboard project grouping is not represented in its flat table.");
+assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", '<Badge data-oven={entry.ovenId}', "Dashboard Oven labels do not use the shared Badge primitive.");
+assertSourceIncludes("dashboard/src/components/Filters/Filters.tsx", '<TabsList aria-label="Burnlist lifecycle" variant="line">', "Dashboard lifecycle filters do not use the shared line Tabs primitive.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate-bundle <bundle/current.json>", "Burnlist CLI is missing Differential Testing bundle validation help.");
@@ -355,7 +362,10 @@ assertSourceExcludes("dashboard/src/oven/differential-testing-render/differentia
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-template.js", "grid-template-columns: 20% 10% minmax(0, 70%)", "Differential Testing rows do not use the canonical hybrid geometry.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-template.js", "height: 90px", "Differential Testing collapsed rows do not use the canonical height.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-template.js", "height: 220px", "Differential Testing expanded rows do not use the canonical height.");
-assertSourceIncludes("dashboard/src/components/DifferentialTesting/differential-testing.css", ".differential-overview:not([hidden]) + .detail-workspace {\n  height: auto;", "Differential Testing Overview and top panels do not preserve intrinsic height.");
+assertSourceIncludes("dashboard/src/components/DifferentialTesting/differential-testing.css", "--driving-parity-top-card-height: 310px", "Differential Testing top panels are missing their standard fixed height.");
+assertSourceIncludes("dashboard/src/components/DifferentialTesting/differential-testing.css", ".differential-overview:not([hidden]) + .detail-workspace {\n  height: var(--driving-parity-top-card-height);\n  min-height: var(--driving-parity-top-card-height);\n  max-height: var(--driving-parity-top-card-height);", "Differential Testing top panels can still grow with their log content.");
+assertSourceIncludes("dashboard/src/oven/DifferentialLogTable/DifferentialLogTable.tsx", "LOG_ROW_LIMIT = 8", "Differential Testing history does not preserve its eight-event visible contract.");
+assertSourceIncludes("dashboard/src/oven/DifferentialLogTable/DifferentialLogTable.tsx", "setInterval", "Differential Testing history ages do not advance while its payload is unchanged.");
 assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'class="work-panel-title">Overview</div>', "Differential Testing still renders the removed Overview section title.");
 assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-template.js", 'class="work-panel-title">Overview</div>', "Differential Testing still renders the removed Overview section title.");
 assertSourceIncludes("dashboard/src/components/DifferentialTesting/differential-testing.css", "grid-template-columns: 30% minmax(0, 70%)", "Differential Testing top panels do not preserve the canonical 30/70 layout.");
@@ -388,9 +398,10 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
-assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "performance-tracing", "streaming-diff", "visual-parity"]);
+assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"]);
 assertBuiltInOven(repoRoot, "checklist", "Checklist");
 assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
+assertBuiltInOven(repoRoot, "model-lab", "Model Lab");
 assertBuiltInOven(repoRoot, "performance-tracing", "Performance Tracing");
 assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
 assertBuiltInOven(repoRoot, "visual-parity", "Visual Parity");

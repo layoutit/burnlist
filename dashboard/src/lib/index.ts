@@ -1,4 +1,4 @@
-export { formatTime } from "./format";
+export { formatListTime, formatTime } from "./format";
 export { burnlistHref, currentSection, customOvenSelection, filterFromUrl, listHref, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
