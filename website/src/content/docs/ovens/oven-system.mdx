@@ -19,6 +19,12 @@ This is the complete committed `streaming-diff.oven`. It describes what to rende
 
 The `version` is the Oven's semver `id@version` identity, distinct from its content revision. A shipped Oven can be pinned per project with `burnlist oven adopt <id>` under committed `.burnlist/ovens/<id>/`; use opt-in `burnlist oven upgrade <id>` to move that pin.
 
+`burnlist oven use <id>` composes adoption with an optional shipped
+`example/data.json`. The example is validated and bound only when that exact
+file exists; otherwise `use` adopts only. Examples and informational JSON
+Schemas are outside the canonical two-file package, vendored copy, revision,
+and pin. JSON Schema never replaces the runtime validator used by `oven set`.
+
 ## Rendering pipeline
 
 ```text
@@ -40,7 +46,7 @@ only when it needs a custom data source:
 <oven-id>/
   instructions.md     # outcome, state, inputs, and evidence rules
   <id>.oven           # declarative detail-page source
-  contract.mjs / handler.mjs / adapter / data.schema.json  # optional, flat data layer
+  contract.mjs / handler.mjs / adapter / data.schema.json  # optional implementation/reference files; not package identity
 ```
 
 The oven-ir Vite plugin generates IR from `<id>.oven`; authors never create or commit `.ir.json`. Checklist has no data layer. Performance Tracing and `visual-parity` have flat `contract.mjs` and `handler.mjs` files; Differential Testing has a flat data layer of `contract.mjs`, `handler.mjs`, `data-contract.mjs`, `adapter-sdk.mjs`, `transport.mjs`, `worker-runtime.mjs`, and `data.schema.json`. Streaming Diff is the one Oven that keeps a large `engine/` directory and `e2e/`.

@@ -18,7 +18,7 @@ The complete closed registries are:
 
 | Registry | Exact allowed values |
 | --- | --- |
-| contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-model-lab-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
 | themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
 | icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
 
@@ -66,6 +66,8 @@ only inside a Git repository that does not ignore the path.
 ```sh
 burnlist oven list [--json]
 burnlist oven view <id> [--json]
+burnlist oven use <id> [--repo <path>] [--force]
+burnlist oven set <id> <path|-|json> [--repo <path>]
 burnlist oven bind <id> <path> [--repo <path>]
 burnlist oven unbind <id> [--repo <path>]
 burnlist oven bindings [--repo <path>]
@@ -87,6 +89,12 @@ burnlist oven fork <id> <newId>
   `Checklist  (checklist@0.1.0 · built-in)`, then reports `version`, `nodes`,
   `contract`, `theme`, `revision`, and `path`. `--json` includes `version` and
   `ovenRevision`.
+- `use` adopts a shipped Oven and, only if the shipped directory contains an
+  exact `example/data.json`, validates and installs that example. Without one,
+  it adopts only and prints the exact `oven set` next step.
+- `set` reads JSON from a file, stdin (`-`), or an inline JSON argument,
+  validates before mutation, and atomically publishes the canonical data file
+  plus binding.
 - `bind` records an Oven-to-data-file binding.
 - `unbind` removes an Oven-to-data-file binding.
 - `bindings` lists all recorded bindings.
@@ -108,6 +116,47 @@ reads JSON `{name?, instructions, oven}`. Any file input accepts `-` for stdin.
 contain one. Creation scaffolds a starter `.oven` when omitted, rejects an
 existing id unless `--force` is given, and validates before writing. `--repo`
 selects the repository whose binding storage is used.
+
+## Validated `use` and `set`
+
+Use a shipped Oven in a repository, then set its data when no starter exists:
+
+```sh
+burnlist oven use differential-testing --repo .
+burnlist oven set differential-testing ./differential-testing.json --repo .
+```
+
+`use` keeps the existing `adopt` and pin semantics. It looks only for the
+non-executable shipped file `ovens/<id>/example/data.json`. When that exact file
+exists, `use` validates it and transactionally installs the Oven, data, and
+binding. When it does not exist, adoption still succeeds, no data or binding is
+created, and the CLI prints `burnlist oven set <id> <data> --repo <repo>`.
+Reference/candidate inputs, test fixtures, schemas, and instructions are never
+converted into starter data. The optional example is not vendored and does not
+enter the Oven revision or pin. `--force` has the same deterministic duplicate
+behavior as `adopt`.
+
+`set` resolves a repo's vendored Oven before the shipped or custom source. For a
+built-in, it calls the same runtime validator used by that Oven's render handler;
+there is no second schema-based approximation. A producer-managed Oven such as
+Streaming Diff refuses a single JSON payload. A custom Oven with no registered
+runtime validator checks that every `.oven` `source=` and `<bind source=>`
+pointer resolves, then prints this explicit warning:
+
+```text
+shape-only validation checks source pointers, not payload truth.
+```
+
+Shape is not truth: pointer presence does not prove types, freshness,
+provenance, semantic correctness, or that adapter-computed evidence is honest.
+Any JSON Schema shipped near an Oven is informational reference documentation,
+not `set` authority and not package or pin content.
+
+Only after validation succeeds does `set` pretty-print the payload to the
+gitignored canonical path `.local/burnlist/data/<id>.json` and atomically update
+`.local/burnlist/bindings.json`. A failure on a fresh install writes and binds
+nothing. A rejected replacement or publication failure preserves the exact
+prior data bytes and binding. Repeating an identical set is idempotent.
 
 ## Vendoring and pinning an Oven
 
@@ -159,8 +208,13 @@ prints `Bound Oven <id> to <path>` and `Store: <repo>/.local/burnlist/bindings.j
 
 The bound file is arbitrary JSON. Its shape must match the Oven's `source=` and
 `<bind source=>` RFC 6901 pointers. Generic checklist-theme Ovens do not
-validate that payload at creation: pointers resolve when viewed, and missing
-pointers render as empty or fallback values.
+validate that payload at creation. A direct `bind` leaves pointers to resolve
+when viewed, where missing values render empty or use fallbacks; `set` instead
+rejects a missing declared pointer before changing canonical data or binding.
+
+Use `set` for a validated, private snapshot at the canonical path. Use `bind`
+when a project-owned producer must keep updating its own file or directory in
+place; `bind` records a path and does not copy or validate its current content.
 
 `burnlist oven view <id>` prints the compiled node tree plus a `node / prop /
 source` pointer table. It is for inspecting structure, never rendered data.
@@ -195,7 +249,7 @@ cd <repo>                                   # a git repo
 burnlist init                               # ignore .local/, register root
 # author kpi.oven (generic checklist-theme Oven) and instr.md, then:
 burnlist oven create deploy-status --instructions instr.md --oven kpi.oven
-burnlist oven bind deploy-status deploy-data.json
+burnlist oven set deploy-status deploy-data.json
 burnlist oven bindings                       # confirm the binding
 burnlist oven view deploy-status             # structure only
 burnlist --scan-root <repo>                  # dashboard; open the "Custom Oven" row

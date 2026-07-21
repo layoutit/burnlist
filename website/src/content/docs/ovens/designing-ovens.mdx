@@ -73,11 +73,11 @@ await writeFile(new URL('migration-status-data.json', out), JSON.stringify({
 }, null, 2) + '\n');
 ```
 
-Bind it with `burnlist oven bind migration-status .local/burnlist/migration-status-data.json`; the CLI is in [authoring](/ovens/authoring).
+Validate and snapshot it with `burnlist oven set migration-status .local/burnlist/migration-status-data.json`; the CLI is in [authoring](/ovens/authoring). A custom Oven gets pointer-presence validation and a `shape-only` warning: that proves neither types nor truth. Use `burnlist oven bind` instead only when a producer must keep updating its own path in place; binding does not copy or validate current content.
 
 **An unwired number is worse than no number.** `legacyReadGreen` is `null` because no adapter reads the legacy path yet: an Oven is only as honest as its adapter, and a real gap that reads as a fabricated pass makes the agent trust a lie. Report `null` (or `"wired": false`), never a guess, and make wiring that signal the next Burnlist item.
 
-**The project owns and runs the adapter—Burnlist never does.** `burnlist oven bind` only records where the JSON lives; the dashboard only reads it. Re-run the adapter after each batch, on a schedule, or in CI—a stale adapter is a stale Oven.
+**The project owns and runs the adapter—Burnlist never does.** `burnlist oven set` validates and snapshots supplied JSON, `burnlist oven bind` only records where producer-managed data lives, and the dashboard only reads it. Re-run the adapter and `set` after each batch, or bind a producer-owned path refreshed on a schedule or in CI—a stale adapter is a stale Oven.
 
 ## Point a Burnlist item at an Oven number
 

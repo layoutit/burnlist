@@ -69,10 +69,18 @@ burnlist differential-testing schema
 burnlist differential-testing validate <differential-testing.json>
 burnlist differential-testing validate-bundle <bundle/current.json>
 burnlist differential-testing sdk
-burnlist --oven-data differential-testing=<path>
+burnlist oven use differential-testing --repo .
+burnlist oven set differential-testing <path> --repo .
 ```
 
-Small comparisons may bind the data document directly. Large comparisons use the `burnlist-differential-testing-bundle@1` transport so Burnlist validates field records sequentially and range-reads only the visible page. `burnlist differential-testing sdk` prints the packaged worker module path.
+`use` adopts without data because the shipped reference and candidate examples
+are adapter inputs, not `example/data.json`. `set` validates a single document
+with `validateDifferentialTestingRuntimeData`, the same authority used by the
+render handler, before publishing canonical data. The JSON Schema printed by
+`schema` is informational reference documentation only; it is not `set`
+authority and does not enter the Oven package, revision, or pin.
+
+Small comparisons may use the single data document. Large comparisons use the `burnlist-differential-testing-bundle@1` transport so Burnlist validates field records sequentially and range-reads only the visible page. `burnlist differential-testing sdk` prints the packaged worker module path.
 
 ## Rendering
 

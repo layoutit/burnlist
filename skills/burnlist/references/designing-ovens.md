@@ -95,9 +95,16 @@ Run the adapter, then wire and view the Oven:
 ```sh
 node migration-adapter.mjs                                              # writes .local/burnlist/migration-status-data.json
 burnlist oven create migration-status --instructions instr.md --oven migration-status.oven
-burnlist oven bind migration-status .local/burnlist/migration-status-data.json
+burnlist oven set migration-status .local/burnlist/migration-status-data.json
 burnlist --scan-root .                                                  # dashboard renders the bound numbers
 ```
+
+For a custom Oven, `set` checks that every declared source pointer resolves and
+warns that this is `shape-only`: it does not prove types, freshness, or truth.
+It copies validated JSON to `.local/burnlist/data/<id>.json` and atomically
+updates the binding. If a long-running producer must update its own file in
+place, use `burnlist oven bind` instead; binding records a path and does not
+validate or copy its current content.
 
 ### An unwired number is worse than no number
 
@@ -109,7 +116,7 @@ When a signal is not yet wired to reality, report `null` (or `"wired": false`)�
 
 ### Who runs the adapter, and when
 
-The **project owns and runs the adapter—Burnlist never does.** Nothing in Burnlist executes it: `burnlist oven bind` only records where the JSON lives, and the dashboard only reads it. Re-run the adapter after each batch of work, on a schedule, or in CI, so the Oven reflects current reality. A stale adapter is a stale Oven.
+The **project owns and runs the adapter—Burnlist never does.** Nothing in Burnlist executes it: `burnlist oven set` validates and snapshots supplied JSON, `burnlist oven bind` only records where producer-managed data lives, and the dashboard only reads it. Re-run the adapter and `set` after each batch, or bind a producer-owned path that is refreshed on a schedule or in CI. A stale adapter is a stale Oven.
 
 ## Point a Burnlist item at an Oven number
 
@@ -125,6 +132,6 @@ An Oven signal is only evidence if a Burnlist item's done/delete condition cites
 
 This link is **advisory evidence a human or agent reads—Burnlist does not execute the Oven or auto-verify the number.** `burnlist burn` and `burnlist --check` validate the Burnlist protocol and record the burn; they never open the Oven or read its bound JSON. The honesty is structural: the item's proof points at an objective, adapter-computed signal, so closing the item means opening the Oven (or its JSON) and confirming the number—not asserting "done." See [Proof Authority in Burnlist Creation](burnlist-creation.md) and [Oven Authoring](oven-authoring.md).
 
-For the `.oven` grammar and a full worked example, see [Creating Ovens](creating-ovens.md). For creating and binding an Oven from the CLI—`burnlist oven create`, `burnlist oven bind`, and `burnlist oven view`—see [Oven Authoring](oven-authoring.md).
+For the `.oven` grammar and a full worked example, see [Creating Ovens](creating-ovens.md). For creating and configuring an Oven from the CLI—`burnlist oven create`, `burnlist oven set`, `burnlist oven bind`, and `burnlist oven view`—see [Oven Authoring](oven-authoring.md).
 
 If a number can be typed by hand without doing the work, it is not evidence—measure the thing the work would have to produce.

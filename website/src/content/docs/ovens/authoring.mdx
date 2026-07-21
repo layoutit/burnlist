@@ -20,7 +20,7 @@ burnlist oven: Oven <id> .oven source is invalid: Unknown contract <x>
 
 | Registry | Exact allowed values |
 | --- | --- |
-| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-model-lab-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
 | Themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
 | Icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
 
@@ -85,8 +85,9 @@ matches the Oven's `source=` and `<bind source=>` [RFC 6901 JSON pointers](https
 
 Here, `healthyPct` renders as `"96.00%"`; `deployedAt` renders as a compact age
 such as `"3h"`. Generic checklist-theme Ovens do not validate payload shape at
-creation. Pointers resolve when viewed, and missing pointers render as empty or
-fallback values.
+creation. A direct `bind` leaves pointers to resolve when viewed, where missing
+values render empty or use fallbacks; `set` instead rejects a missing declared
+pointer before changing the canonical data or binding.
 
 The small Streaming Diff illustration uses its matching built-in pair:
 
@@ -124,6 +125,7 @@ bindings.
 Bind an Oven to its JSON payload, inspect bindings, remove one, or copy an Oven:
 
 ```sh
+burnlist oven set <id> <path|-|json> [--repo <path>]
 burnlist oven bind <id> <path> [--repo <path>]
 burnlist oven bindings [--repo <path>]
 burnlist oven unbind <id> [--repo <path>]
@@ -150,6 +152,47 @@ Successful binding prints `Bound Oven <id> to <path>` and
 `<id>  <path>  <boundAt>` per line; `unbind` reports `Unbound…` or
 `No binding exists…`. `fork` copies a built-in or custom Oven to a new custom
 id and records its `forkedFrom` provenance; built-in Ovens cannot be updated.
+
+### Validated data setup
+
+Use a shipped Oven in a repository, then provide its payload when it has no
+starter:
+
+```sh
+burnlist oven use differential-testing --repo .
+burnlist oven set differential-testing ./differential-testing.json --repo .
+```
+
+`use` keeps `adopt` and pin semantics. It looks only for a shipped,
+non-executable `ovens/<id>/example/data.json`. When present, that exact payload
+is validated and the Oven, data, and binding are installed transactionally.
+When absent, the Oven is adopted with no data or binding and the CLI prints the
+exact `oven set` next step. Reference/candidate inputs, test fixtures, schemas,
+and instructions never become starter data. The optional example is not
+vendored and does not enter the Oven revision or pin.
+
+`set` accepts a JSON file, stdin (`-`), or inline JSON. A built-in uses the same
+runtime validator as its render handler; no JSON Schema validator substitutes
+for it. Producer-managed Streaming Diff refuses a single JSON payload. A custom
+Oven without a registered runtime validator requires every `source=` and
+`<bind source=>` pointer to resolve and warns:
+
+```text
+shape-only validation checks source pointers, not payload truth.
+```
+
+Pointer presence cannot establish types, freshness, provenance, semantic
+correctness, or honest evidence. Any JSON Schema shipped near an Oven is
+informational reference documentation only, not validation authority or
+package/pin content.
+
+After validation, `set` atomically writes the gitignored canonical file
+`.local/burnlist/data/<id>.json` and its binding. Rejection on a fresh install
+writes nothing; rejection or publication failure on an existing install keeps
+the exact prior data bytes and binding. Identical sets are idempotent. Use
+`bind` instead when a project-owned producer must update its own file or
+directory in place: `bind` records a path without copying or validating its
+current content.
 
 Shipped and custom Ovens can be listed, and an Oven can be inspected by its id:
 
@@ -256,7 +299,7 @@ this sequence creates and displays the example:
 cd <repo>                                   # a git repo
 burnlist init                               # ignore .local/, register root
 burnlist oven create deploy-status --instructions instr.md --oven kpi.oven
-burnlist oven bind deploy-status deploy-data.json
+burnlist oven set deploy-status deploy-data.json
 burnlist oven bindings                       # confirm the binding
 burnlist oven view deploy-status             # structure only
 burnlist --scan-root <repo>                  # dashboard; open the "Custom Oven" row

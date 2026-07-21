@@ -2,7 +2,7 @@
  * Builds the content of skill.md — a single, self-contained Burnlist skill
  * document served at the site root (https://burnlist.dev/skill.md) so an
  * agent pointed at that URL has everything it needs: what Burnlist is, how
- * to install it, the full CLI surface, the lifecycle, the five ovens, and a
+ * to install it, the full CLI surface, the lifecycle, the six ovens, and a
  * listing of every doc page. Kept accurate to the real CLI help output and
  * the docs it is generated alongside; do not describe behavior the CLI does
  * not have (no loop feature, no componentization, no work execution).
@@ -24,7 +24,7 @@ Usage:
   burnlist differential-testing sdk
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
   burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
-  burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|event|create|update> ...
+  burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|event|create|update|fork> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
   burnlist ready <id> [--repo <path>]
@@ -59,7 +59,7 @@ export function buildSkillMarkdown({ documents, siteUrl, cliHelp = FALLBACK_CLI_
 
   return `# Burnlist skill
 
-> Point an agent at ${siteUrl}/skill.md for a complete, self-contained Burnlist skill: what it is, how to install it, its full CLI surface, its lifecycle, and its five ovens.
+> Point an agent at ${siteUrl}/skill.md for a complete, self-contained Burnlist skill: what it is, how to install it, its full CLI surface, its lifecycle, and its six ovens.
 
 ## What Burnlist is
 
@@ -156,7 +156,7 @@ await writeFile(new URL('migration-status-data.json', out), JSON.stringify({
 
 An Oven is only as honest as its adapter; an unwired number is worse than no number. When a signal is not wired to reality, the adapter reports \`null\` or \`"wired": false\`, never a fabricated number, and that unwired signal becomes the next Burnlist item.
 
-The project owns and runs the adapter after each batch, on a schedule, or in CI—Burnlist never runs it, and \`burnlist oven bind\` only records the path.
+The project owns and runs the adapter after each batch, on a schedule, or in CI—Burnlist never runs it. Use \`burnlist oven set <id> <path|-|json>\` for a validated canonical snapshot; use \`burnlist oven bind\` only when a producer must keep updating its own path in place.
 
 ### Point a Burnlist item at an Oven number
 
@@ -186,17 +186,20 @@ A Burnlist's state is its location. The whole folder moves through four lifecycl
 
 Folders: \`notes/burnlists/{draft,ready,inprogress,completed}/<YYMMDD-NNN>/\`. \`goal.md\` is the stable contract (Goal, Guardrails, Proof Authority, Ordering Intent, Stop Conditions, Handoff); \`burnlist.md\` is the hot, shrinking task state (an ordered Active Checklist and a terse Completed ledger); \`completed.md\` is optional durable per-burn history for humans. Run \`burnlist --plan <burnlist.md> --check\` to validate and \`burnlist --stamp\` to generate the mechanical timestamp used in a completion ledger line.
 
-## The five ovens
+## The six ovens
 
-An Oven is a named, declarative, non-executable recipe for a Burn — data, never code. Five built-in, read-only ovens ship with Burnlist:
+An Oven is a named, declarative, non-executable recipe for a Burn — data, never code. Six built-in, read-only ovens ship with Burnlist:
 
 - **Checklist** tracks the active work queue and progress.
 - **Differential Testing** provides aligned reference-versus-candidate series, optional aggregate telemetry, and exact-first evidence.
+- **Model Lab** inspects one prepared model and its topology, publication, and provenance evidence.
 - **Streaming Diff** surfaces recently published, session-scoped pre-to-post diff cards read from a local feed.
 - **Performance Tracing** renders retained browser-output timing evidence — frame pacing, budget checks, and slow steps — from a project-owned trace run.
 - **Visual Parity** compares trusted reference and candidate frames as isolated render passes, gating each render domain on calibrated channel, mean-delta, and changed-pixel bounds.
 
-Author and inspect ovens with \`burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
+Author and inspect ovens with \`burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
+
+\`burnlist oven use <id>\` adopts a shipped Oven and installs data only when an exact shipped \`example/data.json\` already exists and passes validation. Otherwise it adopts only, creates no data or binding, and prints the exact \`oven set\` next step; it never generates a payload from a schema, fixture, or instructions. \`burnlist oven set <id> <path|-|json>\` validates before mutation and atomically publishes \`.local/burnlist/data/<id>.json\` plus its binding. Built-ins use the same runtime validator as their render handler. Custom Ovens without one check declared pointers and print a \`shape-only\` warning: shape is not truth. A rejected fresh set writes nothing; a rejected replacement preserves the exact prior data and binding. JSON Schemas are informational references only and never enter the Oven package, revision, or pin.
 
 Ovens carry an \`id@version\` identity, distinct from the content revision. Vendoring a shipped Oven with \`burnlist oven adopt <id>\` copies and pins it in committed \`.burnlist/ovens/<id>/\`; \`burnlist oven upgrade <id>\` is the opt-in way to move that pin. Dashboard paths are \`/r/<repoKey>/<burnlistId>\` for a Burnlist, \`/r/<repoKey>/<burnlistId>/o/<ovenId>\` for its Oven lens, \`/r/<repoKey>/o/<ovenId>\` for a repo-scoped Oven, \`/ovens\` for the catalog, and \`/ovens/<ovenId>\` for the explainer.
 

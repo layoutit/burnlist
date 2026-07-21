@@ -51,10 +51,27 @@ burnlist init [path] [--track]
 ## Ovens
 
 ```sh
-burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|create|update> ...
+burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|create|update|fork> ...
 ```
 
-Author and inspect Ovens. Ovens carry an `id@version` identity and can be vendored and pinned per project with `adopt` (committed under `.burnlist/ovens/<id>/`) and opt-in `upgrade`. (`burnlist oven help` lists a few more subcommands, such as `fork`.) See [Ovens](/ovens).
+Author and inspect Ovens. Ovens carry an `id@version` identity and can be vendored and pinned per project with `adopt` (committed under `.burnlist/ovens/<id>/`) and opt-in `upgrade`.
+
+```sh
+burnlist oven use <id> [--repo <path>] [--force]
+burnlist oven set <id> <path|-|json> [--repo <path>]
+```
+
+`use` adopts a shipped Oven. It validates and binds only an existing shipped
+`example/data.json`; without that exact file it adopts only, creates no data or
+binding, and prints the `oven set` next step. `set` accepts a file, stdin, or
+inline JSON. It validates first with the built-in render handler's runtime
+validator, then atomically writes `.local/burnlist/data/<id>.json` and its
+binding. A custom Oven without a runtime validator checks all declared source
+pointers and prints a `shape-only` warning: pointer presence does not prove
+types, freshness, provenance, or truth. Rejection writes nothing on a fresh
+install and preserves the exact prior data and binding on an existing one.
+JSON Schema is informational documentation, never `set` authority or package
+identity. See [Create your own Oven](/ovens/authoring).
 
 ## Skills
 

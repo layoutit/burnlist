@@ -293,6 +293,12 @@ assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", "r
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", '<Badge data-oven={entry.ovenId}', "Dashboard Oven labels do not use the shared Badge primitive.");
 assertSourceIncludes("dashboard/src/components/Filters/Filters.tsx", '<TabsList aria-label="Burnlist lifecycle" variant="line">', "Dashboard lifecycle filters do not use the shared line Tabs primitive.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
+assertSourceIncludes("bin/burnlist.mjs", "oven <list|view|use|set|bind", "Top-level help is missing the Oven use/set flow.");
+assertSourceIncludes("src/cli/oven-cli.mjs", "burnlist oven use <id> [--repo <path>] [--force]", "Oven help is missing use syntax.");
+assertSourceIncludes("src/cli/oven-cli.mjs", "burnlist oven set <id> <path|-|json> [--repo <path>]", "Oven help is missing set syntax.");
+assertSourceIncludes("skills/burnlist/references/oven-authoring.md", "shape-only validation checks source pointers, not payload truth.", "Published skill guidance is missing the custom Oven validation boundary.");
+assertSourceIncludes("website/src/content/docs/cli.mdx", ".local/burnlist/data/<id>.json", "Website CLI docs are missing canonical Oven data publication.");
+assertSourceIncludes("website/scripts/skill-content.mjs", "burnlist oven <list|view|use|set|bind", "Generated website skill content is missing the Oven use/set flow.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate <differential-testing.json>", "Burnlist CLI is missing Differential Testing data validation help.");
 assertSourceIncludes("bin/burnlist.mjs", "differential-testing validate-bundle <bundle/current.json>", "Burnlist CLI is missing Differential Testing bundle validation help.");
 assertSourceIncludes("dashboard/src/components/AppHeader/AppHeader.tsx", 'className="dashboard-header"', "Dashboard header is missing its semantic style hook.");
