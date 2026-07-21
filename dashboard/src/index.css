@@ -246,7 +246,7 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 .dashboard-index-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 2px 0 4px; }
 .dashboard-index-heading { display: grid; gap: 3px; }
 .dashboard-index-title { margin: 0; font: 400 22px/1.2 var(--dashboard-title-font); letter-spacing: -.01em; }
-.dashboard-index-summary { margin: 0; color: rgba(168, 168, 168, .62); font-size: 13px; }
+.dashboard-index-summary { margin: 0; color: rgba(168, 168, 168, .62); font-size: 14px; }
 .dashboard-filters { flex: 0 0 auto; }
 
 .dashboard-empty-state { display: grid; min-height: 288px; padding: 0 24px; place-items: center; text-align: center; }
@@ -269,7 +269,7 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 .burnlist-table[data-show-status="true"] .burnlist-table-column-oven { width: 17%; }
 .burnlist-table[data-show-status="true"] .burnlist-table-column-status { width: 11%; }
 .burnlist-table[data-show-status="true"] .burnlist-table-column-progress { width: 15%; }
-.burnlist-table-head { background: #050505; color: rgba(168, 168, 168, .52); font: 400 12px/1.2 var(--dashboard-title-font); text-transform: uppercase; letter-spacing: .04em; }
+.burnlist-table-head { background: #050505; color: rgba(168, 168, 168, .58); font: 400 13px/1.2 var(--dashboard-title-font); text-transform: uppercase; letter-spacing: .04em; }
 .burnlist-table-heading { height: 36px; padding: 0 12px; overflow: hidden; border-bottom: 1px solid rgba(232, 232, 232, .08); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .burnlist-table-row { cursor: pointer; transition: background-color 120ms ease; }
 .burnlist-table-row + .burnlist-table-row .burnlist-table-cell:not([rowspan]) { border-top: 1px solid rgba(232, 232, 232, .04); }
@@ -281,10 +281,10 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 .burnlist-table-cell { height: 52px; padding: 0 12px; overflow: hidden; vertical-align: middle; }
 .burnlist-table-cell-project { padding-top: 18px; color: rgba(168, 168, 168, .64); font: 400 14px/1.2 var(--dashboard-title-font); text-overflow: ellipsis; vertical-align: top; white-space: nowrap; }
 .burnlist-table-cell-primary { min-width: 0; color: rgba(232, 232, 232, .82); text-overflow: ellipsis; white-space: nowrap; }
-.burnlist-table-title { font: 400 14px/1.2 var(--dashboard-title-font); }
+.burnlist-table-title { font: 400 16px/1.25 var(--dashboard-title-font); }
 .burnlist-table-row-state { color: rgba(248, 113, 113, .72); }
 .burnlist-table-cell-oven { white-space: nowrap; }
-.burnlist-table-cell-oven .ui-badge { max-width: 100%; text-overflow: ellipsis; }
+.burnlist-table-cell-oven .ui-badge { max-width: 100%; font-size: 13px; text-overflow: ellipsis; }
 .burnlist-table-status { color: rgba(168, 168, 168, .68); font: 400 14px/1.2 var(--dashboard-title-font); }
 .burnlist-table-status[data-status="active"] { color: rgba(97, 211, 148, .68); }
 .burnlist-table-status[data-blocked="true"] { color: rgba(248, 113, 113, .78); }

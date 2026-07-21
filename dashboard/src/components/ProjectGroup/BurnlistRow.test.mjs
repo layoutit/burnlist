@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,16 @@ import { build } from "esbuild";
 const componentPath = new URL("./BurnlistRow.tsx", import.meta.url).pathname;
 const layoutPath = new URL("../../layout", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
+const stylesheetPath = new URL("../../index.css", import.meta.url);
+
+test("landing table typography keeps names readable and metadata subordinate", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+
+  assert.match(stylesheet, /\.dashboard-index-summary \{[^}]*font-size: 14px;/u);
+  assert.match(stylesheet, /\.burnlist-table-head \{[^}]*font: 400 13px\/1\.2/u);
+  assert.match(stylesheet, /\.burnlist-table-title \{[^}]*font: 400 16px\/1\.25/u);
+  assert.match(stylesheet, /\.burnlist-table-cell-oven \.ui-badge \{[^}]*font-size: 13px;/u);
+});
 
 test("a blocked table row exposes its reason without rendering navigation semantics", async () => {
   const outputDir = await mkdtemp(join(tmpdir(), "burnlist-row-test-"));
