@@ -285,6 +285,9 @@ export function openOvenEventStreams(repoRoot, {
     catch (error) { onInvalid(error, counterPath(repoRoot, stream.id)); return []; }
     let sequence = (after[stream.id] ?? 0) + 1;
     let scans = 0;
+    // A corrupt or non-canonical record fail-closes the TAIL of this Oven's stream
+    // (isolated to this one Oven): once blocked, next() stops at that sequence rather
+    // than skipping the record and continuing, preserving per-Oven ordering.
     let blocked = false;
     return [{
       ovenId: stream.id,
