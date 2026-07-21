@@ -105,6 +105,10 @@ test("SDK v4 serializes scenarios and coalesces one running successor", async ()
     assert.equal(maxActive, 1);
     assert.equal(worker.scenarioStatus(first.scenarioId).status, "complete");
     assert.equal(worker.scenarioStatus(second.scenarioId).status, "complete");
+    const superseded = readOvenEvents(root, { ovenIds: ["differential-testing"] })
+      .find((event) => event.phase === "superseded");
+    assert.equal(superseded.payload.attempt, 1);
+    assert.equal(superseded.payload.requestId, first.requestId);
     worker.close();
   } finally {
     await rm(root, { recursive: true, force: true });

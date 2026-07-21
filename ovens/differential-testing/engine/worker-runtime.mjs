@@ -402,6 +402,7 @@ export function createDifferentialTestingWorker({
       run: { id: runId, scratchDirectory: displayPath(repoRoot, scratchDirectory) },
     });
     state.telemetry.active = { scenarioId, requestId: request.requestId, runId, startedAt };
+    const iterationAttempt = scenario.attempts;
     queueProjection("telemetry-running", scenarioId);
     bumpAndPersist();
     let preserveScratch = false;
@@ -496,7 +497,7 @@ export function createDifferentialTestingWorker({
             payload: {
               requestId: request.requestId,
               runId,
-              attempt: scenario.attempts,
+              attempt: iterationAttempt,
               status: iterationPhase,
               published: iterationPhase === "complete",
               ...(iterationError ? { error: iterationError } : {}),

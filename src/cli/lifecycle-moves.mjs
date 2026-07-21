@@ -50,6 +50,11 @@ function fsyncDirectory(path) {
   try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
 }
 
+function fsyncFile(path) {
+  const descriptor = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
+}
+
 function validateOrThrow(plan) {
   const issues = validatePlan(plan);
   const errors = issues.filter((issue) => issue.severity === "error");
@@ -220,6 +225,34 @@ function appendCompleted(lines, entry) {
   lines.splice(end < 0 ? lines.length : end, 0, entry);
 }
 
+function checklistCompletion(id, item, completedAt, plan) {
+  const total = plan.items.length + plan.completed.length;
+  return {
+    ovenId: "checklist",
+    subjectId: id,
+    kind: "item-burned",
+    phase: "completed",
+    cursor: `${id}:${item.id}:${completedAt}`,
+    occurredAt: completedAt,
+    payload: {
+      itemId: item.id,
+      title: item.title,
+      done: plan.completed.length,
+      remaining: plan.items.length,
+      total,
+      percent: total ? Math.round((plan.completed.length / total) * 100) : 100,
+    },
+  };
+}
+
+function printBurnCheck(plan, issues) {
+  for (const issue of issues) {
+    const stream = issue.severity === "error" ? console.error : console.warn;
+    stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
+  }
+  console.log(`Burnlist check passed: ${plan.items.length} active, ${plan.completed.length} completed.`);
+}
+
 export function burnItem(repoRoot, id, itemId, check = false) {
   assertValidBurnlistId(id);
   const found = findBurnlistDir(repoRoot, id);
@@ -229,9 +262,16 @@ export function burnItem(repoRoot, id, itemId, check = false) {
   const planPath = join(found.dir, "burnlist.md");
   const completion = withLock(found.dir, () => {
     const plan = parsePlan(planPath);
-    validateOrThrow(plan);
+    const currentIssues = validateOrThrow(plan);
     const item = plan.items.find((entry) => entry.id === itemId);
-    if (!item) throw new Error(`Active item ${itemId} was not found.`);
+    if (!item) {
+      const completed = plan.completed.find((entry) => entry.id === itemId);
+      if (!completed) throw new Error(`Active item ${itemId} was not found.`);
+      fsyncFile(planPath);
+      fsyncDirectory(dirname(planPath));
+      if (check) printBurnCheck(plan, currentIssues);
+      return checklistCompletion(id, completed, completed.completedAt, plan);
+    }
     const lines = removeActiveItem(plan.markdown, itemId);
     const completedAt = localIsoTimestamp();
     appendCompleted(lines, `- ${item.id} | ${completedAt} | ${item.title}`);
@@ -253,30 +293,8 @@ export function burnItem(repoRoot, id, itemId, check = false) {
       rmSync(temporary, { force: true });
       throw error;
     }
-    if (check) {
-      for (const issue of checked.issues) {
-        const stream = issue.severity === "error" ? console.error : console.warn;
-        stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
-      }
-      console.log(`Burnlist check passed: ${checked.plan.items.length} active, ${checked.plan.completed.length} completed.`);
-    }
-    const total = checked.plan.items.length + checked.plan.completed.length;
-    return {
-      ovenId: "checklist",
-      subjectId: id,
-      kind: "item-burned",
-      phase: "completed",
-      cursor: `${id}:${item.id}:${completedAt}`,
-      occurredAt: completedAt,
-      payload: {
-        itemId: item.id,
-        title: item.title,
-        done: checked.plan.completed.length,
-        remaining: checked.plan.items.length,
-        total,
-        percent: total ? Math.round((checked.plan.completed.length / total) * 100) : 100,
-      },
-    };
+    if (check) printBurnCheck(checked.plan, checked.issues);
+    return checklistCompletion(id, item, completedAt, checked.plan);
   });
   try { publishOvenEvent(repoRoot, completion); }
   catch (error) { console.warn(`Burned ${itemId}, but could not publish its observational Oven event: ${error.message}`); }

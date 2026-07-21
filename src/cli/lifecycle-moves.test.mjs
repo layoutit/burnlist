@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 import { burnItem, closeLifecycle, findBurnlistDir, moveLifecycle, withLock } from "./lifecycle-moves.mjs";
 
 function fixture() {
@@ -56,6 +57,45 @@ function captureConsole(callback) {
     console.log = original;
   }
 }
+
+test("burn retries publication from the completed ledger after directory sync fails", () => {
+  const context = fixture();
+  const id = "260713-001";
+  try {
+    const { planPath } = writePlan(context.root, "inprogress", id);
+    const moduleUrl = new URL("./lifecycle-moves.mjs", import.meta.url).href;
+    const script = [
+      'import fs from "node:fs";',
+      'import { syncBuiltinESMExports } from "node:module";',
+      'const originalFsync = fs.fsyncSync;',
+      'let failed = false;',
+      'fs.fsyncSync = (descriptor) => {',
+      '  if (!failed && fs.fstatSync(descriptor).isDirectory()) {',
+      '    failed = true;',
+      '    throw Object.assign(new Error("injected directory sync failure"), { code: "EIO" });',
+      '  }',
+      '  return originalFsync(descriptor);',
+      '};',
+      'syncBuiltinESMExports();',
+      `const { burnItem } = await import(${JSON.stringify(moduleUrl)});`,
+      'burnItem(process.argv[1], process.argv[2], "B1");',
+    ].join("\n");
+    const failed = spawnSync(process.execPath, ["--input-type=module", "--eval", script, context.root, id], {
+      encoding: "utf8",
+    });
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.stderr, /injected directory sync failure/u);
+    assert.doesNotMatch(readFileSync(planPath, "utf8"), /- \[ \] B1/u);
+    assert.deepEqual(readOvenEvents(context.root), []);
+
+    assert.equal(burnItem(context.root, id, "B1"), true);
+    const [event] = readOvenEvents(context.root, { ovenIds: ["checklist"] });
+    assert.equal(event.payload.itemId, "B1");
+    assert.equal(event.payload.done, 1);
+  } finally {
+    context.cleanup();
+  }
+});
 
 test("withLock takes over a dead owner and preserves a replacement owner on release", () => {
   const context = fixture();
