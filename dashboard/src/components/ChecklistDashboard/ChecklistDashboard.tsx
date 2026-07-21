@@ -37,9 +37,9 @@ function useElementSize() {
 
 export function ProgressChart({ history }: { history: HistoryPoint[] }) {
   const { ref, width, height } = useElementSize();
-  const chart = useMemo(() => buildChecklistProgressChart(history, "burn", { width, height }), [height, history, width]);
+  const chart = useMemo(() => buildChecklistProgressChart(history, "done", { width, height }), [height, history, width]);
   const formatTick = (time: number) => new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-  return <div className="chart-wrap" ref={ref}><svg aria-label="Remaining items over time" className="chart checklist-progress-chart" role="img" viewBox={`0 0 ${chart.width} ${chart.height}`}>
+  return <div className="chart-wrap" ref={ref}><svg aria-label="Completion percentage over time" className="chart checklist-progress-chart" role="img" viewBox={`0 0 ${chart.width} ${chart.height}`}>
     {chart.yTicks.map((tick) => <g key={tick.value}><line className="grid-line" x1={chart.plot.left} x2={chart.plot.right} y1={tick.y} y2={tick.y} />{tick.value > 0 && <><rect className="label-backdrop" height="16" width="44" x={chart.width - 44} y={Math.max(0, Math.min(chart.height - 16, tick.y - 8))} /><text className="axis-label y-axis-label" dominantBaseline="central" textAnchor="end" x={chart.width - 4} y={Math.max(8, Math.min(chart.height - 8, tick.y))}>{tick.label}</text></>}</g>)}
     {chart.xTicks.map((tick, index) => index > 0 && index < chart.xTicks.length - 1 ? <g key={`${tick.time}/${index}`}><line className="grid-line x-grid-line" x1={tick.x} x2={tick.x} y1={chart.plot.top} y2={chart.plot.bottom} /><text className="axis-label x-axis-label" textAnchor="middle" x={tick.x} y={chart.height - 6}>{formatTick(tick.time)}</text></g> : null)}
     <path className="progress-area" d={chart.area} /><path className="progress-line" d={chart.path} />
@@ -49,7 +49,7 @@ export function ProgressChart({ history }: { history: HistoryPoint[] }) {
 }
 
 export function ProgressPanel({ data }: { data: ChecklistProgressData }) {
-  return <section className="panel progress-panel"><div className="panel-title-row"><span className="burn-chart-label">Burn</span></div><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
+  return <section className="panel progress-panel"><div className="panel-title-row"><span className="burn-chart-label">Completion</span></div><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
 }
 
 export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
@@ -72,32 +72,24 @@ export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
 }
 
 function EventDetail({ detail }: { detail: string }) {
-  const fields = checklistEventDetailFields(detail).filter((field) => !["Completed", "Outcome", "Detail"].includes(field.label) && field.values.length);
-  return <div className="event-card-fields" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>{fields.map((field) => {
+  const fields = checklistEventDetailFields(detail).filter((field) => field.label !== "Completed" && field.values.length);
+  return <div className="event-card-fields">{fields.map((field) => {
     const collapsible = field.label === "Changed" || field.label === "Proof";
     if (collapsible) return <details className="event-card-field event-card-field-collapsible" key={field.label}><summary><span>{field.label}</span><span className="event-card-field-count">{field.values.length}</span></summary><ul>{field.values.map((value, index) => <li key={`${field.label}/${index}`}>{value}</li>)}</ul></details>;
-    return <div className="event-card-field" key={field.label}><div className="event-card-field-label">{field.label}</div><div className="event-card-field-value">{field.values.map((value, index) => <p key={`${field.label}/${index}`}>{value}</p>)}</div></div>;
+    const label = field.label === "Detail" ? "Outcome" : field.label;
+    return <div className="event-card-field" key={field.label}><div className="event-card-field-label">{label}</div><div className="event-card-field-value">{field.values.map((value, index) => <p key={`${field.label}/${index}`}>{value}</p>)}</div></div>;
   })}</div>;
 }
 
 export function EventCardList({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data);
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   return <section className="checklist-events-section"><div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div><div className="event-card-list">{rows.map((item) => {
     const key = `${item.id}/${item.completedAt}`;
     const fields = item.detail ? checklistEventDetailFields(item.detail) : [];
-    const outcome = fields.find((field) => field.label === "Outcome") ?? fields.find((field) => field.label === "Detail");
-    const expandable = fields.some((field) => !["Completed", "Outcome", "Detail"].includes(field.label) && field.values.length);
-    const expanded = expandable && expandedKey === key;
-    const toggle = () => expandable && setExpandedKey((current) => current === key ? null : key);
-    return <article aria-expanded={expandable ? expanded : undefined} className={`event-card${expandable ? " expandable" : ""}${expanded ? " expanded" : ""}`} data-event-card="true" key={key} onClick={toggle} onKeyDown={(event) => {
-      if (expandable && (event.key === "Enter" || event.key === " ")) {
-        event.preventDefault();
-        toggle();
-      }
-    }} role={expandable ? "button" : undefined} tabIndex={expandable ? 0 : undefined}>
-      <span className="event-card-cell event-card-identity"><span className="event-card-title">{item.title}</span><span className="event-card-footer"><span className="event-card-id">{item.id}</span><span className="event-card-meta"><time dateTime={item.completedAt} title={new Date(item.completedAt).toLocaleString()}>{compactAge(item.completedAt, data.generatedAt)}</time><span>{item.percent}%</span></span></span></span>
-      <div className="event-card-content"><div className="event-card-outcome"><div className="event-card-field-label">Outcome</div><div className="event-card-field-value">{outcome?.values.length ? outcome.values.map((value, index) => <p key={`outcome/${index}`}>{value}</p>) : <p>Completed.</p>}</div></div>{expanded && item.detail && <EventDetail detail={item.detail} />}{expandable && <span aria-hidden="true" className="event-card-expand">{expanded ? "−" : "+"}</span>}</div>
+    const hasDetail = fields.some((field) => field.label !== "Completed" && field.values.length);
+    return <article className="event-card" data-event-card="true" key={key}>
+      <header className="event-card-summary"><span className="event-card-id">{item.id}</span><span className="event-card-title">{item.title}</span><span className="event-card-meta"><time dateTime={item.completedAt} title={new Date(item.completedAt).toLocaleString()}>{compactAge(item.completedAt, data.generatedAt)}</time><span className="separator">·</span><span>{item.percent}%</span></span></header>
+      <div className="event-card-description">{item.detail && hasDetail ? <EventDetail detail={item.detail} /> : <div className="event-card-field"><div className="event-card-field-label">Outcome</div><div className="event-card-field-value"><p>Completed.</p></div></div>}</div>
     </article>;
   })}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></section>;
 }
