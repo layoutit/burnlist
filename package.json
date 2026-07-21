@@ -11,6 +11,7 @@
     "burnlist": "bin/burnlist.mjs"
   },
   "exports": {
+    "./oven-events": "./src/events/oven-events.mjs",
     "./differential-testing": "./ovens/differential-testing/engine/adapter-sdk.mjs",
     "./differential-testing/contract": "./ovens/differential-testing/engine/contract.mjs",
     "./differential-testing/transport": "./ovens/differential-testing/engine/transport.mjs"

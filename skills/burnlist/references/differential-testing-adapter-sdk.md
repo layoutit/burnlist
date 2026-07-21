@@ -1,4 +1,4 @@
-# Differential Testing Adapter SDK v3
+# Differential Testing Adapter SDK v4
 
 The SDK owns generic asynchronous worker mechanics without owning project evidence authority.
 
@@ -32,7 +32,7 @@ import {
 
 The project still owns atomic bundle publication. The transport helper validates contained bindings and normalized records, then range-reads only the requested page; it never runs project evidence generation.
 
-V3 has one durable inbox supplied by the project, one `state.json`, one worker lock, and one runtime. There is no staged/pending/acked/rejected tree, separate dispatcher state, separate projection state, legacy reader, migration, or fallback.
+V4 has one durable inbox supplied by the project, one `state.json`, one worker lock, and one runtime. There is no staged/pending/acked/rejected tree, separate dispatcher state, separate projection state, legacy reader, migration, or fallback. After each persisted telemetry attempt it also publishes one generic observational Oven event; the event never becomes evidence authority.
 
 ## Project contract
 
@@ -54,6 +54,8 @@ const worker = createDifferentialTestingWorker({
   publishTelemetry,
   classifyTelemetryError,
   project,
+  emitOvenEvent,      // optional synchronous test/custom transport seam
+  onOvenEventError,   // optional non-fatal observer error reporting
 });
 ```
 
@@ -88,6 +90,7 @@ The SDK owns:
 - one atomic `state.json` using `burnlist-differential-testing-worker-state@1`
 - one process lock per store
 - asynchronous projection scheduling after accepted events and telemetry transitions
+- one idempotent `differential-testing/iteration` Oven event after each persisted telemetry attempt
 
 `runTelemetry` receives an `AbortSignal` and writes only to its scratch directory. `publishTelemetry` is synchronous and must atomically publish a result whose `requestId` matches the still-current job. Telemetry never controls exact-prefix retention.
 
@@ -104,3 +107,5 @@ worker.close()
 ```
 
 Use `onFatal(error)` to terminate a service host when persistence, callback configuration, or abort quarantine makes continued in-process execution unsafe. A restart reopens the last durable state and leaves the inbox event available when acceptance was not persisted.
+
+The default event publisher writes through `burnlist/oven-events` under ignored repo-local state. Event publication failure calls `onOvenEventError(error, identity)` and does not roll back canonical worker state. Read `references/oven-event-coordination.md` before subscribing a coordinator.

@@ -8,6 +8,7 @@ import { ovenRevision } from "../ovens/oven-contract.mjs";
 import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { resolveOvenPackageDir } from "../server/fs-safe.mjs";
 import { assertCustomOvenPath } from "../server/oven-storage.mjs";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const binPath = join(repoRoot, "bin", "burnlist.mjs");
 const serverPath = join(repoRoot, "src", "server", "burnlist-dashboard-server.mjs");
@@ -84,6 +85,28 @@ test("oven bind, bindings, and unbind persist a logical repo-local binding", () 
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /Unbound Oven sample-oven/u);
     assert.deepEqual(JSON.parse(readFileSync(storePath, "utf8")), { schemaVersion: 1, bindings: {} });
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /No binding exists for Oven sample-oven/u);
+  } finally { context.cleanup(); }
+});
+
+test("oven event publishes one idempotent generic repo-local event", () => {
+  const context = fixture();
+  try {
+    const args = [
+      "oven", "event", "future-oven",
+      "--repo", context.repo,
+      "--subject", "subject-1",
+      "--kind", "iteration",
+      "--phase", "complete",
+      "--cursor", "run-1",
+      "--occurred-at", "2026-07-21T12:00:00.000Z",
+      "--payload", '{"result":"advanced"}',
+    ];
+    const first = JSON.parse(run(context, ...args));
+    const retry = JSON.parse(run(context, ...args));
+    assert.equal(first.created, true);
+    assert.equal(retry.created, false);
+    assert.equal(first.event.eventId, retry.event.eventId);
+    assert.deepEqual(readOvenEvents(context.repo), [first.event]);
   } finally { context.cleanup(); }
 });
 

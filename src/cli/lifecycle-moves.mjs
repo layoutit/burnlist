@@ -9,6 +9,7 @@ import {
   validatePlan,
 } from "../server/plan-model.mjs";
 import { safeStat, withLock } from "../server/fs-safe.mjs";
+import { publishOvenEvent } from "../events/oven-event-store.mjs";
 
 export { withLock } from "../server/fs-safe.mjs";
 
@@ -204,13 +205,14 @@ export function burnItem(repoRoot, id, itemId, check = false) {
     throw new Error(`burnlist ${id} is not in inprogress; it is in ${found.lifecycle.folder}`);
   }
   const planPath = join(found.dir, "burnlist.md");
-  return withLock(found.dir, () => {
+  const completion = withLock(found.dir, () => {
     const plan = parsePlan(planPath);
     validateOrThrow(plan);
     const item = plan.items.find((entry) => entry.id === itemId);
     if (!item) throw new Error(`Active item ${itemId} was not found.`);
     const lines = removeActiveItem(plan.markdown, itemId);
-    appendCompleted(lines, `- ${item.id} | ${localIsoTimestamp()} | ${item.title}`);
+    const completedAt = localIsoTimestamp();
+    appendCompleted(lines, `- ${item.id} | ${completedAt} | ${item.title}`);
     const nextMarkdown = `${lines.join("\n").replace(/\s*$/u, "")}\n`;
     const temporary = join(dirname(planPath), `.${basename(planPath)}.${randomBytes(8).toString("hex")}.tmp`);
     let checked;
@@ -224,12 +226,32 @@ export function burnItem(repoRoot, id, itemId, check = false) {
       rmSync(temporary, { force: true });
       throw error;
     }
-    if (!check) return true;
-    for (const issue of checked.issues) {
-      const stream = issue.severity === "error" ? console.error : console.warn;
-      stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
+    if (check) {
+      for (const issue of checked.issues) {
+        const stream = issue.severity === "error" ? console.error : console.warn;
+        stream(`${issue.severity.toUpperCase()}: ${issue.message}`);
+      }
+      console.log(`Burnlist check passed: ${checked.plan.items.length} active, ${checked.plan.completed.length} completed.`);
     }
-    console.log(`Burnlist check passed: ${checked.plan.items.length} active, ${checked.plan.completed.length} completed.`);
-    return true;
+    const total = checked.plan.items.length + checked.plan.completed.length;
+    return {
+      ovenId: "checklist",
+      subjectId: id,
+      kind: "item-burned",
+      phase: "completed",
+      cursor: `${id}:${item.id}:${completedAt}`,
+      occurredAt: completedAt,
+      payload: {
+        itemId: item.id,
+        title: item.title,
+        done: checked.plan.completed.length,
+        remaining: checked.plan.items.length,
+        total,
+        percent: total ? Math.round((checked.plan.completed.length / total) * 100) : 100,
+      },
+    };
   });
+  try { publishOvenEvent(repoRoot, completion); }
+  catch (error) { console.warn(`Burned ${itemId}, but could not publish its observational Oven event: ${error.message}`); }
+  return true;
 }

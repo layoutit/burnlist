@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { readOvenEvents } from "../../../src/events/oven-event-store.mjs";
 
 import {
   DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION,
@@ -10,8 +11,8 @@ import {
   createDifferentialTestingWorker,
 } from "./adapter-sdk.mjs";
 
-test("SDK v3 persists one state before inbox deletion and handles projection-only events", async () => {
-  assert.equal(DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION, 3);
+test("SDK v4 persists one state before inbox deletion and handles projection-only events", async () => {
+  assert.equal(DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION, 4);
   const root = await mkdtemp(join(tmpdir(), "burnlist-differential-worker-"));
   const inbox = [];
   const durableBeforeDelete = [];
@@ -53,13 +54,18 @@ test("SDK v3 persists one state before inbox deletion and handles projection-onl
     assert.ok(durableBeforeDelete.every(Boolean));
     assert.ok(projectionRuns >= 2);
     assert.equal(JSON.parse(await readFile(worker.statePath, "utf8")).schema, DIFFERENTIAL_TESTING_WORKER_STATE_SCHEMA);
+    const events = readOvenEvents(root, { ovenIds: ["differential-testing"] });
+    assert.equal(events.length, 1);
+    assert.equal(events[0].kind, "iteration");
+    assert.equal(events[0].phase, "complete");
+    assert.equal(events[0].subjectId, first.scenarioId);
     worker.close();
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("SDK v3 serializes scenarios and coalesces one running successor", async () => {
+test("SDK v4 serializes scenarios and coalesces one running successor", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-differential-serial-"));
   const inbox = [];
   const releases = [];
@@ -105,7 +111,7 @@ test("SDK v3 serializes scenarios and coalesces one running successor", async ()
   }
 });
 
-test("SDK v3 retries transient work and recovers interrupted telemetry and projection", async () => {
+test("SDK v4 retries transient work and recovers interrupted telemetry and projection", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-differential-restart-"));
   const request = job("1111111111111111", "a".repeat(64), 1);
   let telemetryRuns = 0;
@@ -161,13 +167,16 @@ test("SDK v3 retries transient work and recovers interrupted telemetry and proje
     assert.ok(projectionRuns >= 2);
     assert.equal(worker.scenarioStatus(request.scenarioId).status, "complete");
     assert.equal(worker.snapshot().projection.status, "complete");
+    const events = readOvenEvents(root, { ovenIds: ["differential-testing"] });
+    assert.equal(events.length, 2);
+    assert.deepEqual(new Set(events.map((event) => event.phase)), new Set(["retrying", "complete"]));
     worker.close();
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("SDK v3 quarantines an uncooperative timed-out runner and enforces one worker lock", async () => {
+test("SDK v4 quarantines an uncooperative timed-out runner and enforces one worker lock", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-differential-timeout-"));
   const request = job("1111111111111111", "a".repeat(64), 1);
   const inbox = [entry(eventFor(request, true))];
@@ -193,7 +202,7 @@ test("SDK v3 quarantines an uncooperative timed-out runner and enforces one work
   }
 });
 
-test("SDK v3 rejects legacy state and delete callback configuration failures are fatal", async () => {
+test("SDK v4 rejects legacy state and delete callback configuration failures are fatal", async () => {
   const legacyRoot = await mkdtemp(join(tmpdir(), "burnlist-differential-legacy-"));
   try {
     await writeJson(join(legacyRoot, ".local", "differential-testing", "state.json"), {
@@ -221,6 +230,30 @@ test("SDK v3 rejects legacy state and delete callback configuration failures are
     assert.equal(JSON.parse(await readFile(worker.statePath, "utf8")).inbox.acceptedRequestIds[0], request.requestId);
   } finally {
     try { worker?.close(); } catch {}
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("SDK v4 keeps canonical worker success when observational event publication fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-differential-event-error-"));
+  const request = job("1111111111111111", "a".repeat(64), 1);
+  const inbox = [entry(eventFor(request, true))];
+  const errors = [];
+  try {
+    const worker = fixtureWorker({
+      root,
+      inbox,
+      emitOvenEvent() { throw new Error("event store unavailable"); },
+      onOvenEventError(error, identity) { errors.push({ message: error.message, identity }); },
+    });
+    worker.start();
+    await worker.idle();
+    assert.equal(worker.scenarioStatus(request.scenarioId).status, "complete");
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].message, "event store unavailable");
+    assert.equal(errors[0].identity.scenarioId, request.scenarioId);
+    worker.close();
+  } finally {
     await rm(root, { recursive: true, force: true });
   }
 });

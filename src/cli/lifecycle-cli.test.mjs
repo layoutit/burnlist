@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { repoKey } from "../server/registry.mjs";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 
 const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const binPath = join(repoRoot, "bin", "burnlist.mjs");
@@ -265,6 +266,17 @@ test("burn removes an active item, appends its ledger entry, and can check the r
     assert.equal(burned.includes("- [ ] B1 | Inspect lifecycle output"), false);
     assert.match(burned, /- B1 \| \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2} \| Inspect lifecycle output/u);
     assert.match(output, /Burnlist check passed: 0 active, 1 completed\./u);
+    const [event] = readOvenEvents(context.repo, { ovenIds: ["checklist"] });
+    assert.equal(event.kind, "item-burned");
+    assert.equal(event.subjectId, result.id);
+    assert.deepEqual(event.payload, {
+      itemId: "B1",
+      title: "Inspect lifecycle output",
+      done: 1,
+      remaining: 0,
+      total: 1,
+      percent: 100,
+    });
   } finally {
     context.cleanup();
   }

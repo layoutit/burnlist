@@ -5,4 +5,4 @@ export {
   readDifferentialTestingWorkerState,
 } from "./worker-runtime.mjs";
 
-export const DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION = 3;
+export const DIFFERENTIAL_TESTING_ADAPTER_SDK_VERSION = 4;

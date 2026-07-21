@@ -1,5 +1,7 @@
 export const verificationTestFiles = [
   "src/server/dashboard-routes.test.mjs",
+  "src/server/oven-event-routes.test.mjs",
+  "src/events/oven-events.test.mjs",
   "src/server/custom-oven-view-routes.test.mjs",
   "src/server/custom-oven-index.test.mjs",
   "src/server/oven-routes.test.mjs",
@@ -52,7 +54,6 @@ export const verificationTestFiles = [
   "src/cli/oven-cli-stdout.test.mjs",
   "src/cli/oven-storage.test.mjs",
   "src/cli/umbrella.test.mjs",
-  "src/cli/streaming-diff-cli.test.mjs",
   "src/cli/hooks-config.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-hook-adapters.test.mjs",
   "src/server/oven-bindings.test.mjs",
@@ -79,4 +80,10 @@ export const verificationTestFiles = [
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
+];
+
+// These subprocess wall-clock assertions must not compete with the parallel
+// test-file pool or host saturation can look like a hook timeout regression.
+export const verificationSerialTestFiles = [
+  "src/cli/streaming-diff-cli.test.mjs",
 ];

@@ -10,6 +10,7 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
@@ -125,6 +126,7 @@ Usage:
   burnlist oven bind <id> <path> [--repo <path>]
   burnlist oven unbind <id> [--repo <path>]
   burnlist oven bindings [--repo <path>]
+  burnlist oven event <id> --subject <id> --kind <kind> --phase <phase> --cursor <cursor> [--payload <json>]
   burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
   burnlist oven create <id> --dir <dir>            (reads instructions.md + <id>.oven)
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, oven})
@@ -138,6 +140,12 @@ Options:
   --dir <p>            Directory containing instructions.md and <id>.oven.
   --package <p>        JSON package file, or - for stdin.
   --repo <p>           Repository whose local Oven bindings to use.
+  --subject <id>       Event subject such as a Burnlist or scenario id.
+  --kind <slug>        Generic event kind.
+  --phase <slug>       Generic event phase.
+  --cursor <text>      Stable cursor for one logical event.
+  --occurred-at <iso>  Optional event timestamp; defaults to now.
+  --payload <json>     Optional compact JSON event payload.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
   --force              On create, replace an existing custom Oven.
@@ -230,6 +238,37 @@ try {
       console.log(`Oven bindings: ${bindingStorePath(repoRoot)}`);
       for (const [id, binding] of entries) console.log(`${id}  ${binding.path}  ${binding.boundAt}`);
     }
+    return;
+  }
+
+  if (subcommand === "event") {
+    const id = positionals[0];
+    const eventFlag = (name) => {
+      const value = flags.get(name);
+      return value && value !== "true" ? value : null;
+    };
+    const subjectId = eventFlag("subject");
+    const kind = eventFlag("kind");
+    const phase = eventFlag("phase");
+    const cursor = eventFlag("cursor");
+    if (!id || !subjectId || !kind || !phase || !cursor) {
+      fail("Usage: burnlist oven event <id> --subject <id> --kind <kind> --phase <phase> --cursor <cursor> [--payload <json>]");
+    }
+    let payload = {};
+    if (flags.has("payload")) {
+      try { payload = JSON.parse(flags.get("payload")); }
+      catch (error) { throw new Error(`--payload must be valid JSON: ${error.message}`); }
+    }
+    const result = publishOvenEvent(repoRoot(), {
+      ovenId: id,
+      subjectId,
+      kind,
+      phase,
+      cursor,
+      occurredAt: flags.get("occurred-at"),
+      payload,
+    });
+    console.log(JSON.stringify({ created: result.created, event: result.event }));
     return;
   }
 
