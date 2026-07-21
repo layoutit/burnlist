@@ -61,8 +61,9 @@ Every source has exactly one root:
 ```
 
 `id`, `version`, `contract`, and `theme` are required. `refresh-seconds` is
-optional. Version is currently `1`; `refresh-seconds` is a positive integer no
-greater than 3600. The complete closed registries are:
+optional. Version is a semver identity; built-in Ovens currently use `0.1.0`.
+`refresh-seconds` is a positive integer no greater than 3600. The complete
+closed registries are:
 
 | Registry | Exact allowed values |
 | --- | --- |
@@ -232,6 +233,11 @@ with a level-one heading and a `.oven` file. Create the package with
 `burnlist oven create <id> --instructions <file> --oven <file>`, then bind the
 JSON payload with `burnlist oven bind <id> <path>`. The CLI and dashboard details
 are in `references/oven-authoring.md`.
+
+The `<oven version="0.1.0">` value is the Oven's `id@version` identity, not its
+content revision. To pin a shipped Oven per project, run `burnlist oven adopt
+<id>`; it is committed under `.burnlist/ovens/<id>/`, so a Burnlist CLI upgrade
+never changes it.
 
 Here is a complete generic KPI-and-table source, `kpi.oven`:
 

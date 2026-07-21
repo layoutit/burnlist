@@ -38,6 +38,11 @@ Map each signal onto the built-in view vocabulary:
 
 The real values come from a data adapter: a small, project-owned step that computes the honest numbers and writes them as one read-only JSON document. The Oven binds to those values by JSON pointer. Keep the Oven declarative: it says how to present the numbers and never computes them.
 
+Every Oven carries an `id@version` identity, distinct from its content revision.
+To pin a shipped Oven for one project, use `burnlist oven adopt <id>`; the
+committed `.burnlist/ovens/<id>/` copy remains unchanged by a Burnlist CLI
+upgrade.
+
 ## The adapter: compute honest numbers, don't type them
 
 The Oven is only the view. Between reality and the view sits the **adapter**: a small, project-owned script that reads a source of truth, computes the numbers, and writes the single read-only JSON document the Oven binds to. Skip it—hand-edit the JSON—and you have defeated the whole point: a number you typed proves nothing.

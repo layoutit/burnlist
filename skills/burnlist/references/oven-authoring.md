@@ -35,8 +35,9 @@ generic Oven should use `kpi-strip`/`kpi-item`, `section-header`,
 `log-table`/`column`, and the plain formats described in
 `references/creating-ovens.md`.
 
-An Oven never executes anything. Authoring writes only custom Ovens under
-ignored `.local/burnlist/ovens/` state, and changes affect only future Runs.
+An Oven never executes anything. Custom-Oven authoring writes only under ignored
+`.local/burnlist/ovens/` state, and changes affect only future Runs. Vendoring a
+shipped Oven uses the committed per-project path described below.
 
 ## Start with `burnlist init`
 
@@ -68,6 +69,8 @@ burnlist oven view <id> [--json]
 burnlist oven bind <id> <path> [--repo <path>]
 burnlist oven unbind <id> [--repo <path>]
 burnlist oven bindings [--repo <path>]
+burnlist oven adopt <id> [--repo <path>] [--force]
+burnlist oven upgrade <id> [--repo <path>]
 burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
 burnlist oven create <id> --dir <dir>
 burnlist oven create <id> --package <file|->
@@ -75,11 +78,26 @@ burnlist oven update <id> [same inputs as create]
 burnlist oven fork <id> <newId>
 ```
 
-- `list` lists custom and built-in Ovens; `--json` emits JSON.
-- `view` prints compiled structure only; it never prints bound data values.
+- `list` lists custom and built-in Ovens with `id`, `version`, `name`, `kind`,
+  `contract`, `nodes`, and `revision` columns. Its Oven identity is
+  `id@version`; `version` is distinct from the `o1-sha256:<hex>` content
+  revision. `--json` includes `version` and `ovenRevision`.
+- `view` prints compiled structure only; it never prints bound data values. Its
+  header identifies a shipped Oven as, for example,
+  `Checklist  (checklist@0.1.0 · built-in)`, then reports `version`, `nodes`,
+  `contract`, `theme`, `revision`, and `path`. `--json` includes `version` and
+  `ovenRevision`.
 - `bind` records an Oven-to-data-file binding.
 - `unbind` removes an Oven-to-data-file binding.
 - `bindings` lists all recorded bindings.
+- `adopt` copies a shipped Oven into the committed
+  `.burnlist/ovens/<id>/` directory and records its pin in `pin.json`. It
+  prints `Adopted Oven <id>@<version> at <repo>/.burnlist/ovens/<id>`.
+  Existing vendored Ovens require `--force`, otherwise it reports
+  `burnlist oven: Oven <id> is already vendored at <path>.`
+- `upgrade` is the opt-in re-copy of a newer shipped Oven into its vendored
+  directory. It prints `Upgraded Oven <id>@<version> at
+  <repo>/.burnlist/ovens/<id>` followed by `revision: o1-sha256:<hex>`.
 - `create` adds a custom Oven; `update` changes an existing custom Oven only.
 - `fork` copies a built-in or custom Oven into a new custom id and records its
   `forkedFrom` provenance. Built-in Ovens are read-only and cannot be updated.
@@ -90,6 +108,32 @@ reads JSON `{name?, instructions, oven}`. Any file input accepts `-` for stdin.
 contain one. Creation scaffolds a starter `.oven` when omitted, rejects an
 existing id unless `--force` is given, and validates before writing. `--repo`
 selects the repository whose binding storage is used.
+
+## Vendoring and pinning an Oven
+
+`burnlist oven adopt <id>` copies the shipped source into the committed
+`.burnlist/ovens/<id>/` directory. The vendored directory contains exactly
+`<id>.oven`, `instructions.md`, and `pin.json`; it is not the ignored
+`.local/burnlist/ovens/` custom-Oven state. A pin records the declared Oven
+identity and source revision:
+
+```json
+{
+  "id": "checklist",
+  "version": "0.1.0",
+  "revision": "o1-sha256:<hex>",
+  "source": "built-in",
+  "pinnedAt": "2026-07-21T20:23:35.554Z"
+}
+```
+
+The declared `id@version` identity is distinct from the content revision: the
+revision changes when source bytes change. Because the vendored copy and pin
+are committed, upgrading the Burnlist CLI never silently changes a project's
+Oven. Run `burnlist oven upgrade <id>` to opt in to copying the shipped source
+again, then commit the changed vendored directory. The dashboard resolves a
+repo's vendored Oven before the shipped built-in when
+`.burnlist/ovens/<id>/` exists; otherwise it uses the shipped built-in.
 
 ## Binding & viewing
 
