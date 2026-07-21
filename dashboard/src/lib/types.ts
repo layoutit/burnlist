@@ -63,6 +63,7 @@ export type Project = {
 export type OvenSummary = {
   id: string;
   contract: string;
+  version: string;
   name: string;
   description: string;
   builtIn: boolean;

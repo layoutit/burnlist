@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
+import { AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, OvenCatalog, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
 import { useDashboardData } from "@hooks";
 import { currentSection, filterFromUrl, selectedBurnlist } from "@lib";
 import type { Filter } from "@lib";
+import { Button } from "@layout";
 
 export function App() {
   const section = currentSection();
@@ -29,7 +30,7 @@ export function App() {
     <div className="dashboard-app">
       <AppHeader detail={progress} section={section} />
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Ovens</h1><p className="dashboard-index-summary">Oven catalog coming soon.</p></section> : section === "oven-explainer" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Oven</h1><p className="dashboard-index-summary">Oven details coming soon.</p></section> : selected ? (
+        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Oven</h1><p className="dashboard-index-summary">Oven details coming soon.</p></section> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <><LensSwitcher /><ChecklistOvenView data={progress} /></>
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
@@ -40,7 +41,10 @@ export function App() {
                 <h1 className="dashboard-index-title">Burnlists</h1>
                 <p className="dashboard-index-summary">{visibleBurnlistCount} Burnlists in {visibleProjectCount} {visibleProjectCount === 1 ? "project" : "projects"}</p>
               </div>
-              <Filters filter={filter} onFilterChange={updateFilter} />
+              <div className="dashboard-index-actions">
+                <Button asChild size="sm" variant="outline"><a href="/ovens">Ovens</a></Button>
+                <Filters filter={filter} onFilterChange={updateFilter} />
+              </div>
             </div>
             {error ? <DashboardError message={error} /> : projects.length && visibleBurnlistCount ? (
               <div className="dashboard-project-groups"><BurnlistTable showStatus={filter === "all"}>{projects.map((project) => <ProjectGroup filter={filter} key={project.canonicalRoot} project={project} />)}</BurnlistTable></div>

@@ -8,6 +8,7 @@ export { EmptyState } from "./EmptyState";
 export { FILTERS, Filters } from "./Filters";
 export { LensSwitcher } from "./LensSwitcher";
 export { ModelLabPage } from "./ModelLab";
+export { OvenCatalog } from "./OvenCatalog";
 export { BurnlistTable, ProjectGroup } from "./ProjectGroup";
 export { StreamingDiff } from "./StreamingDiff";
 export { VisualParityPage } from "./VisualParity";
