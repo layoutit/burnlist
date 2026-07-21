@@ -41,6 +41,8 @@ Map each signal onto the built-in view vocabulary:
 
 The real values come from a data adapter: a small, project-owned step that computes the honest numbers and writes them as one read-only JSON document. The Oven binds to those values by JSON pointer. Keep the Oven declarative: it says how to present the numbers and never computes them.
 
+Ovens carry an `id@version` identity, and a shipped Oven can be pinned per project with `burnlist oven adopt <id>`.
+
 For the [.oven DSL reference](/ovens/dsl-reference), see the full grammar and examples. For creating and binding an Oven from the CLI—`burnlist oven create`, `burnlist oven bind`, and `burnlist oven view`—see [authoring](/ovens/authoring).
 
 ## The adapter: compute honest numbers, don't type them

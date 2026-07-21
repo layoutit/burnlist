@@ -24,7 +24,7 @@ Usage:
   burnlist differential-testing sdk
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
   burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
-  burnlist oven <list|view|bind|unbind|bindings|create|update> ...
+  burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|event|create|update> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
   burnlist ready <id> [--repo <path>]
@@ -196,7 +196,9 @@ An Oven is a named, declarative, non-executable recipe for a Burn — data, neve
 - **Performance Tracing** renders retained browser-output timing evidence — frame pacing, budget checks, and slow steps — from a project-owned trace run.
 - **Visual Parity** compares trusted reference and candidate frames as isolated render passes, gating each render domain on calibrated channel, mean-delta, and changed-pixel bounds.
 
-Author and inspect ovens with \`burnlist oven <list|view|bind|unbind|bindings|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
+Author and inspect ovens with \`burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
+
+Ovens carry an \`id@version\` identity, distinct from the content revision. Vendoring a shipped Oven with \`burnlist oven adopt <id>\` copies and pins it in committed \`.burnlist/ovens/<id>/\`; \`burnlist oven upgrade <id>\` is the opt-in way to move that pin. Dashboard paths are \`/r/<repoKey>/<burnlistId>\` for a Burnlist, \`/r/<repoKey>/<burnlistId>/o/<ovenId>\` for its Oven lens, \`/r/<repoKey>/o/<ovenId>\` for a repo-scoped Oven, \`/ovens\` for the catalog, and \`/ovens/<ovenId>\` for the explainer.
 
 ## Documentation
 

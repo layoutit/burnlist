@@ -151,6 +151,25 @@ Successful binding prints `Bound Oven <id> to <path>` and
 `No binding exists…`. `fork` copies a built-in or custom Oven to a new custom
 id and records its `forkedFrom` provenance; built-in Ovens cannot be updated.
 
+Shipped and custom Ovens can be listed, and an Oven can be inspected by its id:
+
+```sh
+burnlist oven list [--json]
+burnlist oven view <id> [--json]
+```
+
+`list` reports `id`, `version`, `name`, `kind`, `contract`, `nodes`, and
+`revision`; `view` identifies an Oven as `id@version`. The semver version is
+distinct from the `o1-sha256:<hex>` content revision. With `--json`, both
+commands include `version` and `ovenRevision`:
+
+```text
+Checklist  (checklist@0.1.0 · built-in)
+version: 0.1.0 · nodes: 11 · contract: checklist-progress@1 · theme: checklist
+revision: o1-sha256:<hex>
+path: ...
+```
+
 Use the CLI to inspect structure only:
 
 ```sh
@@ -159,6 +178,53 @@ burnlist oven view <id> [--json]
 
 It prints the compiled node tree and a `node / prop / source` pointer table. It
 never shows data values, even when an Oven is bound.
+
+### Vendoring and pinning
+
+Adopt a shipped Oven to copy its source into the committed per-project
+directory, or opt in to moving that pin later:
+
+```sh
+burnlist oven adopt <id> [--repo <path>] [--force]
+burnlist oven upgrade <id> [--repo <path>]
+```
+
+The vendored directory contains exactly the Oven source, its instructions, and
+its pin record:
+
+```text
+.burnlist/ovens/<id>/
+  <id>.oven
+  instructions.md
+  pin.json
+```
+
+```json
+{
+  "id": "<id>",
+  "version": "0.1.0",
+  "revision": "o1-sha256:<hex>",
+  "source": "built-in",
+  "pinnedAt": "<ISO timestamp>"
+}
+```
+
+Adoption and upgrade print:
+
+```text
+Adopted Oven <id>@<version> at <repo>/.burnlist/ovens/<id>
+burnlist oven: Oven <id> is already vendored at <path>.
+Upgraded Oven <id>@<version> at <repo>/.burnlist/ovens/<id>
+revision: o1-sha256:<hex>
+```
+
+Re-adopting without `--force` reports the second line; `--force` copies the
+Oven again. An upgrade is opt-in: it copies the newer shipped source and moves
+the pin.
+
+Because the vendored copy and pin are committed, upgrading the Burnlist CLI
+never changes a pinned Oven. Only `upgrade` moves it, and the dashboard resolves
+a repo's vendored Oven ahead of the shipped built-in.
 
 To render with data, run the dashboard:
 

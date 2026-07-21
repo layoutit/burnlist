@@ -17,6 +17,8 @@ A `.oven` file is declarative, non-executable detail-page data. Its XML-like `<o
 
 This is the complete committed `streaming-diff.oven`. It describes what to render; it cannot run commands, evaluate code, import UI, or inject a renderer.
 
+The `version` is the Oven's semver `id@version` identity, distinct from its content revision. A shipped Oven can be pinned per project with `burnlist oven adopt <id>` under committed `.burnlist/ovens/<id>/`; use opt-in `burnlist oven upgrade <id>` to move that pin.
+
 ## Rendering pipeline
 
 ```text

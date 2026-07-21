@@ -51,10 +51,10 @@ burnlist init [path] [--track]
 ## Ovens
 
 ```sh
-burnlist oven <list|view|bind|unbind|bindings|create|update> ...
+burnlist oven <list|view|bind|unbind|bindings|adopt|upgrade|create|update> ...
 ```
 
-Author and inspect Ovens. (`burnlist oven help` lists a few more subcommands, such as `fork`.) See [Ovens](/ovens).
+Author and inspect Ovens. Ovens carry an `id@version` identity and can be vendored and pinned per project with `adopt` (committed under `.burnlist/ovens/<id>/`) and opt-in `upgrade`. (`burnlist oven help` lists a few more subcommands, such as `fork`.) See [Ovens](/ovens).
 
 ## Skills
 
