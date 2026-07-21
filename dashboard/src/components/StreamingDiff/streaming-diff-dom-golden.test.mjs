@@ -59,7 +59,7 @@ test("selected streaming-diff static DOM matches the frozen byte golden", async 
       import(`${new URL(`file://${componentOutput}`).href}?test=${Date.now()}`),
       import(`${new URL(`file://${normalizerOutput}`).href}?test=${Date.now()}`),
     ]);
-    const backHref = `/ovens/streaming-diff/view?repoKey=${encodeURIComponent(streamingDiffFixture.identity.logicalRepoKey)}`;
+    const backHref = `/r/${encodeURIComponent(streamingDiffFixture.identity.logicalRepoKey)}/o/streaming-diff`;
     const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(SelectedFeed, {
       backHref,
       cards: streamingDiffFixture.cards,

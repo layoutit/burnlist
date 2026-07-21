@@ -45,8 +45,8 @@ function parseFile(value) {
 }
 
 export function streamingDiffFeedHref({ logicalRepoKey, worktreeKey, session }) {
-  const params = new URLSearchParams({ repoKey: logicalRepoKey, worktreeKey, session });
-  return `/ovens/streaming-diff/view?${params}`;
+  const params = new URLSearchParams({ worktreeKey, session });
+  return `/r/${encodeURIComponent(logicalRepoKey)}/o/streaming-diff?${params}`;
 }
 
 export function mapStreamingDiffFeeds(value) {

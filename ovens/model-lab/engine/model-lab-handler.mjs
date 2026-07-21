@@ -48,7 +48,7 @@ export const modelLabHandler = Object.freeze({
           updatedAt: payload.generatedAt ?? stat.mtime.toISOString(),
           ovenId: "model-lab",
           ovenName: "Model Lab",
-          href: `/ovens/model-lab/view${binding.repoKey === null ? "" : `?repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null ? "/ovens/model-lab" : `/r/${encodeURIComponent(binding.repoKey)}/o/model-lab`,
           progressLabel: `${payload.model.leafCount} <s> leaves · no LOD`,
         };
       } catch (error) {
@@ -72,7 +72,7 @@ export const modelLabHandler = Object.freeze({
           updatedAt: null,
           ovenId: "model-lab",
           ovenName: "Model Lab",
-          href: "/ovens/model-lab/view",
+          href: "/ovens/model-lab",
           progressLabel: "Blocked",
           blockers: String(error?.message ?? error ?? "Data binding is unavailable.").slice(0, 200),
         };

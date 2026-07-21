@@ -1,5 +1,6 @@
 export { formatListTime, formatTime } from "./format";
 export { burnlistHref, currentSection, customOvenSelection, filterFromUrl, listHref, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
+export { differentialTestingScenarioHref, legacyRoute, parseRoute, repoOvenHref } from "./route-model.mjs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
 export { visualParityDomainSummary } from "./visual-parity";

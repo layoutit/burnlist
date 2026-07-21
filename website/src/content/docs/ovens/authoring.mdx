@@ -169,7 +169,7 @@ burnlist --scan-root <repo>
 It is loopback-only at `http://127.0.0.1:4510/` by default; add `--auto-port`
 to select a free port. A bound custom Oven appears on the index as a **Custom
 Oven** with status **Oven**. Selecting it opens
-`/ovens/<id>/view?repoKey=<key>` and renders the bound payload. An unbound
+`/r/<key>/o/<id>` and renders the bound payload. An unbound
 custom Oven is authored but does not appear there.
 
 For a read-only binding for one dashboard session, without writing

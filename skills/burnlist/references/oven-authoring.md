@@ -129,7 +129,7 @@ burnlist --scan-root <repo>
 The server is loopback-only and normally opens at `http://127.0.0.1:4510/`; add
 `--auto-port` to select a free port. A bound custom Oven appears in the index as
 a **Custom Oven** with status **Oven**. Clicking it opens
-`/ovens/<id>/view?repoKey=<key>` and renders it through the shared engine using
+`/r/<key>/o/<id>` and renders it through the shared engine using
 the bound JSON. An unbound custom Oven is authored but does not appear there.
 
 For a one-dashboard-session alternative that does not write `bindings.json`,

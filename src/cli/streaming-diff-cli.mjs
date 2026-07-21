@@ -189,7 +189,7 @@ try {
     const session = one(flags, "session", { required: true });
     if ([...flags.keys()].some((key) => key !== "session")) fail("url accepts only --session.", 2);
     const identity = resolveStreamingDiffIdentity({ session });
-    console.log(`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(identity.logicalRepoKey)}&worktreeKey=${encodeURIComponent(identity.worktreeKey)}&session=${encodeURIComponent(identity.session)}`);
+    console.log(`/r/${encodeURIComponent(identity.logicalRepoKey)}/o/streaming-diff?${new URLSearchParams({ worktreeKey: identity.worktreeKey, session: identity.session })}`);
     return;
   }
   fail(`unknown subcommand "${subcommand}". Run \`burnlist streaming-diff help\`.`, 2);

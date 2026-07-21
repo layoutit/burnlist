@@ -51,7 +51,7 @@ export const visualParityHandler = Object.freeze({
           lastCompletedAt: complete ? payload.differentialTesting.publishedAt : null,
           updatedAt: payload.differentialTesting.publishedAt ?? stat.mtime.toISOString(),
           ovenId: "visual-parity", ovenName: "Visual Parity",
-          href: `/ovens/visual-parity/view${binding.repoKey === null ? "" : `?repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null ? "/ovens/visual-parity" : `/r/${encodeURIComponent(binding.repoKey)}/o/visual-parity`,
           progressLabel: `${progress.qualified}/${progress.total} target frames`,
         };
       } catch (error) {
@@ -62,7 +62,7 @@ export const visualParityHandler = Object.freeze({
           status: "active", statusLabel: "Blocked", total: 0, done: null, remaining: null, percent: null,
           errors: 1, warnings: 0, lastCompletedAt: null, updatedAt: null,
           ovenId: "visual-parity", ovenName: "Visual Parity",
-          href: `/ovens/visual-parity/view${binding.repoKey === null ? "" : `?repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null ? "/ovens/visual-parity" : `/r/${encodeURIComponent(binding.repoKey)}/o/visual-parity`,
           progressLabel: "Blocked", blockers: String(error?.message ?? error ?? "Data binding is unavailable.").slice(0, 200),
         };
       }

@@ -670,7 +670,7 @@ export function startDifferentialTestingLiveUpdates(root, {
     fieldViewQuery = null;
     payloadCache.clear();
     try {
-      const nextUrl = new URL(locationImpl?.href || "/ovens/differential-testing/view", "http://localhost");
+      const nextUrl = new URL(locationImpl?.href || "/r/repository/o/differential-testing", "http://localhost");
       nextUrl.searchParams.set("scenario", scenarioId);
       historyImpl?.replaceState?.(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
     } catch {}
@@ -706,7 +706,7 @@ export function startDifferentialTestingLiveUpdates(root, {
   };
 }
 
-const differentialRoot = typeof document === "undefined" || globalThis.location?.pathname !== "/ovens/differential-testing/view"
+const differentialRoot = typeof document === "undefined" || !/^\/r\/[^/]+\/o\/differential-testing$/u.test(globalThis.location?.pathname ?? "")
   ? null
   : document.querySelector(".shell.driving-parity-view");
 if (differentialRoot) {

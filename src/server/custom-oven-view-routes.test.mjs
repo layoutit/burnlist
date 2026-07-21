@@ -28,7 +28,7 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
     assert.deepEqual(JSON.parse(dataResponse.body).payload, payload);
     assert.equal(JSON.parse(dataResponse.body).validated, false);
 
-    const viewResponse = await httpGet(baseUrl, `/ovens/widget-oven/view${query}`);
+    const viewResponse = await httpGet(baseUrl, `/r/${encodeURIComponent(repoKey)}/o/widget-oven`);
     assert.equal(viewResponse.status, 200);
     assert.ok(viewResponse.body.length > 0);
   });

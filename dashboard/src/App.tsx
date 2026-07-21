@@ -9,7 +9,7 @@ export function App() {
   const section = currentSection();
   const selected = useMemo(selectedBurnlist, [window.location.pathname, window.location.search]);
   const [filter, setFilter] = useState(() => filterFromUrl(FILTERS));
-  const dashboardSection = section === "streaming-diff" ? "burnlists" : section;
+  const dashboardSection = ["landing", "burnlist", "streaming-diff"].includes(section) ? "burnlists" : section;
   const { projects, progress, error, loading } = useDashboardData({ section: dashboardSection, selected });
   const visibleBurnlistCount = projects.reduce((total, project) => total + project.entries.filter((entry) => filter === "all" || entry.status === filter).length, 0);
   const visibleProjectCount = projects.filter((project) => project.entries.some((entry) => filter === "all" || entry.status === filter)).length;
@@ -29,7 +29,7 @@ export function App() {
     <div className="dashboard-app">
       <AppHeader detail={progress} section={section} />
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : selected ? (
+        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Ovens</h1><p className="dashboard-index-summary">Oven catalog coming soon.</p></section> : section === "oven-explainer" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Oven</h1><p className="dashboard-index-summary">Oven details coming soon.</p></section> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <ChecklistOvenView data={progress} />
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />

@@ -52,6 +52,18 @@ test("scenario selection rekeys poller requests while retaining the repository k
   assert.equal(ovenDataUrl("differential-testing", scenarioSearch("", "X")), "/api/oven-data/differential-testing?scenario=X");
 });
 
+test("oven data API calls inject the path-scoped repository key", () => {
+  const target = globalThis as { window?: { location: { pathname: string; search: string } } };
+  const original = target.window;
+  target.window = { location: { pathname: "/r/repo%2Fkey/o/differential-testing", search: "?scenario=case-1" } };
+  try {
+    assert.equal(ovenDataUrl("differential-testing"), "/api/oven-data/differential-testing?repoKey=repo%2Fkey&scenario=case-1");
+  } finally {
+    if (original) target.window = original;
+    else delete target.window;
+  }
+});
+
 test("oven poller adapts DT and PT envelopes while unadapted polls retain raw bodies", async () => {
   const fixture = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
   const dtReport = fixture.differentialTestingPayload();

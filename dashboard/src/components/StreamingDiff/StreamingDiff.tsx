@@ -24,5 +24,5 @@ export function StreamingDiff({ projects, projectsLoading }: { projects: Project
     if (autoOpenHref) window.location.replace(autoOpenHref);
   }, [autoOpenHref]);
 
-  return selection ? <SelectedFeed backHref={`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(selection.repoKey)}`} cards={cards.cards} error={cards.error} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
+  return selection ? <SelectedFeed backHref={`/r/${encodeURIComponent(selection.repoKey)}/o/streaming-diff`} cards={cards.cards} error={cards.error} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
 }

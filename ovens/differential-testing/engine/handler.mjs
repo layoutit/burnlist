@@ -192,7 +192,9 @@ export const differentialTestingHandler = Object.freeze({
           status: "active", statusLabel: "Active", total: scenario.frameCount, done: null, remaining: null,
           percent: null, errors: 0, warnings: 0, lastCompletedAt: null, updatedAt: scenario.updatedAt,
           ovenId: "differential-testing", ovenName: "Differential Testing",
-          href: `/ovens/differential-testing/view?scenario=${encodeURIComponent(scenario.id)}${binding.repoKey === null ? "" : `&repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null
+            ? "/ovens/differential-testing"
+            : `/r/${encodeURIComponent(binding.repoKey)}/o/differential-testing?${new URLSearchParams({ scenario: scenario.id })}`,
           progressLabel: `${scenario.frameCount} frames`,
         }));
       } catch (error) {
@@ -202,7 +204,7 @@ export const differentialTestingHandler = Object.freeze({
           title: "Differential Testing", planPath: null, planLabel: "Oven data binding",
           status: "active", statusLabel: "Blocked", total: 0, done: null, remaining: null, percent: null,
           errors: 1, warnings: 0, lastCompletedAt: null, updatedAt: null,
-          ovenId: "differential-testing", ovenName: "Differential Testing", href: "/ovens/differential-testing/view",
+          ovenId: "differential-testing", ovenName: "Differential Testing", href: "/ovens/differential-testing",
           progressLabel: "Blocked", blockers: String(error?.message ?? error ?? "Data binding is unavailable.").slice(0, 200),
         }];
       }

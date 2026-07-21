@@ -342,7 +342,7 @@ function customOvenDashboardEntries(ctx) {
         updatedAt: null,
         ovenId: oven.id,
         ovenName: oven.name,
-        href: `/ovens/${encodeURIComponent(oven.id)}/view?repoKey=${encodeURIComponent(oven.repoKey)}`,
+        href: `/r/${encodeURIComponent(oven.repoKey)}/o/${encodeURIComponent(oven.id)}`,
         progressLabel: "Custom Oven",
       });
     } catch {
@@ -1287,9 +1287,13 @@ const server = createServer(async (req, res) => {
       json(res, 200, { run });
       return;
     }
-    const ovenViewRoute = url.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-    const isKnownOvenView = Boolean(ovenViewRoute && findOven(ovenViewRoute[1], selectedRepoKey(url)));
-    if (["/", "/index.html", "/ovens/new", "/runs/new"].includes(url.pathname) || isKnownOvenView || routeSelection(url)) {
+    const ovenIdPattern = "[a-z0-9]+(?:-[a-z0-9]+)*";
+    const ovenViewRoute = url.pathname.match(new RegExp(`^/ovens/(${ovenIdPattern})/view$`, "u"));
+    const isLegacyOvenView = Boolean(ovenViewRoute);
+    const ovenCatalogRoute = new RegExp(`^/ovens/${ovenIdPattern}$`, "u").test(url.pathname);
+    const repoOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/o/${ovenIdPattern}$`, "u").test(url.pathname);
+    const burnlistOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/${ovenIdPattern}/o/${ovenIdPattern}$`, "u").test(url.pathname);
+    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || isLegacyOvenView || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;
