@@ -7,6 +7,7 @@
 // own file plumbing so it never has to import the dashboard server (which
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
@@ -14,6 +15,7 @@ import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
+import { readVendoredOven, vendoredOvenPath, writeVendoredOven } from "../server/oven-vendor.mjs";
 import { renderOvenTree, sourceTable } from "./oven-cli-render.mjs";
 import { createOvenCatalog, persistOven, resolvePackageInput } from "./oven-storage.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
@@ -141,6 +143,8 @@ Usage:
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, oven})
   burnlist oven update <id> [same inputs as create]
   burnlist oven fork <id> <newId>
+  burnlist oven adopt <id> [--repo <path>] [--force]
+  burnlist oven upgrade <id> [--repo <path>]
 
 Options:
   --name <text>        Set the Oven name (owns the level-one heading).
@@ -157,7 +161,7 @@ Options:
   --payload <json>     Optional compact JSON event payload.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
-  --force              On create, replace an existing custom Oven.
+  --force              On create or adopt, replace an existing Oven.
   --json               Machine-readable output for list/view.
 
 Custom Ovens live under ignored local state and only affect future Runs.
@@ -310,6 +314,30 @@ try {
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },
     });
     console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
+    return;
+  }
+
+  if (subcommand === "adopt" || subcommand === "upgrade") {
+    const id = positionals[0];
+    if (!id) fail(`Usage: burnlist oven ${subcommand} <id> [--repo <path>]${subcommand === "adopt" ? " [--force]" : ""}`);
+    const shipped = readOvenDir(builtInOvensDir, id, true);
+    if (!shipped) fail(`Oven ${id} is not a shipped built-in.`);
+    const shippedInstructions = readFileSync(join(builtInOvensDir, shipped.id, "instructions.md"), "utf8");
+    const shippedOven = readFileSync(join(builtInOvensDir, shipped.id, `${shipped.id}.oven`), "utf8");
+    const targetRoot = repoRoot();
+    const targetPath = vendoredOvenPath(targetRoot, id);
+    if (subcommand === "adopt") {
+      if (existsSync(targetPath) && !flags.has("force")) fail(`Oven ${id} is already vendored at ${targetPath}.`);
+    } else if (!readVendoredOven(targetRoot, id)) {
+      fail(`Oven ${id} is not adopted; run \`oven adopt ${id}\` first.`);
+    }
+    const saved = writeVendoredOven(targetRoot, {
+      id,
+      instructions: shippedInstructions,
+      oven: shippedOven,
+    });
+    if (subcommand === "adopt") console.log(`Adopted Oven ${saved.id}@${saved.version} at ${targetPath}`);
+    else console.log(`Upgraded Oven ${saved.id}@${saved.version} at ${targetPath}\nrevision: ${saved.revision}`);
     return;
   }
 
