@@ -164,6 +164,7 @@ export function readOvenEventDeliveries(repos, { ovenIds = [], watermarks = {}, 
   }
   const observed = warningCollector();
   const sources = [];
+  const streamKeys = [];
   let streamCount = 0;
   for (const repo of repos) {
     let streams;
@@ -184,6 +185,7 @@ export function readOvenEventDeliveries(repos, { ovenIds = [], watermarks = {}, 
     }
     streamCount += streams.length;
     for (const reader of streams) {
+      streamKeys.push(`${repo.repoKey}/${reader.ovenId}`);
       const event = reader.next();
       if (event) sources.push({ key: `${repo.repoKey}/${event.ovenId}`, repo, reader, current: delivery(repo, event) });
     }
@@ -202,11 +204,21 @@ export function readOvenEventDeliveries(repos, { ovenIds = [], watermarks = {}, 
     }
     if (heap.length) heapDown(heap, 0);
   }
-  return { deliveries, warnings: observed.warnings };
+  return { deliveries, warnings: observed.warnings, streamKeys };
 }
 
 function advancedWatermarks(watermarks, deliveries) {
   const next = { ...watermarks };
+  for (const item of deliveries) {
+    const key = `${item.repoKey}/${item.ovenId}`;
+    next[key] = Math.max(next[key] ?? 0, item.sequence);
+  }
+  return next;
+}
+
+function scopedWatermarks(watermarks, streamKeys = [], deliveries = []) {
+  const next = {};
+  for (const key of streamKeys) next[key] = watermarks[key] ?? 0;
   for (const item of deliveries) {
     const key = `${item.repoKey}/${item.ovenId}`;
     next[key] = Math.max(next[key] ?? 0, item.sequence);
@@ -243,7 +255,7 @@ export function serveOvenEventFeed({
     json(res, 200, {
       schema: "burnlist-oven-event-feed@1",
       generatedAt: new Date().toISOString(),
-      cursor: encodeOvenEventReplayCursor(advancedWatermarks(selection.watermarks, events)),
+      cursor: encodeOvenEventReplayCursor(scopedWatermarks(selection.watermarks, initial.streamKeys, events)),
       total: events.length,
       truncated: events.length < initial.deliveries.length,
       events,
@@ -256,7 +268,7 @@ export function serveOvenEventFeed({
   let waitingDrain = false;
   let scanTimer = null;
   let keepAliveTimer = null;
-  let watermarks = { ...selection.watermarks };
+  let watermarks = scopedWatermarks(selection.watermarks, initial.streamKeys);
   let pending = [];
   let pendingIndex = 0;
   const reportedWarnings = new Set();

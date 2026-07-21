@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  decodeOvenEventReplayCursor,
   encodeOvenEventReplayCursor,
   readOvenEventDeliveries,
   serveOvenEventFeed,
@@ -154,6 +155,56 @@ test("feed bounds vector cursors and discovered stream count", (t) => {
     () => readOvenEventDeliveries([repo]),
     (error) => error.status === 413 && /limited to 64 streams/u.test(error.message),
   );
+});
+
+test("JSON feed drops stale cursor streams when serving a new stream", (t) => {
+  const cursor = encodeOvenEventReplayCursor(Object.fromEntries(Array.from(
+    { length: 64 },
+    (_, index) => [`aaaaaaaaaaaa/oven-${index}`, 1],
+  )));
+  const repoA = fixture(t, "aaaaaaaaaaaa");
+  const repoB = fixture(t, "bbbbbbbbbbbb");
+  publishOvenEvent(repoB.root, input("b-1"));
+  let result;
+  serveOvenEventFeed({
+    req: request(),
+    res: {},
+    url: new URL(`http://localhost/api/events?after=${encodeURIComponent(cursor)}`),
+    repos: [repoA, repoB],
+    json(_res, status, body) { result = { status, body }; },
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.events.map((event) => event.cursor), ["b-1"]);
+  const watermarks = decodeOvenEventReplayCursor(result.body.cursor);
+  assert.equal(watermarks["bbbbbbbbbbbb/future-oven"], 1);
+  assert.equal(Object.keys(watermarks).some((key) => key.startsWith("aaaaaaaaaaaa/")), false);
+});
+
+test("SSE feed drops stale cursor streams when serving a new stream", (t) => {
+  const cursor = encodeOvenEventReplayCursor(Object.fromEntries(Array.from(
+    { length: 64 },
+    (_, index) => [`aaaaaaaaaaaa/oven-${index}`, 1],
+  )));
+  const repoA = fixture(t, "aaaaaaaaaaaa");
+  const repoB = fixture(t, "bbbbbbbbbbbb");
+  publishOvenEvent(repoB.root, input("b-1"));
+  const req = request({ accept: "text/event-stream" });
+  const res = new FakeResponse();
+  serveOvenEventFeed({
+    req,
+    res,
+    url: new URL(`http://localhost/api/events?stream=1&after=${encodeURIComponent(cursor)}`),
+    repos: [repoA, repoB],
+    json() {},
+    timers: fakeTimers(),
+  });
+  assert.equal(res.destroyed, false);
+  assert.match(res.writes.join(""), /event: oven-event/u);
+  const id = res.writes.join("").match(/^id: (.+)$/mu)?.[1];
+  assert.ok(id);
+  const watermarks = decodeOvenEventReplayCursor(id);
+  assert.equal(watermarks["bbbbbbbbbbbb/future-oven"], 1);
+  req.emit("aborted");
 });
 
 test("SSE subscriber cap is released on disconnect and write failure", () => {
