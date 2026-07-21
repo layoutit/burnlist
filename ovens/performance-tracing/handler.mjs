@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
-import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
 import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
 import { assertPerformanceTracingData } from "./contract.mjs";
 
 export const performanceTracingHandler = Object.freeze({
   id: "performance-tracing",
+  dataInput: OVEN_DATA_INPUT.jsonPayload,
+  validateData: validatePerformanceTracingRuntimeData,
 
   serveData({ bindingPath, maxOvenDataBytes }) {
     if (!safeStat(bindingPath)?.isFile()) {
@@ -17,11 +19,15 @@ export const performanceTracingHandler = Object.freeze({
       maxOvenDataBytes,
       "Performance Tracing Oven data",
     ));
-    assertPerformanceTracingProvenanceCurrent(payload, bindingPath, maxOvenDataBytes);
-    assertPerformanceTracingData(payload);
+    validatePerformanceTracingRuntimeData(payload, { bindingPath, maxOvenDataBytes });
     return { ovenId: "performance-tracing", path: bindingPath, payload, validated: true };
   },
 });
+
+export function validatePerformanceTracingRuntimeData(payload, { bindingPath, maxOvenDataBytes } = {}) {
+  assertPerformanceTracingProvenanceCurrent(payload, bindingPath, maxOvenDataBytes);
+  return assertPerformanceTracingData(payload);
+}
 
 export function assertPerformanceTracingProvenanceCurrent(payload, bindingPath, maxBytes = 512 * 1024 * 1024) {
   const files = payload?.provenance?.files;

@@ -275,9 +275,12 @@ assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKey
 assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
-assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "assertDifferentialTestingData(payload)", "Differential Testing data is not validated at the server boundary.");
-assertSourceIncludes("ovens/performance-tracing/handler.mjs", "assertPerformanceTracingData(payload)", "Performance Tracing data is not validated at the server boundary.");
-assertSourceIncludes("ovens/visual-parity/handler.mjs", "assertVisualParityData(payload)", "Visual Parity data is not validated at the server boundary.");
+assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateData: validateDifferentialTestingRuntimeData", "Differential Testing does not expose its server-boundary validator.");
+assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateDifferentialTestingRuntimeData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validateData: validatePerformanceTracingRuntimeData", "Performance Tracing does not expose its server-boundary validator.");
+assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validatePerformanceTracingRuntimeData(payload", "Performance Tracing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/visual-parity/handler.mjs", "validateData: validateVisualParityRuntimeData", "Visual Parity does not expose its server-boundary validator.");
+assertSourceIncludes("ovens/visual-parity/handler.mjs", "validateVisualParityRuntimeData(payload)", "Visual Parity data is not validated at the server boundary.");
 assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", 'ovenName: "Differential Testing"', "Differential Testing scenarios are missing from the shared dashboard table.");
 assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "queryDifferentialTestingFieldPage", "Differential Testing server is missing bounded field-page transport.");
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", 'id === "differential-testing"', "Dashboard server still hardcodes the Differential Testing Oven.");

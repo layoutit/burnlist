@@ -1,18 +1,22 @@
 import { basename } from "node:path";
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
 import { readTextFileWithLimit, safeStat } from "../../../src/server/fs-safe.mjs";
 import { assertModelLabData } from "./model-lab-contract.mjs";
+
+export const validateModelLabRuntimeData = assertModelLabData;
 
 function readModelLabData(bindingPath, maxOvenDataBytes) {
   const stat = safeStat(bindingPath);
   if (!stat?.isFile()) throw Object.assign(new Error("configured Model Lab data is missing"), { status: 404 });
   const payload = JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, "Model Lab Oven data"));
-  assertModelLabData(payload);
+  validateModelLabRuntimeData(payload);
   return { payload, stat };
 }
 
 export const modelLabHandler = Object.freeze({
   id: "model-lab",
+  dataInput: OVEN_DATA_INPUT.jsonPayload,
+  validateData: validateModelLabRuntimeData,
 
   serveData({ bindingPath, maxOvenDataBytes }) {
     const { payload } = readModelLabData(bindingPath, maxOvenDataBytes);

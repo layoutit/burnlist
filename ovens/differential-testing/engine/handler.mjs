@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
 import { readTextFileWithLimit, safeStat } from "../../../src/server/fs-safe.mjs";
 import { assertDifferentialTestingData } from "./data-contract.mjs";
 import {
@@ -11,6 +11,8 @@ import {
   readDifferentialTestingBundleManifest,
   readDifferentialTestingBundleScenario,
 } from "./transport.mjs";
+
+export const validateDifferentialTestingRuntimeData = assertDifferentialTestingData;
 
 function differentialTestingIndexCache(ctx, path) {
   const readPath = resolve(realpathSync(dirname(path)), basename(path));
@@ -50,7 +52,7 @@ function differentialTestingIndexCache(ctx, path) {
       } : null,
     };
   } else {
-    assertDifferentialTestingData(document);
+    validateDifferentialTestingRuntimeData(document);
     index = {
       kind: "legacy",
       signature,
@@ -131,7 +133,7 @@ function differentialTestingScenarioCache(ctx, index, scenarioId) {
   const signature = `${index.signature}\0${scenarioPath}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
   if (cached?.signature === signature) return cached;
   const sourcePayload = JSON.parse(readTextFileWithLimit(scenarioPath, ctx.maxOvenDataBytes, `Differential Testing scenario ${scenarioId}`));
-  assertDifferentialTestingData(sourcePayload);
+  validateDifferentialTestingRuntimeData(sourcePayload);
   if (sourcePayload.scenarioCatalog.selectedScenarioId !== scenarioId) {
     throw Object.assign(new Error(`scenario file ${scenarioId} selects ${sourcePayload.scenarioCatalog.selectedScenarioId}`), { status: 422 });
   }
@@ -141,7 +143,7 @@ function differentialTestingScenarioCache(ctx, index, scenarioId) {
     throw Object.assign(new Error(`scenario file ${scenarioId} does not match its published catalog entry`), { status: 422 });
   }
   const payload = { ...sourcePayload, scenarioCatalog: { selectedScenarioId: scenarioId, scenarios: index.scenarios } };
-  assertDifferentialTestingData(payload);
+  validateDifferentialTestingRuntimeData(payload);
   const source = JSON.stringify(payload);
   const result = {
     signature,
@@ -176,6 +178,8 @@ function sendDifferentialTestingData(req, res, cached) {
 
 export const differentialTestingHandler = Object.freeze({
   id: "differential-testing",
+  dataInput: OVEN_DATA_INPUT.jsonPayload,
+  validateData: validateDifferentialTestingRuntimeData,
   warmIntervalMs: 1_000,
 
   dashboardEntries(ctx) {

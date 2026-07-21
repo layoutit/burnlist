@@ -1,13 +1,15 @@
 import { basename } from "node:path";
-import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
 import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
+
+export const validateVisualParityRuntimeData = assertVisualParityData;
 
 function readVisualParityData(bindingPath, maxOvenDataBytes) {
   const stat = safeStat(bindingPath);
   if (!stat?.isFile()) throw new Error("configured Visual Parity data is missing");
   const payload = JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, "Visual Parity Oven data"));
-  assertVisualParityData(payload);
+  validateVisualParityRuntimeData(payload);
   return { payload, stat };
 }
 
@@ -22,6 +24,8 @@ function targetProgress(payload) {
 
 export const visualParityHandler = Object.freeze({
   id: "visual-parity",
+  dataInput: OVEN_DATA_INPUT.jsonPayload,
+  validateData: validateVisualParityRuntimeData,
 
   serveData({ bindingPath, maxOvenDataBytes }) {
     const { payload } = readVisualParityData(bindingPath, maxOvenDataBytes);
