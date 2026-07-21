@@ -3,8 +3,10 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { repoStateDir } from "./repo-state.mjs";
 
 export const OVEN_INSTRUCTIONS_MAX_BYTES = 65_536;
-export const OVEN_DETAIL_MAX_BYTES = 131_072;
-export const OVEN_LINEAGE_MAX_BYTES = OVEN_DETAIL_MAX_BYTES;
+export const OVEN_SOURCE_MAX_BYTES = 131_072;
+// Retained during the staged migration for legacy readers outside this module.
+export const OVEN_DETAIL_MAX_BYTES = OVEN_SOURCE_MAX_BYTES;
+export const OVEN_LINEAGE_MAX_BYTES = OVEN_SOURCE_MAX_BYTES;
 
 function isWithin(parent, child) {
   const pathFromParent = relative(parent, child);
@@ -80,20 +82,20 @@ export function assertCustomOvenPath(repoRoot, ovensDir, id, { unsafe = false } 
   return path;
 }
 
-export function serializeOvenPackage({ instructions, detail, sidecar } = {}) {
+export function serializeOvenPackage({ id, instructions, oven, sidecar } = {}) {
   const files = {
     "instructions.md": `${instructions}\n`,
-    "detail.json": `${JSON.stringify(detail, null, 2)}\n`,
+    [`${id}.oven`]: `${String(oven).replace(/[\r\n]+$/u, "")}\n`,
     ...(sidecar ? { "oven.json": `${JSON.stringify(sidecar, null, 2)}\n` } : {}),
   };
-  assertOvenPackageFileLimits(files);
+  assertOvenPackageFileLimits(files, id);
   return files;
 }
 
-export function assertOvenPackageFileLimits(files) {
+export function assertOvenPackageFileLimits(files, id) {
   const limits = {
     "instructions.md": OVEN_INSTRUCTIONS_MAX_BYTES,
-    "detail.json": OVEN_DETAIL_MAX_BYTES,
+    [`${id}.oven`]: OVEN_SOURCE_MAX_BYTES,
     "oven.json": OVEN_LINEAGE_MAX_BYTES,
   };
   for (const [name, maxBytes] of Object.entries(limits)) {

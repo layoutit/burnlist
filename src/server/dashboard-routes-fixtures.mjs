@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { starterOvenSource } from "../ovens/oven-starter.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const serverPath = resolve(scriptDirectory, "burnlist-dashboard-server.mjs");
@@ -133,10 +134,14 @@ function detailFixture() {
 
 async function writeOvenFixture(root, fixture) {
   const ovenRoot = join(root, ".local", "burnlist", "ovens", fixture.id);
+  const instructions = fixture.instructions ?? "# Fixture Oven\n\nFollow the checklist.\n";
+  const heading = instructions.split(/\r?\n/u).find((line) => /^#\s+\S/u.test(line.trim()));
+  const name = heading ? heading.trim().replace(/^#\s+/u, "").trim() : fixture.id;
+  const oven = fixture.oven ?? starterOvenSource(fixture.id, name);
   await mkdir(ovenRoot, { recursive: true });
   await Promise.all([
-    writeFile(join(ovenRoot, "instructions.md"), fixture.instructions ?? "# Fixture Oven\n\nFollow the checklist.\n"),
-    writeFile(join(ovenRoot, "detail.json"), JSON.stringify(fixture.detail ?? detailFixture())),
+    writeFile(join(ovenRoot, "instructions.md"), instructions),
+    writeFile(join(ovenRoot, `${fixture.id}.oven`), oven),
     ...(fixture.ovenJson === undefined
       ? []
       : [writeFile(join(ovenRoot, "oven.json"), typeof fixture.ovenJson === "string" ? fixture.ovenJson : JSON.stringify(fixture.ovenJson))]),

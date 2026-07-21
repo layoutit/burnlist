@@ -1,0 +1,80 @@
+<!-- Demonstrates the smallest useful oven: the existing 12-column Checklist detail grid.
+     Its six regions bind only adapter payload data and use established oven components. -->
+<oven id="checklist"
+      version="1"
+      contract="checklist-progress@1"
+      theme="checklist">
+  <grid id="checklist-grid" columns="12" rows="10" row-height="48">
+    <panel id="completed" title="Completed"
+           column="1" row="1" column-span="3" row-span="2">
+      <kpi-item heading="Completed"
+                source="/summary/completed"
+                format="number">
+        <icon slot="visual" name="ClipboardList"/>
+      </kpi-item>
+    </panel>
+
+    <panel id="progress" title="Progress"
+           column="4" row="1" column-span="5" row-span="2">
+      <kpi-item heading="Progress">
+        <progress-donut slot="visual"
+                        source="/summary/percent"
+                        format="ratio-to-percent"/>
+        <text slot="value"
+              source="/summary/percent"
+              format="percent"/>
+      </kpi-item>
+    </panel>
+
+    <panel id="status" title="Status"
+           column="9" row="1" column-span="4" row-span="2">
+      <kpi-item heading="Status"
+                source="/summary/status"
+                format="plain">
+        <icon slot="visual" name="Gauge"/>
+      </kpi-item>
+    </panel>
+
+    <panel id="active" title="Active checklist"
+           column="1" row="3" column-span="6" row-span="4">
+      <section-header title="Active checklist"
+                      source="/active"
+                      format="length"/>
+      <collection id="active-items"
+                  source="/active"
+                  item-key="/id"
+                  paging="client"
+                  page-size="25">
+        <each>
+          <kpi-item>
+            <bind prop="heading" source="@item/title" format="plain"/>
+            <bind prop="value" source="@item/id" format="plain"/>
+            <icon slot="visual" name="ClipboardList"/>
+          </kpi-item>
+        </each>
+      </collection>
+    </panel>
+
+    <panel id="timeline" title="Timeline"
+           column="7" row="3" column-span="6" row-span="4">
+      <log-table source="/timeline"
+                 empty-text="No timeline events yet.">
+        <column label="Time" source="@item/time" format="time-only"/>
+        <column label="Event" source="@item/title" format="plain"/>
+        <column label="Status" source="@item/status" format="plain"/>
+      </log-table>
+    </panel>
+
+    <panel id="log" title="Burnlist log"
+           column="1" row="7" column-span="12" row-span="4">
+      <log-table source="/log"
+                 empty-text="No burnlist events yet.">
+        <column label="Age" source="@item/time" format="relative-age"/>
+        <column label="Event" source="@item/id" format="plain"/>
+        <column label="Result" source="@item/result" format="plain"/>
+        <column label="Delta" source="@item/delta" format="plain" optional="true"/>
+        <column label="Done" source="@item/percent" format="percent"/>
+      </log-table>
+    </panel>
+  </grid>
+</oven>

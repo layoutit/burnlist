@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { applyStreamingDiffUpdate, mapStreamingDiffLandingFeeds, parseStreamingDiffCard } from "@lib";
+import { applyStreamingDiffUpdate, mapStreamingDiffLandingFeeds } from "@lib";
 import type { StreamingDiffCard, StreamingDiffFeed } from "@lib";
+import { useOvenLiveData } from "@oven";
+import { applyStreamingDiffCardMessage } from "./streaming-diff-transport.mjs";
 
 type FeedState = { feeds: StreamingDiffFeed[]; error: string; loading: boolean };
 type CardState = { cards: StreamingDiffCard[]; error: string };
@@ -45,34 +47,16 @@ export function useStreamingDiffFeeds(repositories: Repository[], discoveryLoadi
 }
 
 export function useStreamingDiffCards(selection: Selection): CardState {
-  const [state, setState] = useState<CardState>({ cards: [], error: "" });
+  const { data, error } = useOvenLiveData<StreamingDiffCard[]>({
+    transport: "sse",
+    makeUrl: () => selection ? `/api/oven-data/streaming-diff?${new URLSearchParams(selection)}` : null,
+    initialData: [],
+    applyReset: (cards) => applyStreamingDiffUpdate(cards, { type: "reset" }),
+    applyMessage: applyStreamingDiffCardMessage,
+    invalidError: "Received an invalid Streaming Diff card.",
+    disconnectError: "The stream disconnected; reconnecting.",
+    deps: [selection?.repoKey, selection?.session, selection?.worktreeKey],
+  });
 
-  useEffect(() => {
-    if (!selection) {
-      setState({ cards: [], error: "" });
-      return;
-    }
-    const params = new URLSearchParams(selection);
-    const stream = new EventSource(`/api/oven-data/streaming-diff?${params}`);
-    setState({ cards: [], error: "" });
-    const reset = () => setState((current) => ({ ...current, cards: applyStreamingDiffUpdate(current.cards, { type: "reset" }) }));
-    stream.addEventListener("reset", reset);
-    stream.onopen = () => setState((current) => ({ ...current, error: "" }));
-    stream.onmessage = (event) => {
-      try {
-        const card = parseStreamingDiffCard(JSON.parse(event.data));
-        if (!card) throw new Error("invalid card");
-        setState((current) => ({ ...current, cards: applyStreamingDiffUpdate(current.cards, { type: "card", card }) }));
-      } catch {
-        setState((current) => ({ ...current, error: "Received an invalid Streaming Diff card." }));
-      }
-    };
-    stream.onerror = () => setState((current) => ({ ...current, error: "The stream disconnected; reconnecting." }));
-    return () => {
-      stream.removeEventListener("reset", reset);
-      stream.close();
-    };
-  }, [selection?.repoKey, selection?.session, selection?.worktreeKey]);
-
-  return state;
+  return { cards: data, error };
 }

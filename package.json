@@ -11,9 +11,9 @@
     "burnlist": "bin/burnlist.mjs"
   },
   "exports": {
-    "./differential-testing": "./ovens/differential-testing/engine/differential-testing-adapter-sdk.mjs",
-    "./differential-testing/contract": "./ovens/differential-testing/engine/differential-testing-contract.mjs",
-    "./differential-testing/transport": "./ovens/differential-testing/engine/differential-testing-transport.mjs"
+    "./differential-testing": "./ovens/differential-testing/engine/adapter-sdk.mjs",
+    "./differential-testing/contract": "./ovens/differential-testing/engine/contract.mjs",
+    "./differential-testing/transport": "./ovens/differential-testing/engine/transport.mjs"
   },
   "files": [
     "bin/",
@@ -28,9 +28,9 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
-    "test:differential-testing": "node --test ovens/differential-testing/engine/differential-testing-adapter-sdk.test.mjs ovens/differential-testing/engine/differential-testing-contract.test.mjs ovens/differential-testing/engine/differential-testing-data-contract.test.mjs ovens/differential-testing/engine/differential-testing-transport-renderer.test.mjs ovens/differential-testing/engine/differential-testing-transport-server.test.mjs",
-    "test:performance-tracing": "node --test ovens/performance-tracing/engine/performance-tracing-contract.test.mjs",
-    "test:visual-parity": "node --test ovens/visual-parity/engine/visual-parity-contract.test.mjs",
+    "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
+    "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
+    "test:visual-parity": "node --test ovens/visual-parity/contract.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
@@ -45,6 +45,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@vitejs/plugin-react": "^4.3.4",
+    "esbuild": "^0.25.12",
     "lucide-react": "^0.468.0",
     "radix-ui": "^1.6.2",
     "react": "^19.0.0",

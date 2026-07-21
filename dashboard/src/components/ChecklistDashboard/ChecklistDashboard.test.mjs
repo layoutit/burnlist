@@ -5,9 +5,11 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
+import { checklistFixture as data } from "./ChecklistDashboard.fixture.mjs";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
+const ovenPath = new URL("../../oven", import.meta.url).pathname;
 
 test("checklist detail renders the split progress surface and event card list", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".checklist-dashboard-test-"));
@@ -15,24 +17,19 @@ test("checklist detail renders the split progress surface and event card list", 
     const outputPath = join(outputDir, "ChecklistDashboard.mjs");
     await build({
       entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
-      alias: { "@lib": libPath }, jsx: "automatic", packages: "external", target: "node18",
+      alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18",
     });
     const { ChecklistDashboard, checklistEventDetailFields } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
-    const data = {
-      generatedAt: "2026-07-15T12:00:00Z", repoKey: "fixture", repo: "fixture", planLabel: "active.md", title: "Fixture Burnlist",
-      total: 2, done: 2, remaining: 0, percent: 100, warnings: [], active: [],
-      completed: [
-        { id: "B1", title: "First event", completedAt: "2026-07-15T11:40:00Z", detail: "First proof." },
-        { id: "B2", title: "Second event", completedAt: "2026-07-15T11:50:00Z", detail: "Completed: 2026-07-15T11:50:00Z\nChanged:\n- src/second.mjs\nProof:\n- node --test second.test.mjs\nOutcome:\n- Second proof.\nFollow-up:\n- None." },
-      ],
-      history: [
-        { time: "2026-07-15T11:40:00Z", done: 1, remaining: 1, total: 2, percent: 50 },
-        { time: "2026-07-15T11:50:00Z", done: 2, remaining: 0, total: 2, percent: 100 },
-      ],
-    };
     const markup = renderToStaticMarkup(createElement(ChecklistDashboard, { data }));
 
     assert.match(markup, /aria-label="Burnlist progress KPIs"/u);
+    assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current"/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Current<\/div><div class="driving-parity-kpi-ratio">Complete<\/div>/u);
+    assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress"/u);
+    assert.match(markup, /<div class="driving-parity-kpi-ratio"><span class="pass">2<\/span><span class="separator">·<\/span><span class="total">2<\/span> <span class="pass">\(100%\)<\/span><\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Elapsed<\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Avg pace<\/div>/u);
+    assert.match(markup, /<div class="driving-parity-kpi-heading">Time left<\/div>/u);
     assert.match(markup, /class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"/u);
     assert.match(markup, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="100\.000 0\.000"/u);
     assert.match(markup, /aria-label="Remaining items over time"/u);

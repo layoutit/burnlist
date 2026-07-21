@@ -1,0 +1,1 @@
+export { ImageTriptych } from "./ImageTriptych";

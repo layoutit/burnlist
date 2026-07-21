@@ -111,6 +111,12 @@ Good hardening questions target:
 
 If a reasonable default is clear from repo evidence, do not block on a question. Record durable assumptions in `goal.md` or item-specific assumptions in the relevant item body.
 
+## Proof Authority: cite an Oven number
+
+An item's proof authority may be an objective Oven signal rather than a self-report. When a Burnlist tracks work an Oven measures, write the done/delete condition to cite that number, for example: "Done/delete when Oven `migration-status` shows `validatedFraction = 100%` and `schemaFailures = 0`."
+
+This is **advisory evidence a human or agent reads. Burnlist does not execute the Oven or auto-verify the number**—`burnlist burn` and `burnlist --check` validate the Burnlist protocol and record the burn; they never read Oven data or the adapter's bound JSON. The honesty is that the proof points at an adapter-computed signal the worker cannot type by hand. Record which Oven and which pointer are authoritative in `goal.md` under `## Proof Authority`. See [Designing Ovens](designing-ovens.md) for the adapter that computes the number and [Oven Authoring](oven-authoring.md) for binding it.
+
 ## Checklist Quality Gate
 
 The checklist is the product. Before finalizing:

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -95,6 +95,22 @@ test("init creates lifecycle folders, ignores them, and registers the repo", () 
     run(home, "init", repo);
     assert.equal(exclude(repo).split("\n").filter((line) => line === "/notes/burnlists/").length, 1);
     assert.equal(exclude(repo).split("\n").filter((line) => line === "/.local/").length, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("init exits 0 on success", () => {
+  const { home, cleanup } = fixture();
+  const repo = gitRepo(home, "init-exit-repo");
+  try {
+    const result = spawnSync(process.execPath, ["bin/burnlist.mjs", "init", repo], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    });
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Initialized \d+ lifecycle folders?/u);
   } finally {
     cleanup();
   }

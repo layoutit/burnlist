@@ -1,29 +1,38 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeOvenPackage, ovenRevision } from "./oven-contract.mjs";
+import {
+  legacyOvenRevision,
+  normalizeOvenDetail,
+  normalizeOvenPackage,
+  ovenRevision,
+} from "./oven-contract.mjs";
 
 function packageFixture(id = "sample-oven") {
   return {
     id,
     instructions: "# Sample Oven\n\nFollow the checklist.\n",
-    detail: {
-      version: 1,
-      columns: 2,
-      rows: 2,
-      rowHeight: 48,
-      cells: [{
-        id: "summary",
-        title: "Summary",
-        description: "Current status.",
-        widget: "metric",
-        source: "/summary",
-        format: "plain",
-        column: 1,
-        row: 1,
-        columnSpan: 2,
-        rowSpan: 1,
-      }],
-    },
+    oven: `<oven id="${id}" version="1" contract="checklist-progress@1" theme="checklist">\n  <section-header title="Sample Oven"/>\n</oven>\n`,
+  };
+}
+
+function detailFixture() {
+  return {
+    version: 1,
+    columns: 2,
+    rows: 2,
+    rowHeight: 48,
+    cells: [{
+      id: "summary",
+      title: "Summary",
+      description: "Current status.",
+      widget: "metric",
+      source: "/summary",
+      format: "plain",
+      column: 1,
+      row: 1,
+      columnSpan: 2,
+      rowSpan: 1,
+    }],
   };
 }
 
@@ -31,36 +40,46 @@ function normalizedFixture(id) {
   return normalizeOvenPackage(packageFixture(id));
 }
 
-test("unmodified-fork-shares-revision", () => {
-  assert.equal(ovenRevision(normalizedFixture("original-oven")), ovenRevision(normalizedFixture("forked-oven")));
+test("normalizeOvenDetail retains legacy detail validation", () => {
+  assert.deepEqual(normalizeOvenDetail(detailFixture()), detailFixture());
+});
+
+test("id-is-part-of-revision", () => {
+  assert.notEqual(ovenRevision(normalizedFixture("original-oven")), ovenRevision(normalizedFixture("forked-oven")));
+});
+
+test("normalizeOvenPackage rejects a root id that differs from the package id", () => {
+  assert.throws(
+    () => normalizeOvenPackage({ ...packageFixture("other-oven"), oven: packageFixture("sample-oven").oven }),
+    /Oven other-oven .oven root id "sample-oven" must match the package id\./u,
+  );
 });
 
 test("content-change-changes-revision", () => {
   const original = normalizedFixture("sample-oven");
   const changedInstructions = { ...original, instructions: "# Sample Oven\n\nUse the revised checklist." };
-  const changedTitle = {
+  const changedOven = {
     ...original,
-    detail: { ...original.detail, cells: [{ ...original.detail.cells[0], title: "Revised summary" }] },
+    oven: original.oven.replace("Sample Oven", "Revised Oven"),
   };
-  const changedVersion = { ...original, detail: { ...original.detail, version: 2 } };
   const revision = ovenRevision(original);
   assert.notEqual(ovenRevision(changedInstructions), revision);
-  assert.notEqual(ovenRevision(changedTitle), revision);
-  assert.notEqual(ovenRevision(changedVersion), revision);
+  assert.notEqual(ovenRevision(changedOven), revision);
 });
 
 test("key-order-invariant", () => {
   const original = normalizedFixture("sample-oven");
   const reordered = {
-    id: "other-oven",
+    oven: original.oven.replaceAll("\n", "\r\n"),
     instructions: original.instructions.replaceAll("\n", "\r\n"),
-    detail: {
-      cells: original.detail.cells.map((cell) => ({ rowSpan: cell.rowSpan, title: cell.title, id: cell.id, ...cell })),
-      rowHeight: original.detail.rowHeight,
-      rows: original.detail.rows,
-      columns: original.detail.columns,
-      version: original.detail.version,
-    },
+    id: original.id,
   };
   assert.equal(ovenRevision(original), ovenRevision(reordered));
+});
+
+test("legacyOvenRevision reproduces the old detail-based revision", () => {
+  assert.equal(
+    legacyOvenRevision({ instructions: packageFixture().instructions, detail: detailFixture() }),
+    "o1-sha256:c2c96959e1dd7b5ae37893db09adef9f778a2f09fb4ea85af92bdc51964d0067",
+  );
 });

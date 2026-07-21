@@ -236,12 +236,24 @@ function currentRevision(pkgRoot, id) {
   return revisionDir;
 }
 
+function ovenFiles(pkgRoot) {
+  try {
+    return readdirSync(pkgRoot, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".oven"))
+      .map((entry) => entry.name);
+  } catch (error) {
+    if (missing(error)) return [];
+    throw error;
+  }
+}
+
 function legacyPackage(pkgRoot) {
-  return ["instructions.md", "detail.json"].every((name) => entryAt(join(pkgRoot, name))?.isFile());
+  return entryAt(join(pkgRoot, "instructions.md"))?.isFile()
+    && (ovenFiles(pkgRoot).length > 0 || entryAt(join(pkgRoot, "detail.json"))?.isFile());
 }
 
 function copyPackageFiles(from, to) {
-  for (const name of ["instructions.md", "detail.json", "oven.json"]) {
+  for (const name of ["instructions.md", ...ovenFiles(from), "oven.json", "detail.json"]) {
     if (entryAt(join(from, name))?.isFile()) cpSync(join(from, name), join(to, name));
   }
 }
@@ -262,7 +274,7 @@ function publishCurrent(pkgRoot, id, revision) {
 }
 
 function removeLegacyFiles(pkgRoot) {
-  for (const name of ["instructions.md", "detail.json", "oven.json"]) {
+  for (const name of ["instructions.md", ...ovenFiles(pkgRoot), "oven.json", "detail.json"]) {
     try {
       rmSync(join(pkgRoot, name), { force: true });
     } catch (error) {
@@ -301,7 +313,7 @@ function gcOldRevisions(pkgRoot, current) {
 // a stable path until grace-period GC makes it eligible for deletion. A reader
 // suspended beyond that grace period mid-read is out of scope for this localhost tool.
 export function atomicOvenPackage(parent, id, files, { replace = false, assertPath } = {}) {
-  assertOvenPackageFileLimits(files);
+  assertOvenPackageFileLimits(files, id);
   assertPath?.();
   mkdirSync(parent, { recursive: true });
   const pkgRoot = join(parent, id);

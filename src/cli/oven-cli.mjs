@@ -10,9 +10,10 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
-import { renderGrid, sectionTable } from "./oven-cli-render.mjs";
+import { renderOvenTree, sourceTable } from "./oven-cli-render.mjs";
 import { createOvenCatalog, persistOven, resolvePackageInput } from "./oven-storage.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
@@ -75,20 +76,24 @@ const { readOvenDir, discoverOvens, findOven } = createOvenCatalog({
 });
 
 function printOven(oven) {
-  const cellWidth = Number(flags.get("cell-width") ?? 8);
-  const cellHeight = Number(flags.get("cell-height") ?? 2);
-  if (!Number.isInteger(cellWidth) || cellWidth < 4 || cellWidth > 24) fail("--cell-width must be an integer from 4 to 24.");
-  if (!Number.isInteger(cellHeight) || cellHeight < 2 || cellHeight > 6) fail("--cell-height must be an integer from 2 to 6.");
+  let nodeCount = 0;
+  const countNodes = (nodes) => {
+    for (const node of nodes) {
+      nodeCount += 1;
+      countNodes(node.children);
+    }
+  };
+  countNodes(oven.ir.root);
   const kind = oven.builtIn ? "built-in" : "custom";
   console.log(`${oven.name}  (${oven.id} · ${kind})`);
   if (oven.description) console.log(oven.description);
-  console.log(`grid: ${oven.detail.columns} cols × ${oven.detail.rows} rows · ${oven.detail.cells.length} sections`);
+  console.log(`nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
   console.log(`revision: ${oven.ovenRevision}`);
   console.log(`path: ${oven.path}`);
   console.log("");
-  console.log(renderGrid(oven.detail, cellWidth, cellHeight));
+  console.log(renderOvenTree(oven.ir));
   console.log("");
-  console.log(sectionTable(oven.detail));
+  console.log(sourceTable(oven.ir));
 }
 
 function assertCustomTarget(id, verb) {
@@ -99,26 +104,38 @@ function assertCustomTarget(id, verb) {
   if (verb === "update" && !existing) throw new Error(`Oven ${id} does not exist. Use \`oven create\` instead.`);
 }
 
+function rewriteRootOvenId(source, id) {
+  const parsed = scanXml(source);
+  const byteOffset = parsed.ast?.name === "oven" ? parsed.ast.attrSpans.id?.offset : undefined;
+  if (!parsed.ok || byteOffset === undefined) throw new Error("Oven source must have a valid root id to fork.");
+  const attrStart = Buffer.from(source).subarray(0, byteOffset).toString("utf8").length;
+  const attribute = /^id\s*=\s*(["'])/u.exec(source.slice(attrStart));
+  if (!attribute) throw new Error("Oven source must have a valid root id to fork.");
+  const valueStart = attrStart + attribute[0].length;
+  const valueEnd = source.indexOf(attribute[1], valueStart);
+  return `${source.slice(0, valueStart)}${id}${source.slice(valueEnd)}`;
+}
+
 // ── subcommands ───────────────────────────────────────────────────────────────
 const HELP = `burnlist oven — author and inspect Ovens
 
 Usage:
   burnlist oven list [--json]
-  burnlist oven view <id> [--json] [--cell-width <n>] [--cell-height <n>]
+  burnlist oven view <id> [--json]
   burnlist oven bind <id> <path> [--repo <path>]
   burnlist oven unbind <id> [--repo <path>]
   burnlist oven bindings [--repo <path>]
-  burnlist oven create <id> --instructions <file|-> --detail <file|-> [--name <text>]
-  burnlist oven create <id> --dir <dir>            (reads instructions.md + detail.json)
-  burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, detail})
+  burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
+  burnlist oven create <id> --dir <dir>            (reads instructions.md + <id>.oven)
+  burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, oven})
   burnlist oven update <id> [same inputs as create]
   burnlist oven fork <id> <newId>
 
 Options:
   --name <text>        Set the Oven name (owns the level-one heading).
   --instructions <p>   Markdown instructions file, or - for stdin.
-  --detail <p>         detail.json file, or - for stdin.
-  --dir <p>            Directory containing instructions.md and detail.json.
+  --oven <p>           Oven DSL source file, or - for stdin.
+  --dir <p>            Directory containing instructions.md and <id>.oven.
   --package <p>        JSON package file, or - for stdin.
   --repo <p>           Repository whose local Oven bindings to use.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
@@ -127,6 +144,7 @@ Options:
   --json               Machine-readable output for list/view.
 
 Custom Ovens live under ignored local state and only affect future Runs.
+Create scaffolds a minimal .oven source when --oven, --dir, and --package omit one.
 Built-in Ovens are read-only; this command never executes Oven instructions.`;
 
 function main() {
@@ -139,22 +157,23 @@ try {
   if (subcommand === "list") {
     const ovens = discoverOvens();
     if (flags.has("json")) {
-      console.log(JSON.stringify(ovens.map(({ instructions, ...rest }) => rest), null, 2));
+      console.log(JSON.stringify(ovens.map(({ instructions, ir, ...rest }) => rest), null, 2));
       return;
     }
     if (ovens.length === 0) {
       console.log("No Ovens found.");
       return;
     }
+    const nodeCount = (nodes) => nodes.reduce((count, node) => count + 1 + nodeCount(node.children), 0);
     const rows = ovens.map((oven) => [
       oven.id,
       oven.name,
       oven.builtIn ? "built-in" : "custom",
-      `${oven.detail.columns}×${oven.detail.rows}`,
-      String(oven.detail.cells.length),
+      oven.ir.contract,
+      String(nodeCount(oven.ir.root)),
       oven.ovenRevision,
     ]);
-    const header = ["id", "name", "kind", "grid", "sections", "revision"];
+    const header = ["id", "name", "kind", "contract", "nodes", "revision"];
     const widths = header.map((label, index) => Math.max(label.length, ...rows.map((row) => row[index].length)));
     const line = (cols) => cols.map((value, index) => value.padEnd(widths[index])).join("  ").trimEnd();
     console.log(line(header));
@@ -174,7 +193,7 @@ try {
         name: oven.name,
         builtIn: oven.builtIn,
         instructions: oven.instructions,
-        detail: oven.detail,
+        oven: oven.oven,
         ovenRevision: oven.ovenRevision,
         ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
       }, null, 2));
@@ -215,7 +234,7 @@ try {
   }
 
   if (subcommand === "create" || subcommand === "update") {
-    const pkg = resolvePackageInput({ flags, positionals });
+    const pkg = resolvePackageInput({ flags, positionals, scaffold: subcommand === "create" });
     assertCustomTarget(pkg.id, subcommand);
     const allowReplace = subcommand === "update" || flags.has("force");
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, { allowReplace });
@@ -230,7 +249,8 @@ try {
     if (!sourceId || !newId) fail("Usage: burnlist oven fork <id> <newId>");
     const source = findOven(sourceId);
     if (!source) fail(`Unknown Oven "${sourceId}". Run \`burnlist oven list\`.`);
-    const pkg = normalizeOvenPackage({ id: ovenId(newId), instructions: source.instructions, detail: source.detail });
+    const id = ovenId(newId);
+    const pkg = normalizeOvenPackage({ id, instructions: source.instructions, oven: rewriteRootOvenId(source.oven, id) });
     const sourceRevision = ovenRevision(source);
     if (findOven(pkg.id)) throw new Error(`Oven ${pkg.id} already exists.`);
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, {

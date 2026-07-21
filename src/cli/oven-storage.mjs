@@ -1,11 +1,13 @@
 import { readFileSync, readSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { normalizeOvenDetail, normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import { compileOven } from "../ovens/dsl/oven-compile.mjs";
+import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
 import {
   assertCustomOvensDir,
   assertCustomOvenPath,
-  OVEN_DETAIL_MAX_BYTES,
+  OVEN_SOURCE_MAX_BYTES,
   OVEN_INSTRUCTIONS_MAX_BYTES,
   OVEN_LINEAGE_MAX_BYTES,
   serializeOvenPackage,
@@ -55,12 +57,12 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
     }
     try {
       const instructionsPath = join(ovenRoot, "instructions.md");
-      const detailPath = join(ovenRoot, "detail.json");
-      if (!safeStat(instructionsPath)?.isFile() || !safeStat(detailPath)?.isFile()) return null;
+      const ovenPath = join(ovenRoot, `${safeId}.oven`);
+      if (!safeStat(instructionsPath)?.isFile() || !safeStat(ovenPath)?.isFile()) return null;
       const ovenPackage = normalizeOvenPackage({
         id: safeId,
         instructions: readTextFileWithLimit(instructionsPath, OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions"),
-        detail: JSON.parse(readTextFileWithLimit(detailPath, OVEN_DETAIL_MAX_BYTES, "Oven detail template")),
+        oven: readTextFileWithLimit(ovenPath, OVEN_SOURCE_MAX_BYTES, "Oven source"),
       });
       const lineagePath = join(ovenRoot, "oven.json");
       let forkedFrom;
@@ -80,7 +82,8 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
         builtIn,
         path: ovenRoot,
         instructions: ovenPackage.instructions,
-        detail: ovenPackage.detail,
+        oven: ovenPackage.oven,
+        ir: compileOven(ovenPackage.oven).ir,
         ovenRevision: ovenRevision(ovenPackage),
         ...(forkedFrom ? { forkedFrom } : {}),
       };
@@ -147,21 +150,20 @@ function readInput(spec, maxBytes, label) {
   return readTextFileWithLimit(resolve(spec), maxBytes, label);
 }
 
-export function resolvePackageInput({ flags, positionals }) {
+export function resolvePackageInput({ flags, positionals, scaffold = false }) {
   const pkg = {};
   if (flags.has("package")) Object.assign(pkg, JSON.parse(readInput(flags.get("package"), OVEN_PACKAGE_MAX_BYTES, "Oven package")));
+  const id = ovenId(positionals[0] ?? pkg.id ?? flags.get("id") ?? "");
   if (flags.has("dir")) {
     const dir = resolve(flags.get("dir"));
     pkg.instructions = readTextFileWithLimit(join(dir, "instructions.md"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
-    pkg.detail = JSON.parse(readTextFileWithLimit(join(dir, "detail.json"), OVEN_DETAIL_MAX_BYTES, "Oven detail template"));
+    pkg.oven = readTextFileWithLimit(join(dir, `${id}.oven`), OVEN_SOURCE_MAX_BYTES, "Oven source");
   }
   if (flags.has("instructions")) pkg.instructions = readInput(flags.get("instructions"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
-  if (flags.has("detail")) pkg.detail = JSON.parse(readInput(flags.get("detail"), OVEN_DETAIL_MAX_BYTES, "Oven detail template"));
+  if (flags.has("oven")) pkg.oven = readInput(flags.get("oven"), OVEN_SOURCE_MAX_BYTES, "Oven source");
 
-  const id = ovenId(positionals[0] ?? pkg.id ?? flags.get("id") ?? "");
   const name = flags.has("name") ? String(flags.get("name")).trim() : String(pkg.name ?? "").trim();
   if (pkg.instructions === undefined) throw new Error("Provide instructions via --instructions, --package, or --dir.");
-  if (pkg.detail === undefined) throw new Error("Provide a detail skeleton via --detail, --package, or --dir.");
 
   let instructions = String(pkg.instructions);
   if (name) {
@@ -171,9 +173,13 @@ export function resolvePackageInput({ flags, positionals }) {
     else lines[headingIndex] = `# ${name}`;
     instructions = lines.join("\n");
   }
-  const normalized = normalizeOvenPackage({ id, instructions, detail: normalizeOvenDetail(pkg.detail) });
+  if (pkg.oven === undefined) {
+    if (!scaffold) throw new Error("Provide Oven source via --oven, --package, or --dir.");
+    pkg.oven = starterOvenSource(id, name || instructionsName(instructions, id));
+  }
+  const normalized = normalizeOvenPackage({ id, instructions, oven: pkg.oven });
   // Serialize here as well as at persist time so every input shape receives
-  // the same independent instructions.md and detail.json byte checks.
+  // the same independent instructions.md and .oven byte checks.
   serializeOvenPackage(normalized);
   return normalized;
 }

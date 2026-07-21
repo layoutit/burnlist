@@ -13,6 +13,10 @@ A feed is selected by its logical repository key, worktree key, and session. A f
 
 This package contains no executable renderer, hook, or producer code. The server-side adapter validates and reads the local feed without mutating it.
 
+## Rendering
+
+The detail page renders through the `.oven` engine: `streaming-diff.oven` compiles to `streaming-diff.ir.json`. See [The .oven system](/ovens/oven-system) and the [.oven DSL reference](/ovens/dsl-reference).
+
 ## Producing cards
 
 Producers are wired through Streaming Diff hooks and CLI. `burnlist hooks install --agent codex,claude` merges the Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`, preserving existing entries. The low-level surface is `burnlist streaming-diff <ensure-feed|capture|url|hook> ...`.

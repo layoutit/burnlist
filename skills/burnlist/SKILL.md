@@ -8,6 +8,8 @@ description: >-
 
 Use one skill for the full Burnlist lifecycle. Burnlist is task state, not implementation strategy; let the repo or domain skill own code, tests, browser or oracle evidence, performance rules, deploy rules, and PR packaging.
 
+> **Start here:** Read `references/getting-started.md` first if Burnlist is new to you. It explains what Burnlist is, the three concepts, and installation and setup.
+
 ## Choose A Mode
 
 - **Creation mode:** when creating, hardening, restructuring, or readying a Burnlist, read `references/burnlist-creation.md` completely before editing Burnlist files. Creation owns `draft -> ready` and does not implement the planned work unless the user also asks to continue into execution.
@@ -18,13 +20,16 @@ Use one skill for the full Burnlist lifecycle. Burnlist is task state, not imple
 
 Read references only when their trigger applies:
 
+- `references/getting-started.md`: new-agent onboarding: what Burnlist is, the three concepts, and installation and setup.
 - `references/burnlist-creation.md`: mandatory for creation, hardening, draft repair, and `draft -> ready` work.
 - `references/burnlist-protocol.md`: lifecycle moves, required file shapes, `goal.md`, `completed.md`, scratch, legacy migration, closeout, local artifacts.
 - `references/burnlist-splitting-lanes.md`: split/reorder decisions, recursive gates, parent/lane Burnlists, parallel lane handoff.
 - `references/burnlist-visible-output.md`: detailed silence rules, forbidden narration examples, checkpoint policy.
 - `references/burnlist-dashboard.md`: dashboard/chart/log/timeline/repo-graph behavior or dashboard repair only.
 - `references/installation.md`: installing or removing the agent skill or Streaming Diff edit-capture hooks.
+- `references/designing-ovens.md`: choosing what an Oven should measure through proxy-resistant evidence, before touching the DSL.
 - `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
+- `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 

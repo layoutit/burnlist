@@ -1,50 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
-import type { ChecklistProgressData, CompletedItem, HistoryPoint } from "@lib";
+import type { ChecklistProgressData, HistoryPoint } from "@lib";
+import { checklistEventDetailFields, compactAge, eventRows, formatDuration, progressHistory, timing } from "@lib/checklist-adapter";
+export { checklistEventDetailFields } from "@lib/checklist-adapter";
 import "./ChecklistDashboard.css";
-// @ts-expect-error The chart model is plain ESM so the dashboard and Node tests share it.
-import { buildChecklistProgressChart } from "../../lib/checklist-progress-chart.js";
-
-function formatDuration(milliseconds: number) {
-  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
-  const minutes = Math.max(0, Math.round(milliseconds / 60_000));
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (hours < 24) return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ${hours % 24}h`;
-}
-
-function compactAge(value: string, now: string) {
-  const delta = Math.max(0, Date.parse(now) - Date.parse(value));
-  const minutes = Math.floor(delta / 60_000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
-}
-
-function timing(data: ChecklistProgressData) {
-  const points = data.history.filter((point) => Number.isFinite(Date.parse(point.time)));
-  const completedTimes = data.completed.map((item) => Date.parse(item.completedAt)).filter(Number.isFinite).sort((a, b) => a - b);
-  const start = points.length ? Date.parse(points[0].time) : completedTimes[0] ?? Date.parse(data.generatedAt);
-  const lastCompletion = completedTimes.at(-1) ?? start;
-  const end = data.remaining === 0 && completedTimes.length ? lastCompletion : Date.parse(data.generatedAt);
-  const intervals = completedTimes.map((time, index) => time - (index ? completedTimes[index - 1] : start)).filter((value) => value >= 0);
-  if (data.remaining > 0) intervals.push(Math.max(0, end - lastCompletion));
-  const pace = intervals.length ? intervals.reduce((sum, value) => sum + value, 0) / intervals.length : 0;
-  const currentAge = Math.max(0, end - lastCompletion);
-  const timeLeft = data.remaining ? Math.max(pace, currentAge) + Math.max(0, data.remaining - 1) * pace : 0;
-  return { elapsed: end - start, pace, timeLeft };
-}
-
-function ProgressDonut({ percent }: { percent: number }) {
-  const donePercent = Math.max(0, Math.min(100, percent));
-  const remainingPercent = Math.max(0, 100 - donePercent);
-  return <svg aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"><circle className="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21" /><circle className="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" strokeDasharray={`${donePercent.toFixed(3)} ${remainingPercent.toFixed(3)}`} transform="rotate(-90 29 29)" /></svg>;
-}
+import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
 
 function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
   const durations = timing(data);
@@ -54,11 +14,11 @@ function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
     { icon: Gauge, heading: "Avg pace", value: formatDuration(durations.pace) },
     { icon: TimerReset, heading: "Time left", value: formatDuration(durations.timeLeft) },
   ];
-  return <div aria-label="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
-    <div className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"}><ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Current</div><div className="driving-parity-kpi-ratio">{current ? `${current.id} · Active` : "Complete"}</div></div></div>
-    <div className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`}><ProgressDonut percent={data.percent} /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">Progress</div><div className="driving-parity-kpi-ratio"><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></div></div></div>
-    {metrics.map(({ icon: Icon, heading, value }) => <div className="driving-parity-kpi-item driving-parity-kpi-section" key={heading}><Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" /><div className="driving-parity-kpi-text"><div className="driving-parity-kpi-heading">{heading}</div><div className="driving-parity-kpi-ratio">{value}</div></div></div>)}
-  </div>;
+  return <KpiStrip ariaLabel="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · Active` : "Complete"} />
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`} visual={<ProgressDonut percent={data.percent} />} heading="Progress" value={<><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></>} />
+    {metrics.map(({ icon: Icon, heading, value }) => <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section" heading={heading} key={heading} value={value} visual={<Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} />)}
+  </KpiStrip>;
 }
 
 function useElementSize() {
@@ -75,7 +35,7 @@ function useElementSize() {
   return { ref, ...size };
 }
 
-function ProgressChart({ history }: { history: HistoryPoint[] }) {
+export function ProgressChart({ history }: { history: HistoryPoint[] }) {
   const { ref, width, height } = useElementSize();
   const chart = useMemo(() => buildChecklistProgressChart(history, "burn", { width, height }), [height, history, width]);
   const formatTick = (time: number) => new Date(time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -88,62 +48,27 @@ function ProgressChart({ history }: { history: HistoryPoint[] }) {
   </svg></div>;
 }
 
-function ProgressPanel({ data }: { data: ChecklistProgressData }) {
+export function ProgressPanel({ data }: { data: ChecklistProgressData }) {
   return <section className="panel progress-panel"><div className="panel-title-row"><span className="burn-chart-label">Burn</span></div><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
 }
 
-type EventRow = CompletedItem & { ordinal: number; percent: number };
-type EventDetailField = { label: string; values: string[] };
-
-const EVENT_DETAIL_LABELS = new Set(["Completed", "Changed", "Proof", "Outcome", "Follow-up"]);
-
-export function checklistEventDetailFields(detail: string): EventDetailField[] {
-  const fields: EventDetailField[] = [];
-  let current: EventDetailField | null = null;
-  for (const rawLine of detail.split(/\r?\n/u)) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    const heading = line.match(/^([^:]+):(?:\s*(.*))?$/u);
-    if (heading && EVENT_DETAIL_LABELS.has(heading[1])) {
-      current = { label: heading[1], values: [] };
-      fields.push(current);
-      if (heading[2]) current.values.push(heading[2]);
-      continue;
-    }
-    if (!current) {
-      current = { label: "Detail", values: [] };
-      fields.push(current);
-    }
-    current.values.push(line.replace(/^-\s+/u, ""));
-  }
-  return fields;
-}
-
-function eventRows(data: ChecklistProgressData): EventRow[] {
-  const total = Math.max(1, data.total);
-  return [...data.completed]
-    .sort((left, right) => Date.parse(left.completedAt) - Date.parse(right.completedAt))
-    .map((item, index) => ({ ...item, ordinal: index + 1, percent: Math.min(100, Math.round(((index + 1) / total) * 100)) }))
-    .reverse();
-}
-
-function progressHistory(data: ChecklistProgressData): HistoryPoint[] {
-  const provided = data.history
-    .filter((point) => Number.isFinite(Date.parse(point.time)))
-    .sort((left, right) => Date.parse(left.time) - Date.parse(right.time));
-  const monotonic = provided.every((point, index) => index === 0 || point.done >= provided[index - 1].done);
-  if (provided.length && monotonic && provided.at(-1)?.done === data.done) return provided;
-  const total = Math.max(1, data.total);
-  const rebuilt = [...data.completed]
-    .sort((left, right) => Date.parse(left.completedAt) - Date.parse(right.completedAt))
-    .map((item, index) => ({ time: item.completedAt, done: index + 1, remaining: Math.max(0, total - index - 1), total, percent: Math.min(100, Math.round(((index + 1) / total) * 100)) }));
-  if (data.remaining > 0 && (!rebuilt.length || Date.parse(data.generatedAt) > Date.parse(rebuilt.at(-1)!.time))) rebuilt.push({ time: data.generatedAt, done: data.done, remaining: data.remaining, total, percent: data.percent });
-  return rebuilt;
-}
-
-function ProgressLedger({ data }: { data: ChecklistProgressData }) {
+export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data).slice(0, 8);
-  return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><div className="checklist-log-list"><div className="checklist-log-table-header"><span>Age</span><span>Event</span><span>Result</span><span>Delta</span><span>Done</span></div>{rows.map((item) => <article className="log-row log-table-row" key={`${item.id}/${item.completedAt}`}><span className="log-table-cell age">{compactAge(item.completedAt, data.generatedAt)}</span><span className="log-table-cell event">{item.id}</span><span className="log-table-cell result improved">Done</span><span className="log-table-cell delta improved">+1</span><span className="log-table-cell done">{item.percent}%</span></article>)}{!rows.length && <div className="event-ledger-empty">No completed events</div>}</div></div></div></section>;
+  return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><LogTable
+    columns={["Age", "Event", "Result", "Delta", "Done"]}
+    rows={rows.map((item) => ({
+      key: `${item.id}/${item.completedAt}`,
+      className: "log-row log-table-row",
+      cells: [
+        { className: "log-table-cell age", content: compactAge(item.completedAt, data.generatedAt) },
+        { className: "log-table-cell event", content: item.id },
+        { className: "log-table-cell result improved", content: "Done" },
+        { className: "log-table-cell delta improved", content: "+1" },
+        { className: "log-table-cell done", content: <>{item.percent}%</> },
+      ],
+    }))}
+    emptyState={<div className="event-ledger-empty">No completed events</div>}
+  /></div></div></section>;
 }
 
 function EventDetail({ detail }: { detail: string }) {
@@ -155,10 +80,10 @@ function EventDetail({ detail }: { detail: string }) {
   })}</div>;
 }
 
-function EventCardList({ data }: { data: ChecklistProgressData }) {
+export function EventCardList({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  return <section className="checklist-events-section"><div className="checklist-events-head"><h2>Events <span className="field-list-count">({rows.length})</span></h2></div><div className="event-card-list">{rows.map((item) => {
+  return <section className="checklist-events-section"><div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div><div className="event-card-list">{rows.map((item) => {
     const key = `${item.id}/${item.completedAt}`;
     const fields = item.detail ? checklistEventDetailFields(item.detail) : [];
     const outcome = fields.find((field) => field.label === "Outcome") ?? fields.find((field) => field.label === "Detail");

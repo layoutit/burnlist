@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { ovenIrPlugin } from "./vite-plugin-oven-ir.mjs";
 
 const dashboardDir = fileURLToPath(new URL(".", import.meta.url));
 const sourceDir = fileURLToPath(new URL("./src", import.meta.url));
@@ -8,7 +9,7 @@ const sourceDir = fileURLToPath(new URL("./src", import.meta.url));
 export default defineConfig({
   root: dashboardDir,
   publicDir: fileURLToPath(new URL("./public", import.meta.url)),
-  plugins: [react()],
+  plugins: [ovenIrPlugin(), react()],
   resolve: {
     alias: {
       "@": sourceDir,
@@ -16,6 +17,7 @@ export default defineConfig({
       "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
       "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
       "@lib": fileURLToPath(new URL("./src/lib", import.meta.url)),
+      "@oven": fileURLToPath(new URL("./src/oven", import.meta.url)),
     },
   },
   build: {

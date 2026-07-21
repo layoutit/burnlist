@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
+import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { resolveOvenPackageDir } from "../server/fs-safe.mjs";
 import { assertCustomOvenPath } from "../server/oven-storage.mjs";
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
@@ -23,32 +24,15 @@ function run(context, ...args) {
 function runFrom(cwd, ...args) {
   return execFileSync(process.execPath, [binPath, ...args], { cwd, encoding: "utf8" });
 }
-function detailFixture() {
-  return {
-    version: 1,
-    columns: 2,
-    rows: 2,
-    rowHeight: 48,
-    cells: [{
-      id: "summary",
-      title: "Summary",
-      description: "Current status.",
-      widget: "metric",
-      source: "/summary",
-      format: "plain",
-      column: 1,
-      row: 1,
-      columnSpan: 2,
-      rowSpan: 1,
-    }],
-  };
+function ovenFixture(id = "fixture-oven") {
+  return starterOvenSource(id, "Fixture Oven");
 }
 
 function writeOven(root, id, ovenJson) {
   const ovenRoot = join(root, id);
   mkdirSync(ovenRoot, { recursive: true });
   writeFileSync(join(ovenRoot, "instructions.md"), "# Forked Oven\n\nFollow the checklist.\n");
-  writeFileSync(join(ovenRoot, "detail.json"), `${JSON.stringify(detailFixture())}\n`);
+  writeFileSync(join(ovenRoot, `${id}.oven`), ovenFixture(id));
   if (ovenJson !== undefined) writeFileSync(join(ovenRoot, "oven.json"), ovenJson);
 }
 
@@ -140,25 +124,59 @@ test("oven list warns and omits a malformed package while view stays fail-closed
   } finally { context.cleanup(); }
 });
 
+test("oven view and list render IR structure and source packages", () => {
+  const context = fixture();
+  const ovensDir = join(context.repo, ".local", "burnlist", "ovens");
+  try {
+    writeOven(ovensDir, "rendered-oven");
+    const view = run(context, "oven", "view", "rendered-oven", "--ovens-dir", ovensDir);
+    assert.match(view, /nodes: 1 · contract: checklist-progress@1 · theme: checklist/u);
+    assert.match(view, /section-header\n\nnode  prop  source\n/u);
+    const list = run(context, "oven", "list", "--ovens-dir", ovensDir);
+    assert.match(list, /^id\s+name\s+kind\s+contract\s+nodes\s+revision$/mu);
+    assert.match(list, /^rendered-oven\s+Forked Oven\s+custom\s+checklist-progress@1\s+1\s+/mu);
+    const json = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir));
+    const oven = json.find((item) => item.id === "rendered-oven");
+    assert.equal(oven.oven, ovenFixture("rendered-oven"));
+    assert.equal(Object.hasOwn(oven, "ir"), false);
+  } finally { context.cleanup(); }
+});
+
+test("oven create scaffolds source while update requires an explicit source", () => {
+  const context = fixture();
+  const ovensDir = join(context.repo, ".local", "burnlist", "ovens");
+  const instructionsPath = join(context.repo, "instructions.md");
+  try {
+    writeFileSync(instructionsPath, "# Scaffolded Oven\n\nReady to edit.\n");
+    run(context, "oven", "create", "scaffolded-oven", "--instructions", instructionsPath, "--ovens-dir", ovensDir);
+    const saved = JSON.parse(run(context, "oven", "view", "scaffolded-oven", "--json", "--ovens-dir", ovensDir));
+    assert.equal(saved.oven, starterOvenSource("scaffolded-oven", "Scaffolded Oven"));
+    assert.throws(
+      () => run(context, "oven", "update", "scaffolded-oven", "--instructions", instructionsPath, "--ovens-dir", ovensDir),
+      (error) => String(error.stderr).includes("Provide Oven source"),
+    );
+  } finally { context.cleanup(); }
+});
+
 test("oven create and update swap the package while preserving sibling files", () => {
   const context = fixture();
   const ovensDir = join(context.repo, ".local", "burnlist", "ovens");
   try {
     const packagePath = join(context.repo, "replacement.json");
     writeFileSync(packagePath, JSON.stringify({
-      instructions: "# Initial Oven\n\nInitial checklist.", detail: detailFixture(),
+      instructions: "# Initial Oven\n\nInitial checklist.", oven: ovenFixture("sample-oven"),
     }));
     run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     writeFileSync(join(resolveOvenPackageDir(join(ovensDir, "sample-oven")), "oven.json"), JSON.stringify({
       forkedFrom: { ovenId: "source-oven", revision: `o1-sha256:${"a".repeat(64)}` },
     }));
     writeFileSync(packagePath, JSON.stringify({
-      instructions: "# Updated Oven\n\nUpdated checklist.", detail: detailFixture(),
+      instructions: "# Updated Oven\n\nUpdated checklist.", oven: ovenFixture("sample-oven"),
     }));
     run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     const current = resolveOvenPackageDir(join(ovensDir, "sample-oven"));
     assert.match(readFileSync(join(current, "instructions.md"), "utf8"), /Updated checklist/u);
-    assert.deepEqual(JSON.parse(readFileSync(join(current, "detail.json"), "utf8")), detailFixture());
+    assert.equal(readFileSync(join(current, "sample-oven.oven"), "utf8"), ovenFixture("sample-oven"));
     assert.equal(JSON.parse(readFileSync(join(current, "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
     assert.equal(readdirSync(join(ovensDir, "sample-oven")).filter((name) => name.startsWith("rev-")).length, 2);
   } finally { context.cleanup(); }
@@ -172,7 +190,7 @@ test("oven update migrates a legacy plain directory to a pointer package", () =>
       forkedFrom: { ovenId: "source-oven", revision: `o1-sha256:${"a".repeat(64)}` },
     }));
     const packagePath = join(context.repo, "replacement.json");
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Updated Oven\n\nMigrated safely.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Updated Oven\n\nMigrated safely.", oven: ovenFixture("legacy-oven") }));
     run(context, "oven", "update", "legacy-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     assert.match(readFileSync(join(ovensDir, "legacy-oven", "current"), "utf8"), /^rev-[a-f0-9]+\n$/u);
     assert.equal(existsSync(join(ovensDir, "legacy-oven", "instructions.md")), false);
@@ -190,7 +208,7 @@ test("oven storage follows the umbrella root when launched from a subdirectory",
     mkdirSync(subdirectory, { recursive: true });
     const packagePath = join(context.repo, "package.json");
     writeFileSync(packagePath, JSON.stringify({
-      instructions: "# Umbrella Oven\n\nStored with the umbrella.", detail: detailFixture(),
+      instructions: "# Umbrella Oven\n\nStored with the umbrella.", oven: ovenFixture("umbrella-oven"),
     }));
     runFrom(subdirectory, "oven", "create", "umbrella-oven", "--package", packagePath);
     const ovenPath = join(context.repo, ".local", "burnlist", "ovens", "umbrella-oven");
@@ -202,27 +220,27 @@ test("oven storage follows the umbrella root when launched from a subdirectory",
 
 test("oven publication rejects oversized stored bytes without replacing a readable package", () => {
   const context = fixture();
-  const detailPath = join(context.repo, "detail.json");
+  const ovenSourcePath = join(context.repo, "sized-oven.oven");
   const instructionsPath = join(context.repo, "instructions.md");
   const ovenPath = join(context.repo, ".local", "burnlist", "ovens", "sized-oven");
   try {
-    writeFileSync(detailPath, JSON.stringify(detailFixture()));
+    writeFileSync(ovenSourcePath, ovenFixture("sized-oven"));
     writeFileSync(instructionsPath, `# ${"x".repeat(65_534)}`);
     assert.throws(
-      () => run(context, "oven", "create", "sized-oven", "--instructions", instructionsPath, "--detail", detailPath),
+      () => run(context, "oven", "create", "sized-oven", "--instructions", instructionsPath, "--oven", ovenSourcePath),
       (error) => String(error.stderr).includes("instructions.md") && String(error.stderr).includes("65536 byte limit"),
     );
     assert.equal(existsSync(ovenPath), false);
 
     writeFileSync(instructionsPath, `# ${"x".repeat(65_533)}`);
-    run(context, "oven", "create", "sized-oven", "--instructions", instructionsPath, "--detail", detailPath);
+    run(context, "oven", "create", "sized-oven", "--instructions", instructionsPath, "--oven", ovenSourcePath);
     const priorPointer = readFileSync(join(ovenPath, "current"), "utf8");
     const priorInstructions = readFileSync(join(resolveOvenPackageDir(ovenPath), "instructions.md"), "utf8");
     assert.equal(Buffer.byteLength(priorInstructions), 65_536);
 
     writeFileSync(instructionsPath, `# ${"\u0800".repeat(21_844)}xy`);
     assert.throws(
-      () => run(context, "oven", "update", "sized-oven", "--instructions", instructionsPath, "--detail", detailPath),
+      () => run(context, "oven", "update", "sized-oven", "--instructions", instructionsPath, "--oven", ovenSourcePath),
       (error) => String(error.stderr).includes("instructions.md") && String(error.stderr).includes("65536 byte limit"),
     );
     assert.equal(readFileSync(join(ovenPath, "current"), "utf8"), priorPointer);
@@ -235,7 +253,7 @@ test("oven storage rejects escaped overrides and catches a later local-state sym
   const packagePath = join(context.repo, "package.json");
   const outside = join(dirname(context.repo), "outside");
   try {
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", oven: ovenFixture("escaped-oven") }));
     mkdirSync(outside);
     assert.throws(
       () => run(context, "oven", "create", "escaped-oven", "--package", packagePath, "--ovens-dir", outside),
@@ -245,6 +263,7 @@ test("oven storage rejects escaped overrides and catches a later local-state sym
       () => execFileSync(process.execPath, [serverPath, "--stamp", "--ovens-dir", outside], { cwd: context.repo, encoding: "utf8" }),
       (error) => String(error.stderr).includes("escapes repo state"),
     );
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", oven: ovenFixture("allowed-oven") }));
     run(context, "oven", "create", "allowed-oven", "--package", packagePath, "--ovens-dir", outside, "--unsafe-ovens-dir");
     assert.match(
       execFileSync(process.execPath, [serverPath, "--stamp", "--ovens-dir", outside, "--unsafe-ovens-dir"], { cwd: context.repo, encoding: "utf8" }),
@@ -252,6 +271,7 @@ test("oven storage rejects escaped overrides and catches a later local-state sym
     );
     assert.equal(existsSync(join(outside, "allowed-oven", "current")), true);
 
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", oven: ovenFixture("local-oven") }));
     run(context, "oven", "create", "local-oven", "--package", packagePath);
     const defaultOvens = join(context.repo, ".local", "burnlist", "ovens");
     assertCustomOvenPath(context.repo, defaultOvens, "local-oven");
@@ -270,7 +290,7 @@ test("oven storage rejects symlink escapes for its state directory and individua
   const packagePath = join(context.repo, "package.json");
   const outside = join(dirname(context.repo), "outside");
   try {
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Contained Oven\n\nStay in the repo.", oven: ovenFixture("unsafe-oven") }));
     mkdirSync(outside);
     symlinkSync(outside, join(context.repo, ".local"), "dir");
     assert.throws(
@@ -288,7 +308,7 @@ test("oven storage rejects symlink escapes for its state directory and individua
     mkdirSync(ovensDir, { recursive: true });
     mkdirSync(idOutside);
     symlinkSync(idOutside, join(ovensDir, "escaped-oven"), "dir");
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Escaped Oven\n\nNope.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Escaped Oven\n\nNope.", oven: ovenFixture("escaped-oven") }));
     assert.throws(
       () => run(second, "oven", "view", "escaped-oven", "--json"),
       (error) => String(error.stderr).includes("escapes"),
@@ -306,11 +326,11 @@ test("oven view and list read complete packages on both sides of a publish barri
   try {
     const packagePath = join(context.repo, "replacement.json");
     writeFileSync(packagePath, JSON.stringify({
-      instructions: "# Initial Oven\n\nInitial checklist.", detail: detailFixture(),
+      instructions: "# Initial Oven\n\nInitial checklist.", oven: ovenFixture("sample-oven"),
     }));
     run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
     writeFileSync(packagePath, JSON.stringify({
-      instructions: "# Updated Oven\n\nUpdated checklist.", detail: detailFixture(),
+      instructions: "# Updated Oven\n\nUpdated checklist.", oven: ovenFixture("sample-oven"),
     }));
     const writer = pausedUpdate(context, ovensDir, packagePath);
     try {
@@ -336,9 +356,9 @@ test("a killed writer leaves the prior pointer package readable", async () => {
   const ovensDir = join(context.repo, ".local", "burnlist", "ovens");
   try {
     const packagePath = join(context.repo, "replacement.json");
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Initial Oven\n\nInitial checklist.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Initial Oven\n\nInitial checklist.", oven: ovenFixture("sample-oven") }));
     run(context, "oven", "create", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
-    writeFileSync(packagePath, JSON.stringify({ instructions: "# Interrupted Oven\n\nNever published.", detail: detailFixture() }));
+    writeFileSync(packagePath, JSON.stringify({ instructions: "# Interrupted Oven\n\nNever published.", oven: ovenFixture("sample-oven") }));
     const writer = pausedUpdate(context, ovensDir, packagePath);
     try {
       await waitForBarrier(writer);
@@ -350,7 +370,7 @@ test("a killed writer leaves the prior pointer package readable", async () => {
       assert.match(oldView.instructions, /Initial checklist/u);
       assert.equal(oldList.name, "Initial Oven");
       assert.equal(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
-      writeFileSync(packagePath, JSON.stringify({ instructions: "# Recovered Oven\n\nPublished after recovery.", detail: detailFixture() }));
+      writeFileSync(packagePath, JSON.stringify({ instructions: "# Recovered Oven\n\nPublished after recovery.", oven: ovenFixture("sample-oven") }));
       run(context, "oven", "update", "sample-oven", "--package", packagePath, "--ovens-dir", ovensDir);
       assert.match(JSON.parse(run(context, "oven", "view", "sample-oven", "--json", "--ovens-dir", ovensDir)).instructions, /Published after recovery/u);
       assert.notEqual(readFileSync(join(ovensDir, "sample-oven", "current"), "utf8"), priorCurrent);
@@ -364,7 +384,7 @@ test("oven fork writes source revision lineage and discovery exposes it", () => 
   try {
     writeOven(ovensDir, "source-oven");
     const source = JSON.parse(run(context, "oven", "view", "source-oven", "--json", "--ovens-dir", ovensDir));
-    const expectedRevision = ovenRevision({ instructions: source.instructions, detail: source.detail });
+    const expectedRevision = ovenRevision({ id: source.id, instructions: source.instructions, oven: source.oven });
     const output = run(context, "oven", "fork", "source-oven", "forked-oven", "--ovens-dir", ovensDir);
     assert.match(output, new RegExp(`Forked from source-oven@${expectedRevision}`));
     assert.deepEqual(JSON.parse(readFileSync(join(resolveOvenPackageDir(join(ovensDir, "forked-oven")), "oven.json"), "utf8")), {
@@ -383,7 +403,7 @@ test("oven ignores legacy files and accepts only the two-file package layout", (
   try {
     mkdirSync(legacyDir, { recursive: true });
     writeFileSync(join(legacyDir, "definition.md"), "# Legacy Oven\n");
-    writeFileSync(join(legacyDir, "dashboard.json"), JSON.stringify(detailFixture()));
+    writeFileSync(join(legacyDir, "dashboard.json"), JSON.stringify({ legacy: true }));
     writeOven(ovensDir, "two-file-oven");
     const ovens = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir));
     assert.equal(ovens.some((oven) => oven.id === "legacy-only"), false);

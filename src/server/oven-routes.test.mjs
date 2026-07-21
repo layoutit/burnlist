@@ -5,8 +5,9 @@ import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import test from "node:test";
+import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { repoKey } from "./registry.mjs";
-import { detailFixture, httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
+import { httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
 
 test("POST /api/ovens refuses an unignored Git repository without writing an Oven", { timeout: 20_000 }, async () => {
   await withServer({
@@ -20,7 +21,7 @@ test("POST /api/ovens refuses an unignored Git repository without writing an Ove
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
       body: JSON.stringify({
-        id: "unignored-oven", name: "Unignored Oven", instructions: "# Unignored Oven\n\nStay local.", detail: detailFixture(),
+        id: "unignored-oven", name: "Unignored Oven", instructions: "# Unignored Oven\n\nStay local.",
       }),
     });
     assert.equal(response.status, 400);
@@ -175,6 +176,10 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const shared = catalog.ovens.filter((oven) => oven.id === "shared");
     assert.equal(shared.length, 2);
     assert.equal(new Set(shared.map((oven) => oven.repoKey)).size, 2);
+    assert.deepEqual(
+      Object.keys(shared[0]).sort(),
+      ["builtIn", "description", "id", "name", "ovenRevision", "repoKey"],
+    );
     assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
     assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);
 
@@ -183,7 +188,12 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const secondOven = await httpGet(baseUrl, `/api/ovens/shared?repoKey=${second.repoKey}`);
     assert.equal(firstOven.status, 200);
     assert.equal(secondOven.status, 200);
-    assert.notEqual(JSON.parse(firstOven.body).oven.instructions, JSON.parse(secondOven.body).oven.instructions);
+    const firstOvenPackage = JSON.parse(firstOven.body).oven;
+    const secondOvenPackage = JSON.parse(secondOven.body).oven;
+    assert.notEqual(firstOvenPackage.instructions, secondOvenPackage.instructions);
+    assert.equal(firstOvenPackage.oven, starterOvenSource("shared", "Oven A"));
+    assert.equal(typeof firstOvenPackage.ir, "object");
+    assert.equal(Object.hasOwn(firstOvenPackage, "detail"), false);
     // Custom ovens never resolve without their own repository identity.
     const bare = await httpGet(baseUrl, "/api/ovens/shared");
     assert.equal(bare.status, 404);
@@ -202,11 +212,20 @@ test("custom Ovens are identified by repository while built-ins remain global", 
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
       body: JSON.stringify({
-        id: "b-authored", name: "B Authored", instructions: "# B Authored\n\nB only.\n", detail: detailFixture(), repoKey: b.repoKey,
+        id: "b-authored", name: "B Authored", instructions: "# B Authored\n\nB only.\n", repoKey: b.repoKey,
       }),
     });
     assert.equal(authored.status, 201);
-    assert.equal(JSON.parse(authored.body).oven.repoKey, b.repoKey);
+    const authoredOven = JSON.parse(authored.body).oven;
+    assert.equal(authoredOven.repoKey, b.repoKey);
+    assert.match(authoredOven.oven, /<oven id="b-authored"/u);
+    assert.equal(Object.hasOwn(authoredOven, "detail"), false);
+    const authoredRevision = (await readFile(join(authoredOven.path, "current"), "utf8")).trim();
+    assert.equal(
+      await readFile(join(authoredOven.path, authoredRevision, "b-authored.oven"), "utf8"),
+      authoredOven.oven,
+    );
+    assert.equal(existsSync(join(authoredOven.path, "detail.json")), false);
     assert.equal((await httpGet(baseUrl, `/api/ovens/b-authored?repoKey=${b.repoKey}`)).status, 200);
     const created = await httpRequest(baseUrl, "/api/runs", {
       method: "POST",
@@ -427,7 +446,7 @@ test("--ovens-dir applies only to the launch repository custom Ovens", { timeout
       await mkdir(ovenRoot, { recursive: true });
       await Promise.all([
         writeFile(join(ovenRoot, "instructions.md"), "# A Override\n\nLaunch only.\n"),
-        writeFile(join(ovenRoot, "detail.json"), JSON.stringify(detailFixture())),
+        writeFile(join(ovenRoot, "a-override.oven"), starterOvenSource("a-override", "A Override")),
       ]);
     },
   }, async ({ baseUrl }) => {

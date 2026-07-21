@@ -1,0 +1,1 @@
+export { DomainNote } from "./DomainNote";

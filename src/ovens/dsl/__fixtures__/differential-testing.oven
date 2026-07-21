@@ -1,0 +1,160 @@
+<!-- Demonstrates the hardest oven: live DT KPIs, mode branches, log rows, and a searchable,
+     sortable, filterable, pageable field collection. Every interaction is id-wired data. -->
+<oven id="differential-testing"
+      version="1"
+      contract="burnlist-differential-testing-data@1"
+      refresh-seconds="2"
+      theme="differential-testing">
+  <stack id="dt-page" direction="column" gap="md">
+    <grid id="dt-grid" columns="12" rows="14" row-height="64">
+      <panel id="overview" title="Differential Testing"
+             column="1" row="1" column-span="12" row-span="1">
+        <stack direction="row" gap="sm">
+          <refresh-status source="/refresh" optional="true"/>
+          <kpi-strip aria-label="Differential Testing field KPIs">
+            <kpi-item heading="Scenario"
+                      source="/scenarioCatalog/selectedScenarioId"
+                      format="plain">
+              <bind prop="title" source="/subtitle" format="plain"/>
+              <icon slot="visual" name="ClipboardList"/>
+            </kpi-item>
+
+            <kpi-item heading="Progress"
+                      source="/progress"
+                      format="progress-headline">
+              <progress-donut slot="visual"
+                              source="/progress"
+                              format="last-progress-percent"/>
+            </kpi-item>
+
+            <kpi-item heading="Results"
+                      source="/summary/runs/total"
+                      format="number">
+              <burn-donut slot="visual" source="/log"/>
+            </kpi-item>
+
+            <kpi-item heading="Fields"
+                      source="/summary/fields/total"
+                      format="number">
+              <waffle-metric slot="visual" source="/summary/fields"/>
+            </kpi-item>
+
+            <kpi-item heading="Frames"
+                      source="/summary/frames/total"
+                      format="number">
+              <waffle-metric slot="visual" source="/summary/frames"/>
+            </kpi-item>
+          </kpi-strip>
+        </stack>
+      </panel>
+
+      <panel id="run-history" title="Parity Progress"
+             column="1" row="2" column-span="4" row-span="5">
+        <log-table source="/log"
+                   empty-text="No Differential Testing runs.">
+          <column label="Time" source="@item/timestamp" format="time-only"/>
+          <column label="Result" source="@item/result" format="plain"/>
+          <column label="Value" source="@item/value" format="number"/>
+          <column label="Delta" source="@item/delta" format="delta" optional="true"/>
+          <column label="Field" source="@item/firstFailingLabel" format="plain" optional="true"/>
+        </log-table>
+      </panel>
+
+      <panel id="progress-view" title="Parity Progress"
+             column="5" row="2" column-span="8" row-span="5">
+        <mode-toggle id="progress-mode"
+                     initial="delta"
+                     aria-label="Differential Testing progress view">
+          <option value="progress" label="Progress"/>
+          <option value="failed" label="Failed"/>
+          <option value="delta" label="Delta"/>
+        </mode-toggle>
+
+        <switch id="progress-branch" mode-from="progress-mode">
+          <case value="progress">
+            <kpi-item heading="Cleared frames"
+                      source="/progress"
+                      format="progress-headline">
+              <progress-donut slot="visual"
+                              source="/progress"
+                              format="last-progress-percent"/>
+            </kpi-item>
+          </case>
+          <case value="failed">
+            <kpi-item heading="Failed frames"
+                      source="/progress"
+                      format="last-failed-count">
+              <progress-donut slot="visual"
+                              source="/progress"
+                              format="last-failed-percent"/>
+            </kpi-item>
+          </case>
+          <case value="delta">
+            <kpi-item heading="Frame delta"
+                      source="/progress"
+                      format="last-frame-delta">
+              <progress-donut slot="visual"
+                              source="/progress"
+                              format="last-delta-percent"/>
+            </kpi-item>
+          </case>
+        </switch>
+      </panel>
+
+      <panel id="field-details" title="Field Details"
+             column="1" row="7" column-span="12" row-span="8">
+        <section-header title="Fields List"
+                        source="/summary/fields/total"
+                        format="number"/>
+
+        <field-toolbar id="field-controls">
+          <search id="field-search"
+                  placeholder="Search Fields..."
+                  aria-label="Differential Testing search fields"
+                  match-fields="/label /sourceOwner /driftClass /semantics/kind"
+                  debounce-ms="150"/>
+          <mode-toggle id="value-mode"
+                       initial="delta"
+                       aria-label="Differential Testing chart mode">
+            <option value="current" label="Value"/>
+            <option value="delta" label="Delta"/>
+          </mode-toggle>
+          <sort-toggle id="changed-sort"
+                       key="changed"
+                       label="Changed"
+                       initial="on"
+                       requires-source="/telemetry/status"
+                       requires-value="comparable"
+                       unavailable-text="Changed is unavailable until comparable transition telemetry is published."/>
+          <filter-toggle id="failed-filter"
+                         key="non-pass"
+                         label="Failed"
+                         initial="off"/>
+        </field-toolbar>
+
+        <collection id="field-view"
+                    source="/fields"
+                    item-key="/id"
+                    search-from="field-search"
+                    sort-from="changed-sort"
+                    filter-from="failed-filter"
+                    paging="auto"
+                    page-size="25">
+          <field-list collection-from="field-view"
+                      mode-from="value-mode">
+            <bind prop="telemetryByField"
+                  source="/telemetry/fields"
+                  format="index-by-id"
+                  optional="true"/>
+            <bind prop="telemetryAvailability"
+                  source="/telemetry"
+                  format="telemetry-availability"
+                  optional="true"/>
+          </field-list>
+          <pagination collection-from="field-view"
+                      page-sizes="25 50 100 200"/>
+        </collection>
+      </panel>
+    </grid>
+  </stack>
+</oven>

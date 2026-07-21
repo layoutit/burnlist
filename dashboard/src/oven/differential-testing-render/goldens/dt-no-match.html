@@ -1,0 +1,962 @@
+  <main id="burnlist-detail" class="detail-view">
+    <section class="differential-overview" id="differential-overview">
+      <div class="work-panel-head differential-overview-head"><div class="differential-overview-meta"><span id="differential-refresh-status" class="differential-refresh-status complete" title="" hidden></span><time id="differential-overview-time" class="label-toggle differential-tabs" datetime="2026-01-01T12:00:00.000Z"><span>Jan 1, 2026</span><span class="sep" aria-hidden="true">·</span><span>12:00:00 PM</span></time></div></div>
+      <div class="driving-parity-kpi-strip has-burns" id="driving-parity-kpi-strip" aria-label="Differential Testing field KPIs"><div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-scenario" title="reference-fixture / candidate-fixture · Jan 1, 2026, 12:00:00 PM"><svg class="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading differential-scenario-heading">Scenario</span><span class="driving-parity-kpi-ratio"><span class="differential-scenario-control"><select id="differential-scenario-selector" aria-label="Differential Testing scenario" disabled><option value="135b757802521cd1" selected>135b757802521cd1</option></select></span></span></div></div><div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title="0 of 3 exact-prefix frames cleared"><svg class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-progress-donut-track" cx="29" cy="29" r="21"/><circle class="driving-parity-kpi-progress-donut-segment" cx="29" cy="29" r="21" pathLength="100" transform="rotate(-90 29 29)" stroke-dasharray="0.000 100.000"/></svg><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Progress</span><span class="driving-parity-kpi-ratio"><span class="fail">3</span><span class="separator">·</span><span class="pass">0 (0%)</span></span></div></div><div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-burns" title="Results across the current Differential Testing run"><svg class="driving-parity-kpi-gauge driving-parity-kpi-burns-donut" viewBox="0 0 58 58" aria-hidden="true"><circle class="driving-parity-kpi-burns-donut-track" cx="29" cy="29" r="21" opacity="0"/><circle class="driving-parity-kpi-burns-donut-segment improved" cx="29" cy="29" r="21" pathLength="100" transform="rotate(-90 29 29)" stroke-dasharray="100.000 0.000" stroke-dashoffset="0.000"/></svg><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Results</span><span class="driving-parity-kpi-ratio driving-parity-kpi-burns-summary"><span class="neutral">0</span><span class="separator">·</span><span class="reverted">0</span><span class="separator">·</span><span class="worsened">0</span><span class="separator">·</span><span class="improved">1 (100%)</span></span></div></div><div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-fields" title="0% failed fields"><canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="0" data-empty="false"></canvas><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Fields</span><span class="driving-parity-kpi-ratio"><span class="total">2</span><span class="separator">·</span><span class="fail">0 (0%)</span></span></div></div><div class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-frames" title="0% failed frames"><canvas class="driving-parity-kpi-waffle" aria-hidden="true" data-failed-cells="0" data-empty="false"></canvas><div class="driving-parity-kpi-text"><span class="driving-parity-kpi-heading">Frames</span><span class="driving-parity-kpi-ratio"><span class="total">6</span><span class="separator">·</span><span class="fail">0 (0%)</span></span></div></div></div>
+    </section>
+    <div class="detail-workspace" id="detail-workspace" data-detail-tab="dashboard">
+      <div class="detail-report-column">
+        <section class="top" id="detail-top-stack">
+          <div class="panel progress-panel">
+            <div class="panel-title-row">
+              <div class="progress-title-group">
+                <h2 id="progress-panel-title">Parity Progress</h2>
+                <span id="driving-parity-progress-summary" class="driving-parity-summary driving-parity-progress-summary" hidden></span>
+              </div>
+              <div class="chart-tools">
+                <div class="label-toggle progress-chart-toggle differential-tabs" aria-label="Burnlist progress chart view">
+                  <button type="button" class="standard-progress-mode" data-progress-chart-mode="progress">Progress</button>
+                  <span class="sep progress-chart-mode-sep standard-progress-sep" aria-hidden="true">|</span>
+                  <button type="button" data-progress-chart-mode="failed" aria-pressed="false"><span class="standard-failed-label">Failed</span><span class="driving-parity-progress-label">Value</span></button>
+                  <span class="sep progress-chart-mode-sep driving-parity-progress-only" aria-hidden="true">·</span>
+                  <button type="button" class="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed="true">Delta</button>
+                </div>
+                <div class="label-toggle progress-time-scale-toggle" aria-label="Burn progress time scale">
+                  <button type="button" data-progress-time-scale="all" title="Show elapsed time">All</button>
+                  <span class="sep" aria-hidden="true">·</span>
+                  <button type="button" data-progress-time-scale="compact" title="Compress inactive time">Compact</button>
+                </div>
+                <button type="button" class="chart-reset" id="chart-reset" hidden>Reset</button>
+              </div>
+            </div>
+            <div class="score">
+              <div class="progress-topline">
+                <div class="stat">
+                  <div class="stat-label">Tasks</div>
+                  <div class="headline" id="progress-headline">0/0</div>
+                </div>
+                <div class="stat center" title="Elapsed wall-clock time since the first available tracker snapshot.">
+                  <div class="stat-label">Elapsed</div>
+                  <div class="elapsed" id="elapsed-time">--</div>
+                </div>
+                <div class="stat center" title="Average item pace from completed ledger intervals plus the current active item age as an in-progress sample. Uses B0 as the start anchor when present.">
+                  <div class="stat-label">Pace</div>
+                  <div class="pace" id="avg-pace">--</div>
+                </div>
+                <div class="stat right">
+                  <div class="stat-label">Done</div>
+                  <div class="percent" id="progress-percent">0%</div>
+                </div>
+              </div>
+              <div class="warnings" id="warnings" hidden></div>
+              <div class="bar" id="bar" aria-label="Burnlist completion segments"></div>
+              <div class="chart-wrap">
+                <svg class="chart" id="progress-chart" viewBox="0 0 640 200" role="img" aria-label="Completion percentage over time"></svg>
+                <div class="completion-confetti" id="completion-confetti" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+          <section class="panel work-panel" id="detail-work-panel" data-work-tab="log">
+            <div class="work-panel-head">
+              <div class="work-panel-title">Parity Progress</div>
+              <div class="label-toggle work-panel-tabs" aria-label="Burnlist work panel">
+                <button type="button" data-work-panel-tab="timeline">Timeline</button>
+                <span class="sep timeline-tab-sep" aria-hidden="true">|</span>
+                <button type="button" data-work-panel-tab="target">Target</button>
+                <span class="sep" aria-hidden="true">|</span>
+                <button type="button" data-work-panel-tab="log">Log</button>
+              </div>
+              <div class="work-panel-tools">
+                <div class="work-tab-tools timeline-tab-tools">
+                  <div class="timeline-step" aria-label="Active item navigation">
+                    <button type="button" data-timeline-step="-1">Prev</button>
+                    <span class="sep" aria-hidden="true">|</span>
+                    <button type="button" data-timeline-step="1">Next</button>
+                  </div>
+                  <div class="label-toggle timeline-controls" aria-label="Burnlist timeline view">
+                    <button type="button" data-timeline-mode="all">All</button>
+                    <span class="sep" aria-hidden="true">|</span>
+                    <button type="button" data-timeline-mode="active">Active</button>
+                  </div>
+                </div>
+                <div class="work-tab-tools target-tab-tools">
+                  <label class="log-file-toggle" title="Run delayed code-change summaries and show them in Target.">
+                    <input type="checkbox" id="target-summaries-toggle" />
+                    <span>Summaries</span>
+                  </label>
+                </div>
+                <div class="work-tab-tools log-tab-tools">
+                  <label class="log-file-toggle" title="Show file-created, file-changed, and file-deleted log rows.">
+                    <input type="checkbox" id="log-file-changes-toggle" />
+                    <span>File changes</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="work-panel-body">
+              <div class="work-tab-pane" data-work-tab-pane="timeline" hidden>
+                <div class="timeline" id="timeline"></div>
+              </div>
+              <div class="work-tab-pane" data-work-tab-pane="target" hidden>
+                <div class="target-panel" id="active-context-target"></div>
+              </div>
+              <div class="work-tab-pane" data-work-tab-pane="log">
+                <div class="checklist-log" id="checklist-log"><div class="checklist-log-list"><div class="checklist-log-table-header"><span>Age</span><span>Frame</span><span>Result</span><span>Delta</span><span>Done</span></div><article class="log-row unchanged no-detail log-table-row"><span class="log-table-cell age">30m</span><span class="log-table-cell failed unchanged">—</span><span class="log-table-cell result unchanged">—</span><span class="log-table-cell delta unchanged">—</span><span class="log-table-cell done">—</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article><article class="log-row no-detail log-table-row log-placeholder-row" aria-hidden="true"><span class="log-table-cell age">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span><span class="log-table-cell">.</span></article></div></div>
+              </div>
+            </div>
+          </section>
+        </section>
+      </div>
+      <aside class="panel detail-repo-graph-panel" id="detail-repo-graph-panel" hidden>
+        <div class="detail-repo-graph-head">
+          <h2>Repo Graph</h2>
+          <div class="detail-repo-graph-controls">
+            <select class="repo-map-scope" id="detail-repo-map-scope" aria-label="Detail repo graph folder focus"></select>
+          </div>
+          <select class="repo-map-zoom" id="detail-repo-map-zoom" aria-label="Detail repo graph zoom">
+            <option value="1">1x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+          <label class="repo-map-label-toggle" title="Show file-name labels for file bubbles">
+            <input type="checkbox" class="repo-map-label-checkbox" id="detail-repo-map-labels">
+            Labels
+          </label>
+          <div class="repo-map-meta" id="detail-repo-map-meta"></div>
+        </div>
+        <svg class="repo-map detail-repo-map" id="detail-repo-map" viewBox="0 0 1000 520" role="img" aria-label="Repository file graph focused on src"></svg>
+      </aside>
+      <section class="panel focused-functions-panel" id="focused-functions-panel" hidden>
+        <div class="focused-functions-head">
+          <h2>Changes</h2>
+          <div class="focused-functions-actions">
+            <select class="changes-show" id="changes-show" aria-label="Changes shown">
+              <option value="all">All</option>
+              <option value="10">Last 10</option>
+              <option value="30">Last 30</option>
+            </select>
+            <button class="changes-collapse-all" id="changes-collapse-all" type="button">Collapse all</button>
+            <div class="focused-functions-meta" id="focused-functions-meta"></div>
+          </div>
+        </div>
+        <div class="focused-functions-list" id="focused-functions-list"></div>
+      </section>
+    </div>
+  </main>
+  <footer class="detail-meta-footer meta-row plan-meta-row" id="detail-meta-footer">
+    <code id="detail-plan-label"></code>
+    <span class="last-read-inline">Last read: <span id="detail-last-read">...</span></span>
+  </footer>
+  <main id="driving-parity-page" class="driving-parity-page">
+    <div class="driving-parity-toolbar meta-row plan-meta-row">
+      <h2 id="driving-parity-summary" class="driving-parity-summary">Fields List<span class="field-list-count">(2)</span></h2>
+      <div id="driving-parity-controls" class="driving-parity-controls">
+	        <input id="driving-parity-field-search" type="search" placeholder="Search Fields..." aria-label="Differential Testing search fields">
+	        <span class="control-sep" aria-hidden="true">|</span>
+	        <div id="driving-parity-chart-toggle" class="chart-toggle differential-tabs" role="group" aria-label="Differential Testing chart mode">
+	          <button type="button" data-driving-parity-chart="current" aria-label="Value chart view" title="Value chart view" aria-pressed="false">Value</button>
+	          <span class="sep" aria-hidden="true">·</span>
+	          <button type="button" data-driving-parity-chart="delta" aria-label="Delta chart view" title="Delta chart view" aria-pressed="true">Delta</button>
+	        </div>
+	        <span class="control-sep" aria-hidden="true">|</span>
+	        <div id="driving-parity-sort-toggle" class="chart-toggle sort-toggle differential-tabs" role="group" aria-label="Differential Testing sort">
+	          <button type="button" data-driving-parity-sort="improved" aria-pressed="false" disabled title="Changed is unavailable until comparable transition telemetry is published.">Changed</button>
+        </div>
+        <span class="control-sep" aria-hidden="true">|</span>
+	        <div id="driving-parity-filter-toggle" class="chart-toggle filter-toggle differential-tabs" role="group" aria-label="Differential Testing field filter">
+	          <button type="button" data-driving-parity-filter="failing" aria-pressed="true">Failed</button>
+	        </div>
+      </div>
+    </div>
+    <section class="driving-parity-inline-renderer" id="driving-parity-inline-renderer">
+<style>.driving-parity-inline-renderer { min-width: 0; } .driving-parity-inline-renderer > main { min-width: 0; }</style>
+<style>
+    :root {
+      color-scheme: dark;
+      --bg: #000000;
+      --panel: #111111;
+      --card: #111111;
+      --line: #262626;
+      --muted: #a8a8a8;
+      --text: var(--muted);
+      --blue: #60a5fa;
+      --yellow: #f6c95f;
+      --red: #ef4444;
+      --red-muted: rgba(239, 68, 68, 0.78);
+      --green: #61d394;
+      --dashboard-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: transparent;
+      color: var(--text);
+      font: 14px/1.45 var(--dashboard-font);
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    h1,
+    strong {
+      font-weight: 400;
+    }
+    .sub {
+      color: var(--text);
+      margin-top: 0;
+      white-space: normal;
+    }
+    .sub .run-status {
+      color: var(--red-muted);
+    }
+    .sub .run-status.pass {
+      color: var(--text);
+    }
+    .sub .run-frames {
+      color: var(--text);
+    }
+    .sub .metric-red {
+      color: var(--red-muted);
+    }
+    .sub .metric-yellow {
+      color: var(--text);
+    }
+    .sub .metric-blue {
+      color: var(--text);
+    }
+    main {
+      padding: 0;
+    }
+    .legend {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      align-items: center;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: end;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .filter-control {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+    }
+    .accordion-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .accordion-actions button {
+      color: var(--muted);
+    }
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--muted);
+    }
+    .pagination[hidden] {
+      display: none;
+    }
+    .pagination-status {
+      min-width: 78px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    button {
+      color: var(--text);
+      background: #171717;
+      border: 1px solid var(--line);
+      border-radius: 1px;
+      padding: 4px 7px;
+      font: inherit;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    button:not(:disabled):hover,
+    select:hover {
+      border-color: #333333;
+      background: #1c1c1c;
+    }
+    select,
+    input[type="search"] {
+      color: var(--text);
+      background: #171717;
+      border: 1px solid var(--line);
+      border-radius: 1px;
+      padding: 4px 22px 4px 7px;
+      font: inherit;
+      line-height: 1.2;
+    }
+    select {
+      color-scheme: dark;
+      cursor: pointer;
+    }
+    select option {
+      background: #111111;
+      color: #e8e8e8;
+    }
+    input[type="search"] {
+      width: 150px;
+      padding-right: 7px;
+    }
+    #view-mode { width: 112px; }
+    #sort-mode { width: 116px; }
+    #field-filter { width: 158px; }
+    #group-filter { width: 142px; }
+    #page-size { width: 68px; }
+    select:focus,
+    input[type="search"]:focus {
+      outline: none;
+      border-color: var(--blue);
+      background: #1c1c1c;
+    }
+    button[aria-pressed="true"] {
+      border-color: var(--blue);
+      background: #1c1c1c;
+    }
+    .rows {
+      display: grid;
+      gap: 0;
+      background: transparent;
+    }
+    .rows-view {
+      display: grid;
+      gap: 0;
+    }
+    .rows-view[hidden] {
+      display: none;
+    }
+    .row-group {
+      display: grid;
+      gap: 0;
+    }
+    .group-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+      align-items: stretch;
+    }
+    .group-toggle {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 7px 10px;
+      text-align: left;
+      background: #171717;
+      border-color: var(--line);
+    }
+    .group-toggle:hover,
+    .group-toggle:focus {
+      outline: none;
+      border-color: #333333;
+      background: #1c1c1c;
+    }
+    .group-action {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .group-action:hover,
+    .group-action:focus {
+      outline: none;
+      border-color: #333333;
+      background: #1c1c1c;
+    }
+    .group-caret {
+      width: 14px;
+      color: var(--muted);
+    }
+    .group-caret::before {
+      content: "v";
+    }
+    .row-group.collapsed .group-caret::before {
+      content: ">";
+    }
+    .group-toggle strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .group-toggle span:last-child {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .group-body {
+      display: grid;
+      gap: 0;
+    }
+    .row-group.collapsed .group-body {
+      display: none;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 1px;
+    }
+	    .field-table {
+	      width: 100%;
+	      border-collapse: collapse;
+	      table-layout: fixed;
+	      min-width: 760px;
+	    }
+	    .table-col-status { width: 74px; }
+	    .table-col-fail { width: 78px; }
+	    .table-col-delta { width: 74px; }
+	    .table-col-chart { width: 340px; }
+	    .field-table th,
+	    .field-table td {
+	      padding: 6px 10px;
+	      border-bottom: 1px solid var(--line);
+	      text-align: left;
+	      vertical-align: middle;
+	    }
+	    .field-table tbody tr {
+	      height: 36px;
+	    }
+	    .field-table tbody td {
+	      padding-top: 0;
+	      padding-bottom: 0;
+	    }
+	    .field-table th {
+	      color: var(--muted);
+	      font-weight: 400;
+		      background: #171717;
+	      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .field-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+	    .field-table tbody tr:hover {
+	      background: rgba(96, 165, 250, 0.055);
+	    }
+	    .table-status {
+	      white-space: nowrap;
+	      color: var(--muted);
+	    }
+	    .field-table tr.pass .table-status,
+	    .table-good {
+	      color: var(--green);
+    }
+    .field-table tr.fail .table-status,
+    .table-bad {
+      color: var(--red);
+    }
+	.hybrid-list {
+	  display: grid;
+	  gap: 0;
+	  min-width: 760px;
+	}
+	.hybrid-row {
+	  display: grid;
+	  grid-template-columns: 20% 10% minmax(0, 70%);
+	  align-items: stretch;
+	  height: 90px;
+	  content-visibility: auto;
+	  contain-intrinsic-size: 90px;
+	  margin-bottom: 6px;
+	  background: var(--card);
+	  border-radius: 8px;
+	  overflow: hidden;
+	  cursor: pointer;
+	}
+	.hybrid-row.expanded {
+	  height: 220px;
+	  contain-intrinsic-size: 220px;
+	}
+	.hybrid-row:focus-visible {
+	  outline: 1px solid var(--blue);
+	  outline-offset: -1px;
+	}
+	.hybrid-row:hover .hybrid-cell {
+	  background: #1c1c1c;
+	}
+	.hybrid-row:last-child {
+	  margin-bottom: 0;
+	}
+	.hybrid-cell {
+	  min-width: 0;
+	  display: flex;
+	  align-items: center;
+	  padding: 10px 12px;
+	  color: var(--muted);
+	  line-height: 1.25;
+	}
+	.hybrid-count,
+	.hybrid-delta,
+	.hybrid-value-delta {
+	  white-space: nowrap;
+	  font-variant-numeric: tabular-nums;
+	}
+	.hybrid-metric {
+	  flex-direction: column;
+	  align-items: flex-end;
+	  justify-content: flex-start;
+	  gap: 0;
+	  padding-right: 17px;
+	  color: rgba(210,216,224,.62);
+	  text-align: right;
+	}
+	.hybrid-field {
+	  display: grid;
+	  grid-template-rows: minmax(0, 1fr) auto;
+	  align-items: flex-start;
+	  gap: 4px;
+	  overflow: hidden;
+	}
+	.hybrid-field .table-field-label {
+	  min-width: 0;
+	  overflow: hidden;
+	}
+	.hybrid-field .table-field-label {
+	  display: block;
+	  width: 100%;
+	  line-height: 1.25;
+	  overflow-wrap: normal;
+	  text-overflow: clip;
+	  text-wrap: pretty;
+	  word-break: normal;
+	  white-space: normal;
+	}
+	.hybrid-field-segment,
+	.hybrid-field-tail {
+	  display: block;
+	  width: 100%;
+	  overflow: hidden;
+	  text-overflow: ellipsis;
+	  white-space: nowrap;
+	}
+	.hybrid-status {
+	  flex: 0 0 auto;
+	  font-size: 12px;
+	  line-height: 1.25;
+	}
+	.hybrid-row.pass .hybrid-status { color: var(--green); }
+	.hybrid-row.fail .hybrid-status { color: var(--red-muted); }
+	.hybrid-count {
+	  width: 100%;
+	  text-align: right;
+	}
+	.hybrid-delta {
+	  display: inline-flex;
+	  align-items: center;
+	  justify-content: flex-end;
+	  gap: 6px;
+	  width: 100%;
+	}
+	.hybrid-delta-symbol {
+	  flex: 0 0 auto;
+	  font-size: 13px;
+	  line-height: 1;
+	  transform: translateY(-1px);
+	}
+	.hybrid-value-delta {
+	  width: 100%;
+	  color: inherit;
+	  text-align: right;
+	}
+	.hybrid-delta.up { color: var(--green); }
+	.hybrid-delta.down { color: var(--red-muted); }
+	.hybrid-chart {
+	  min-width: 0;
+	  height: 100%;
+	  overflow: hidden;
+	}
+	.hybrid-chart > .plot,
+	.hybrid-chart > svg {
+	  width: 100%;
+	  height: 100%;
+	}
+	@media (max-width: 520px) {
+	  .hybrid-list {
+	    min-width: 0;
+	  }
+	  .hybrid-row {
+	    height: 180px;
+	    contain-intrinsic-size: 180px;
+	    grid-template-columns: minmax(0, 62%) minmax(88px, 38%);
+	    grid-template-rows: 90px 90px;
+	  }
+	  .hybrid-row.expanded {
+	    height: 260px;
+	    contain-intrinsic-size: 260px;
+	    grid-template-rows: 90px 170px;
+	  }
+	  .hybrid-cell {
+	    padding: 8px 10px;
+	  }
+	  .hybrid-metric {
+	    padding-right: 15px;
+	  }
+	  .hybrid-chart {
+	    grid-column: 1 / -1;
+	    grid-row: 2;
+	  }
+	}
+	    .table-field {
+	      color: var(--muted);
+	      min-width: 0;
+	    }
+	    .table-field-inner {
+	      display: flex;
+	      align-items: baseline;
+	      gap: 8px;
+	      min-width: 0;
+	    }
+	    .table-group-tag {
+	      flex: 0 0 auto;
+	      max-width: 13ch;
+	      overflow: hidden;
+	      text-overflow: ellipsis;
+	      white-space: nowrap;
+	      color: var(--muted);
+	    }
+	    .table-field-label {
+	      flex: 1 1 auto;
+	      min-width: 0;
+	      overflow: hidden;
+	      text-overflow: ellipsis;
+	      white-space: nowrap;
+	      color: var(--muted);
+	    }
+	    .table-muted {
+	      color: var(--muted);
+	      white-space: nowrap;
+	    }
+	    .table-count,
+	    .table-delta {
+	      color: var(--muted);
+	      text-align: right;
+	      white-space: nowrap;
+	      font-variant-numeric: tabular-nums;
+	    }
+	    .table-chart {
+	      padding: 0;
+	    }
+	    .table-spark {
+	      display: block;
+	      width: 100%;
+	      height: 36px;
+	      min-height: 36px;
+	      background: transparent;
+	    }
+	    .table-delta.up {
+	      color: var(--green);
+	    }
+	    .table-delta.down {
+	      color: var(--red);
+	    }
+    .coverage {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 1px;
+    }
+    .coverage:empty {
+      display: none;
+    }
+    .coverage strong {
+      color: var(--text);
+    }
+    .coverage-groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 6px;
+    }
+    .coverage-group {
+      appearance: none;
+      text-align: left;
+      padding: 7px 8px;
+      background: #171717;
+      border: 1px solid var(--line);
+      border-radius: 1px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .coverage-group strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+    .coverage-group span {
+      color: var(--muted);
+    }
+    .coverage-group[aria-pressed="true"] {
+      border-color: var(--red);
+      background: #25131a;
+    }
+    .coverage-group:hover {
+      border-color: #333333;
+      background: #1c1c1c;
+    }
+    .coverage-group[aria-pressed="true"]:hover {
+      border-color: var(--red);
+      background: #25131a;
+    }
+    .row {
+      --field-red: var(--red-muted);
+      --field-green: rgba(97, 211, 148, 0.75);
+      display: grid;
+      grid-template-columns: 196px minmax(260px, 1fr);
+      height: 98px;
+      content-visibility: auto;
+      contain-intrinsic-size: 98px;
+      border: 0;
+      background: #0f0f0f;
+      border-radius: 0;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .row + .row {
+      border-top: 0;
+    }
+    .row > .label {
+      border-top: 1px solid rgba(168, 168, 168, 0.12);
+    }
+    .row > .plot {
+      border-top: 1px solid rgba(232, 232, 232, 0.15);
+    }
+    .row.expanded {
+      height: 220px;
+      contain-intrinsic-size: 220px;
+      cursor: pointer;
+    }
+    .row[data-row-expand-key]:hover {
+      border-color: #333333;
+    }
+    .row[data-row-expand-key]:hover .label {
+      background: #1c1c1c;
+    }
+    .row:focus-visible {
+      outline: 1px solid var(--blue);
+      outline-offset: 2px;
+    }
+    .label {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-rows: auto auto auto;
+      align-items: start;
+      align-content: start;
+      gap: 4px;
+      min-width: 0;
+      min-height: 0;
+      padding: 9px 10px 7px 0;
+      border-right: 0;
+      background: var(--card);
+      overflow: hidden;
+    }
+    .label strong {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-height: 0;
+      max-height: 1.25em;
+      font-size: 14px;
+      color: var(--text);
+      margin: 0;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .row.expanded .label strong {
+      display: block;
+    }
+    .label span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+    .label strong + span {
+      margin-top: 1px;
+    }
+	    .label .improvement {
+	      margin-top: 0;
+	      color: var(--muted);
+	      overflow: hidden;
+	      text-overflow: ellipsis;
+	    }
+	    .label .improvement span {
+	      display: inline;
+	    }
+	    .label .improvement .frame-delta.up {
+	      color: var(--field-green);
+	    }
+	    .label .improvement .frame-delta.down {
+	      color: var(--field-red);
+	    }
+	    .label .improvement .frame-delta.zero,
+	    .label .improvement .delta-sep,
+	    .label .improvement .value-delta {
+	      color: var(--muted);
+	    }
+	    .row.pass .label > span {
+	      color: var(--field-green);
+	    }
+	    .row.fail .label > span {
+	      color: var(--field-red);
+	    }
+	    .row.pass .label .improvement .frame-delta.up,
+	    .row.fail .label .improvement .frame-delta.up {
+	      color: var(--field-green);
+	    }
+	    .row.pass .label .improvement .frame-delta.down,
+	    .row.fail .label .improvement .frame-delta.down {
+	      color: var(--field-red);
+	    }
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 58px;
+      background: transparent;
+    }
+    .plot {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 58px;
+      overflow: hidden;
+      background: #0f0f0f;
+    }
+    .row .plot > svg {
+      background: #0f0f0f;
+    }
+    .frame-tick-label {
+      position: absolute;
+      top: 5px;
+      color: rgba(168, 168, 168, 0.5);
+      font-size: 12px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+      transform: translateX(-50%);
+      user-select: none;
+      white-space: nowrap;
+    }
+    .row.pass .plot {
+      background: transparent;
+    }
+    .row.fail .plot {
+      background: transparent;
+    }
+    .plot-marker {
+      position: absolute;
+      border-radius: 1px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .row:not(.expanded) .plot-marker {
+      display: none;
+    }
+    .plot-marker.browser {
+      width: 5.4px;
+      height: 5.4px;
+      background: var(--blue);
+    }
+    .plot-marker.native {
+      width: 5.2px;
+      height: 5.2px;
+      background: var(--green);
+    }
+    .plot-marker.match {
+      width: 5.4px;
+      height: 5.4px;
+      background: var(--green);
+    }
+    .plot-marker.fail {
+      width: 5.4px;
+      height: 5.4px;
+      background: var(--red);
+    }
+    .empty {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 1px;
+      color: var(--muted);
+    }
+  </style>
+  <main>
+    <div class="legend">
+      <div class="filters">
+        <label class="filter-control">
+          <select id="sort-mode" aria-label="sort cards">
+            <option value="default">Default</option>
+            <option value="improved" selected>Changed</option>
+            <option value="target">Target</option>
+            <option value="failing">Failing</option>
+            <option value="frames">Frames</option>
+            <option value="group">Group</option>
+            <option value="name">Name</option>
+            <option value="type">Type</option>
+          </select>
+        </label>
+        <label class="filter-control">
+          <select id="field-filter" aria-label="field filter">
+            <option value="all">All</option>
+            <option value="tested">Tested</option>
+            <option value="failing">Failing</option>
+            <option value="missing">Uncovered</option>
+            <option value="nulls">Nulls</option>
+            <option value="inactive">Inactive</option>
+            <option value="materialized">Materialized</option>
+          </select>
+        </label>
+        <label class="filter-control">
+          <input type="search" id="field-search" aria-label="search fields" placeholder="Search fields">
+        </label>
+        <label class="filter-control">
+          <select id="group-filter" aria-label="signal group filter">
+            <option value="all">All groups</option>
+          </select>
+        </label>
+        <label class="filter-control">
+          <select id="page-size" aria-label="rows per page">
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+        <div class="pagination" id="pagination" hidden>
+          <button type="button" id="page-prev" aria-label="previous page">Prev</button>
+          <span class="pagination-status" id="page-status">0-0 / 0</span>
+          <button type="button" id="page-next" aria-label="next page">Next</button>
+        </div>
+        <div class="accordion-actions">
+          <button type="button" id="collapse-groups">Collapse all</button>
+          <button type="button" id="expand-groups">Expand all</button>
+        </div>
+      </div>
+    </div>
+    <section class="coverage" id="coverage"></section>
+    <div class="rows" id="rows">
+      <div class="rows-view" id="hybrid-rows"><div class="empty">No fields match the current view.</div></div>
+    </div>
+  </main>
+    </section>
+    <div id="driving-parity-pagination" class="driving-parity-controls driving-parity-pagination" hidden><select id="driving-parity-page-size" aria-label="Differential Testing rows per page"><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option><option value="200">200</option></select><button type="button" id="driving-parity-page-prev" aria-label="Differential Testing previous page" disabled>Prev</button><span class="page-status" id="driving-parity-page-status">0-0 / 0</span><button type="button" id="driving-parity-page-next" aria-label="Differential Testing next page" disabled>Next</button></div>
+  </main>

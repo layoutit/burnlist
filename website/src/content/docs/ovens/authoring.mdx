@@ -1,0 +1,201 @@
+---
+title: Create your own oven
+description: Author, bind, and view a declarative custom Oven.
+---
+
+An Oven author supplies declarative rendering data; the project continues to own
+the read-only data producer and its evidence.
+
+## Closed contract, theme, and icon allowlist
+
+**A custom Oven cannot define a new contract, theme, or icon.** It must reuse a
+built-in contract-and-theme pair. For a generic KPI-and-table Oven over arbitrary
+project JSON, use `contract="checklist-progress@1"` and `theme="checklist"`.
+Unknown values are rejected when creating the Oven:
+
+```text
+burnlist oven: Oven <id> .oven source is invalid: Unknown theme <x>
+burnlist oven: Oven <id> .oven source is invalid: Unknown contract <x>
+```
+
+| Registry | Exact allowed values |
+| --- | --- |
+| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| Themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
+| Icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
+
+The matching specialized widgets and formats belong to their specialized
+contracts. Generic Ovens should use `kpi-strip`/`kpi-item`, `section-header`,
+`log-table`/`column`, and the generic formats in the [.oven DSL reference](/ovens/dsl-reference).
+
+## 1. Initialize the repository
+
+Run `burnlist init` before creating an Oven. In a Git repository, creation
+refuses to write until `.local/` is ignored:
+
+```text
+burnlist oven: refusing to write .local/burnlist/ovens: not git-ignored; run `burnlist init` or add it to .gitignore
+```
+
+`burnlist init` fixes that prerequisite and registers the repository as a
+dashboard scan root:
+
+```text
+Initialized 4 lifecycle folders in <repo>.
+Ignored /notes/burnlists/ and /.local/ locally.
+Registered <repo>.
+```
+
+It locally ignores `/.local/` and `/notes/burnlists/`. In a non-Git directory,
+the ignore step is skipped and creation works because the gate applies only in a
+Git repository that does not ignore the path.
+
+## 2. Author the Oven and its data document
+
+Create an instructions file with a level-one heading, then author a `.oven`
+file named for its id. The root needs `id`, `version`, `contract`, and `theme`;
+`refresh-seconds` is optional. The Oven declares pointers into one read-only
+JSON document; it cannot execute code or transform project data.
+
+Here is a complete generic `deploy-status` Oven, `kpi.oven`:
+
+```xml
+<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+  <section-header title="Deploy status"/>
+  <kpi-strip>
+    <kpi-item heading="Service" source="/service"/>
+    <kpi-item heading="Healthy" source="/healthyPct" format="percent"/>
+    <kpi-item heading="Last deploy" source="/deployedAt" format="relative-age"/>
+  </kpi-strip>
+  <log-table source="/events"><column label="Event" source="@item"/></log-table>
+</oven>
+```
+
+Its bound data file, `deploy-data.json`, can be arbitrary JSON as long as it
+matches the Oven's `source=` and `<bind source=>` [RFC 6901 JSON pointers](https://www.rfc-editor.org/rfc/rfc6901):
+
+```json
+{
+  "service": "checkout-api",
+  "healthyPct": 0.96,
+  "deployedAt": "2026-07-20T09:00:00Z",
+  "events": ["09:00 deploy started", "09:02 healthy", "09:05 traffic shifted"]
+}
+```
+
+Here, `healthyPct` renders as `"96.00%"`; `deployedAt` renders as a compact age
+such as `"3h"`. Generic checklist-theme Ovens do not validate payload shape at
+creation. Pointers resolve when viewed, and missing pointers render as empty or
+fallback values.
+
+The small Streaming Diff illustration uses its matching built-in pair:
+
+```xml
+<oven id="streaming-diff" version="1"
+      contract="burnlist-streaming-diff-data@2" theme="streaming-diff">
+  <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
+  <diff-card source="/cards"/>
+</oven>
+```
+
+## 3. Create the custom Oven
+
+Create from separate instructions and Oven files:
+
+```sh
+burnlist oven create <id> --instructions <file|-> [--oven <file|->] [--name <text>]
+```
+
+Other inputs are available:
+
+```sh
+burnlist oven create <id> --dir <dir>
+burnlist oven create <id> --package <file|->
+burnlist oven update <id> [same inputs as create]
+```
+
+`--dir` reads `instructions.md` and `<id>.oven`; `--package` reads JSON with
+`{name?, instructions, oven}`. `-` accepts stdin. Use `--force` to replace an
+existing custom Oven, and `--repo <path>` to select the repository's storage or
+bindings.
+
+## Binding & viewing
+
+Bind an Oven to its JSON payload, inspect bindings, remove one, or copy an Oven:
+
+```sh
+burnlist oven bind <id> <path> [--repo <path>]
+burnlist oven bindings [--repo <path>]
+burnlist oven unbind <id> [--repo <path>]
+burnlist oven fork <id> <newId>
+```
+
+`bind` stores the path as supplied in `.local/burnlist/bindings.json`; a relative
+path resolves from the repository root when read. The file has this schema:
+
+```json
+{
+  "schemaVersion": 1,
+  "bindings": {
+    "<id>": {
+      "path": "<path>",
+      "boundAt": "<iso>"
+    }
+  }
+}
+```
+
+Successful binding prints `Bound Oven <id> to <path>` and
+`Store: <repo>/.local/burnlist/bindings.json`. `bindings` prints
+`<id>  <path>  <boundAt>` per line; `unbind` reports `Unbound…` or
+`No binding exists…`. `fork` copies a built-in or custom Oven to a new custom
+id and records its `forkedFrom` provenance; built-in Ovens cannot be updated.
+
+Use the CLI to inspect structure only:
+
+```sh
+burnlist oven view <id> [--json]
+```
+
+It prints the compiled node tree and a `node / prop / source` pointer table. It
+never shows data values, even when an Oven is bound.
+
+To render with data, run the dashboard:
+
+```sh
+burnlist --scan-root <repo>
+```
+
+It is loopback-only at `http://127.0.0.1:4510/` by default; add `--auto-port`
+to select a free port. A bound custom Oven appears on the index as a **Custom
+Oven** with status **Oven**. Selecting it opens
+`/ovens/<id>/view?repoKey=<key>` and renders the bound payload. An unbound
+custom Oven is authored but does not appear there.
+
+For a read-only binding for one dashboard session, without writing
+`bindings.json`, launch:
+
+```sh
+burnlist --scan-root <repo> --oven-data <id>=<path>
+```
+
+This also makes the custom Oven appear and render.
+
+## End-to-end generic Oven
+
+With `kpi.oven`, `deploy-data.json`, and an instructions file already authored,
+this sequence creates and displays the example:
+
+```sh
+cd <repo>                                   # a git repo
+burnlist init                               # ignore .local/, register root
+burnlist oven create deploy-status --instructions instr.md --oven kpi.oven
+burnlist oven bind deploy-status deploy-data.json
+burnlist oven bindings                       # confirm the binding
+burnlist oven view deploy-status             # structure only
+burnlist --scan-root <repo>                  # dashboard; open the "Custom Oven" row
+```
+
+See [The .oven system](/ovens/oven-system) for the rendering boundary and the
+[.oven DSL reference](/ovens/dsl-reference) for every allowed element and
+binding.

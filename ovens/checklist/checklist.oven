@@ -1,0 +1,15 @@
+<oven id="checklist" version="1" contract="checklist-progress@1" theme="checklist">
+  <kpi-strip>
+    <kpi-item variant="current" heading="Current" icon="ClipboardList" title="/current/title" value="/current/value"/>
+    <kpi-item heading="Progress" title="/progress/title">
+      <progress-donut source="/progress/percent"/>
+      <progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/>
+    </kpi-item>
+    <kpi-item heading="Elapsed" icon="Clock3" value="/durations/elapsed"/>
+    <kpi-item heading="Avg pace" icon="Gauge" value="/durations/pace"/>
+    <kpi-item heading="Time left" icon="TimerReset" value="/durations/timeLeft"/>
+  </kpi-strip>
+  <checklist-ledger source="/raw"/>
+  <checklist-burn-panel source="/raw"/>
+  <checklist-event-cards source="/raw"/>
+</oven>

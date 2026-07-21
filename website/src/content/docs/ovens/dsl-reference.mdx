@@ -1,0 +1,202 @@
+---
+title: .oven DSL reference
+description: The declarative vocabulary, bindings, controls, and registries for .oven files.
+---
+
+`.oven` is a closed, XML-like DSL. The root is `<oven id="…" version="1" contract="…" theme="…">`; `refresh-seconds` is an optional positive integer refresh interval. Only registered elements, attributes, and registry values compile.
+
+## Layout
+
+| Element | Purpose |
+| --- | --- |
+| `<box>` | Optional custom semantic wrapper (`div`, `section`, `main`, or `span`). |
+| `<grid>` | Column-based layout; panels can declare grid positions and spans. |
+| `<stack>` | Row or column flow with a gap. |
+| `<panel>` | Titled layout region, optionally positioned in a grid. |
+
+## Display widgets
+
+| Widget | Purpose |
+| --- | --- |
+| `<kpi-strip>` / `<kpi-item>` | Headline metrics. A KPI item can contain `<progress-donut>`, `<burn-donut>`, `<waffle-metric>`, or `<progress-value>`. |
+| `<section-header>` | Section title and optional bound content. |
+| `<log-table>` / `<column>` | Table data and its columns. |
+| `<metric-tiles>` | Selected-domain visual-parity metrics. |
+| `<verdict-header>` | Visual-parity verdict summary. |
+| `<diff-card>` / `<file-diff>` | Diff summaries and file-level diffs. |
+| `<frame-card>` / `<image-triptych>` | Frame evidence and three-image comparison. |
+| `<feed-list>` | Feed state and entries. |
+| `<refresh-status>` | Refresh state. |
+| `<streaming-diff-heading>` | Streaming Diff heading and return link. |
+| `<checklist-burn-panel>` / `<checklist-ledger>` / `<checklist-event-cards>` | Checklist-specific detail views. |
+| `<domain-tabs>` / `<domain-note>` | Domain selection and its visual-parity explanation. |
+| `<differential-kpi-strip>` / `<differential-log-table>` | Differential Testing headline and log views. |
+| `<progress-chart>` / `<frame-delta-chart>` | Differential Testing charts. |
+| `<differential-empty-state>` | Differential Testing empty state. |
+
+`<icon>` uses a registered icon and `<text>` supplies literal or bound text. `<bind>` supplies a named component property; it is described with bindings below.
+
+## Interactivity
+
+| Element | Purpose |
+| --- | --- |
+| `<switch>` / `<case>` | Selects one branch from a bound source or a mode control. |
+| `<collection>` / `<each>` | Iterates a collection, optionally with search, sort, filter, and paging. |
+| `<field-toolbar>` | Groups `<search>`, `<mode-toggle>` with `<option>`, `<sort-toggle>`, and `<filter-toggle>`. |
+| `<field-list>` | Renders a collection referenced by `collection-from`, with an optional `mode-from`. |
+| `<pagination>` | Paginates its containing collection. |
+
+Controls are wired by `id`, not by executable callbacks. In the committed Differential Testing Oven, `progress-mode` selects a chart branch, while the field collection points to its toolbar controls:
+
+```xml
+<mode-toggle id="progress-mode"
+             initial="delta"
+             aria-label="Differential Testing progress view">
+  <option value="progress" label="Progress"/>
+  <option value="failed" label="Failed"/>
+  <option value="delta" label="Delta"/>
+</mode-toggle>
+<switch mode-from="progress-mode">
+  <case value="progress">
+    <progress-chart source="/progress"/>
+  </case>
+  <case value="failed">
+    <progress-chart source="/progress"/>
+  </case>
+  <case value="delta">
+    <frame-delta-chart source="/progress"/>
+  </case>
+</switch>
+
+<field-toolbar id="field-controls">
+  <search id="field-search"
+          placeholder="Search Fields..."
+          aria-label="Differential Testing search fields"
+          match-fields="/label /sourceOwner /driftClass /semantics/kind"
+          debounce-ms="150"/>
+  <mode-toggle id="value-mode"
+               initial="delta"
+               aria-label="Differential Testing chart mode">
+    <option value="current" label="Value"/>
+    <option value="delta" label="Delta"/>
+  </mode-toggle>
+  <sort-toggle id="changed-sort"
+               key="changed"
+               label="Changed"
+               initial="on"
+               requires-source="/telemetry/status"
+               requires-value="comparable"
+               unavailable-text="Changed is unavailable until comparable transition telemetry is published."/>
+  <filter-toggle id="failed-filter"
+                 key="non-pass"
+                 label="Failed"
+                 initial="off"/>
+</field-toolbar>
+
+<collection id="field-view"
+            source="/fields"
+            item-key="/id"
+            search-from="field-search"
+            sort-from="changed-sort"
+            filter-from="failed-filter"
+            paging="auto"
+            page-size="25">
+  <field-list collection-from="field-view"
+              mode-from="value-mode">
+    <bind prop="telemetryByField"
+          source="/telemetry/fields"
+          format="index-by-id"
+          optional="true"/>
+    <bind prop="telemetryAvailability"
+          source="/telemetry"
+          format="telemetry-availability"
+          optional="true"/>
+  </field-list>
+  <pagination collection-from="field-view"
+              page-sizes="25 50 100 200"/>
+</collection>
+```
+
+## Binding
+
+`source` is an [RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) beginning with `/`, or an empty unbound value. `/` addresses the data document root. `@item` is the item-scoped pointer, usable only inside a `<collection>`/`<each>` item scope and in `<column>`.
+
+```xml
+<collection id="active-items"
+            source="/active"
+            item-key="/id"
+            paging="client"
+            page-size="25">
+  <each>
+    <kpi-item>
+      <bind prop="heading" source="@item/title" format="plain"/>
+      <bind prop="value" source="@item/id" format="plain"/>
+    </kpi-item>
+  </each>
+</collection>
+
+<log-table source="/timeline"
+           empty-text="No timeline events yet.">
+  <column label="Time" source="@item/time" format="time-only"/>
+  <column label="Event" source="@item/title" format="plain"/>
+</log-table>
+```
+
+`<bind prop="…" source="…" format="…" optional="true" fallback="…"/>` maps a source into a named widget property. `<text>` has exactly one of `text` or `source` and may also use `slot`, `format`, `optional`, and `fallback`.
+
+### Format semantics
+
+Formats transform a value at a `source` or `bind` pointer before display. These
+generic formats are appropriate for generic custom Ovens:
+
+| Format | Input → output |
+| --- | --- |
+| `identity` / `plain` | Any value → unchanged. `plain` is the identity alias stored in IR as `identity`; use it for verbatim strings and ids. |
+| `number` | Numeric value or numeric string → integer-grouped string with no decimals; `1234.7` → `"1,235"`. Empty or non-finite → `""`. |
+| `percent` | Fraction from 0 through 1 → percentage string with two decimals, or three below `0.01`; `0.96` → `"96.00%"`, `0.005` → `"0.500%"`. Null or undefined → `""`. |
+| `delta` | Number → up to four decimals with trailing zeroes trimmed; `0.5` → `"0.5"`, `1.25` → `"1.25"`. Null or undefined → `""`. |
+| `ratio-to-percent` | Fraction number from 0 through 1 → numeric value ×100, not a string; `0.96` → `96`. Null or non-finite → undefined. |
+| `length` | String or array → numeric `.length`; any other type → undefined. |
+| `time-only` | ISO timestamp, date string, or epoch → local 24-hour `"HH:MM"`; `"2026-07-20T09:05:00Z"` → `"09:05"`. Unparseable → `""`. |
+| `relative-age` | Timestamp → compact age from now: under 60 seconds `"Ns"`, under 60 minutes `"Nm"`, under 24 hours `"Nh"`, otherwise `"Nd"`; about three hours ago → `"3h"`. Unparseable → `""`. |
+
+The following eight formats are **Differential-Testing-only**. They read the
+last row of a Differential-Testing result-row array unless noted otherwise.
+Generic Oven authors should not use them.
+
+| Format | Input → output |
+| --- | --- |
+| `progress-headline` | Last row → `"frame/frames"` string. |
+| `last-progress-percent` | Last row's `frame/frames` ratio → number ×100. |
+| `last-failed-count` | Last row's failed-field count → string. |
+| `last-failed-percent` | Last row's `failed/total` field ratio → number ×100. |
+| `last-frame-delta` | Last row's absolute frame delta → string, or `"—"` when absent. |
+| `last-delta-percent` | Last row's absolute frame delta divided by frames → number ×100. |
+| `index-by-id` | Array of `{id, …}` objects → object keyed by each `id`. |
+| `telemetry-availability` | Telemetry payload → its availability descriptor. |
+
+Every `format` must be one of exactly these 17 values.
+
+`tone` on a `<column>` is appended verbatim as an extra CSS class on the
+rendered cell, alongside `log-table-cell` and the column-label slug. There is
+no fixed enum; it has a visible effect only if the active theme stylesheet
+defines that class. For a generic checklist-theme Oven, leave `tone` unset
+unless the chosen theme styles the token.
+
+## Registry
+
+| Registry | Allowed values |
+| --- | --- |
+| Themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
+| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| Icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
+
+These registries are a closed allowlist: a custom Oven must reuse one of the
+built-in contract-and-theme pairs and a registered icon. It cannot define new
+registry values.
+
+`<metric-tiles>` requires exactly one `<bind>` for `passed`, `total`, `ratio`, `meanAbsoluteDelta`, and `maximumAbsoluteDelta`. `<verdict-header>` requires `targetPass`, `framesCount`, and `error`; `<image-triptych>` requires `images`, `label`, and `frame`; `<feed-list>` requires `feeds`, `error`, `loading`, and `showRepository`; and `<domain-note>` requires `isTarget` and `rationale`.
+
+## Clean authoring
+
+The theme and component defaults supply normal chrome and classes. All five committed Ovens — Checklist, Differential Testing, Streaming Diff, Performance Tracing, and visual-parity — contain no `class=` attribute and no `<box>` wrapper. Use `<box>` and `class=` only as optional custom escape hatches, not as routine page structure.

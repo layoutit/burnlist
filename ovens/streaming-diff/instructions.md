@@ -1,12 +1,17 @@
 # Streaming Diff
 
-Streaming Diff is a declarative, read-only Oven for recently published,
-session-scoped pre-to-post diff cards. Producers write immutable cards to the
-local feed; the dashboard observes them through the Oven data endpoint.
+`streaming-diff.oven` is the declarative, read-only selected-feed view for
+recently published, session-scoped pre-to-post diff cards. It renders the
+heading and diff cards through the `.oven` engine, byte-for-byte identical to
+the selected-feed component view.
 
-Select a feed with its logical repository key, worktree key, and session. A
-feed's activity time indicates recent publication only; it does not indicate
-that an agent or process is live.
+## Payload contract
 
-This package contains no executable renderer, hook, or producer code. The
-server-side adapter validates and reads the local feed without mutating it.
+The view binds `burnlist-streaming-diff-data@2` after `adaptStreamingDiff(snapshot)`.
+The adapter provides the feed identity, update time, normalized cards, and the
+back link used by the heading. `StreamingDiffHeading` and `DiffCardList` reuse
+the existing `DiffCard` and `FileDiff` rendering components.
+
+The dashboard is a read-only observer: it never mutates canonical Burnlist
+state, lifecycle folders, the registry, or the feed. The feed is snapshot
+pollable; the `.oven` engine does not require SSE.
