@@ -9,9 +9,16 @@ export function currentSection() {
   return route().section;
 }
 
-export function customOvenSelection(): { id: string; repoKey: string | null } | null {
+export function customOvenSelection(): { id: string; repoKey: string | null; burnlistId: string | null } | null {
   const current = route();
-  return current.section === "custom-oven" ? { id: current.ovenId, repoKey: current.repoKey } : null;
+  return current.section === "custom-oven" ? { id: current.ovenId, repoKey: current.repoKey, burnlistId: current.burnlistId ?? null } : null;
+}
+
+export function burnlistLensContext(): { repoKey: string; burnlistId: string; activeOvenId: string } | null {
+  const current = route();
+  if (!current.repoKey || !current.burnlistId) return null;
+  if (current.section === "burnlist") return { repoKey: current.repoKey, burnlistId: current.burnlistId, activeOvenId: current.ovenId ?? "checklist" };
+  return current.ovenId ? { repoKey: current.repoKey, burnlistId: current.burnlistId, activeOvenId: current.ovenId } : null;
 }
 
 export function ovenRepoKey() {

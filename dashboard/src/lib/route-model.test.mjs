@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   burnlistHref,
+  burnlistOvenHref,
   differentialTestingScenarioHref,
   legacyRoute,
   parseRoute,
@@ -29,10 +30,12 @@ test("parseRoute recognizes the dashboard path model", () => {
 });
 
 test("href builders put repo keys only in path segments", () => {
+  assert.equal(burnlistOvenHref({ repoKey: "k", burnlistId: "260721-001", ovenId: "checklist" }), "/r/k/260721-001/o/checklist");
   const hrefs = [
     repoOvenHref({ repoKey: "repo/key", ovenId: "custom oven", query: { filter: "active" } }),
     repoOvenHref({ repoKey: null, ovenId: "custom oven" }),
     burnlistHref({ repoKey: "repo/key", burnlistId: "burn/list", query: { filter: "active" } }),
+    burnlistOvenHref({ repoKey: "repo/key", burnlistId: "burn/list", ovenId: "custom oven", query: { filter: "active" } }),
     streamingDiffFeedHref({ repoKey: "repo/key", worktreeKey: "work tree", session: "session 1" }),
     differentialTestingScenarioHref({ repoKey: "repo/key", scenario: "case 1" }),
   ];
@@ -40,6 +43,7 @@ test("href builders put repo keys only in path segments", () => {
     "/r/repo%2Fkey/o/custom%20oven?filter=active",
     "/ovens/custom%20oven",
     "/r/repo%2Fkey/burn%2Flist?filter=active",
+    "/r/repo%2Fkey/burn%2Flist/o/custom%20oven?filter=active",
     "/r/repo%2Fkey/o/streaming-diff?worktreeKey=work+tree&session=session+1",
     "/r/repo%2Fkey/o/differential-testing?scenario=case+1",
   ]);

@@ -81,6 +81,10 @@ export function burnlistHref({ repoKey, burnlistId, query } = {}) {
   return `/r/${encodeURIComponent(repoKey)}/${encodeURIComponent(burnlistId)}${queryString(query)}`;
 }
 
+export function burnlistOvenHref({ repoKey, burnlistId, ovenId, query } = {}) {
+  return `/r/${encodeURIComponent(repoKey)}/${encodeURIComponent(burnlistId)}/o/${encodeURIComponent(ovenId)}${queryString(query)}`;
+}
+
 export function streamingDiffFeedHref({ repoKey, worktreeKey, session } = {}) {
   return repoOvenHref({ repoKey, ovenId: "streaming-diff", query: { worktreeKey, session } });
 }
