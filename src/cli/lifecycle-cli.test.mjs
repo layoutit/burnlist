@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -277,6 +277,33 @@ test("burn removes an active item, appends its ledger entry, and can check the r
       total: 1,
       percent: 100,
     });
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("burn remains canonical when observational event publication fails", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    run(context, "ready", result.id);
+    run(context, "start", result.id);
+    const activePath = join(lifecycleFolder(context.repo, "inprogress", result.id), "burnlist.md");
+    const stateRoot = join(context.repo, ".local", "burnlist");
+    const outside = join(dirname(context.repo), "outside-lock");
+    mkdirSync(stateRoot, { recursive: true });
+    mkdirSync(outside);
+    symlinkSync(outside, join(stateRoot, ".lock"), "dir");
+    const burned = spawnSync(process.execPath, [binPath, "burn", result.id, "B1", "--check"], {
+      cwd: context.repo,
+      encoding: "utf8",
+      env: { ...process.env, HOME: context.home },
+    });
+    assert.equal(burned.status, 0, burned.stderr);
+    assert.match(burned.stderr, /Burned B1, but could not publish its observational Oven event/u);
+    assert.equal(readFileSync(activePath, "utf8").includes("- [ ] B1 | Inspect lifecycle output"), false);
+    assert.match(readFileSync(activePath, "utf8"), /- B1 \| .+ \| Inspect lifecycle output/u);
   } finally {
     context.cleanup();
   }

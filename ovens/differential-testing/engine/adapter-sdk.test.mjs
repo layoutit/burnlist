@@ -234,7 +234,7 @@ test("SDK v4 rejects legacy state and delete callback configuration failures are
   }
 });
 
-test("SDK v4 keeps canonical worker success when observational event publication fails", async () => {
+test("SDK v4 keeps canonical worker success when observational publication returns a rejection", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-differential-event-error-"));
   const request = job("1111111111111111", "a".repeat(64), 1);
   const inbox = [entry(eventFor(request, true))];
@@ -243,14 +243,14 @@ test("SDK v4 keeps canonical worker success when observational event publication
     const worker = fixtureWorker({
       root,
       inbox,
-      emitOvenEvent() { throw new Error("event store unavailable"); },
+      emitOvenEvent() { return Promise.reject(new Error("event store unavailable")); },
       onOvenEventError(error, identity) { errors.push({ message: error.message, identity }); },
     });
     worker.start();
     await worker.idle();
     assert.equal(worker.scenarioStatus(request.scenarioId).status, "complete");
     assert.equal(errors.length, 1);
-    assert.equal(errors[0].message, "event store unavailable");
+    assert.equal(errors[0].message, "emitOvenEvent must complete synchronously.");
     assert.equal(errors[0].identity.scenarioId, request.scenarioId);
     worker.close();
   } finally {

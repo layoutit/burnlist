@@ -6,4 +6,12 @@ export {
   normalizeOvenEvent,
   ovenEventId,
 } from "./oven-event-contract.mjs";
-export { ovenEventsDir, publishOvenEvent, readOvenEvents } from "./oven-event-store.mjs";
+export {
+  OVEN_EVENT_MAX_DISCOVERY_SCANS,
+  OVEN_EVENT_MAX_READ_EVENTS,
+  OVEN_EVENT_MAX_READ_STREAMS,
+  OVEN_EVENT_MAX_SEQUENCE_SCANS,
+  ovenEventsDir,
+  publishOvenEvent,
+  readOvenEvents,
+} from "./oven-event-store.mjs";

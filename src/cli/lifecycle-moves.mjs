@@ -1,5 +1,16 @@
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  constants,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  rmdirSync,
+  writeFileSync,
+} from "node:fs";
 import { basename, dirname, join } from "node:path";
 import {
   LIFECYCLES,
@@ -19,13 +30,24 @@ function lifecycleRoot(repoRoot, lifecycle) {
 
 function atomicWrite(path, contents) {
   const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
+  let descriptor;
   try {
-    writeFileSync(temporary, contents);
+    descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o666);
+    writeFileSync(descriptor, contents);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
     renameSync(temporary, path);
-  } catch (error) {
+    fsyncDirectory(dirname(path));
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
     rmSync(temporary, { force: true });
-    throw error;
   }
+}
+
+function fsyncDirectory(path) {
+  const descriptor = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
 }
 
 function validateOrThrow(plan) {
@@ -217,10 +239,15 @@ export function burnItem(repoRoot, id, itemId, check = false) {
     const temporary = join(dirname(planPath), `.${basename(planPath)}.${randomBytes(8).toString("hex")}.tmp`);
     let checked;
     try {
-      writeFileSync(temporary, nextMarkdown);
+      const descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o666);
+      try {
+        writeFileSync(descriptor, nextMarkdown);
+        fsyncSync(descriptor);
+      } finally { closeSync(descriptor); }
       checked = parsePlan(temporary);
       const issues = validateOrThrow(checked);
       renameSync(temporary, planPath);
+      fsyncDirectory(dirname(planPath));
       checked = { plan: checked, issues };
     } catch (error) {
       rmSync(temporary, { force: true });

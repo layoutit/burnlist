@@ -63,7 +63,7 @@ Checklist `burn` publishes `item-burned/completed`. Differential Testing SDK v4 
 
 The dashboard server exposes `GET /api/events`:
 
-- JSON is the default bounded snapshot.
+- JSON is the default bounded snapshot; `total` counts returned events and `truncated` means one lookahead event existed.
 - `Accept: text/event-stream` or `?stream=1` opens Server-Sent Events.
 - Repeat `repoKey` and `ovenId` to restrict the subscription.
 - Resume with the opaque cursor from the prior SSE `id` or JSON `cursor`, using `Last-Event-ID` or `after=<cursor>`.

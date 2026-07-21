@@ -62,12 +62,12 @@ function jsonValue(value, label, depth = 0) {
   if (!plainObject(value)) throw new Error(`${label} must contain JSON values only.`);
   const entries = Object.entries(value);
   if (entries.length > 64) throw new Error(`${label} contains more than 64 fields.`);
-  const normalized = {};
+  const normalizedEntries = [];
   for (const [key, entry] of entries) {
     if (!key || key.length > 80 || /[\u0000-\u001f\u007f]/u.test(key)) throw new Error(`${label} contains an invalid field name.`);
-    normalized[key] = jsonValue(entry, `${label}.${key}`, depth + 1);
+    normalizedEntries.push([key, jsonValue(entry, `${label}.${key}`, depth + 1)]);
   }
-  return normalized;
+  return Object.fromEntries(normalizedEntries);
 }
 
 function canonicalJson(value) {
@@ -76,6 +76,16 @@ function canonicalJson(value) {
     return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+export function serializeOvenEvent(value) {
+  return `${JSON.stringify(value)}\n`;
+}
+
+function assertSerializedSize(value, suffix = "") {
+  if (Buffer.byteLength(serializeOvenEvent(value)) > OVEN_EVENT_MAX_BYTES) {
+    throw new Error(`Oven event is larger than ${OVEN_EVENT_MAX_BYTES} bytes${suffix}.`);
+  }
 }
 
 export function ovenEventId(value) {
@@ -108,9 +118,7 @@ export function normalizeOvenEvent(value, { now = () => new Date().toISOString()
       return jsonValue(payload, "Oven event payload");
     })(),
   };
-  if (Buffer.byteLength(JSON.stringify(event)) > OVEN_EVENT_MAX_BYTES) {
-    throw new Error(`Oven event is larger than ${OVEN_EVENT_MAX_BYTES} bytes.`);
-  }
+  assertSerializedSize(event);
   return event;
 }
 
@@ -131,6 +139,7 @@ export function assertOvenEvent(value) {
     occurredAt: value.occurredAt,
     payload: value.payload,
   }, { now: () => value.occurredAt }), sequence: value.sequence };
+  assertSerializedSize(normalized, " after sequencing");
   if (normalized.eventId !== value.eventId || canonicalJson(normalized) !== canonicalJson(value)) {
     throw new Error("Oven event does not match its canonical identity.");
   }

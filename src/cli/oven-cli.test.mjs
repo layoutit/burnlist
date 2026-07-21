@@ -110,6 +110,28 @@ test("oven event publishes one idempotent generic repo-local event", () => {
   } finally { context.cleanup(); }
 });
 
+test("oven event does not initialize or trust unrelated custom Oven storage", () => {
+  const context = fixture();
+  const outside = join(dirname(context.repo), "outside-ovens");
+  try {
+    mkdirSync(join(context.repo, ".local", "burnlist"), { recursive: true });
+    mkdirSync(outside);
+    symlinkSync(outside, join(context.repo, ".local", "burnlist", "ovens"), "dir");
+    const published = JSON.parse(run(
+      context,
+      "oven", "event", "future-oven",
+      "--repo", context.repo,
+      "--subject", "subject-1",
+      "--kind", "iteration",
+      "--phase", "complete",
+      "--cursor", "run-1",
+    ));
+    assert.equal(published.created, true);
+    assert.deepEqual(readOvenEvents(context.repo), [published.event]);
+    assert.deepEqual(readdirSync(outside), []);
+  } finally { context.cleanup(); }
+});
+
 test("oven view reads optional fork lineage and rejects malformed sidecars", () => {
   const context = fixture();
   const ovensDir = join(context.repo, ".local", "burnlist", "ovens");

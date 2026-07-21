@@ -60,21 +60,30 @@ function bindingRepo() {
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const builtInOvensDir = resolve(packageRoot, "ovens");
 const launchCwd = process.cwd();
-const customRepoRoot = repoRoot();
-if (flags.get("ovens-dir") === "true") fail("--ovens-dir requires a path.");
-const unsafeOvensDir = flags.has("unsafe-ovens-dir");
-const customOvensDir = resolveCustomOvensDir(
-  customRepoRoot,
-  flags.has("ovens-dir") ? flags.get("ovens-dir") : undefined,
-  { unsafe: unsafeOvensDir },
-);
+let cachedOvenContext;
 
-const { readOvenDir, discoverOvens, findOven } = createOvenCatalog({
-  builtInOvensDir,
-  customOvensDir,
-  customRepoRoot,
-  unsafeOvensDir,
-});
+function ovenContext() {
+  if (cachedOvenContext) return cachedOvenContext;
+  const customRepoRoot = repoRoot();
+  if (flags.get("ovens-dir") === "true") fail("--ovens-dir requires a path.");
+  const unsafeOvensDir = flags.has("unsafe-ovens-dir");
+  const customOvensDir = resolveCustomOvensDir(
+    customRepoRoot,
+    flags.has("ovens-dir") ? flags.get("ovens-dir") : undefined,
+    { unsafe: unsafeOvensDir },
+  );
+  cachedOvenContext = {
+    customRepoRoot,
+    customOvensDir,
+    unsafeOvensDir,
+    ...createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoRoot, unsafeOvensDir }),
+  };
+  return cachedOvenContext;
+}
+
+const readOvenDir = (...args) => ovenContext().readOvenDir(...args);
+const discoverOvens = (...args) => ovenContext().discoverOvens(...args);
+const findOven = (...args) => ovenContext().findOven(...args);
 
 function printOven(oven) {
   let nodeCount = 0;
@@ -276,6 +285,7 @@ try {
     const pkg = resolvePackageInput({ flags, positionals, scaffold: subcommand === "create" });
     assertCustomTarget(pkg.id, subcommand);
     const allowReplace = subcommand === "update" || flags.has("force");
+    const { customRepoRoot, customOvensDir, unsafeOvensDir } = ovenContext();
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, { allowReplace });
     const saved = readOvenDir(customOvensDir, pkg.id, false);
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
@@ -292,6 +302,7 @@ try {
     const pkg = normalizeOvenPackage({ id, instructions: source.instructions, oven: rewriteRootOvenId(source.oven, id) });
     const sourceRevision = ovenRevision(source);
     if (findOven(pkg.id)) throw new Error(`Oven ${pkg.id} already exists.`);
+    const { customRepoRoot, customOvensDir, unsafeOvensDir } = ovenContext();
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, {
       allowReplace: false,
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },

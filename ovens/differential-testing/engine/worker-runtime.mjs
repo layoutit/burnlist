@@ -502,7 +502,10 @@ export function createDifferentialTestingWorker({
               ...(iterationError ? { error: iterationError } : {}),
             },
           });
-          if (emitted && typeof emitted.then === "function") throw new Error("emitOvenEvent must complete synchronously.");
+          if (emitted && typeof emitted.then === "function") {
+            void Promise.resolve(emitted).catch(() => {});
+            throw new Error("emitOvenEvent must complete synchronously.");
+          }
         } catch (error) {
           try { onOvenEventError(error, { scenarioId, requestId: request.requestId, runId, phase: iterationPhase }); } catch {}
         }

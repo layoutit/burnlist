@@ -1,84 +1,177 @@
 import { randomBytes } from "node:crypto";
 import {
+  closeSync,
+  constants,
   existsSync,
+  fsyncSync,
+  lstatSync,
   mkdirSync,
+  openSync,
+  opendirSync,
   readFileSync,
-  readdirSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
 import { ovenId } from "../ovens/oven-contract.mjs";
 import { containedJoin, withRepoStateLock } from "../server/repo-state.mjs";
-import { assertOvenEvent, normalizeOvenEvent, OVEN_EVENT_MAX_BYTES } from "./oven-event-contract.mjs";
+import {
+  assertOvenEvent,
+  normalizeOvenEvent,
+  OVEN_EVENT_MAX_BYTES,
+  serializeOvenEvent,
+} from "./oven-event-contract.mjs";
 
-const eventIndexPattern = /^(\d{12})-(oe1-[a-f0-9]{64})\.idx$/u;
+const eventIndexPattern = /^(\d{12})\.idx$/u;
 const eventRecordPattern = /^(oe1-[a-f0-9]{64})\.json$/u;
+const eventIdPattern = /^oe1-[a-f0-9]{64}$/u;
+const EVENT_INDEX_BYTES = Buffer.byteLength(`${"oe1-"}${"0".repeat(64)}\n`);
 const MAX_SEQUENCE = 999_999_999_999;
+export const OVEN_EVENT_MAX_READ_EVENTS = 1_000;
+export const OVEN_EVENT_MAX_READ_STREAMS = 64;
+export const OVEN_EVENT_MAX_SEQUENCE_SCANS = 4_096;
+export const OVEN_EVENT_MAX_DISCOVERY_SCANS = 256;
 
-function readEventFile(path) {
-  const stat = statSync(path);
-  if (!stat.isFile() || stat.size > OVEN_EVENT_MAX_BYTES) throw new Error("Oven event file is invalid or too large.");
-  return assertOvenEvent(JSON.parse(readFileSync(path, "utf8")));
+function fsyncDirectory(path) {
+  const descriptor = openSync(path, constants.O_RDONLY);
+  try { fsyncSync(descriptor); } finally { closeSync(descriptor); }
 }
 
 function atomicWrite(path, contents) {
   const temporary = `${path}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;
+  let descriptor;
   try {
-    writeFileSync(temporary, contents, { flag: "wx", mode: 0o600 });
+    descriptor = openSync(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
+    writeFileSync(descriptor, contents);
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
     renameSync(temporary, path);
-  } catch (error) {
+    fsyncDirectory(dirname(path));
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
     rmSync(temporary, { force: true });
-    throw error;
   }
+}
+
+function readEventFile(path) {
+  const stat = lstatSync(path);
+  if (!stat.isFile() || stat.size < 2 || stat.size > OVEN_EVENT_MAX_BYTES) {
+    throw Object.assign(new Error("Oven event file is invalid or too large."), { code: "ECORRUPT" });
+  }
+  const text = readFileSync(path, "utf8");
+  let event;
+  try { event = assertOvenEvent(JSON.parse(text)); }
+  catch (error) {
+    throw Object.assign(new Error(`Oven event file is corrupt: ${error.message}`), { code: "ECORRUPT", cause: error });
+  }
+  if (text !== serializeOvenEvent(event)) {
+    throw Object.assign(new Error("Oven event file is not canonical."), { code: "ECORRUPT" });
+  }
+  return event;
 }
 
 export function ovenEventsDir(repoRoot) {
   return containedJoin(repoRoot, "events");
 }
 
+function counterPath(repoRoot, id) {
+  return containedJoin(repoRoot, "events", id, "sequence.txt");
+}
+
+function parseCounter(value, id) {
+  if (!/^\d{1,12}\n$/u.test(value) || Number(value) > MAX_SEQUENCE) {
+    throw Object.assign(new Error(`Oven ${id} event sequence is corrupt.`), { code: "ECORRUPT" });
+  }
+  return Number(value);
+}
+
+function readCounter(repoRoot, id) {
+  const path = counterPath(repoRoot, id);
+  const stat = lstatSync(path);
+  if (!stat.isFile() || stat.size < 2 || stat.size > 13) {
+    throw Object.assign(new Error(`Oven ${id} event sequence is corrupt.`), { code: "ECORRUPT" });
+  }
+  return readFileSync(path, "utf8");
+}
+
+function openDirectoryIfPresent(path) {
+  try { return opendirSync(path); }
+  catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 function recoverHighestSequence(repoRoot, id) {
   let highest = 0;
   const sequenceDir = containedJoin(repoRoot, "events", id, "sequence");
   const recordsDir = containedJoin(repoRoot, "events", id, "records");
-  if (existsSync(sequenceDir)) {
-    for (const entry of readdirSync(sequenceDir, { withFileTypes: true })) {
-      const match = entry.isFile() ? entry.name.match(eventIndexPattern) : null;
-      if (match) highest = Math.max(highest, Number(match[1]));
+  {
+    const directory = openDirectoryIfPresent(sequenceDir);
+    if (directory) {
+      try {
+        for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+          const match = entry.isFile() ? entry.name.match(eventIndexPattern) : null;
+          if (match) highest = Math.max(highest, Number(match[1]));
+        }
+      } finally { directory.closeSync(); }
     }
   }
-  if (existsSync(recordsDir)) {
-    for (const entry of readdirSync(recordsDir, { withFileTypes: true })) {
-      if (!entry.isFile() || !eventRecordPattern.test(entry.name)) continue;
-      highest = Math.max(highest, readEventFile(containedJoin(repoRoot, "events", id, "records", entry.name)).sequence);
+  {
+    const directory = openDirectoryIfPresent(recordsDir);
+    if (directory) {
+      try {
+        for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+          if (!entry.isFile() || !eventRecordPattern.test(entry.name)) continue;
+          const path = containedJoin(repoRoot, "events", id, "records", entry.name);
+          try {
+            const event = readEventFile(path);
+            if (event.ovenId === id && `${event.eventId}.json` === entry.name && event.sequence <= MAX_SEQUENCE) {
+              highest = Math.max(highest, event.sequence);
+            }
+          } catch (error) {
+            if (!["ECORRUPT", "ENOENT"].includes(error?.code)) throw error;
+            // Corrupt records do not prevent recovery from valid reservations.
+          }
+        }
+      } finally { directory.closeSync(); }
     }
   }
-  const counter = containedJoin(repoRoot, "events", id, "sequence.txt");
-  atomicWrite(counter, `${highest}\n`);
+  atomicWrite(counterPath(repoRoot, id), `${highest}\n`);
   return highest;
 }
 
 function currentSequence(repoRoot, id) {
-  const counter = containedJoin(repoRoot, "events", id, "sequence.txt");
-  if (!existsSync(counter)) return recoverHighestSequence(repoRoot, id);
-  const value = readFileSync(counter, "utf8");
-  if (!/^\d{1,12}\n$/u.test(value) || Number(value) > MAX_SEQUENCE) throw new Error(`Oven ${id} event sequence is corrupt.`);
-  return Number(value);
+  try { return parseCounter(readCounter(repoRoot, id), id); }
+  catch (error) {
+    if (["ECORRUPT", "ENOENT"].includes(error?.code)) return recoverHighestSequence(repoRoot, id);
+    throw error;
+  }
+}
+
+function readHighestSequence(repoRoot, id) {
+  return parseCounter(readCounter(repoRoot, id), id);
 }
 
 function eventPaths(repoRoot, event) {
   const sequence = String(event.sequence).padStart(12, "0");
   return {
     record: containedJoin(repoRoot, "events", event.ovenId, "records", `${event.eventId}.json`),
-    index: containedJoin(repoRoot, "events", event.ovenId, "sequence", `${sequence}-${event.eventId}.idx`),
+    index: containedJoin(repoRoot, "events", event.ovenId, "sequence", `${sequence}.idx`),
   };
 }
 
-function ensureIndex(path) {
-  if (!existsSync(path)) atomicWrite(path, "");
-  else if (!statSync(path).isFile()) throw new Error(`Oven event index is invalid: ${path}`);
+function ensureIndex(path, eventId) {
+  const contents = `${eventId}\n`;
+  if (!existsSync(path)) atomicWrite(path, contents);
+  else {
+    const stat = lstatSync(path);
+    if (!stat.isFile() || stat.size !== Buffer.byteLength(contents) || readFileSync(path, "utf8") !== contents) {
+      throw new Error(`Oven event index is invalid: ${path}`);
+    }
+  }
 }
 
 export function publishOvenEvent(repoRoot, input, options = {}) {
@@ -89,73 +182,168 @@ export function publishOvenEvent(repoRoot, input, options = {}) {
     mkdirSync(containedJoin(repoRoot, "events", draft.ovenId, "sequence"), { recursive: true });
     if (existsSync(recordPath)) {
       const event = readEventFile(recordPath);
+      if (event.eventId !== draft.eventId || event.ovenId !== draft.ovenId) {
+        throw Object.assign(new Error("Oven event record does not match its deterministic filename."), { code: "ECORRUPT" });
+      }
       const paths = eventPaths(repoRoot, event);
-      ensureIndex(paths.index);
+      ensureIndex(paths.index, event.eventId);
+      if (currentSequence(repoRoot, draft.ovenId) < event.sequence) recoverHighestSequence(repoRoot, draft.ovenId);
       return { event, created: false, path: paths.record };
     }
     const sequence = currentSequence(repoRoot, draft.ovenId) + 1;
     if (sequence > MAX_SEQUENCE) throw new Error(`Oven ${draft.ovenId} event sequence is exhausted.`);
-    atomicWrite(containedJoin(repoRoot, "events", draft.ovenId, "sequence.txt"), `${sequence}\n`);
-    const event = { ...draft, sequence };
-    if (Buffer.byteLength(JSON.stringify(event)) > OVEN_EVENT_MAX_BYTES) {
-      throw new Error(`Oven event is larger than ${OVEN_EVENT_MAX_BYTES} bytes after sequencing.`);
-    }
+    const event = assertOvenEvent({ ...draft, sequence });
+    const serialized = serializeOvenEvent(event);
+    atomicWrite(counterPath(repoRoot, draft.ovenId), `${sequence}\n`);
     const paths = eventPaths(repoRoot, event);
-    atomicWrite(paths.record, `${JSON.stringify(event)}\n`);
-    ensureIndex(paths.index);
+    atomicWrite(paths.record, serialized);
+    ensureIndex(paths.index, event.eventId);
     return { event, created: true, path: paths.record };
   });
 }
 
-function eventDirectories(repoRoot, ovenIds) {
-  if (ovenIds?.length) return ovenIds.map((id) => ({ id: ovenId(id), path: containedJoin(repoRoot, "events", ovenId(id), "sequence") }));
+function normalizedAfterSequences(afterSequences) {
+  if (!afterSequences || typeof afterSequences !== "object" || Array.isArray(afterSequences)) {
+    throw new Error("Oven event afterSequences must be an object.");
+  }
+  const entries = Object.entries(afterSequences);
+  if (entries.length > OVEN_EVENT_MAX_READ_STREAMS) {
+    throw new Error(`Oven event afterSequences is limited to ${OVEN_EVENT_MAX_READ_STREAMS} streams.`);
+  }
+  return Object.fromEntries(entries.map(([id, sequence]) => {
+    const normalizedId = ovenId(id);
+    if (!Number.isSafeInteger(sequence) || sequence < 0 || sequence > MAX_SEQUENCE) {
+      throw new Error(`Oven ${normalizedId} replay sequence is invalid.`);
+    }
+    return [normalizedId, sequence];
+  }));
+}
+
+function streamLimitError(message) {
+  return Object.assign(new Error(message), { code: "ESTREAMLIMIT" });
+}
+
+function eventDirectories(repoRoot, ovenIds, maxStreams) {
+  if (!Number.isSafeInteger(maxStreams) || maxStreams < 1 || maxStreams > OVEN_EVENT_MAX_READ_STREAMS) {
+    throw new Error(`Oven event stream limit must be from 1 to ${OVEN_EVENT_MAX_READ_STREAMS}.`);
+  }
+  if (ovenIds !== undefined && !Array.isArray(ovenIds)) throw new Error("Oven event ovenIds must be an array.");
+  if (ovenIds?.length) {
+    const ids = [...new Set(ovenIds.map((id) => ovenId(id)))].sort();
+    if (ids.length > maxStreams) throw streamLimitError(`Oven event reads are limited to ${maxStreams} streams.`);
+    return ids.map((id) => ({ id, path: containedJoin(repoRoot, "events", id, "sequence") }));
+  }
   const root = ovenEventsDir(repoRoot);
   if (!existsSync(root)) return [];
-  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
-    if (!entry.isDirectory()) return [];
-    try { return [{ id: ovenId(entry.name), path: containedJoin(repoRoot, "events", entry.name, "sequence") }]; }
-    catch { return []; }
+  const directory = opendirSync(root);
+  const streams = [];
+  let inspected = 0;
+  try {
+    for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+      inspected += 1;
+      if (inspected > OVEN_EVENT_MAX_DISCOVERY_SCANS) {
+        throw streamLimitError(`Oven event discovery is limited to ${OVEN_EVENT_MAX_DISCOVERY_SCANS} entries; filter by ovenId.`);
+      }
+      if (!entry.isDirectory()) continue;
+      try { streams.push({ id: ovenId(entry.name), path: containedJoin(repoRoot, "events", entry.name, "sequence") }); }
+      catch { /* Ignore unrelated local-state directories. */ }
+      if (streams.length > maxStreams) throw streamLimitError(`Oven event reads are limited to ${maxStreams} streams; filter by ovenId.`);
+    }
+  } finally { directory.closeSync(); }
+  return streams.sort((left, right) => left.id.localeCompare(right.id));
+}
+
+export function openOvenEventStreams(repoRoot, {
+  ovenIds,
+  afterSequences = {},
+  maxStreams = OVEN_EVENT_MAX_READ_STREAMS,
+  maxSequenceScans = OVEN_EVENT_MAX_SEQUENCE_SCANS,
+  onInvalid = () => {},
+} = {}) {
+  if (typeof onInvalid !== "function") throw new Error("Oven event onInvalid must be a function.");
+  if (!Number.isSafeInteger(maxSequenceScans) || maxSequenceScans < 1 || maxSequenceScans > OVEN_EVENT_MAX_SEQUENCE_SCANS) {
+    throw new Error(`Oven event sequence scan limit must be from 1 to ${OVEN_EVENT_MAX_SEQUENCE_SCANS}.`);
+  }
+  const after = normalizedAfterSequences(afterSequences);
+  return eventDirectories(repoRoot, ovenIds, maxStreams).flatMap((stream) => {
+    if (!existsSync(stream.path)) return [];
+    let highest;
+    try { highest = readHighestSequence(repoRoot, stream.id); }
+    catch (error) { onInvalid(error, counterPath(repoRoot, stream.id)); return []; }
+    let sequence = (after[stream.id] ?? 0) + 1;
+    let scans = 0;
+    let blocked = false;
+    return [{
+      ovenId: stream.id,
+      next() {
+        if (blocked) return null;
+        while (sequence <= highest && scans < maxSequenceScans) {
+          const current = sequence;
+          sequence += 1;
+          scans += 1;
+          const indexPath = containedJoin(repoRoot, "events", stream.id, "sequence", `${String(current).padStart(12, "0")}.idx`);
+          let stat;
+          try { stat = lstatSync(indexPath); }
+          catch (error) {
+            if (error?.code === "ENOENT") continue;
+            blocked = true;
+            onInvalid(error, indexPath);
+            return null;
+          }
+          try {
+            if (!stat.isFile() || stat.size !== EVENT_INDEX_BYTES) throw new Error("Oven event index is invalid.");
+            const indexText = readFileSync(indexPath, "utf8");
+            const indexedId = indexText.slice(0, -1);
+            if (indexText !== `${indexedId}\n` || !eventIdPattern.test(indexedId)) throw new Error("Oven event index is invalid.");
+            const path = containedJoin(repoRoot, "events", stream.id, "records", `${indexedId}.json`);
+            const event = readEventFile(path);
+            if (event.ovenId !== stream.id || event.sequence !== current || event.eventId !== indexedId) {
+              throw new Error("Oven event index does not match its record.");
+            }
+            return event;
+          } catch (error) {
+            blocked = true;
+            onInvalid(error, indexPath);
+            return null;
+          }
+        }
+        if (sequence <= highest) {
+          blocked = true;
+          const error = new Error(`Oven ${stream.id} replay exceeded its ${maxSequenceScans} sequence scan limit.`);
+          error.code = "ESCANLIMIT";
+          onInvalid(error, stream.path);
+        }
+        return null;
+      },
+    }];
   });
 }
 
 export function readOvenEvents(repoRoot, {
   ovenIds,
   afterSequences = {},
-  limit,
-  limitPerOven,
+  limit = OVEN_EVENT_MAX_READ_EVENTS,
+  limitPerOven = OVEN_EVENT_MAX_READ_EVENTS,
+  maxStreams = OVEN_EVENT_MAX_READ_STREAMS,
+  maxSequenceScans = OVEN_EVENT_MAX_SEQUENCE_SCANS,
   onInvalid = () => {},
 } = {}) {
-  if (limitPerOven !== undefined && (!Number.isSafeInteger(limitPerOven) || limitPerOven < 1)) {
-    throw new Error("Oven event per-Oven limit must be a positive integer.");
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > OVEN_EVENT_MAX_READ_EVENTS) {
+    throw new Error(`Oven event limit must be from 1 to ${OVEN_EVENT_MAX_READ_EVENTS}.`);
+  }
+  if (!Number.isSafeInteger(limitPerOven) || limitPerOven < 1 || limitPerOven > OVEN_EVENT_MAX_READ_EVENTS) {
+    throw new Error(`Oven event per-Oven limit must be from 1 to ${OVEN_EVENT_MAX_READ_EVENTS}.`);
   }
   const events = [];
-  for (const directory of eventDirectories(repoRoot, ovenIds)) {
-    if (!existsSync(directory.path)) continue;
-    let entries;
-    try { entries = readdirSync(directory.path, { withFileTypes: true }); }
-    catch (error) { onInvalid(error, directory.path); continue; }
-    const indexes = entries.flatMap((entry) => {
-      const match = entry.isFile() ? entry.name.match(eventIndexPattern) : null;
-      return match ? [{ eventId: match[2], sequence: Number(match[1]) }] : [];
-    }).filter((entry) => entry.sequence > (afterSequences[directory.id] ?? 0))
-      .sort((left, right) => left.sequence - right.sequence || left.eventId.localeCompare(right.eventId));
+  for (const stream of openOvenEventStreams(repoRoot, { ovenIds, afterSequences, maxStreams, maxSequenceScans, onInvalid })) {
     let accepted = 0;
-    for (const index of indexes) {
-      if (limitPerOven !== undefined && accepted >= limitPerOven) break;
-      const fileSequence = index.sequence;
-      const path = containedJoin(repoRoot, "events", directory.id, "records", `${index.eventId}.json`);
-      try {
-        const event = readEventFile(path);
-        if (event.ovenId !== directory.id || event.sequence !== fileSequence || event.eventId !== index.eventId) {
-          throw new Error("Oven event index does not match its record.");
-        }
-        events.push(event);
-        accepted += 1;
-      } catch (error) { onInvalid(error, path); }
+    while (accepted < limitPerOven && events.length < limit) {
+      const event = stream.next();
+      if (!event) break;
+      events.push(event);
+      accepted += 1;
     }
+    if (events.length >= limit) break;
   }
-  events.sort((left, right) => left.ovenId.localeCompare(right.ovenId) || left.sequence - right.sequence);
-  if (limit === undefined) return events;
-  if (!Number.isSafeInteger(limit) || limit < 1) throw new Error("Oven event limit must be a positive integer.");
-  return events.slice(0, limit);
+  return events;
 }
