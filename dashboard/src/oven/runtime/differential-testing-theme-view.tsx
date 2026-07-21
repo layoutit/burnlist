@@ -5,6 +5,7 @@ import { DifferentialKpiStrip } from "../DifferentialKpiStrip/DifferentialKpiStr
 import { DifferentialLogTable } from "../DifferentialLogTable/DifferentialLogTable";
 import { DifferentialFrameDeltaChart, DifferentialProgressChart } from "../DifferentialProgressChart";
 import { RefreshStatusChip } from "../RefreshStatusChip/RefreshStatusChip";
+import { differentialProgressChartHistory } from "../differential-testing-render/differential-testing-renderer.js";
 import { resolvePointer } from "../utils/json-pointer";
 import { ControlAdapter } from "./control-adapters";
 import { DifferentialTestingDetail } from "./differential-testing-detail";
@@ -105,7 +106,12 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
         {...(deliveredFrameDeltaMetrics.present && exactFrameDeltaMetrics ? { hostOnly: false } : {})}
         {...(deliveredFrameDeltaMetrics.present && !exactFrameDeltaMetrics ? { hostAriaLabel: "Exact-prefix frame delta metrics unavailable" } : {})}
       />
-      : <DifferentialProgressChart history={source(progressNode, state.payload) as any[]} {...componentDefaults(ir, progressNode.kind) as any} />;
+      : <DifferentialProgressChart
+        history={differentialProgressChartHistory(payload, { mode: "value" }) as any[]}
+        {...componentDefaults(ir, progressNode.kind) as any}
+        mode="progress"
+        hostOnly={false}
+      />;
   const fieldsMetric = payload.summary && typeof payload.summary === "object"
     ? (payload.summary as { fields?: { total?: unknown } }).fields
     : undefined;
@@ -115,6 +121,7 @@ export function DifferentialTestingThemeView({ ir, state, dispatch }: Props) {
     <DifferentialTestingDetail
       payload={payload}
       progressMode={progressMode}
+      onProgressModeChange={(value) => dispatch({ type: "modeSelected", id: "progress-mode", value })}
       refresh={<RefreshStatusChip refresh={source(refreshNode, state.payload) as any} clientStatus={refreshPhase === "idle" ? null : refreshPhase} />}
       kpis={<DifferentialKpiStrip payload={source(kpiNode, state.payload) as any} onScenarioChange={(scenarioId) => dispatch({ type: "scenarioSelected", scenarioId })} />}
       chart={chart}

@@ -20,7 +20,8 @@ function ChartLabel({ label }: { label: FrameDeltaLabel }) {
 export function DifferentialFrameDeltaChart({ metrics, hostOnly = false, hostClassName, hostRole, hostAriaLabel }: DifferentialFrameDeltaChartProps) {
   if (hostOnly) return <svg id="progress-chart" className={hostClassName} viewBox="0 0 640 200" role={hostRole} aria-label={hostAriaLabel ?? "Exact-prefix frame delta metrics unavailable"} />;
   const geometry = buildFrameDeltaChart(metrics);
-  return <svg id={geometry.root.id} viewBox={geometry.root.viewBox} aria-label={geometry.root.ariaLabel} className={geometry.root.className}>
+  const className = [hostClassName, geometry.root.className].filter(Boolean).join(" ") || undefined;
+  return <svg id={geometry.root.id} viewBox={geometry.root.viewBox} role={hostRole} aria-label={geometry.root.ariaLabel} className={className}>
     {!geometry.cleared && <>
       {geometry.bands.map((band, index) => <rect key={`band-${index}`} className={band.className} x={band.x} y={band.y} width={band.width} height={band.height} />)}
       {geometry.yLabels.flatMap((label, index) => [

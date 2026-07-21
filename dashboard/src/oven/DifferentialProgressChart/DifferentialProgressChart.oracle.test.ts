@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -45,3 +46,24 @@ for (const chartCase of progressChartGoldenCases.filter(({ filename }) => !filen
     }
   });
 }
+
+test("frame-delta React chart retains its host styling class", () => {
+  const actual = renderToStaticMarkup(createElement(DifferentialFrameDeltaChart, {
+    metrics: { frameDeviationRatios: [0, 0.01, 0.02] },
+    hostClassName: "chart",
+    hostRole: "img",
+  }));
+  assert.match(actual, /<svg[^>]*class="chart delta-chart"/);
+  assert.match(actual, /<svg[^>]*role="img"/);
+});
+
+test("progress React chart renders inside its styled host", () => {
+  const actual = renderToStaticMarkup(createElement(DifferentialProgressChart, {
+    history: [],
+    mode: "failed",
+    hostClassName: "chart",
+    hostRole: "img",
+  }));
+  assert.match(actual, /<svg[^>]*class="chart failed-chart"/);
+  assert.match(actual, /class="grid-line/);
+});

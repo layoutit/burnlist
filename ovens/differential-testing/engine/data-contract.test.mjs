@@ -1149,6 +1149,16 @@ test("dashboard helpers preserve losing runs and observe telemetry and exact-ses
   });
   assert.deepEqual(exactMetrics.frameDeviationRatios.slice(236, 240), [0, 0, 0.2, 0.2]);
   assert.equal(exactMetrics.firstFailingFrame, 238);
+  assert.deepEqual(differentialExactPrefixFrameDeltaMetrics({
+    progress: [{ frames: 2, frame: 2, firstFailingTick: null }],
+    summary: { frames: { uniqueTicks: 4 } },
+  }, {
+    frameDeviationRatios: [0.2, 0.2, 0.2, 0.2],
+    firstFailingFrame: 0,
+  }), {
+    frameDeviationRatios: [0, 0, 0, 0],
+    firstFailingFrame: -1,
+  });
   assert.equal(differentialExactPrefixFrameDeltaMetrics(framePayload, null), null);
 
   const payload = { publishedAt: points[2].timestamp, adapter: { id: "fixture" }, summary: {}, progress: points.slice(), log: [], fields: [{ id: "field-a", label: "Field A", samples: [] }], telemetry: {

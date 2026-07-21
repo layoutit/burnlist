@@ -59,11 +59,23 @@ export function differentialExactPrefixFrameDeltaMetrics(payload: unknown, metri
   const clearedFrame = Number(latest?.frame);
   const frameCount = Number(latest?.frames);
   if (!Array.isArray(ratios) || !Number.isSafeInteger(clearedFrame) || !Number.isSafeInteger(frameCount)
-    || frameCount !== ratios.length || clearedFrame < 0 || clearedFrame > frameCount
+    || clearedFrame < 0 || clearedFrame > frameCount
     || ratios.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) return null;
+  let clearedTick = clearedFrame;
+  if (frameCount !== ratios.length) {
+    const frames = record(record(data?.summary)?.frames);
+    const uniqueTicks = Number(frames?.uniqueTicks);
+    if (!Number.isSafeInteger(uniqueTicks) || uniqueTicks !== ratios.length) return null;
+    if (clearedFrame === frameCount) clearedTick = ratios.length;
+    else {
+      const firstFailingTick = Number(latest?.firstFailingTick);
+      if (!Number.isSafeInteger(firstFailingTick) || firstFailingTick < 0 || firstFailingTick >= ratios.length) return null;
+      clearedTick = firstFailingTick;
+    }
+  }
   return {
     ...metricData,
-    frameDeviationRatios: ratios.map((value, frame) => frame < clearedFrame ? 0 : Number(value)),
-    firstFailingFrame: clearedFrame < frameCount ? clearedFrame : -1,
+    frameDeviationRatios: ratios.map((value, tick) => tick < clearedTick ? 0 : Number(value)),
+    firstFailingFrame: clearedTick < ratios.length ? clearedTick : -1,
   };
 }

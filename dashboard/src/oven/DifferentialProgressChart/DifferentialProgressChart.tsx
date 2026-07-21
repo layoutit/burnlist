@@ -19,7 +19,8 @@ function Primitive({ primitive }: { primitive: DifferentialProgressChartPrimitiv
 export function DifferentialProgressChart({ history, mode = "failed", timeScale = "compact", hostOnly = false, hostClassName, hostRole, hostAriaLabel }: DifferentialProgressChartProps) {
   if (hostOnly) return <svg id="progress-chart" className={hostClassName} viewBox="0 0 640 200" role={hostRole} aria-label={hostAriaLabel ?? "Completion percentage over time"} />;
   const geometry = buildDifferentialProgressChart(history, { mode, timeScale });
-  return <svg id={geometry.root.id} viewBox={geometry.root.viewBox} aria-label={geometry.root.ariaLabel} className={geometry.root.className} {...Object.fromEntries(Object.entries(geometry.root.data).map(([key, value]) => [`data-${key}`, value]))}>
+  const className = [hostClassName, geometry.root.className].filter(Boolean).join(" ") || undefined;
+  return <svg id={geometry.root.id} viewBox={geometry.root.viewBox} role={hostRole} aria-label={geometry.root.ariaLabel} className={className} {...Object.fromEntries(Object.entries(geometry.root.data).map(([key, value]) => [`data-${key}`, value]))}>
     {geometry.primitives.map((primitive, index) => <Primitive key={index} primitive={primitive} />)}
   </svg>;
 }

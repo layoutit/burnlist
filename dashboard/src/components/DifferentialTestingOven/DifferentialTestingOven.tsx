@@ -1,3 +1,4 @@
+import { useEffect, type ReactNode } from "react";
 import { adaptPerformanceTracingReport } from "@lib";
 import { adaptDifferentialTesting, type DifferentialTestingData } from "../../lib/differential-testing-adapter";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
@@ -20,10 +21,22 @@ function adaptEnvelope(raw: unknown, adaptPayload: (payload: unknown) => Differe
 export const dtAdapt = (raw: unknown) => adaptEnvelope(raw, (payload) => payload as DifferentialTestingData);
 export const ptAdapt = (raw: unknown) => adaptEnvelope(raw, (payload) => adaptPerformanceTracingReport(payload) as DifferentialTestingData);
 
+function DifferentialTestingShell({ children, performanceTracing = false }: { children: ReactNode; performanceTracing?: boolean }) {
+  useEffect(() => {
+    document.body.classList.add("driving-parity-view");
+    if (performanceTracing) document.body.classList.add("performance-tracing-oven");
+    return () => {
+      document.body.classList.remove("driving-parity-view");
+      if (performanceTracing) document.body.classList.remove("performance-tracing-oven");
+    };
+  }, [performanceTracing]);
+  return <div className={`shell driving-parity-view${performanceTracing ? " performance-tracing-oven" : ""}`}>{children}</div>;
+}
+
 export function DifferentialTestingOvenPage() {
-  return <OvenRuntime ir={differentialTestingIr} adapt={dtAdapt} />;
+  return <DifferentialTestingShell><OvenRuntime ir={differentialTestingIr} adapt={dtAdapt} /></DifferentialTestingShell>;
 }
 
 export function PerformanceTracingOvenPage() {
-  return <OvenRuntime ir={performanceTracingIr} adapt={ptAdapt} />;
+  return <DifferentialTestingShell performanceTracing><OvenRuntime ir={performanceTracingIr} adapt={ptAdapt} /></DifferentialTestingShell>;
 }

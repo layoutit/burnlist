@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 type DetailProps = {
   payload: Record<string, unknown>;
   progressMode: string;
+  onProgressModeChange?: (mode: "progress" | "failed" | "delta") => void;
   refresh: ReactNode;
   kpis: ReactNode;
   chart: ReactNode;
@@ -19,7 +20,7 @@ function OverviewTime({ value }: { value: unknown }) {
   </time>;
 }
 
-export function DifferentialTestingDetail({ payload, progressMode, refresh, kpis, chart, log }: DetailProps) {
+export function DifferentialTestingDetail({ payload, progressMode, onProgressModeChange, refresh, kpis, chart, log }: DetailProps) {
   const chartTitle = String(payload.primaryChartTitle || "Parity Progress");
   const historyTitle = String(payload.historyTitle || "Parity Progress");
   return <>
@@ -41,13 +42,13 @@ export function DifferentialTestingDetail({ payload, progressMode, refresh, kpis
                 </div>
                 <div className="chart-tools">
                   <div className="label-toggle progress-chart-toggle differential-tabs" aria-label="Burnlist progress chart view">
-                    <button type="button" className="standard-progress-mode" data-progress-chart-mode="progress">Progress</button>
+                    <button type="button" className="standard-progress-mode" data-progress-chart-mode="progress" onClick={() => onProgressModeChange?.("progress")}>Progress</button>
                     <span className="sep progress-chart-mode-sep standard-progress-sep" aria-hidden="true">|</span>
-                    <button type="button" data-progress-chart-mode="failed" aria-pressed={progressMode === "failed"}>
+                    <button type="button" data-progress-chart-mode="failed" aria-pressed={progressMode === "failed"} onClick={() => onProgressModeChange?.("failed")}>
                       <span className="standard-failed-label">Failed</span><span className="driving-parity-progress-label">Value</span>
                     </button>
                     <span className="sep progress-chart-mode-sep driving-parity-progress-only" aria-hidden="true">·</span>
-                    <button type="button" className="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed={progressMode === "delta"}>Delta</button>
+                    <button type="button" className="driving-parity-progress-only" data-progress-chart-mode="delta" aria-pressed={progressMode === "delta"} onClick={() => onProgressModeChange?.("delta")}>Delta</button>
                   </div>
                   <div className="label-toggle progress-time-scale-toggle" aria-label="Burn progress time scale">
                     <button type="button" data-progress-time-scale="all" title="Show elapsed time">All</button>

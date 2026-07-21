@@ -50,6 +50,13 @@ const pageSeed = (page) => ({ "field-view": {
 } });
 const loadError = new Error("network unreachable");
 
+function withoutPrimaryChartGeometry(markup) {
+  return markup.replace(/<svg([^>]*\bid="progress-chart"[^>]*)>[\s\S]*?<\/svg>/u, (_match, attributes) => {
+    const hostAttributes = String(attributes).replace(/\sdata-[\w-]+="[^"]*"/gu, "");
+    return `<svg${hostAttributes}></svg>`;
+  });
+}
+
 const states = [
   { name: "dt-load-error", initialAction: { type: "payloadRejected", error: loadError, generation: 0 } },
   { name: "dt-empty", payload: differentialTestingEmptyPayload },
@@ -112,10 +119,13 @@ test("DT oven equals the frozen normalized DOM states", async () => {
         pages: state.pages,
         initialAction: state.initialAction,
       })));
-      const actual = serializeCanonical(normalize(parseHtml(markup)));
+      // The imperative golden paints this SVG only after mount. React renders the
+      // same oracle-tested geometry eagerly, so this suite compares the host here.
+      const hostMarkup = withoutPrimaryChartGeometry(markup);
+      const actual = serializeCanonical(normalize(parseHtml(hostMarkup)));
       const golden = await readFile(`dashboard/src/oven/differential-testing-render/goldens/${state.name}.html`, "utf8");
       const expected = serializeCanonical(normalize(parseHtml(golden)));
-      const comparison = domEquivalent(markup, golden);
+      const comparison = domEquivalent(hostMarkup, golden);
       assert.equal(comparison.equal, true, `${state.name}: ${comparison.message}`);
       assert.equal(actual, expected, `${state.name} differs`);
     }
