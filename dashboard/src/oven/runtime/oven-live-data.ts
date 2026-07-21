@@ -51,7 +51,7 @@ export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike,
   const generation = generationRef ?? { current: 0 };
   const refresh = () => {
     if (stopped) return;
-    if (inFlight) { queued = true; dispatch({ type: "payloadRequested" }); return; }
+    if (inFlight) { if (!queued) { queued = true; dispatch({ type: "payloadRequested" }); } return; }
     inFlight = true;
     generation.current += 1;
     dispatch({ type: "payloadRequested" });

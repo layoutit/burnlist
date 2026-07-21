@@ -6,7 +6,7 @@ import { dtAdapt, ptAdapt } from "../../components/DifferentialTestingOven/Diffe
 import { adaptDifferentialTesting } from "../../lib/differential-testing-adapter";
 import { adaptPerformanceTracingReport } from "../../lib/performance-tracing.mjs";
 import { createOvenPoller, ovenDataUrl, scenarioSearch } from "./oven-live-data";
-import type { OvenAction } from "./oven-reducer";
+import { initOvenState, ovenReducer, type OvenAction } from "./oven-reducer";
 
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 const response = (payload: unknown, etag = "v1") => ({ ok: true, status: 200, headers: { get: (name: string) => name === "etag" ? etag : null }, json: async () => payload });
@@ -79,4 +79,20 @@ test("oven poller adapts DT and PT envelopes while unadapted polls retain raw bo
   rawPoller.refresh();
   await new Promise<void>((resolve) => setImmediate(resolve));
   assert.deepEqual(rawActions.find((action) => action.type === "payloadAccepted"), { type: "payloadAccepted", payload: envelopes[0], generation: 1 });
+});
+
+test("oven poller coalesces in-flight retries into one reducer request and resolves to idle", async () => {
+  const ir = { contract: "checklist", controls: [], collections: [], root: [] };
+  let state = initOvenState(ir as any);
+  const generationRef = { current: 0 }, first = deferred<any>(), second = deferred<any>(), calls: RequestInit[] = [], actions: OvenAction[] = [];
+  const dispatch = (action: OvenAction) => { actions.push(action); state = ovenReducer(state, action, ir as any); };
+  const poller = createOvenPoller({ id: "sample", dispatch, fetchImpl: async (_url, init) => { calls.push(init); return calls.length === 1 ? first.promise : second.promise; }, search: "", generationRef });
+  poller.refresh(); poller.refresh(); poller.refresh();
+  assert.equal(actions.filter((action) => action.type === "payloadRequested").length, 2);
+  assert.equal(state.refresh.generation, generationRef.current);
+  first.resolve(response({ version: 1 })); await new Promise<void>((resolve) => setImmediate(resolve));
+  second.resolve(response({ version: 2 }, "v2")); await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(state.refresh.phase, "idle");
+  assert.equal(state.payloadRevision, 2);
+  assert.equal(calls.length, 2);
 });
