@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   normalizeOvenEvent,
   OVEN_EVENT_MAX_DISCOVERY_SCANS,
   OVEN_EVENT_MAX_BYTES,
+  OVEN_EVENT_MAX_SEQUENCE_SCANS,
   publishOvenEvent,
   readOvenEvents,
 } from "./oven-events.mjs";
@@ -138,6 +139,22 @@ test("Oven event sequence recovery ignores corrupt records but propagates contai
   rmSync(join(eventRoot, "sequence.txt"));
   writeFileSync(join(eventRoot, "sequence.txt"), "2\n");
   assert.deepEqual(readOvenEvents(repo).map((event) => event.sequence), [1, 2]);
+});
+
+test("Oven event sequence recovery bounds record-directory scans", (t) => {
+  const repo = fixture(t);
+  const first = publishOvenEvent(repo, input());
+  const eventRoot = dirname(dirname(first.path));
+  const recordsDir = join(eventRoot, "records");
+  rmSync(join(eventRoot, "sequence.txt"));
+  for (let index = 0; index <= OVEN_EVENT_MAX_SEQUENCE_SCANS; index += 1) {
+    writeFileSync(join(recordsDir, `pad-${index}.txt`), "x");
+  }
+  assert.throws(
+    () => publishOvenEvent(repo, input({ cursor: "after" })),
+    /scan limit|recovery exceeded/u,
+  );
+  assert.equal(existsSync(join(eventRoot, "sequence.txt")), false);
 });
 
 test("Oven event counter-only crash gaps remain consumed reservations", (t) => {

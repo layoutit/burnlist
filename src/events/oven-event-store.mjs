@@ -104,6 +104,13 @@ function openDirectoryIfPresent(path) {
   }
 }
 
+function recoveryScanLimitError(id) {
+  return Object.assign(
+    new Error(`Oven ${id} sequence recovery exceeded its ${OVEN_EVENT_MAX_SEQUENCE_SCANS} scan limit; restore sequence.txt.`),
+    { code: "ESCANLIMIT" },
+  );
+}
+
 function recoverHighestSequence(repoRoot, id) {
   let highest = 0;
   const sequenceDir = containedJoin(repoRoot, "events", id, "sequence");
@@ -111,8 +118,11 @@ function recoverHighestSequence(repoRoot, id) {
   {
     const directory = openDirectoryIfPresent(sequenceDir);
     if (directory) {
+      let scanned = 0;
       try {
         for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+          scanned += 1;
+          if (scanned > OVEN_EVENT_MAX_SEQUENCE_SCANS) throw recoveryScanLimitError(id);
           const match = entry.isFile() ? entry.name.match(eventIndexPattern) : null;
           if (match) highest = Math.max(highest, Number(match[1]));
         }
@@ -122,8 +132,11 @@ function recoverHighestSequence(repoRoot, id) {
   {
     const directory = openDirectoryIfPresent(recordsDir);
     if (directory) {
+      let scanned = 0;
       try {
         for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+          scanned += 1;
+          if (scanned > OVEN_EVENT_MAX_SEQUENCE_SCANS) throw recoveryScanLimitError(id);
           if (!entry.isFile() || !eventRecordPattern.test(entry.name)) continue;
           const path = containedJoin(repoRoot, "events", id, "records", entry.name);
           try {
