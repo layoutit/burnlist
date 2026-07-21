@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertBuiltInOven, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
+import { assertBuiltInOven, assertBuiltInOvenDataDocs, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
 import { verificationSerialTestFiles, verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -411,6 +411,12 @@ assertBuiltInOven(repoRoot, "model-lab", "Model Lab");
 assertBuiltInOven(repoRoot, "performance-tracing", "Performance Tracing");
 assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
 assertBuiltInOven(repoRoot, "visual-parity", "Visual Parity");
+assertBuiltInOvenDataDocs(repoRoot, "checklist", { dataInput: "json-payload", validator: "validateGenericJsonData" });
+assertBuiltInOvenDataDocs(repoRoot, "differential-testing", { dataInput: "json-payload", validator: "validateDifferentialTestingRuntimeData" });
+assertBuiltInOvenDataDocs(repoRoot, "model-lab", { dataInput: "json-payload", validator: "validateModelLabRuntimeData" });
+assertBuiltInOvenDataDocs(repoRoot, "performance-tracing", { dataInput: "json-payload", validator: "validatePerformanceTracingRuntimeData" });
+assertBuiltInOvenDataDocs(repoRoot, "streaming-diff", { dataInput: "producer-managed" });
+assertBuiltInOvenDataDocs(repoRoot, "visual-parity", { dataInput: "json-payload", validator: "validateVisualParityRuntimeData" });
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 

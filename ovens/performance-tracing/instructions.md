@@ -2,6 +2,20 @@
 
 Performance Tracing renders retained browser-output timing evidence from a project-owned trace run. It shows frame pacing, synchronous step cost, budget checks, renderer trace groups, slow steps, browser identity, and source provenance without treating instrumentation as gameplay or visual-equivalence authority.
 
+## Data Shape
+
+- Input mode: `json-payload`.
+- Runtime validator: `validatePerformanceTracingRuntimeData`.
+- Starter data: none.
+
+The runtime validator is the authority used by both `oven set` and the render
+handler. It requires a `performance-tracing-oven@1` report with run identity,
+trust boundary, metrics, browser and scenario, reconciled verdict checks,
+artifacts, current source-file provenance, diagnostics, and optional retained
+runs and history. Provenance files are re-hashed beside the bound report, so a
+structurally valid but stale report is rejected. There is no
+`example/data.json`, so `oven use performance-tracing` adopts without data.
+
 ## State Contract
 
 The project publishes one atomic `performance-tracing-oven@1` JSON report. The report owns capture, deterministic replay, raw Chrome trace retention, samples, machine and browser provenance, and budget evaluation. Burnlist validates and renders that normalized report; it does not execute the trace command or rewrite project evidence.

@@ -2,7 +2,16 @@
 
 `checklist.oven` is the declarative, read-only detail view for a Burnlist checklist. It renders the current task, progress KPIs, completion ledger, burn chart, and completed-event cards without changing canonical Burnlist state.
 
-## Payload contract
+## Data Shape
+
+- Input mode: `json-payload`.
+- Runtime validator: `validateGenericJsonData`.
+- Starter data: none.
+
+The runtime validator is the authority used by both `oven set` and the data
+handler. It accepts any parsed JSON value; that establishes JSON readability,
+not a field-shape or truth claim. No `example/data.json` is shipped, so `oven
+use checklist` adopts the Oven without writing or binding data.
 
 The view binds `checklist-progress@1` data after `adaptChecklist(data)` in `dashboard/src/lib/checklist-adapter.ts`. The payload contains:
 
