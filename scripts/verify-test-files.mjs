@@ -64,6 +64,7 @@ export const verificationTestFiles = [
   "src/cli/hooks-config.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-hook-adapters.test.mjs",
   "src/server/oven-bindings.test.mjs",
+  "src/server/oven-data-store.test.mjs",
   "src/server/oven-warm.test.mjs",
   "src/server/oven-vendor.test.mjs",
   "src/server/oven-vendor-resolution.test.mjs",

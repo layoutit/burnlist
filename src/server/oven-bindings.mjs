@@ -81,7 +81,7 @@ function mutableBindingStore(repoRoot) {
   return result.store;
 }
 
-function writeStore(repoRoot, store) {
+function writeStore(repoRoot, store, { beforeRename, afterRename } = {}) {
   const dir = bindingStoreDir(repoRoot);
   const path = bindingStorePath(repoRoot);
   const temporary = join(dir, `.bindings.json.${randomBytes(12).toString("hex")}`);
@@ -94,7 +94,9 @@ function writeStore(repoRoot, store) {
     } finally {
       closeSync(fd);
     }
+    beforeRename?.();
     renameSync(temporary, path);
+    afterRename?.();
     const directory = openSync(dir, constants.O_RDONLY);
     try { fsyncSync(directory); } finally { closeSync(directory); }
   } catch (error) {
@@ -103,16 +105,20 @@ function writeStore(repoRoot, store) {
   }
 }
 
-export function writeBinding(repoRoot, id, logicalPath, boundAt) {
+// Transactional callers may compose a data-file publication with this write
+// while already holding withRepoStateLock. Ordinary callers use writeBinding.
+export function writeBindingWithinRepoStateLock(repoRoot, id, logicalPath, boundAt, options) {
   const safeId = ovenId(id);
   if (typeof logicalPath !== "string" || logicalPath.length === 0) throw new Error("Oven binding path must be a non-empty string.");
   if (!isTimestamp(boundAt)) throw new Error("Oven binding timestamp must be a valid ISO timestamp.");
-  return withRepoStateLock(repoRoot, () => {
-    const store = mutableBindingStore(repoRoot);
-    store.bindings[safeId] = { path: logicalPath, boundAt };
-    writeStore(repoRoot, store);
-    return { path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
-  });
+  const store = mutableBindingStore(repoRoot);
+  store.bindings[safeId] = { path: logicalPath, boundAt };
+  writeStore(repoRoot, store, options);
+  return { path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
+}
+
+export function writeBinding(repoRoot, id, logicalPath, boundAt) {
+  return withRepoStateLock(repoRoot, () => writeBindingWithinRepoStateLock(repoRoot, id, logicalPath, boundAt));
 }
 
 // Producers that establish a durable discovery root must not silently replace a
