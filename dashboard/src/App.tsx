@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, OvenCatalog, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
+import { AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, OvenCatalog, OvenExplainer, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
 import { useDashboardData } from "@hooks";
 import { currentSection, filterFromUrl, selectedBurnlist } from "@lib";
 import type { Filter } from "@lib";
@@ -30,7 +30,7 @@ export function App() {
     <div className="dashboard-app">
       <AppHeader detail={progress} section={section} />
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <section className="dashboard-index"><h1 className="dashboard-index-title">Oven</h1><p className="dashboard-index-summary">Oven details coming soon.</p></section> : selected ? (
+        {section === "differential-testing" ? <DifferentialTestingOvenPage /> : section === "model-lab" ? <ModelLabPage /> : section === "performance-tracing" ? <PerformanceTracingOvenPage /> : section === "streaming-diff" ? <StreamingDiff projects={projects} projectsLoading={loading} /> : section === "visual-parity" ? <VisualParityPage /> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
           error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <><LensSwitcher /><ChecklistOvenView data={progress} /></>
           ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />

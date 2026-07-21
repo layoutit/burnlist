@@ -14,6 +14,13 @@ export function customOvenSelection(): { id: string; repoKey: string | null; bur
   return current.section === "custom-oven" ? { id: current.ovenId, repoKey: current.repoKey, burnlistId: current.burnlistId ?? null } : null;
 }
 
+export function ovenExplainerSelection(): { ovenId: string; repoKey: string | null } | null {
+  const current = route();
+  return current.section === "oven-explainer"
+    ? { ovenId: current.ovenId, repoKey: new URLSearchParams(window.location.search).get("repoKey") }
+    : null;
+}
+
 export function burnlistLensContext(): { repoKey: string; burnlistId: string; activeOvenId: string } | null {
   const current = route();
   if (!current.repoKey || !current.burnlistId) return null;

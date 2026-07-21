@@ -88,6 +88,7 @@ export const verificationTestFiles = [
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
+  "dashboard/src/components/OvenExplainer/oven-explainer-render.test.mjs",
 ];
 
 // These subprocess wall-clock assertions must not compete with the parallel
