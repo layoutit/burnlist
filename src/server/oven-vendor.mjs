@@ -1,7 +1,10 @@
-import { mkdirSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ovenId, normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
-import { atomicDirectory, withOvenPackageLock } from "./fs-safe.mjs";
+import { atomicDirectory, readTextFileWithLimit, withOvenPackageLock } from "./fs-safe.mjs";
+import { assertOvenPackageFileLimits, OVEN_INSTRUCTIONS_MAX_BYTES, OVEN_SOURCE_MAX_BYTES } from "./oven-storage.mjs";
+
+export const OVEN_PIN_MAX_BYTES = 16_384;
 
 function isWithin(parent, child) {
   const pathFromParent = relative(parent, child);
@@ -25,6 +28,31 @@ function nearestRealPath(path) {
   }
 }
 
+function optionalEntry(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function assertPlainDirectory(path) {
+  const entry = optionalEntry(path);
+  if (entry && (!entry.isDirectory() || entry.isSymbolicLink())) {
+    throw new Error(`Vendored Oven path contains a non-directory or symbolic link: ${path}`);
+  }
+}
+
+function assertPlainFile(path) {
+  const entry = optionalEntry(path);
+  if (entry?.isSymbolicLink()) throw new Error(`Vendored Oven path contains a symbolic link: ${path}`);
+}
+
+function sameEntry(left, right) {
+  return left.dev === right.dev && left.ino === right.ino;
+}
+
 function assertVendoredOvenPath(repoRoot, id) {
   const root = vendoredOvensDir(repoRoot);
   const path = vendoredOvenPath(repoRoot, id);
@@ -34,12 +62,67 @@ function assertVendoredOvenPath(repoRoot, id) {
   if (!isWithin(resolve(root), resolve(path)) || !isWithin(repo, realRoot) || !isWithin(realRoot, realPath)) {
     throw new Error(`Vendored Oven path escapes ${root}: ${path}`);
   }
+  const state = join(resolve(repoRoot), ".burnlist");
+  assertPlainDirectory(state);
+  assertPlainDirectory(root);
+  assertPlainDirectory(path);
+  for (const name of ["instructions.md", `${id}.oven`, "pin.json"]) assertPlainFile(join(path, name));
   return path;
 }
 
-function readFileIfPresent(path) {
+function ensureVendoredOvensDir(repoRoot, id) {
+  const state = join(resolve(repoRoot), ".burnlist");
+  const root = vendoredOvensDir(repoRoot);
+  assertVendoredOvenPath(repoRoot, id);
+  for (const directory of [state, root]) {
+    if (!optionalEntry(directory)) {
+      try {
+        mkdirSync(directory);
+      } catch (error) {
+        if (error?.code !== "EEXIST") throw error;
+      }
+    }
+    assertVendoredOvenPath(repoRoot, id);
+  }
+  return root;
+}
+
+function vendoredPathGuard(repoRoot, id) {
+  const state = join(resolve(repoRoot), ".burnlist");
+  const root = vendoredOvensDir(repoRoot);
+  assertVendoredOvenPath(repoRoot, id);
+  const expectedState = lstatSync(state);
+  const expectedRoot = lstatSync(root);
+  return () => {
+    assertVendoredOvenPath(repoRoot, id);
+    const currentState = lstatSync(state);
+    const currentRoot = lstatSync(root);
+    if (!sameEntry(expectedState, currentState) || !sameEntry(expectedRoot, currentRoot)) {
+      throw new Error(`Vendored Oven storage changed while it was in use: ${root}`);
+    }
+  };
+}
+
+function vendoredReadGuard(repoRoot, id) {
+  const state = join(resolve(repoRoot), ".burnlist");
+  const root = vendoredOvensDir(repoRoot);
+  const directory = vendoredOvenPath(repoRoot, id);
+  assertVendoredOvenPath(repoRoot, id);
+  const paths = [state, root, directory];
+  const expected = paths.map(optionalEntry);
+  if (expected.some((entry) => !entry)) return null;
+  return () => {
+    assertVendoredOvenPath(repoRoot, id);
+    const current = paths.map((path) => lstatSync(path));
+    if (current.some((entry, index) => !sameEntry(expected[index], entry))) {
+      throw new Error(`Vendored Oven package changed while it was being read: ${directory}`);
+    }
+  };
+}
+
+function readFileIfPresent(path, maxBytes, label, assertPath) {
   try {
-    return readFileSync(path, "utf8");
+    return readTextFileWithLimit(path, maxBytes, label, { assertPath });
   } catch (error) {
     if (error?.code === "ENOENT" || error?.code === "ENOTDIR") return null;
     throw error;
@@ -65,8 +148,8 @@ function validatePin(pin, pkg) {
 function readOvenPackageDir(root, id) {
   const safeId = ovenId(id);
   const directory = join(root, safeId);
-  const instructions = readFileIfPresent(join(directory, "instructions.md"));
-  const oven = readFileIfPresent(join(directory, `${safeId}.oven`));
+  const instructions = readFileIfPresent(join(directory, "instructions.md"), OVEN_INSTRUCTIONS_MAX_BYTES, "Oven instructions");
+  const oven = readFileIfPresent(join(directory, `${safeId}.oven`), OVEN_SOURCE_MAX_BYTES, "Oven source");
   if (instructions === null || oven === null) return null;
   const pkg = normalizeOvenPackage({ id: safeId, instructions, oven });
   return { id: safeId, instructions, oven, version: pkg.version, revision: ovenRevision({ id: safeId, instructions, oven }) };
@@ -83,9 +166,15 @@ export function vendoredOvenPath(repoRoot, id) {
 export function readVendoredOven(repoRoot, id) {
   const safeId = ovenId(id);
   const directory = assertVendoredOvenPath(repoRoot, safeId);
-  const instructions = readFileIfPresent(join(directory, "instructions.md"));
-  const oven = readFileIfPresent(join(directory, `${safeId}.oven`));
-  const pinText = readFileIfPresent(join(directory, "pin.json"));
+  const assertPath = vendoredReadGuard(repoRoot, safeId);
+  if (!assertPath) return null;
+  const instructions = readFileIfPresent(
+    join(directory, "instructions.md"), OVEN_INSTRUCTIONS_MAX_BYTES, "Vendored Oven instructions", assertPath,
+  );
+  const oven = readFileIfPresent(
+    join(directory, `${safeId}.oven`), OVEN_SOURCE_MAX_BYTES, "Vendored Oven source", assertPath,
+  );
+  const pinText = readFileIfPresent(join(directory, "pin.json"), OVEN_PIN_MAX_BYTES, "Vendored Oven pin", assertPath);
   if (instructions === null || oven === null || pinText === null) return null;
   let pin;
   try {
@@ -96,7 +185,9 @@ export function readVendoredOven(repoRoot, id) {
   const normalized = normalizeOvenPackage({ id: safeId, instructions, oven });
   const pkg = { id: safeId, instructions, oven, version: normalized.version };
   const revision = ovenRevision(pkg);
-  return { ...pkg, revision, pin: validatePin(pin, pkg) };
+  const result = { ...pkg, revision, pin: validatePin(pin, pkg) };
+  assertPath();
+  return result;
 }
 
 export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "built-in", now } = {}) {
@@ -104,6 +195,7 @@ export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "
   const normalized = normalizeOvenPackage({ id: safeId, instructions, oven });
   if (typeof source !== "string" || !source) throw new Error("Vendored Oven source must be a non-empty string.");
   const pkg = { id: safeId, instructions, oven, version: normalized.version };
+  assertOvenPackageFileLimits({ "instructions.md": instructions, [`${safeId}.oven`]: oven }, safeId);
   const revision = ovenRevision(pkg);
   const pin = {
     id: safeId,
@@ -112,14 +204,18 @@ export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "
     source,
     pinnedAt: (now ?? new Date()).toISOString(),
   };
-  const root = vendoredOvensDir(repoRoot);
-  mkdirSync(root, { recursive: true });
-  assertVendoredOvenPath(repoRoot, safeId);
+  const pinText = `${JSON.stringify(pin, null, 2)}\n`;
+  const pinBytes = Buffer.byteLength(pinText, "utf8");
+  if (pinBytes > OVEN_PIN_MAX_BYTES) {
+    throw new Error(`Vendored Oven pin is ${pinBytes} bytes, over the ${OVEN_PIN_MAX_BYTES} byte limit.`);
+  }
+  const root = ensureVendoredOvensDir(repoRoot, safeId);
+  const assertPath = vendoredPathGuard(repoRoot, safeId);
   withOvenPackageLock(root, safeId, () => atomicDirectory(root, safeId, {
     "instructions.md": instructions,
     [`${safeId}.oven`]: oven,
-    "pin.json": `${JSON.stringify(pin, null, 2)}\n`,
-  }, { replace: true }));
+    "pin.json": pinText,
+  }, { replace: true, assertPath, createParent: false }), { assertPath, createRoot: false });
   return { ...pkg, revision, pin };
 }
 

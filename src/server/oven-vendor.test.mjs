@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,12 +16,14 @@ import { join } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
 import {
+  OVEN_PIN_MAX_BYTES,
   readVendoredOven,
   resolveOvenForRepo,
   vendoredOvenPath,
   vendoredOvensDir,
   writeVendoredOven,
 } from "./oven-vendor.mjs";
+import { OVEN_INSTRUCTIONS_MAX_BYTES, OVEN_SOURCE_MAX_BYTES } from "./oven-storage.mjs";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-oven-vendor-"));
@@ -168,5 +173,214 @@ test("vendored replacement is all-or-nothing and leaves a plain committed direct
     const stat = lstatSync(directory);
     assert.equal(stat.isDirectory(), true);
     assert.equal(stat.isSymbolicLink(), false);
+  } finally { context.cleanup(); }
+});
+
+test("vendored writes reject an escaped state symlink before creating outside directories", () => {
+  const context = fixture();
+  const outside = join(context.repoRoot, "..", "outside");
+  try {
+    mkdirSync(outside);
+    symlinkSync(outside, join(context.repoRoot, ".burnlist"), process.platform === "win32" ? "junction" : "dir");
+    assert.throws(
+      () => writeVendoredOven(context.repoRoot, source("sample-oven", "1.0.0", "Escaped")),
+      /escapes/u,
+    );
+    assert.equal(existsSync(join(outside, "ovens")), false);
+  } finally { context.cleanup(); }
+});
+
+test("vendored writes reject symlinked storage components without writing outside", () => {
+  for (const component of ["ovens", ".oven-locks", "target", "leaf"]) {
+    const context = fixture();
+    try {
+      const outside = join(context.repoRoot, "..", `outside-${component.replace(".", "")}`);
+      const state = join(context.repoRoot, ".burnlist");
+      const root = join(state, "ovens");
+      const target = join(root, "sample-oven");
+      mkdirSync(outside);
+      mkdirSync(state);
+      if (component === "ovens") {
+        symlinkSync(outside, root, process.platform === "win32" ? "junction" : "dir");
+      } else {
+        mkdirSync(root);
+        if (component === ".oven-locks") {
+          symlinkSync(outside, join(root, ".oven-locks"), process.platform === "win32" ? "junction" : "dir");
+        } else if (component === "target") {
+          symlinkSync(outside, target, process.platform === "win32" ? "junction" : "dir");
+        } else {
+          mkdirSync(target);
+          writeFileSync(join(outside, "instructions.md"), "outside stays unchanged\n");
+          symlinkSync(join(outside, "instructions.md"), join(target, "instructions.md"), process.platform === "win32" ? "file" : undefined);
+        }
+      }
+      assert.throws(
+        () => writeVendoredOven(context.repoRoot, source("sample-oven", "1.0.0", "Guarded")),
+        /escapes|symbolic link|must be a real directory/u,
+      );
+      if (component === "leaf") {
+        assert.equal(readFileSync(join(outside, "instructions.md"), "utf8"), "outside stays unchanged\n");
+      } else {
+        assert.deepEqual(readdirSync(outside), []);
+      }
+    } finally { context.cleanup(); }
+  }
+});
+
+test("vendored writes never recursively recreate an identity-guarded root through a swapped state path", () => {
+  const context = fixture();
+  const script = [
+    'import fs, { existsSync, mkdirSync, readFileSync, renameSync, symlinkSync } from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'import { join, resolve } from "node:path";',
+    'const [fixtureRoot, moduleUrl] = process.argv.slice(1);',
+    'const repo = join(fixtureRoot, "boundary-repo");',
+    'const outside = join(fixtureRoot, "boundary-outside");',
+    'mkdirSync(repo);',
+    'mkdirSync(outside);',
+    'const vendor = await import(moduleUrl);',
+    'const pkg = (marker) => ({',
+    '  id: "sample-oven",',
+    '  instructions: `# ${marker}\\n`,',
+    '  oven: `<oven id="sample-oven" version="1.0.0" contract="checklist-progress@1" theme="checklist"><section-header title="${marker}"/></oven>\\n`,',
+    '});',
+    'vendor.writeVendoredOven(repo, pkg("Initial"));',
+    'const state = join(repo, ".burnlist");',
+    'const root = join(state, "ovens");',
+    'const nativeMkdir = fs.mkdirSync;',
+    'let recursiveRootCalls = 0;',
+    'fs.mkdirSync = (path, options) => {',
+    '  if (resolve(path) === resolve(root) && options?.recursive) {',
+    '    recursiveRootCalls += 1;',
+    '    renameSync(state, `${state}.original`);',
+    '    symlinkSync(outside, state, process.platform === "win32" ? "junction" : "dir");',
+    '  }',
+    '  return nativeMkdir(path, options);',
+    '};',
+    'syncBuiltinESMExports();',
+    'let error = null;',
+    'try { vendor.writeVendoredOven(repo, pkg("Updated")); } catch (caught) { error = caught.message; }',
+    'const instructions = readFileSync(join(root, "sample-oven", "instructions.md"), "utf8");',
+    'process.stdout.write(JSON.stringify({ recursiveRootCalls, outsideOvens: existsSync(join(outside, "ovens")), error, instructions }));',
+  ].join("\n");
+  try {
+    const result = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      script,
+      join(context.repoRoot, ".."),
+      new URL("./oven-vendor.mjs", import.meta.url).href,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      recursiveRootCalls: 0,
+      outsideOvens: false,
+      error: null,
+      instructions: "# Updated\n",
+    });
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads reject a persistent package-parent replacement between leaf lstat and open", () => {
+  const context = fixture();
+  const script = [
+    'import fs, { mkdirSync, renameSync } from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'import { join, resolve } from "node:path";',
+    'const [fixtureRoot, moduleUrl] = process.argv.slice(1);',
+    'const repo = join(fixtureRoot, "read-repo");',
+    'const replacementRepo = join(fixtureRoot, "replacement-repo");',
+    'mkdirSync(repo);',
+    'mkdirSync(replacementRepo);',
+    'const vendor = await import(moduleUrl);',
+    'const pkg = (marker) => ({',
+    '  id: "sample-oven",',
+    '  instructions: `# ${marker}\\n`,',
+    '  oven: `<oven id="sample-oven" version="1.0.0" contract="checklist-progress@1" theme="checklist"><section-header title="${marker}"/></oven>\\n`,',
+    '});',
+    'vendor.writeVendoredOven(repo, pkg("Original"));',
+    'vendor.writeVendoredOven(replacementRepo, pkg("Replacement"));',
+    'const target = vendor.vendoredOvenPath(repo, "sample-oven");',
+    'const replacement = vendor.vendoredOvenPath(replacementRepo, "sample-oven");',
+    'const instructionsPath = join(target, "instructions.md");',
+    'const nativeOpen = fs.openSync;',
+    'let swaps = 0;',
+    'fs.openSync = (path, ...args) => {',
+    '  if (swaps === 0 && resolve(path) === resolve(instructionsPath)) {',
+    '    renameSync(target, `${target}.original`);',
+    '    renameSync(replacement, target);',
+    '    swaps += 1;',
+    '  }',
+    '  return nativeOpen(path, ...args);',
+    '};',
+    'syncBuiltinESMExports();',
+    'let returned = null;',
+    'let error = null;',
+    'try { returned = vendor.readVendoredOven(repo, "sample-oven")?.instructions ?? null; } catch (caught) { error = caught.message; }',
+    'process.stdout.write(JSON.stringify({ swaps, returned, error }));',
+  ].join("\n");
+  try {
+    const result = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      script,
+      join(context.repoRoot, ".."),
+      new URL("./oven-vendor.mjs", import.meta.url).href,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    const boundary = JSON.parse(result.stdout);
+    assert.equal(boundary.swaps, 1);
+    assert.equal(boundary.returned, null);
+    assert.match(boundary.error, /package changed while it was being read/u);
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads reject leaf symlinks", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Linked read");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const outside = join(context.repoRoot, "..", "outside-instructions.md");
+    const instructions = join(vendoredOvenPath(context.repoRoot, pkg.id), "instructions.md");
+    writeFileSync(outside, pkg.instructions);
+    rmSync(instructions);
+    symlinkSync(outside, instructions, process.platform === "win32" ? "file" : undefined);
+    assert.throws(() => readVendoredOven(context.repoRoot, pkg.id), /symbolic link/u);
+  } finally { context.cleanup(); }
+});
+
+test("vendored and fallback package reads enforce per-file byte limits", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Bounded");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const directory = vendoredOvenPath(context.repoRoot, pkg.id);
+    const cases = [
+      ["instructions.md", OVEN_INSTRUCTIONS_MAX_BYTES, /Vendored Oven instructions.*byte limit/u],
+      [`${pkg.id}.oven`, OVEN_SOURCE_MAX_BYTES, /Vendored Oven source.*byte limit/u],
+      ["pin.json", OVEN_PIN_MAX_BYTES, /Vendored Oven pin.*byte limit/u],
+    ];
+    for (const [name, limit, pattern] of cases) {
+      const path = join(directory, name);
+      const before = readFileSync(path, "utf8");
+      writeFileSync(path, "x".repeat(limit + 1));
+      assert.throws(() => readVendoredOven(context.repoRoot, pkg.id), pattern);
+      writeFileSync(path, before);
+    }
+    assert.throws(
+      () => writeVendoredOven(context.repoRoot, { ...source("oversized-pin", "1.0.0", "Pin"), source: "x".repeat(OVEN_PIN_MAX_BYTES) }),
+      /Vendored Oven pin.*byte limit/u,
+    );
+    assert.equal(existsSync(vendoredOvenPath(context.repoRoot, "oversized-pin")), false);
+
+    const fallback = source("fallback-oven", "1.0.0", "Fallback");
+    writeSource(context.builtInOvensDir, fallback);
+    writeFileSync(join(context.builtInOvensDir, fallback.id, "instructions.md"), "x".repeat(OVEN_INSTRUCTIONS_MAX_BYTES + 1));
+    assert.throws(() => resolveOvenForRepo({
+      repoRoot: context.repoRoot,
+      builtInOvensDir: context.builtInOvensDir,
+      customOvensDir: context.customOvensDir,
+      id: fallback.id,
+    }), /Oven instructions.*byte limit/u);
   } finally { context.cleanup(); }
 });
