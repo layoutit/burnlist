@@ -277,6 +277,28 @@ test("Visual Parity keeps every summary hot while bounding bodies and pruning ab
   }
 });
 
+test("Visual Parity clears response and summary caches when the final binding is removed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-visual-empty-bindings-"));
+  const path = join(root, "visual-parity.json");
+  const cache = new Map();
+  try {
+    await writeFile(path, markedSource("removed"));
+    const bindings = new Map([["visual-parity", [{ path, repoKey: null, repoRoot: root }]]]);
+    visualParityHandler.serveData(handlerContext(path, cache, {}, { ovenDataBindings: bindings }));
+    const state = cacheState(cache);
+    assert.equal(state.responses.size, 1);
+    assert.equal(state.summaries.size, 1);
+    assert.ok(state.responseBytes > 0);
+
+    assert.deepEqual(visualParityHandler.dashboardEntries(dashboardContext(cache, new Map())), []);
+    assert.equal(state.responses.size, 0);
+    assert.equal(state.summaries.size, 0);
+    assert.equal(state.responseBytes, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("Visual Parity waits for drain and writes response chunks no larger than 64 KiB", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-visual-drain-"));
   const path = join(root, "visual-parity.json");

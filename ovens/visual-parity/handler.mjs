@@ -113,8 +113,9 @@ function enforceCacheLimits(state, maxBytes) {
 
 function prepareResponseCache(ctx) {
   const state = responseCache(ctx);
-  const bindings = ctx.ovenDataBindings?.get?.("visual-parity");
-  if (Array.isArray(bindings)) {
+  const bindingMap = ctx.ovenDataBindings;
+  if (typeof bindingMap?.get === "function") {
+    const bindings = bindingMap.get("visual-parity") ?? [];
     const activePaths = new Set(bindings.map((binding) => binding.path));
     for (const path of state.responses.keys()) {
       if (!activePaths.has(path)) removeCachedResponse(state, path);
