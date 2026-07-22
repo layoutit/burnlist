@@ -4,6 +4,14 @@ import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-regis
 import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
 
+export const VISUAL_PARITY_CACHE_MAX_ENTRIES = 8;
+export const VISUAL_PARITY_CACHE_MAX_BYTES = 128 * 1024 * 1024;
+export const VISUAL_PARITY_RESPONSE_CHUNK_BYTES = 64 * 1024;
+
+const DATA_CACHE_KEY = "validated-response-data";
+const DATA_READ_ATTEMPTS = 3;
+const RESPONSE_SUFFIX = Buffer.from(",\"validated\":true}");
+
 export const validateVisualParityRuntimeData = assertVisualParityData;
 function targetProgress(payload) {
   const targetIds = new Set(payload.domains
@@ -32,45 +40,208 @@ function visualParitySummary(payload, stat) {
   };
 }
 
-function visualParityDataCache(ctx, bindingPath) {
-  const stat = safeStat(bindingPath);
-  if (!stat?.isFile()) throw new Error("configured Visual Parity data is missing");
-  const signature = [bindingPath, stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs].join("\0");
-  const cacheKey = `data:${bindingPath}`;
-  const cached = ctx.cache.get(cacheKey);
-  if (cached?.signature === signature) return cached;
-  const source = readTextFileWithLimit(bindingPath, ctx.maxOvenDataBytes, "Visual Parity Oven data");
+function fileSnapshot(bindingPath, statPath = safeStat) {
+  const stat = statPath(bindingPath);
+  if (!stat?.isFile()) return null;
+  return {
+    stat,
+    signature: [bindingPath, stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs].join("\0"),
+  };
+}
+
+export function readStableVisualParitySource(bindingPath, maxBytes, {
+  readSource = readTextFileWithLimit,
+  statPath = safeStat,
+} = {}) {
+  for (let attempt = 0; attempt < DATA_READ_ATTEMPTS; attempt += 1) {
+    const before = fileSnapshot(bindingPath, statPath);
+    if (!before) throw new Error("configured Visual Parity data is missing");
+    try {
+      const source = readSource(bindingPath, maxBytes, "Visual Parity Oven data");
+      const after = fileSnapshot(bindingPath, statPath);
+      if (after?.signature === before.signature) return { source, ...after };
+    } catch (error) {
+      const after = fileSnapshot(bindingPath, statPath);
+      if (after?.signature === before.signature) throw error;
+    }
+  }
+  throw Object.assign(new Error("configured Visual Parity data changed while it was read"), { code: "ESTALE" });
+}
+
+function responseCache(ctx) {
+  let state = ctx.cache.get(DATA_CACHE_KEY);
+  if (!state || !(state.entries instanceof Map) || !Number.isSafeInteger(state.totalBytes)) {
+    state = { entries: new Map(), totalBytes: 0 };
+    ctx.cache.set(DATA_CACHE_KEY, state);
+  }
+  return state;
+}
+
+function removeCachedPath(state, path) {
+  const cached = state.entries.get(path);
+  if (!cached) return;
+  state.entries.delete(path);
+  state.totalBytes -= cached.sourceBytes;
+}
+
+function cacheByteLimit(ctx) {
+  if (!Number.isSafeInteger(ctx.maxOvenDataBytes) || ctx.maxOvenDataBytes < 0) {
+    return VISUAL_PARITY_CACHE_MAX_BYTES;
+  }
+  return Math.min(VISUAL_PARITY_CACHE_MAX_BYTES, ctx.maxOvenDataBytes * 2);
+}
+
+function enforceCacheLimits(state, maxBytes) {
+  while (state.entries.size > VISUAL_PARITY_CACHE_MAX_ENTRIES || state.totalBytes > maxBytes) {
+    removeCachedPath(state, state.entries.keys().next().value);
+  }
+}
+
+function prepareResponseCache(ctx) {
+  const state = responseCache(ctx);
+  const bindings = ctx.ovenDataBindings?.get?.("visual-parity");
+  if (Array.isArray(bindings)) {
+    const activePaths = new Set(bindings.map((binding) => binding.path));
+    for (const path of state.entries.keys()) {
+      if (!activePaths.has(path)) removeCachedPath(state, path);
+    }
+  }
+  enforceCacheLimits(state, cacheByteLimit(ctx));
+  return state;
+}
+
+function responsePrefix(bindingPath) {
+  return Buffer.from(`${JSON.stringify({ ovenId: "visual-parity", path: bindingPath }).slice(0, -1)},"payload":`);
+}
+
+function visualParityDataCache(ctx, bindingPath, state) {
+  const observed = fileSnapshot(bindingPath);
+  if (!observed) throw new Error("configured Visual Parity data is missing");
+  const cached = state.entries.get(bindingPath);
+  if (cached?.signature === observed.signature) {
+    state.entries.delete(bindingPath);
+    state.entries.set(bindingPath, cached);
+    return cached;
+  }
+  removeCachedPath(state, bindingPath);
+  const { source, stat, signature } = readStableVisualParitySource(bindingPath, ctx.maxOvenDataBytes);
   const payload = JSON.parse(source);
   validateVisualParityRuntimeData(payload);
+  const sourceBuffer = Buffer.from(source);
+  const prefix = responsePrefix(bindingPath);
   const result = {
     signature,
-    source,
-    sourceBytes: Buffer.byteLength(source),
-    etag: `W/"vp-${createHash("sha256").update(signature).digest("hex")}"`,
+    prefix,
+    source: sourceBuffer,
+    suffix: RESPONSE_SUFFIX,
+    sourceBytes: sourceBuffer.length,
+    responseBytes: prefix.length + sourceBuffer.length + RESPONSE_SUFFIX.length,
+    etag: `W/"vp-${createHash("sha256")
+      .update(prefix).update(sourceBuffer).update(RESPONSE_SUFFIX).digest("hex")}"`,
     readPath: bindingPath,
     summary: visualParitySummary(payload, stat),
   };
-  ctx.cache.set(cacheKey, result);
+  const maxBytes = cacheByteLimit(ctx);
+  if (result.sourceBytes <= maxBytes) {
+    state.entries.set(bindingPath, result);
+    state.totalBytes += result.sourceBytes;
+    enforceCacheLimits(state, maxBytes);
+  }
   return result;
 }
 
+export function ifNoneMatchMatches(value, currentEtag) {
+  const header = Array.isArray(value) ? value.join(",") : String(value ?? "");
+  if (header.trim() === "*") return true;
+  const currentOpaque = currentEtag.replace(/^W\//u, "");
+  let offset = 0;
+  while (offset < header.length) {
+    while (/[\t ,]/u.test(header[offset] ?? "")) offset += 1;
+    if (header.startsWith("W/", offset)) offset += 2;
+    if (header[offset] !== "\"") {
+      while (offset < header.length && header[offset] !== ",") offset += 1;
+      continue;
+    }
+    const start = offset;
+    const end = header.indexOf("\"", start + 1);
+    if (end === -1) return false;
+    offset = end + 1;
+    while (/[\t ]/u.test(header[offset] ?? "")) offset += 1;
+    if ((offset === header.length || header[offset] === ",")
+      && header.slice(start, end + 1) === currentOpaque) return true;
+    while (offset < header.length && header[offset] !== ",") offset += 1;
+  }
+  return false;
+}
+
+function streamResponse(req, res, segments) {
+  let segmentIndex = 0;
+  let segmentOffset = 0;
+  let closed = false;
+  let waitingDrain = false;
+
+  function cleanup() {
+    if (closed) return;
+    closed = true;
+    res.off?.("drain", onDrain);
+    res.off?.("close", cleanup);
+    res.off?.("error", cleanup);
+    res.off?.("finish", cleanup);
+    req.off?.("aborted", abort);
+  }
+  function abort() {
+    cleanup();
+    if (!res.destroyed) res.destroy?.();
+  }
+  function onDrain() {
+    waitingDrain = false;
+    pump();
+  }
+  function pump() {
+    if (closed || waitingDrain) return;
+    try {
+      while (segmentIndex < segments.length) {
+        const segment = segments[segmentIndex];
+        while (segmentOffset < segment.length) {
+          const end = Math.min(segmentOffset + VISUAL_PARITY_RESPONSE_CHUNK_BYTES, segment.length);
+          const chunk = segment.subarray(segmentOffset, end);
+          segmentOffset = end;
+          if (!res.write(chunk)) {
+            waitingDrain = true;
+            res.once("drain", onDrain);
+            return;
+          }
+        }
+        segmentIndex += 1;
+        segmentOffset = 0;
+      }
+      res.end();
+      cleanup();
+    } catch {
+      abort();
+    }
+  }
+
+  res.once("close", cleanup);
+  res.once("error", cleanup);
+  res.once("finish", cleanup);
+  req.once?.("aborted", abort);
+  pump();
+}
+
 function sendVisualParityData(req, res, cached) {
-  if (req.headers["if-none-match"] === cached.etag) {
+  if (ifNoneMatchMatches(req.headers["if-none-match"], cached.etag)) {
     res.writeHead(304, { etag: cached.etag, "cache-control": "no-store" });
     res.end();
     return;
   }
-  const prefix = `${JSON.stringify({ ovenId: "visual-parity", path: cached.readPath }).slice(0, -1)},"payload":`;
-  const suffix = ",\"validated\":true}";
   res.writeHead(200, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     etag: cached.etag,
-    "content-length": Buffer.byteLength(prefix) + cached.sourceBytes + Buffer.byteLength(suffix),
+    "content-length": cached.responseBytes,
   });
-  res.write(prefix);
-  res.write(cached.source);
-  res.end(suffix);
+  streamResponse(req, res, [cached.prefix, cached.source, cached.suffix]);
 }
 
 export const visualParityHandler = Object.freeze({
@@ -79,13 +250,15 @@ export const visualParityHandler = Object.freeze({
   validateData: validateVisualParityRuntimeData,
 
   serveData(ctx) {
-    sendVisualParityData(ctx.req, ctx.res, visualParityDataCache(ctx, ctx.bindingPath));
+    const state = prepareResponseCache(ctx);
+    sendVisualParityData(ctx.req, ctx.res, visualParityDataCache(ctx, ctx.bindingPath, state));
   },
 
   dashboardEntries(ctx) {
+    const state = prepareResponseCache(ctx);
     return (ctx.ovenDataBindings.get("visual-parity") ?? []).map((binding) => {
       try {
-        const { summary } = visualParityDataCache(ctx, binding.path);
+        const { summary } = visualParityDataCache(ctx, binding.path, state);
         const repo = binding.repoKey === null ? "visual-parity"
           : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name
             ?? basename(binding.repoRoot);
