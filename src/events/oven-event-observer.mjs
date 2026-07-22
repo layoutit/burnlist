@@ -310,10 +310,11 @@ export function createOvenEventObserver({
       if (subscribers.size >= maxSubscribers) throw observerError("Too many Oven event subscribers.", 429);
       initialize();
       const sets = selectionSets(selection);
+      const startingWatermarks = selection.tail ? observerWatermarks : selection.watermarks;
       const subscriber = {
         ...sets,
         limit: selection.limit,
-        watermarks: scopedKnownWatermarks(selection.watermarks, Object.keys(observerWatermarks), sets),
+        watermarks: scopedKnownWatermarks(startingWatermarks, Object.keys(observerWatermarks), sets),
         warnings: new Set(),
         resets: new Set(),
         onDelivery,

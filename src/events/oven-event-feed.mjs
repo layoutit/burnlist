@@ -98,7 +98,6 @@ export function ovenEventFeedSelection(url, repos, headers = {}) {
   const tailValue = one(url, "tail");
   if (tailValue !== null && tailValue !== "1") throw requestError("tail must be 1 when supplied.");
   if (tailValue === "1" && (headerAfter || queryAfter)) throw requestError("tail cannot be combined with after or Last-Event-ID.");
-  if (tailValue === "1" && streamValue === "1") throw requestError("tail cannot be combined with stream.");
   return {
     repos: selectedRepos(repos, repoKeys),
     ovenIds,
@@ -152,8 +151,8 @@ export function serveOvenEventFeed({
     timers,
   });
   const ownedObserver = !observer;
-  if (selection.tail) {
-    if (streaming) throw requestError("tail is available only as JSON.");
+  if (selection.tail && !selection.stream) {
+    if (streaming) throw requestError("tail requires stream=1 when used as SSE.");
     const baseline = eventObserver.baseline(selection);
     json(res, 200, {
       schema: "burnlist-oven-event-feed@1",
@@ -224,7 +223,8 @@ export function serveOvenEventFeed({
       onDelivery(item, watermarks) {
         if (closed) return false;
         try {
-          const accepted = writeSse(res, "oven-event", item, encodeOvenEventReplayCursor(watermarks));
+          const id = selection.tail ? undefined : encodeOvenEventReplayCursor(watermarks);
+          const accepted = writeSse(res, "oven-event", item, id);
           if (!accepted) closeStream();
           return accepted;
         } catch { closeStream(); return false; }
@@ -232,7 +232,8 @@ export function serveOvenEventFeed({
       onReset(item, watermarks) {
         if (closed) return false;
         try {
-          const accepted = writeSse(res, "oven-reset", item, encodeOvenEventReplayCursor(watermarks));
+          const id = selection.tail ? undefined : encodeOvenEventReplayCursor(watermarks);
+          const accepted = writeSse(res, "oven-reset", item, id);
           if (!accepted) closeStream();
           return accepted;
         } catch { closeStream(); return false; }

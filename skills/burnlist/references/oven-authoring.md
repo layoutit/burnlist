@@ -196,9 +196,11 @@ revision changes when source bytes change. The pin freezes the declarative
 source and instructions, not the installed CLI's validators, server handlers,
 adapters, or frontend runtime. `runtimeCompatibility` is a coarse compatibility
 gate: Burnlist refuses a vendored package for another runtime contract, while
-behavior may still evolve within a compatible runtime version. Run `burnlist
-oven upgrade <id>` to opt in to copying the shipped source again, then commit
-the changed vendored directory. The dashboard resolves a
+behavior may still evolve within a compatible runtime version. Legacy five-key
+pins created before this field existed are read as
+`burnlist-oven-runtime@1` in memory without rewriting the committed pin. Run
+`burnlist oven upgrade <id>` to opt in to copying the shipped source again,
+then commit the changed vendored directory. The dashboard resolves a
 repo's vendored Oven before the shipped official definition when
 `.burnlist/ovens/<id>/` exists; otherwise it uses the catalog-backed shipped
 definition. The pin's historical `source: "built-in"` value is an on-disk

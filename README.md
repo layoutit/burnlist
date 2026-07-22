@@ -183,6 +183,9 @@ observer, one bounded JSON snapshot service, one browser-shell snapshot client,
 and the declarative `OvenRuntime`. A publication burst invalidates a keyed
 snapshot; the next conditional request reopens canonical data. There are no
 handler warm hooks, page-owned JSON pollers, or alternate live Oven routes.
+Exact browser consumers use filter-scoped replay cursors. Wildcard projections
+use a live server-tail subscription with internal paged watermarks, so they keep
+all-Oven invalidation semantics beyond the public 64-stream replay boundary.
 Differential Testing uses the same source snapshot and response-admission
 boundary, retaining only a bounded query-projection LRU. Inactive browser
 snapshots are bounded by entry and byte limits; transient failures visibly mark

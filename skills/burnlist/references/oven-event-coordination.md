@@ -100,9 +100,12 @@ from subscriber catch-up, and shares each scan across its listeners. Retention
 checkpoints and missing or regressed streams emit an explicit reset that forces
 canonical reconciliation. One browser-shell snapshot client owns EventSource,
 keyed queries, conditional requests, burst/in-flight coalescing, last-good data,
-and reconnect/focus/manual-change reconciliation. Its inactive query cache is
-bounded to 16 entries and 64 MiB; stale retained data is labeled, and authoritative
-`404`/`410` responses remove it.
+and reconnect/focus/manual-change reconciliation. Exact consumers use scoped
+vector replay; wildcard projections use a non-replay server-tail stream whose
+internal paged watermarks remain live beyond the public 64-stream cursor limit,
+then conditionally reconcile when the stream opens. Its inactive query cache is
+bounded to 16 entries and 64 MiB; stale retained data is labeled, and
+authoritative `404`/`410` responses remove it.
 
 Events only remove a matching cached projection. They never eagerly reopen or
 parse the canonical file, and handlers must not expose `warm` or

@@ -109,6 +109,23 @@ test("vendored reads refuse packages for a different runtime contract", () => {
   } finally { context.cleanup(); }
 });
 
+test("vendored reads normalize a valid legacy five-key pin without rewriting it", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Legacy compatible");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const legacyPin = JSON.parse(readFileSync(pinPath, "utf8"));
+    delete legacyPin.runtimeCompatibility;
+    writeFileSync(pinPath, `${JSON.stringify(legacyPin, null, 2)}\n`);
+
+    const saved = readVendoredOven(context.repoRoot, pkg.id);
+    assert.deepEqual(saved.pin, { ...legacyPin, runtimeCompatibility: OVEN_RUNTIME_COMPATIBILITY });
+    assert.equal(Object.hasOwn(JSON.parse(readFileSync(pinPath, "utf8")), "runtimeCompatibility"), false,
+      "a read-only compatibility normalization does not mutate the committed pin");
+  } finally { context.cleanup(); }
+});
+
 test("readVendoredOven round-trips a pin and returns null for absent or incomplete packages", () => {
   const context = fixture();
   const pkg = source("sample-oven", "1.2.3", "Round trip");

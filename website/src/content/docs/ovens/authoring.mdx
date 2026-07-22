@@ -270,9 +270,10 @@ The committed copy and pin freeze the declarative `.oven` source and
 instructions. They do not pin the installed CLI validator, server handler,
 frontend adapter, or renderer implementation. `runtimeCompatibility` is a
 coarse gate: Burnlist refuses an incompatible vendored package, while behavior
-may still evolve within that runtime contract. Only `upgrade` moves the
-declarative pin, and the dashboard resolves a repo's vendored Oven ahead of the
-shipped built-in.
+may still evolve within that runtime contract. A valid legacy five-key pin that
+predates `runtimeCompatibility` is treated as `burnlist-oven-runtime@1` in
+memory and is not rewritten by a read. Only `upgrade` moves the declarative pin,
+and the dashboard resolves a repo's vendored Oven ahead of the shipped built-in.
 
 To render with data, run the dashboard:
 

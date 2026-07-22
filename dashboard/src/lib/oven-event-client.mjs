@@ -8,6 +8,7 @@ import {
   optionalSnapshotText,
   ovenSnapshotEventMatches,
   ovenSnapshotKey,
+  ovenSnapshotResetMatches,
   publicOvenSnapshotState,
 } from "./oven-snapshot-contract.mjs";
 import { createOvenEventConnection } from "./oven-event-connection.mjs";
@@ -229,8 +230,7 @@ export function createOvenSnapshotClient({
       const repoKey = typeof reset.repoKey === "string" ? reset.repoKey : null;
       const resetOvenId = typeof reset.ovenId === "string" ? reset.ovenId : null;
       scheduleKeys([...snapshotCache.values()].filter((entry) => entry.listeners.size
-        && (entry.repoKey === null || entry.repoKey === repoKey)
-        && (resetOvenId === null || entry.ovenId === resetOvenId)).map((entry) => entry.key));
+        && ovenSnapshotResetMatches(entry, { repoKey, ovenId: resetOvenId })).map((entry) => entry.key));
     } catch {
       // A malformed reset cannot alter canonical state; the slow fallback remains active.
     }
@@ -242,7 +242,10 @@ export function createOvenSnapshotClient({
     eventSourceFactory,
     onEvent,
     onReset,
-    onOpen: reconcileFallback,
+    onOpen: ({ liveTail } = {}) => {
+      if (liveTail) reconcile();
+      else reconcileFallback();
+    },
   });
 
   const onFocus = () => {

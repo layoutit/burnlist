@@ -134,10 +134,13 @@ function readFileIfPresent(path, maxBytes, label, assertPath) {
 }
 
 function validatePin(pin, pkg) {
-  const expectedKeys = ["id", "version", "revision", "source", "pinnedAt", "runtimeCompatibility"];
+  const legacyKeys = ["id", "version", "revision", "source", "pinnedAt"];
+  const expectedKeys = [...legacyKeys, "runtimeCompatibility"];
+  const keys = pin && typeof pin === "object" && !Array.isArray(pin) ? Object.keys(pin) : [];
+  const current = keys.length === expectedKeys.length && expectedKeys.every((key) => Object.hasOwn(pin, key));
+  const legacy = keys.length === legacyKeys.length && legacyKeys.every((key) => Object.hasOwn(pin, key));
   if (!pin || typeof pin !== "object" || Array.isArray(pin)
-    || Object.keys(pin).length !== expectedKeys.length
-    || expectedKeys.some((key) => !Object.hasOwn(pin, key))) {
+    || (!current && !legacy)) {
     throw new Error("Vendored Oven pin is invalid.");
   }
   const revision = ovenRevision(pkg);
@@ -146,8 +149,11 @@ function validatePin(pin, pkg) {
     || typeof pin.pinnedAt !== "string" || new Date(pin.pinnedAt).toISOString() !== pin.pinnedAt) {
     throw new Error(`Vendored Oven ${pkg.id} pin does not match its source.`);
   }
-  assertSupportedOvenRuntime(pin.runtimeCompatibility, `Vendored Oven ${pkg.id} runtimeCompatibility`);
-  return pin;
+  const runtimeCompatibility = assertSupportedOvenRuntime(
+    pin.runtimeCompatibility ?? OVEN_RUNTIME_COMPATIBILITY,
+    `Vendored Oven ${pkg.id} runtimeCompatibility`,
+  );
+  return { ...pin, runtimeCompatibility };
 }
 
 function readOvenPackageDir(root, id) {

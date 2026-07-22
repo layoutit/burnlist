@@ -65,3 +65,10 @@ export function ovenSnapshotEventMatches(entry, event) {
       && selector.kind === event.kind
       && selector.phase === event.phase);
 }
+
+export function ovenSnapshotResetMatches(entry, reset) {
+  return (entry.repoKey === null || entry.repoKey === reset.repoKey)
+    && (reset.ovenId === null || entry.events.some((selector) => (
+      selector.ovenId === "*" || selector.ovenId === reset.ovenId
+    )));
+}
