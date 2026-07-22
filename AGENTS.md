@@ -28,6 +28,19 @@ tiny (≤ 200 lines). `CLAUDE.md` in each folder is a symlink to its `AGENTS.md`
   independent. Keep their docs accurate and separate; see `README.md` and
   `skills/burnlist/references/installation.md` before changing either surface.
 
+## Documentation and skill impact
+- **No change is complete without a documentation and skill-impact review.** For
+  every change, assess the public website under `website/src/content/docs/`, the
+  `README.md`, and the bundled skill under `skills/burnlist/`.
+- User- or contributor-visible behavior, commands, configuration, requirements,
+  workflows, or limitations must update the relevant public website documentation
+  in the same change. Keep overlapping README and website guidance consistent.
+- Changes that affect agent workflows, CLI semantics agents rely on, installation,
+  hooks, Burnlist protocol, Ovens, or coordination must update the relevant skill
+  instructions/references in the same change.
+- When no documentation or skill update is required, record that conclusion and its
+  reason in the PR or final handoff; do not leave impact analysis implicit.
+
 ## Hygiene
 - **Conventional commits** (`feat:`/`fix:`/…); reference a burnlist item id when one
   applies: `feat: … (auth-07)`.

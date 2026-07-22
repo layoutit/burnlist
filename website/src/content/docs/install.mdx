@@ -55,13 +55,19 @@ The agent remains responsible for any first-run hook trust or consent prompt; Bu
 
 ## From a source checkout (optional)
 
+Burnlist's CLI, server, and dashboard support Node.js 18 or newer. The Storybook
+10 development commands require Node.js 20.19+ or 22.12+.
+
 ```sh
 npm install
 npm run build:dashboard
+npm run storybook
+npm run build:storybook
 npm run verify
 ```
 
-`verify` checks source, contract tests, and the leak scan.
+`verify` checks source, contract tests, and the leak scan. Storybook provides the
+interactive catalog for shared dashboard primitives and source-backed patterns.
 
 ## Uninstall
 
