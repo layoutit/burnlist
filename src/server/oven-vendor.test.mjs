@@ -56,6 +56,12 @@ function writeSource(root, pkg) {
   writeFileSync(join(directory, `${pkg.id}.oven`), pkg.oven);
 }
 
+function readSource(root, id) {
+  const instructions = readFileSync(join(root, id, "instructions.md"), "utf8");
+  const oven = readFileSync(join(root, id, `${id}.oven`), "utf8");
+  return { id, instructions, oven, revision: ovenRevision({ id, instructions, oven }) };
+}
+
 function assertIso8601(value) {
   assert.equal(typeof value, "string");
   assert.equal(new Date(value).toISOString(), value);
@@ -110,7 +116,9 @@ test("resolveOvenForRepo prefers vendored, then shipped built-in, then custom", 
   const custom = source("sample-oven", "3.0.0", "Custom");
   const options = {
     repoRoot: context.repoRoot,
-    builtInOvensDir: context.builtInOvensDir,
+    findOfficialOven: (id) => existsSync(join(context.builtInOvensDir, id))
+      ? readSource(context.builtInOvensDir, id)
+      : null,
     customOvensDir: context.customOvensDir,
     id: vendored.id,
   };
@@ -134,7 +142,7 @@ test("a shipped source change cannot move a repo pin without an explicit vendore
   const newer = source("sample-oven", "2.0.0", "Newer");
   const options = {
     repoRoot: context.repoRoot,
-    builtInOvensDir: context.builtInOvensDir,
+    findOfficialOven: (id) => readSource(context.builtInOvensDir, id),
     customOvensDir: context.customOvensDir,
     id: initial.id,
   };
@@ -349,7 +357,7 @@ test("vendored reads reject leaf symlinks", () => {
   } finally { context.cleanup(); }
 });
 
-test("vendored and fallback package reads enforce per-file byte limits", () => {
+test("vendored and custom fallback package reads enforce per-file byte limits", () => {
   const context = fixture();
   const pkg = source("sample-oven", "1.0.0", "Bounded");
   try {
@@ -374,11 +382,11 @@ test("vendored and fallback package reads enforce per-file byte limits", () => {
     assert.equal(existsSync(vendoredOvenPath(context.repoRoot, "oversized-pin")), false);
 
     const fallback = source("fallback-oven", "1.0.0", "Fallback");
-    writeSource(context.builtInOvensDir, fallback);
-    writeFileSync(join(context.builtInOvensDir, fallback.id, "instructions.md"), "x".repeat(OVEN_INSTRUCTIONS_MAX_BYTES + 1));
+    writeSource(context.customOvensDir, fallback);
+    writeFileSync(join(context.customOvensDir, fallback.id, "instructions.md"), "x".repeat(OVEN_INSTRUCTIONS_MAX_BYTES + 1));
     assert.throws(() => resolveOvenForRepo({
       repoRoot: context.repoRoot,
-      builtInOvensDir: context.builtInOvensDir,
+      findOfficialOven: () => null,
       customOvensDir: context.customOvensDir,
       id: fallback.id,
     }), /Oven instructions.*byte limit/u);

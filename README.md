@@ -44,14 +44,11 @@ The dashboard scans lifecycle folders and refreshes automatically. Its progress 
 
 ## Ovens
 
-An Oven is a declarative recipe for a Burn. Its `instructions.md` defines the outcome, canonical state, required inputs, and evidence rules. Its `detail.json` defines the grid, controlled widgets, and bindings used to present normalized data.
+An Oven is a declarative recipe for a Burn. Its `instructions.md` defines the outcome, canonical state, required inputs, and evidence rules. Its `<id>.oven` source declares controlled widgets and bindings used to present normalized data.
 
-Burnlist ships with two default Ovens:
+Official Oven membership is defined only by the validated, non-executable [`ovens/catalog.json`](ovens/catalog.json). The catalog records each shipped definition's producer, contract, route kind, maturity, and evidence-gated acceptance state. `GET /api/oven-catalog` exposes that official set; `GET /api/ovens` separately reports the official, vendored, and custom Ovens available to the observed repositories. Catalog membership does not imply acceptance.
 
-- **Checklist** tracks the active work queue.
-- **Differential Testing** renders aligned reference and candidate series, optional aggregate telemetry, and optional exact-first evidence.
-
-Custom Ovens use the same two-file package and are scoped to the repository that owns their ignored local state; built-in Ovens are global. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. `--ovens-dir` overrides custom Oven storage only for the dashboard's launch repository, while other observed repositories continue to use their own `.local/burnlist/ovens/`. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
+Custom Ovens use the same two-file package and are scoped to the repository that owns their ignored local state; shipped official Ovens are package-wide and read-only. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. `--ovens-dir` overrides custom Oven storage only for the dashboard's launch repository, while other observed repositories continue to use their own `.local/burnlist/ovens/`. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
 
 ## Differential Testing
 

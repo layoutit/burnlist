@@ -12,6 +12,13 @@ An Oven is declarative, non-executable data. It ships no JavaScript, CSS,
 `eval`, or component imports. A project adapter supplies one read-only payload;
 the Oven only declares how the shared runtime presents that payload.
 
+Creating a local package does not make it an official Oven. Official membership
+comes only from the validated `ovens/catalog.json` control-plane manifest; the
+manifest is not an Oven and cannot name executable imports. A fixture or demo
+may test this declarative runtime, but only verifier-approved `canonical-oven`
+evidence from the catalog entry's named producer may change its acceptance
+state.
+
 ```text
 human .oven source
   -> compileOven: scanXml -> validateOven -> buildIR
@@ -35,8 +42,8 @@ column-span, row-span, page-size, debounce-ms
 
 ## Closed contract and theme allowlist
 
-**A custom Oven cannot define a new contract, theme, or icon.** It must reuse a
-built-in pair. For a generic KPI-and-table Oven over arbitrary project JSON,
+**A custom Oven cannot define a new contract, theme, or icon.** It must reuse an
+allowlisted contract and theme pair. For a generic KPI-and-table Oven over arbitrary project JSON,
 use `contract="checklist-progress@1"` and `theme="checklist"`. The remaining
 contracts, themes, and the specialized widgets belong to their matching
 normalized-data contracts.
@@ -61,13 +68,14 @@ Every source has exactly one root:
 ```
 
 `id`, `version`, `contract`, and `theme` are required. `refresh-seconds` is
-optional. Version is a semver identity; built-in Ovens currently use `0.1.0`.
+optional. Version is a semver identity; read an official definition's current
+version from `ovens/catalog.json` rather than copying it into guidance.
 `refresh-seconds` is a positive integer no greater than 3600. The complete
 closed registries are:
 
 | Registry | Exact allowed values |
 | --- | --- |
-| contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-model-lab-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
 | themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
 | icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
 

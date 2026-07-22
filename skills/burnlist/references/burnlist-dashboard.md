@@ -57,18 +57,25 @@ contract fits its `checklist-progress@1` contract. Each link opens
 `/r/<repoKey>/<burnlistId>/o/<ovenId>`; `checklist` is the default lens and
 the active lens is highlighted. Ovens with other contracts are not offered.
 
-The `/ovens` catalog lists built-in Ovens first, then custom Ovens, sorted by
-name. Each card shows the Oven name, `id@version`, its `Contract: <contract>`
-badge, Built-in or Custom badge (with a custom Oven's `repoKey`), description,
-an **Open Oven explainer** link, and this copyable **Tell your agent** block:
+The `/ovens` page renders two separate surfaces. **Official Ovens** comes only
+from `GET /api/oven-catalog`, preserves manifest order, and shows the catalog
+revision, `id@version`, contract, producer, route kind, maturity, acceptance,
+and fixture policy. **Repository inventory** comes from `GET /api/ovens` and
+lists locally available vendored and custom Ovens with explicit origin and
+`repoKey`; local availability never promotes catalog membership. Each surface
+has its own **Tell your agent** block.
 
 ```text
-Use the <Name> Oven (<id>@<version>).
-Its data must satisfy the <contract> contract.
-Adopt the Oven before preparing its data:
-burnlist oven adopt <id>
-Produce the required data, then bind it to the target path:
-burnlist oven bind <id> <path>
+Use the official <Name> Oven (<id>@<version>).
+Do not invent a replacement Oven, renderer, or data contract.
+Its normalized data must satisfy <contract>.
+Use the source-owned producer: <producer>.
+Install the shipped Oven in the target repository:
+burnlist oven use <id>
+Publish the producer's real JSON, then set it:
+burnlist oven set <id> <path>
+Canonical acceptance is <state>.
+Only canonical-oven evidence from the named producer qualifies; fixtures do not.
 ```
 
 An `/ovens/<id>` explainer shows the Oven documentation and a demonstration
@@ -77,7 +84,7 @@ render with sample data. For the live, data-bound view, open the scoped
 
 Paginate the main Burnlist table after lifecycle filtering, with `20` rows per page. Store pages in `?page=<number>`, reset to page one when the lifecycle filter changes, clamp invalid or oversized pages, and preserve the current filter and page through detail and back links.
 
-Place `New Oven` at the top right of the main table. Keep `Run Burn` off the primary dashboard controls; its direct `/runs/new` route remains available. The normative definition and ownership boundary are in `oven-contract.md`; this UI must preserve them. Checklist and Differential Testing are the only immutable default Ovens. New Oven creation is now `{id, name, instructions}` and the server scaffolds a starter `<id>.oven`; the drag-to-place grid detail-builder was removed. Persist custom Ovens under ignored `.local/burnlist/ovens/` state and immutable Run snapshots under `.local/burnlist/runs/`.
+Place `New Oven` at the top right of the main table. Keep `Run Burn` off the primary dashboard controls; its direct `/runs/new` route remains available. The normative definition and ownership boundary are in `oven-contract.md`; this UI must preserve them. Never maintain an official inventory in this document: the exact immutable set is `ovens/catalog.json`. New Oven creation is now `{id, name, instructions}` and the server scaffolds a starter `<id>.oven`; the drag-to-place grid detail-builder was removed. Persist custom Ovens under ignored `.local/burnlist/ovens/` state and immutable Run snapshots under `.local/burnlist/runs/`.
 
 ## Local Observer State
 

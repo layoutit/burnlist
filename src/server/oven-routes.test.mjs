@@ -158,7 +158,7 @@ test("a launched repository custom Oven is listed and requires its umbrella repo
   });
 });
 
-test("custom Ovens are identified by repository while built-ins remain global", { timeout: 20_000 }, async () => {
+test("custom Ovens are identified by repository while official Ovens remain global", { timeout: 20_000 }, async () => {
   await withServer({
     burnlists: [{ repoPath: "a" }, { repoPath: "b" }, { repoPath: "c" }],
     scanRoots: ["a", "b", "c"],
@@ -179,11 +179,15 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     assert.ok(shared.every((oven) => oven.dataInput === "json-payload"));
     assert.deepEqual(
       Object.keys(shared[0]).sort(),
-      ["builtIn", "contract", "dataInput", "description", "id", "name", "ovenRevision", "repoKey", "version"],
+      ["builtIn", "catalogRevision", "contract", "dataInput", "description", "id", "name", "origin", "ovenRevision", "repoKey", "version"],
     );
-    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").contract, "checklist-progress@1");
-    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
-    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").dataInput, "json-payload");
+    assert.ok(shared.every((oven) => oven.origin === "custom" && oven.catalogRevision === null));
+    const checklist = catalog.ovens.find((oven) => oven.id === "checklist");
+    assert.equal(checklist.contract, "checklist-progress@1");
+    assert.equal(checklist.repoKey, null);
+    assert.equal(checklist.dataInput, "json-payload");
+    assert.equal(checklist.origin, "official");
+    assert.match(checklist.catalogRevision, /^[a-f0-9]{64}$/u);
     assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);
     assert.equal(catalog.ovens.find((oven) => oven.id === "streaming-diff").dataInput, "producer-managed");
 

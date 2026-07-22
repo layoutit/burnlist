@@ -27,6 +27,8 @@ test("one server snapshot store, observer, and projection coordinator own ordina
   assert.equal((server.match(/createOvenEventObserver\s*\(/gu) ?? []).length, 1);
   assert.equal((server.match(/createOvenProjectionCoordinator\s*\(/gu) ?? []).length, 1);
   assert.match(server, /from "\.\/oven-projection-coordinator\.mjs"/u);
+  assert.match(server, /from "\.\/official-oven-discovery\.mjs"/u);
+  assert.doesNotMatch(server, /ovensIn\(builtInOvensDir/u);
   assert.doesNotMatch(server, /oven-warm|warmOvenHandler|\/ovens\/.*\/view/u);
 
   const eventFeed = await source("src/events/oven-event-feed.mjs");

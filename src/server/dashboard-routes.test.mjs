@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { httpGet, withServer } from "./dashboard-routes-fixtures.mjs";
+import { httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
 
 test("root serves the dashboard shell", { timeout: 20_000 }, async () => {
   await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
@@ -79,5 +79,49 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
     const entry = payload.burnlists.find((candidate) => candidate.id === "fixture");
     assert.ok(entry);
     assert.equal(typeof entry.planPath, "string");
+  });
+});
+
+test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled inventory", { timeout: 20_000 }, async () => {
+  await withServer({
+    withBurnlist: true,
+    ovens: [{ id: "local-only", repoPath: "fixture-repo" }],
+  }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/oven-catalog");
+    assert.equal(response.status, 200);
+    const catalog = JSON.parse(response.body);
+    assert.equal(catalog.schema, "burnlist-official-oven-catalog@1");
+    assert.equal(catalog.catalogVersion, "1.0.0");
+    assert.match(catalog.catalogRevision, /^[a-f0-9]{64}$/u);
+    assert.deepEqual(catalog.entries.map(({ id }) => id), [
+      "checklist",
+      "differential-testing",
+      "model-lab",
+      "performance-tracing",
+      "streaming-diff",
+      "visual-parity",
+    ]);
+    assert.equal(catalog.entries.some(({ id }) => id === "local-only"), false);
+    for (const entry of catalog.entries) {
+      assert.equal(entry.acceptance.fixtureEvidence, "forbidden");
+      assert.equal(Object.hasOwn(entry, "repoKey"), false);
+      assert.match(entry.ovenRevision, /^o1-sha256:[a-f0-9]{64}$/u);
+    }
+
+    const inventory = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
+    const official = inventory.filter(({ origin }) => origin === "official");
+    const local = inventory.find(({ id }) => id === "local-only");
+    assert.deepEqual(official.map(({ id }) => id), catalog.entries.map(({ id }) => id));
+    assert.ok(official.every((entry) => entry.catalogRevision === catalog.catalogRevision));
+    assert.match(
+      official.find(({ id }) => id === "streaming-diff").description,
+      /recently published, session-scoped pre-to-post diff cards\..*selected-feed component view\.$/u,
+    );
+    assert.equal(local.origin, "custom");
+    assert.equal(local.catalogRevision, null);
+    assert.ok(local.repoKey);
+
+    const rejected = await httpRequest(baseUrl, "/api/oven-catalog", { method: "POST", headers: {}, body: "" });
+    assert.equal(rejected.status, 405);
   });
 });

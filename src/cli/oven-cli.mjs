@@ -11,6 +11,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
+import "../ovens/built-in-handlers.mjs";
+import { listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import {
   ovenDefinitionChangedInput,
@@ -99,7 +101,13 @@ function ovenContext() {
     customRepoRoot,
     customOvensDir,
     unsafeOvensDir,
-    ...createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoRoot, unsafeOvensDir }),
+    ...createOvenCatalog({
+      builtInOvensDir,
+      customOvensDir,
+      customRepoRoot,
+      unsafeOvensDir,
+      handlers: listOvenHandlers(),
+    }),
   };
   return cachedOvenContext;
 }
@@ -117,7 +125,7 @@ function printOven(oven) {
     }
   };
   countNodes(oven.ir.root);
-  const kind = oven.builtIn ? "built-in" : "custom";
+  const kind = oven.origin ?? (oven.builtIn ? "official" : "custom");
   console.log(`${oven.name}  (${oven.id}@${oven.ir.version} · ${kind})`);
   if (oven.description) console.log(oven.description);
   console.log(`version: ${oven.ir.version} · nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
@@ -217,12 +225,12 @@ try {
       oven.id,
       oven.ir.version,
       oven.name,
-      oven.builtIn ? "built-in" : "custom",
+      oven.origin ?? (oven.builtIn ? "official" : "custom"),
       oven.ir.contract,
       String(nodeCount(oven.ir.root)),
       oven.ovenRevision,
     ]);
-    const header = ["id", "version", "name", "kind", "contract", "nodes", "revision"];
+    const header = ["id", "version", "name", "origin", "contract", "nodes", "revision"];
     const widths = header.map((label, index) => Math.max(label.length, ...rows.map((row) => row[index].length)));
     const line = (cols) => cols.map((value, index) => value.padEnd(widths[index])).join("  ").trimEnd();
     console.log(line(header));
@@ -242,6 +250,9 @@ try {
         version: oven.ir.version,
         name: oven.name,
         builtIn: oven.builtIn,
+        origin: oven.origin,
+        catalogRevision: oven.catalogRevision,
+        catalogEntry: oven.catalogEntry,
         instructions: oven.instructions,
         oven: oven.oven,
         ovenRevision: oven.ovenRevision,

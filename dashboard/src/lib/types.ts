@@ -67,8 +67,35 @@ export type OvenSummary = {
   name: string;
   description: string;
   builtIn: boolean;
+  origin: "official" | "vendored" | "custom";
   repoKey: string | null;
   dataInput: "json-payload" | "producer-managed";
+  catalogRevision: string | null;
+};
+
+export type OfficialOvenCatalogEntry = {
+  id: string;
+  version: string;
+  contract: string;
+  dataInput: "json-payload" | "producer-managed";
+  producer: string;
+  routeKind: "burnlist-lens" | "repo-oven";
+  maturity: "shipped" | "experimental" | "deprecated";
+  acceptance: {
+    state: "accepted" | "unverified" | "blocked";
+    evidenceClass: "canonical-oven";
+    fixtureEvidence: "forbidden";
+  };
+  name: string;
+  description: string;
+  ovenRevision: string;
+};
+
+export type OfficialOvenCatalogResponse = {
+  schema: "burnlist-official-oven-catalog@1";
+  catalogVersion: string;
+  catalogRevision: string;
+  entries: OfficialOvenCatalogEntry[];
 };
 
 export type RepoSummary = { name: string; root: string; repoKey: string };

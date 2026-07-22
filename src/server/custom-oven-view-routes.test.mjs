@@ -15,8 +15,11 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
     ovenData: [{ id: "widget-oven", payload }],
   }, async ({ baseUrl }) => {
     const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
-    const repoKey = catalog.ovens.find((oven) => oven.id === "widget-oven")?.repoKey;
+    const catalogEntry = catalog.ovens.find((oven) => oven.id === "widget-oven");
+    const repoKey = catalogEntry?.repoKey;
     assert.ok(repoKey);
+    assert.equal(catalogEntry.origin, "custom");
+    assert.equal(catalogEntry.catalogRevision, null);
     const query = `?repoKey=${encodeURIComponent(repoKey)}`;
 
     const ovenResponse = await httpGet(baseUrl, `/api/ovens/widget-oven${query}`);

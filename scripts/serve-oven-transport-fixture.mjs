@@ -12,8 +12,8 @@ function modelLabPayload(version = 1) {
   return {
     schema: MODEL_LAB_SCHEMA,
     generatedAt: `2026-07-22T13:0${version}:00.000Z`,
-    project: { id: "fixture-project", label: version === 1 ? "Canonical Fixture" : `Canonical Fixture v${version}` },
-    surface: { title: `Canonical Model Lab v${version}`, url: "http://127.0.0.1/model-lab" },
+    project: { id: "fixture-project", label: version === 1 ? "Transport Fixture" : `Transport Fixture v${version}` },
+    surface: { title: `Transport Fixture Model Lab v${version}`, url: "http://127.0.0.1/model-lab" },
     model: {
       id: "fixture-model",
       actor: {
@@ -58,7 +58,7 @@ function modelLabPayload(version = 1) {
   };
 }
 
-function startEvidenceProxy(targetBaseUrl, repoRoot) {
+function startTransportFixtureProxy(targetBaseUrl, repoRoot) {
   const target = new URL(targetBaseUrl);
   const entries = [];
   const controls = [];
@@ -123,7 +123,7 @@ function startEvidenceProxy(targetBaseUrl, repoRoot) {
           for (const response of eventResponses) response.destroy();
           return { disconnected };
         }
-        throw Object.assign(new Error(`Unknown evidence control: ${action}`), { status: 404 });
+        throw Object.assign(new Error(`Unknown transport fixture control: ${action}`), { status: 404 });
       });
       respond(res, control.ok ? 200 : 500, control);
       return;
@@ -201,7 +201,7 @@ function startEvidenceProxy(targetBaseUrl, repoRoot) {
 }
 
 await withServer({
-  burnlists: [{ repoPath: "app", id: "browser-evidence", title: "Browser Evidence" }],
+  burnlists: [{ repoPath: "app", id: "transport-fixture", title: "Transport Fixture" }],
   ovenData: [{
     id: "model-lab",
     payload: modelLabPayload(),
@@ -216,7 +216,7 @@ await withServer({
     override: false,
   }],
 }, async ({ baseUrl, repoRoot }) => {
-  const proxy = await startEvidenceProxy(baseUrl, repoRoot);
+  const proxy = await startTransportFixtureProxy(baseUrl, repoRoot);
   try {
     const key = repoKey(repoRoot);
     process.stdout.write(`${JSON.stringify({

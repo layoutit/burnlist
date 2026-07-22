@@ -219,8 +219,11 @@ export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "
   return { ...pkg, revision, pin };
 }
 
-export function resolveOvenForRepo({ repoRoot, builtInOvensDir, customOvensDir, id } = {}) {
+export function resolveOvenForRepo({ repoRoot, findOfficialOven, customOvensDir, id } = {}) {
+  const safeId = ovenId(id);
   const vendored = readVendoredOven(repoRoot, id);
   if (vendored) return vendored;
-  return readOvenPackageDir(builtInOvensDir, id) ?? readOvenPackageDir(customOvensDir, id);
+  const official = typeof findOfficialOven === "function" ? findOfficialOven(safeId) : null;
+  if (official && official.id !== safeId) throw new Error(`Official Oven resolver returned ${official.id} for ${safeId}.`);
+  return official ?? readOvenPackageDir(customOvensDir, safeId);
 }

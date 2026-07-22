@@ -21,6 +21,8 @@ test("a repo vendored Oven is served ahead of the shipped built-in", { timeout: 
     const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
     const vendored = catalog.find((entry) => entry.id === id && entry.repoKey !== null);
     assert.ok(vendored);
+    assert.equal(vendored.origin, "vendored");
+    assert.equal(vendored.catalogRevision, null);
     assert.equal(vendored.dataInput, "json-payload");
     const response = await httpGet(baseUrl, `/api/ovens/${id}?repoKey=${vendored.repoKey}`);
     assert.equal(response.status, 200);

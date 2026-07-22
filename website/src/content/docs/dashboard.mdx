@@ -51,18 +51,22 @@ Dashboard URLs keep the repository key in the path. A `repoKey` is 12 hexadecima
 
 A Burnlist detail has a lens-switcher that includes only Ovens whose data contract fits its `checklist-progress@1` contract. Its links open the Burnlist-scoped Oven URL, the active lens is highlighted, and `checklist` is the default lens. For example, the checklist lens is `/r/<repoKey>/<burnlistId>/o/checklist`.
 
-The Oven catalog is `/ovens`. It lists built-in Ovens first, then custom Ovens, sorted by name. Each card shows the Oven name, its `id@version` label, a `Contract: <contract>` badge, a Built-in or Custom badge (and the `repoKey` for custom Ovens), its description, an **Open Oven explainer** link, and a copyable **Tell your agent** block:
+The Oven catalog is `/ovens`. Its official section comes only from `/api/oven-catalog` and shows the catalog revision, manifest order, producer, contract, route kind, maturity, acceptance, and fixture policy. A separate repository-inventory section comes from `/api/ovens` and labels locally available vendored and custom Ovens by origin and `repoKey`. Local availability does not create official membership or acceptance.
 
 ```text
-Use the <Name> Oven (<id>@<version>).
-Its data must satisfy the <contract> contract.
-Adopt the Oven before preparing its data:
-burnlist oven adopt <id>
-Produce the required data, then bind it to the target path:
-burnlist oven bind <id> <path>
+Use the official <Name> Oven (<id>@<version>).
+Do not invent a replacement Oven, renderer, or data contract.
+Its normalized data must satisfy <contract>.
+Use the source-owned producer: <producer>.
+Install the shipped Oven in the target repository:
+burnlist oven use <id>
+Publish the producer's real JSON, then set it:
+burnlist oven set <id> <path>
+Canonical acceptance is <state>.
+Only canonical-oven evidence from the named producer qualifies; fixtures do not.
 ```
 
-An Oven explainer lives at `/ovens/<ovenId>`. It shows the Oven documentation and a non-live demonstration rendered with sample data. Open the scoped Oven URL to see the live data-bound view. Legacy `/ovens/<name>/view?repoKey=<key>` URLs redirect to `/r/<key>/o/<name>`.
+An Oven explainer lives at `/ovens/<ovenId>`. It shows the Oven documentation and a non-live demonstration rendered with sample data. Open the scoped Oven URL to see the live data-bound view.
 
 ## Local state
 

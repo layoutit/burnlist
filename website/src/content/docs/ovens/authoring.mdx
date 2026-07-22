@@ -89,7 +89,7 @@ creation. A direct `bind` leaves pointers to resolve when viewed, where missing
 values render empty or use fallbacks; `set` instead rejects a missing declared
 pointer before changing the canonical data or binding.
 
-The small Streaming Diff illustration uses its matching built-in pair:
+The small Streaming Diff illustration uses its matching allowlisted contract and theme pair:
 
 ```xml
 <oven id="streaming-diff" version="0.1.0"
@@ -150,8 +150,8 @@ path resolves from the repository root when read. The file has this schema:
 Successful binding prints `Bound Oven <id> to <path>` and
 `Store: <repo>/.local/burnlist/bindings.json`. `bindings` prints
 `<id>  <path>  <boundAt>` per line; `unbind` reports `Unbound…` or
-`No binding exists…`. `fork` copies a built-in or custom Oven to a new custom
-id and records its `forkedFrom` provenance; built-in Ovens cannot be updated.
+`No binding exists…`. `fork` copies an official or custom Oven to a new custom
+id and records its `forkedFrom` provenance; official Ovens cannot be updated.
 
 ### Validated data setup
 

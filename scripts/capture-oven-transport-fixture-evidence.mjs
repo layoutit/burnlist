@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
+import { loadCurrentOfficialOvenCatalog, validateOvenEvidence } from "./verify-official-oven-evidence.mjs";
+
 function argumentsMap(argv) {
   const values = new Map();
   for (let index = 0; index < argv.length; index += 2) {
@@ -30,6 +32,12 @@ function atomicJson(path, value) {
   const temporary = `${path}.${process.pid}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`);
   renameSync(temporary, path);
+}
+
+function retainedArtifact(kind, path) {
+  const stat = statSync(path);
+  assert.ok(stat.size > 0, `${kind} artifact must not be empty`);
+  return { kind, path: relative(process.cwd(), path), sha256: sha256(path), bytes: stat.size };
 }
 
 function assetPaths() {
@@ -83,17 +91,16 @@ const tracePath = join(tracesDir, traceName);
 const networkPath = join(tracesDir, networkName);
 const trace = readFileSync(tracePath, "utf8");
 for (const text of [
-  "Canonical Fixture · fixture-model",
-  "Canonical Fixture v2 · fixture-model",
-  "Canonical Fixture v3 · fixture-model",
-  "Canonical Fixture v4 · fixture-model",
+  "Transport Fixture · fixture-model",
+  "Transport Fixture v2 · fixture-model",
+  "Transport Fixture v3 · fixture-model",
+  "Transport Fixture v4 · fixture-model",
   "Target qualified",
 ]) assert.match(trace, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
 
 const screenshots = ["model-lab-v4-final.png", "visual-parity-final.png"].map((name) => {
   const path = join(artifactRoot, name);
-  assert.ok(statSync(path).size > 0);
-  return { path: relative(process.cwd(), path), bytes: statSync(path).size, sha256: sha256(path) };
+  return retainedArtifact("screenshot", path);
 });
 const assets = assetPaths();
 const productionAssets = Object.fromEntries(Object.entries(assets).map(([kind, path]) => {
@@ -132,33 +139,25 @@ const visualIdleMs = Date.parse(laterNavigation.requestedAt) - Date.parse(visual
 assert.ok(ordinaryIdleMs > 2_000 && visualIdleMs > 2_000);
 
 const rawArtifact = {
-  schema: "burnlist-canonical-oven-network-log@1",
+  schema: "burnlist-oven-transport-fixture-report@1",
   capturedAt,
+  evidenceClass: "transport-fixture",
+  sourceKind: "fixture",
+  fixture: true,
   evidenceUrl,
   entries: raw.entries,
   controls: raw.controls,
-};
-atomicJson(rawOutput, rawArtifact);
-const result = {
-  schema: "burnlist-canonical-oven-browser-evidence@2",
-  capturedAt,
   productionAssets,
   routes: {
     modelLab: raw.entries.find((entry) => entry.path.includes("/o/model-lab"))?.path,
     visualParity: visualNavigation.path,
   },
-  rawArtifacts: {
-    networkLog: relative(process.cwd(), rawOutput),
-    playwrightTrace: { path: relative(process.cwd(), tracePath), bytes: statSync(tracePath).size, sha256: sha256(tracePath) },
-    playwrightNetwork: { path: relative(process.cwd(), networkPath), bytes: statSync(networkPath).size, sha256: sha256(networkPath) },
-    screenshots,
-  },
   ui: {
     observedInTrace: [
-      "Canonical Fixture · fixture-model",
-      "Canonical Fixture v2 · fixture-model",
-      "Canonical Fixture v3 · fixture-model",
-      "Canonical Fixture v4 · fixture-model",
+      "Transport Fixture · fixture-model",
+      "Transport Fixture v2 · fixture-model",
+      "Transport Fixture v3 · fixture-model",
+      "Transport Fixture v4 · fixture-model",
       "Target qualified",
     ],
     runtime: "OvenRuntime",
@@ -190,5 +189,39 @@ const result = {
     eventPayloadBecameUiState: false,
   },
 };
+atomicJson(rawOutput, rawArtifact);
+const result = {
+  schema: "burnlist-oven-evidence@1",
+  evidenceClass: "transport-fixture",
+  capturedAt,
+  sourceKind: "fixture",
+  fixture: true,
+  ovenId: null,
+  catalogRevision: null,
+  details: {
+    mechanics: [
+      "event publication triggers one conditional snapshot request",
+      "idle snapshot cache suppresses two-second polling",
+      "unchanged conditional snapshot returns 304 without payload bytes",
+      "failed event publication falls back to canonical snapshot state",
+      "event-stream reconnect replays a durable publication",
+      "shared OvenRuntime transport serves Model Lab and Visual Parity fixture payloads",
+    ],
+    fixtureIds: [
+      "fixture-project",
+      "fixture-model",
+      "fixture-actor",
+      "fixture-frame-0",
+      "visual-parity-fixture",
+    ],
+  },
+  artifacts: [
+    retainedArtifact("network", rawOutput),
+    retainedArtifact("trace", tracePath),
+    retainedArtifact("network", networkPath),
+    ...screenshots,
+  ],
+};
+validateOvenEvidence(result, { catalog: loadCurrentOfficialOvenCatalog() });
 atomicJson(output, result);
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

@@ -3,11 +3,18 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import "../src/ovens/built-in-handlers.mjs";
+import { loadOfficialOvenCatalog } from "../src/ovens/official-oven-catalog.mjs";
+import { listOvenHandlers } from "../src/ovens/oven-registry.mjs";
 import { assertBuiltInOven, assertBuiltInOvenDataDocs, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
 import { verificationSerialTestFiles, verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
+const officialOvenCatalog = loadOfficialOvenCatalog({
+  ovensDir: resolve(repoRoot, "ovens"),
+  handlers: listOvenHandlers(),
+});
 
 function run(command, args, options = {}) {
   const label = [command, ...args].join(" ");
@@ -266,6 +273,7 @@ assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashb
 assertSourceExcludes("dashboard/src/App.tsx", "function Detail(", "Dashboard still carries the superseded simplified Checklist detail path.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/oven-catalog"', "Official Oven catalog API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/events"', "Replayable generic Oven event API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
@@ -416,19 +424,29 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
-assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"]);
-assertBuiltInOven(repoRoot, "checklist", "Checklist");
-assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
-assertBuiltInOven(repoRoot, "model-lab", "Model Lab");
-assertBuiltInOven(repoRoot, "performance-tracing", "Performance Tracing");
-assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
-assertBuiltInOven(repoRoot, "visual-parity", "Visual Parity");
-assertBuiltInOvenDataDocs(repoRoot, "checklist", { dataInput: "json-payload", validator: "validateGenericJsonData" });
-assertBuiltInOvenDataDocs(repoRoot, "differential-testing", { dataInput: "json-payload", validator: "validateDifferentialTestingRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "model-lab", { dataInput: "json-payload", validator: "validateModelLabRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "performance-tracing", { dataInput: "json-payload", validator: "validatePerformanceTracingRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "streaming-diff", { dataInput: "producer-managed" });
-assertBuiltInOvenDataDocs(repoRoot, "visual-parity", { dataInput: "json-payload", validator: "validateVisualParityRuntimeData" });
+const officialOvenExpectations = new Map([
+  ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
+  ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
+  ["model-lab", { name: "Model Lab", validator: "validateModelLabRuntimeData" }],
+  ["performance-tracing", { name: "Performance Tracing", validator: "validatePerformanceTracingRuntimeData" }],
+  ["streaming-diff", { name: "Streaming Diff" }],
+  ["visual-parity", { name: "Visual Parity", validator: "validateVisualParityRuntimeData" }],
+]);
+const officialIds = officialOvenCatalog.entries.map(({ id }) => id);
+if (officialOvenExpectations.size !== officialIds.length
+  || officialIds.some((id) => !officialOvenExpectations.has(id))) {
+  console.error("Official Oven documentation expectations must match the catalog exactly.");
+  process.exit(1);
+}
+assertBuiltInOvenSet(repoRoot, officialIds);
+for (const entry of officialOvenCatalog.entries) {
+  const expectation = officialOvenExpectations.get(entry.id);
+  assertBuiltInOven(repoRoot, entry.id, expectation.name);
+  assertBuiltInOvenDataDocs(repoRoot, entry.id, {
+    dataInput: entry.dataInput,
+    validator: expectation.validator,
+  });
+}
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
