@@ -1242,8 +1242,11 @@ const server = createServer(async (req, res) => {
       }
       const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
       if (!handler && !oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
-      if (!binding) return json(res, 404, { error: `no data binding configured for Oven ${id}` });
       try {
+        if (!binding) {
+          handler?.reconcileDataBindings?.(ovenHandlerContext({ id, oven, req, res, url, ovenDataBindings }));
+          return json(res, 404, { error: `no data binding configured for Oven ${id}` });
+        }
         const active = handler ?? genericJsonHandler;
         const response = active.serveData?.(ovenHandlerContext({ id, oven, req, res, url, binding, ovenDataBindings }));
         if (response !== undefined) json(res, 200, response);

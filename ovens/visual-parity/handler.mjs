@@ -1,18 +1,25 @@
+import { createHash } from "node:crypto";
+import { lstatSync } from "node:fs";
 import { basename } from "node:path";
 import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { readTextFileWithIdentity } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
+import {
+  streamVisualParityResponse,
+  VISUAL_PARITY_RESPONSE_CHUNK_BYTES,
+  VISUAL_PARITY_RESPONSE_TIMEOUT_MS,
+} from "./response-stream.mjs";
+
+export const VISUAL_PARITY_CACHE_MAX_ENTRIES = 8;
+export const VISUAL_PARITY_CACHE_MAX_BYTES = 128 * 1024 * 1024;
+export { VISUAL_PARITY_RESPONSE_CHUNK_BYTES, VISUAL_PARITY_RESPONSE_TIMEOUT_MS };
+export const VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES = 8;
+
+const DATA_CACHE_KEY = "validated-response-data";
+const DATA_READ_ATTEMPTS = 3;
+const RESPONSE_SUFFIX = Buffer.from(",\"validated\":true}");
 
 export const validateVisualParityRuntimeData = assertVisualParityData;
-
-function readVisualParityData(bindingPath, maxOvenDataBytes) {
-  const stat = safeStat(bindingPath);
-  if (!stat?.isFile()) throw new Error("configured Visual Parity data is missing");
-  const payload = JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, "Visual Parity Oven data"));
-  validateVisualParityRuntimeData(payload);
-  return { payload, stat };
-}
-
 function targetProgress(payload) {
   const targetIds = new Set(payload.domains
     .filter((domain) => domain.qualification === "target")
@@ -22,41 +29,301 @@ function targetProgress(payload) {
   return { qualified, total: payload.comparisons.length };
 }
 
+function visualParitySummary(payload, stat) {
+  const scenarioId = payload.differentialTesting.scenarioCatalog.selectedScenarioId;
+  const scenario = payload.differentialTesting.scenarioCatalog.scenarios
+    .find((entry) => entry.id === scenarioId);
+  const progress = targetProgress(payload);
+  return {
+    scenarioId,
+    scenarioLabel: scenario.label,
+    progress,
+    complete: progress.qualified === progress.total,
+    percent: progress.total ? Math.round((progress.qualified / progress.total) * 100) : 0,
+    warnings: payload.domains.filter((domain) => domain.qualification === "context"
+      && payload.comparisons.some((comparison) => comparison.domains[domain.id].status === "fail")).length,
+    publishedAt: payload.differentialTesting.publishedAt,
+    updatedAt: payload.differentialTesting.publishedAt ?? stat.mtime.toISOString(),
+  };
+}
+
+function safeLstat(path) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function versionSignature(bindingPath, identity) {
+  return [bindingPath, identity.dev, identity.ino, identity.size, identity.mtimeMs, identity.ctimeMs].join("\0");
+}
+
+function fileSnapshot(bindingPath, statPath = safeLstat) {
+  const stat = statPath(bindingPath);
+  if (!stat?.isFile() || stat.isSymbolicLink?.()) return null;
+  return {
+    stat,
+    signature: versionSignature(bindingPath, stat),
+  };
+}
+
+export function readStableVisualParitySource(bindingPath, maxBytes, {
+  readSource = readTextFileWithIdentity,
+  statPath = safeLstat,
+} = {}) {
+  for (let attempt = 0; attempt < DATA_READ_ATTEMPTS; attempt += 1) {
+    const before = fileSnapshot(bindingPath, statPath);
+    if (!before) throw new Error("configured Visual Parity data is missing");
+    try {
+      const { text: source, identity } = readSource(bindingPath, maxBytes, "Visual Parity Oven data");
+      const after = fileSnapshot(bindingPath, statPath);
+      if (after?.signature === versionSignature(bindingPath, identity)) return { source, ...after };
+    } catch (error) {
+      const after = fileSnapshot(bindingPath, statPath);
+      if (error?.code !== "ESTALE" && after?.signature === before.signature) throw error;
+    }
+  }
+  throw Object.assign(new Error("configured Visual Parity data changed while it was read"), { code: "ESTALE" });
+}
+
+function responseCache(ctx) {
+  let state = ctx.cache.get(DATA_CACHE_KEY);
+  if (!state || !(state.responses instanceof Map) || !(state.summaries instanceof Map)
+    || !Number.isSafeInteger(state.responseBytes) || !Number.isSafeInteger(state.activeResponses)
+    || !Number.isSafeInteger(state.activeResponseBytes)) {
+    state = {
+      responses: new Map(), summaries: new Map(), responseBytes: 0,
+      activeResponses: 0, activeResponseBytes: 0,
+    };
+    ctx.cache.set(DATA_CACHE_KEY, state);
+  }
+  return state;
+}
+
+function removeCachedResponse(state, path) {
+  const cached = state.responses.get(path);
+  if (!cached) return;
+  state.responses.delete(path);
+  state.responseBytes -= cached.sourceBytes;
+}
+
+function removeCachedData(state, path) {
+  removeCachedResponse(state, path);
+  state.summaries.delete(path);
+}
+
+function cacheByteLimit(ctx) {
+  if (!Number.isSafeInteger(ctx.maxOvenDataBytes) || ctx.maxOvenDataBytes < 0) {
+    return VISUAL_PARITY_CACHE_MAX_BYTES;
+  }
+  return Math.min(VISUAL_PARITY_CACHE_MAX_BYTES, ctx.maxOvenDataBytes * 2);
+}
+
+function enforceCacheLimits(state, maxBytes) {
+  while (state.responses.size > VISUAL_PARITY_CACHE_MAX_ENTRIES || state.responseBytes > maxBytes) {
+    removeCachedResponse(state, state.responses.keys().next().value);
+  }
+}
+
+function prepareResponseCache(ctx) {
+  const state = responseCache(ctx);
+  const bindingMap = ctx.ovenDataBindings;
+  if (typeof bindingMap?.get === "function") {
+    const bindings = bindingMap.get("visual-parity") ?? [];
+    const activePaths = new Set(bindings.map((binding) => binding.path));
+    for (const path of state.responses.keys()) {
+      if (!activePaths.has(path)) removeCachedResponse(state, path);
+    }
+    for (const path of state.summaries.keys()) {
+      if (!activePaths.has(path)) state.summaries.delete(path);
+    }
+  }
+  enforceCacheLimits(state, cacheByteLimit(ctx));
+  return state;
+}
+
+function reconcileResponseCache(ctx) {
+  if (!ctx.cache.get(DATA_CACHE_KEY)) return;
+  prepareResponseCache(ctx);
+}
+
+function responsePrefix(bindingPath) {
+  return Buffer.from(`${JSON.stringify({ ovenId: "visual-parity", path: bindingPath }).slice(0, -1)},"payload":`);
+}
+
+function readValidatedVisualParityData(ctx, bindingPath) {
+  const { source, stat, signature } = readStableVisualParitySource(bindingPath, ctx.maxOvenDataBytes);
+  const payload = JSON.parse(source);
+  validateVisualParityRuntimeData(payload);
+  return { source, signature, summary: visualParitySummary(payload, stat) };
+}
+
+function cacheSummary(state, bindingPath, data) {
+  const cached = { signature: data.signature, summary: data.summary };
+  state.summaries.set(bindingPath, cached);
+  return cached.summary;
+}
+
+function visualParitySummaryCache(ctx, bindingPath, state) {
+  const observed = fileSnapshot(bindingPath);
+  if (!observed) {
+    removeCachedData(state, bindingPath);
+    throw new Error("configured Visual Parity data is missing");
+  }
+  const cached = state.summaries.get(bindingPath);
+  if (cached?.signature === observed.signature) {
+    return cached.summary;
+  }
+  removeCachedData(state, bindingPath);
+  try {
+    return cacheSummary(state, bindingPath, readValidatedVisualParityData(ctx, bindingPath));
+  } catch (error) {
+    removeCachedData(state, bindingPath);
+    throw error;
+  }
+}
+
+function visualParityDataCache(ctx, bindingPath, state) {
+  const observed = fileSnapshot(bindingPath);
+  if (!observed) {
+    removeCachedData(state, bindingPath);
+    throw new Error("configured Visual Parity data is missing");
+  }
+  const cached = state.responses.get(bindingPath);
+  if (cached?.signature === observed.signature) {
+    state.responses.delete(bindingPath);
+    state.responses.set(bindingPath, cached);
+    return cached;
+  }
+  removeCachedData(state, bindingPath);
+  let data;
+  try {
+    data = readValidatedVisualParityData(ctx, bindingPath);
+  } catch (error) {
+    removeCachedData(state, bindingPath);
+    throw error;
+  }
+  cacheSummary(state, bindingPath, data);
+  const sourceBuffer = Buffer.from(data.source);
+  const prefix = responsePrefix(bindingPath);
+  const result = {
+    signature: data.signature,
+    prefix,
+    source: sourceBuffer,
+    suffix: RESPONSE_SUFFIX,
+    sourceBytes: sourceBuffer.length,
+    responseBytes: prefix.length + sourceBuffer.length + RESPONSE_SUFFIX.length,
+    etag: `W/"vp-${createHash("sha256")
+      .update(prefix).update(sourceBuffer).update(RESPONSE_SUFFIX).digest("hex")}"`,
+  };
+  const maxBytes = cacheByteLimit(ctx);
+  if (result.sourceBytes <= maxBytes) {
+    state.responses.set(bindingPath, result);
+    state.responseBytes += result.sourceBytes;
+    enforceCacheLimits(state, maxBytes);
+  }
+  return result;
+}
+
+export function ifNoneMatchMatches(value, currentEtag) {
+  const header = Array.isArray(value) ? value.join(",") : String(value ?? "");
+  if (header.trim() === "*") return true;
+  const currentOpaque = currentEtag.replace(/^W\//u, "");
+  let offset = 0;
+  while (offset < header.length) {
+    while (/[\t ,]/u.test(header[offset] ?? "")) offset += 1;
+    if (header.startsWith("W/", offset)) offset += 2;
+    if (header[offset] !== "\"") {
+      while (offset < header.length && header[offset] !== ",") offset += 1;
+      continue;
+    }
+    const start = offset;
+    const end = header.indexOf("\"", start + 1);
+    if (end === -1) return false;
+    offset = end + 1;
+    while (/[\t ]/u.test(header[offset] ?? "")) offset += 1;
+    if ((offset === header.length || header[offset] === ",")
+      && header.slice(start, end + 1) === currentOpaque) return true;
+    while (offset < header.length && header[offset] !== ",") offset += 1;
+  }
+  return false;
+}
+
+function reserveActiveResponse(state, responseBytes, maxBytes) {
+  if (state.activeResponses >= VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES
+    || state.activeResponseBytes + responseBytes > maxBytes) return null;
+  state.activeResponses += 1;
+  state.activeResponseBytes += responseBytes;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    state.activeResponses -= 1;
+    state.activeResponseBytes -= responseBytes;
+  };
+}
+
+function sendVisualParityData(ctx, state, cached) {
+  const { req, res } = ctx;
+  if (ifNoneMatchMatches(req.headers["if-none-match"], cached.etag)) {
+    res.writeHead(304, { etag: cached.etag, "cache-control": "no-store" });
+    res.end();
+    return;
+  }
+  const release = reserveActiveResponse(state, cached.responseBytes, cacheByteLimit(ctx));
+  if (!release) {
+    res.writeHead(503, { "cache-control": "no-store", "retry-after": "1" });
+    res.end();
+    return;
+  }
+  res.writeHead(200, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    etag: cached.etag,
+    "content-length": cached.responseBytes,
+  });
+  streamVisualParityResponse(req, res, [cached.prefix, cached.source, cached.suffix], {
+    onCleanup: release,
+    timeoutMs: ctx.responseTimeoutMs ?? VISUAL_PARITY_RESPONSE_TIMEOUT_MS,
+    timers: ctx.responseTimers ?? globalThis,
+  });
+}
+
 export const visualParityHandler = Object.freeze({
   id: "visual-parity",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateVisualParityRuntimeData,
 
-  serveData({ bindingPath, maxOvenDataBytes }) {
-    const { payload } = readVisualParityData(bindingPath, maxOvenDataBytes);
-    return { ovenId: "visual-parity", path: bindingPath, payload, validated: true };
+  reconcileDataBindings(ctx) {
+    reconcileResponseCache(ctx);
+  },
+
+  serveData(ctx) {
+    const state = prepareResponseCache(ctx);
+    sendVisualParityData(ctx, state, visualParityDataCache(ctx, ctx.bindingPath, state));
   },
 
   dashboardEntries(ctx) {
+    const state = prepareResponseCache(ctx);
     return (ctx.ovenDataBindings.get("visual-parity") ?? []).map((binding) => {
       try {
-        const { payload, stat } = readVisualParityData(binding.path, ctx.maxOvenDataBytes);
-        const scenarioId = payload.differentialTesting.scenarioCatalog.selectedScenarioId;
-        const scenario = payload.differentialTesting.scenarioCatalog.scenarios
-          .find((entry) => entry.id === scenarioId);
-        const progress = targetProgress(payload);
-        const complete = progress.qualified === progress.total;
+        const summary = visualParitySummaryCache(ctx, binding.path, state);
         const repo = binding.repoKey === null ? "visual-parity"
           : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name
             ?? basename(binding.repoRoot);
         return {
-          id: scenarioId, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot,
-          title: scenario.label, planPath: null, planLabel: null,
-          status: complete ? "complete" : "active", statusLabel: complete ? "Qualified" : "Open",
-          total: progress.total, done: progress.qualified, remaining: progress.total - progress.qualified,
-          percent: progress.total ? (progress.qualified / progress.total) * 100 : 0,
-          errors: 0, warnings: payload.domains.filter((domain) => domain.qualification === "context"
-            && payload.comparisons.some((comparison) => comparison.domains[domain.id].status === "fail")).length,
-          lastCompletedAt: complete ? payload.differentialTesting.publishedAt : null,
-          updatedAt: payload.differentialTesting.publishedAt ?? stat.mtime.toISOString(),
+          id: summary.scenarioId, repo, repoKey: binding.repoKey, repoRoot: binding.repoRoot,
+          title: summary.scenarioLabel, planPath: null, planLabel: null,
+          status: summary.complete ? "complete" : "active", statusLabel: summary.complete ? "Qualified" : "Open",
+          total: summary.progress.total, done: summary.progress.qualified,
+          remaining: summary.progress.total - summary.progress.qualified, percent: summary.percent,
+          errors: 0, warnings: summary.warnings,
+          lastCompletedAt: summary.complete ? summary.publishedAt : null,
+          updatedAt: summary.updatedAt,
           ovenId: "visual-parity", ovenName: "Visual Parity",
           href: binding.repoKey === null ? "/ovens/visual-parity" : `/r/${encodeURIComponent(binding.repoKey)}/o/visual-parity`,
-          progressLabel: `${progress.qualified}/${progress.total} target frames`,
+          progressLabel: `${summary.progress.qualified}/${summary.progress.total} target frames`,
         };
       } catch (error) {
         const repo = binding.repoKey === null ? "visual-parity" : basename(binding.repoRoot);

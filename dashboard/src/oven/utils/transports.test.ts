@@ -66,6 +66,52 @@ test("poll success delivers data before settled", async () => {
   assert.deepEqual(events, [["data", { x: 1 }], ["settled"]]);
 });
 
+test("poll preserves data on 304 and accepts a later ETag update", async () => {
+  const events = [];
+  const fetchCalls = [];
+  let responseIndex = 0;
+  const responses = [{
+    ok: true,
+    status: 200,
+    headers: { get: (name) => name === "etag" ? 'W/"visual-1"' : null },
+    json: () => ({ validated: true, payload: { x: 1 } }),
+  }, {
+    ok: false,
+    status: 304,
+    headers: { get: (name) => name === "etag" ? 'W/"visual-1"' : null },
+    json: () => { throw new Error("304 must not decode a payload"); },
+  }, {
+    ok: true,
+    status: 200,
+    headers: { get: (name) => name === "etag" ? 'W/"visual-2"' : null },
+    json: () => ({ validated: true, payload: { x: 2 } }),
+  }];
+  const { stop, intervalCallback } = startPoll({
+    events,
+    fetchImpl: async (...args) => {
+      fetchCalls.push(args);
+      return responses[responseIndex++];
+    },
+  });
+
+  await waitForAsyncWork();
+  await intervalCallback();
+  await waitForAsyncWork();
+  await intervalCallback();
+  await waitForAsyncWork();
+  stop();
+
+  assert.deepEqual(fetchCalls, [
+    ["/api/oven-data/visual-parity", { cache: "no-store" }],
+    ["/api/oven-data/visual-parity", { cache: "no-store", headers: { "If-None-Match": 'W/"visual-1"' } }],
+    ["/api/oven-data/visual-parity", { cache: "no-store", headers: { "If-None-Match": 'W/"visual-1"' } }],
+  ]);
+  assert.deepEqual(events, [
+    ["data", { x: 1 }], ["settled"], ["settled"],
+    ["data", { x: 2 }], ["settled"],
+  ]);
+});
+
 test("poll skips an interval refresh while the first request is in flight", async () => {
   let resolveFetch;
   let fetchCalls = 0;

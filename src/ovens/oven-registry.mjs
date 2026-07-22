@@ -1,7 +1,7 @@
 import { ovenId } from "./oven-contract.mjs";
 
 // Oven handlers are code-owned adapters for declared Oven packages. A handler may
-// provide dashboardEntries(ctx), serveData(ctx), and warm(ctx) with warmIntervalMs.
+// provide dashboardEntries(ctx), serveData(ctx), reconcileDataBindings(ctx), and warm(ctx) with warmIntervalMs.
 // serveData may write directly to ctx.res, or return a value for the server to JSON
 // serialize. Context contains only the request-specific values each hook needs.
 const handlers = new Map();
@@ -36,7 +36,7 @@ export function registerOvenHandler(id, handler) {
   if (!handler || typeof handler !== "object") throw new Error(`Oven handler for ${normalizedId} must be an object.`);
   if (handlers.has(normalizedId)) throw new Error(`Oven handler for ${normalizedId} is already registered.`);
   if (handler.id !== id) throw new Error(`Oven handler id must equal its registry key ${normalizedId}.`);
-  for (const hook of ["dashboardEntries", "serveData", "warm"]) {
+  for (const hook of ["dashboardEntries", "serveData", "reconcileDataBindings", "warm"]) {
     if (handler[hook] !== undefined && typeof handler[hook] !== "function") {
       throw new Error(`Oven handler ${normalizedId} ${hook} must be a function.`);
     }

@@ -11,14 +11,25 @@ export function createPollTransport({
   return {
     start({ onData, onError, onSettled }) {
       let cancelled = false;
+      let etag = "";
 
       const refresh = async () => {
         if (inFlightRef.current) return;
         inFlightRef.current = true;
         try {
-          const response = await fetchImpl(makeUrl(), { cache: "no-store" });
+          const response = await fetchImpl(makeUrl(), {
+            cache: "no-store",
+            ...(etag ? { headers: { "If-None-Match": etag } } : {}),
+          });
+          if (response.status === 304) {
+            const nextEtag = response.headers?.get?.("etag");
+            if (nextEtag) etag = nextEtag;
+            return;
+          }
           const json = await response.json();
           const data = receive(response, json);
+          const nextEtag = response.headers?.get?.("etag");
+          if (nextEtag) etag = nextEtag;
           if (!cancelled) onData(data);
         } catch (cause) {
           if (!cancelled) onError(cause instanceof Error ? cause.message : fallbackError);

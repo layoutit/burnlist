@@ -8,6 +8,7 @@ import {
   atomicDirectory,
   atomicOvenPackage,
   OVEN_REV_GRACE_MS,
+  readTextFileWithIdentity,
   readTextFileWithLimit,
   resolveOvenPackageDir,
   withOvenPackageLock,
@@ -29,6 +30,20 @@ test("readTextFileWithLimit rejects leaf symlinks", () => {
   } finally {
     context.cleanup();
   }
+});
+
+test("readTextFileWithIdentity returns the opened descriptor version", () => {
+  const context = fixture();
+  try {
+    const path = join(context.root, "identity.txt");
+    writeFileSync(path, "descriptor-bound\n");
+    const result = readTextFileWithIdentity(path, 64, "Fixture");
+    const stat = statSync(path);
+    assert.equal(result.text, "descriptor-bound\n");
+    assert.deepEqual(result.identity, {
+      dev: stat.dev, ino: stat.ino, size: stat.size, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs,
+    });
+  } finally { context.cleanup(); }
 });
 
 test("readTextFileWithLimit bounds descriptor reads even when the opened size reports zero", () => {

@@ -1,18 +1,33 @@
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 
 function fileIdentity(entry) {
-  return { dev: entry.dev, ino: entry.ino };
+  return {
+    dev: entry.dev,
+    ino: entry.ino,
+    size: entry.size,
+    mtimeMs: entry.mtimeMs,
+    ctimeMs: entry.ctimeMs,
+  };
 }
 
 function sameFile(left, right) {
   return left.dev === right.dev && left.ino === right.ino;
 }
 
+function sameVersion(left, right) {
+  return sameFile(left, right) && left.size === right.size
+    && left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs;
+}
+
 function regularFileError(path, label) {
   return new Error(`${label} must be a regular file (symbolic links are not allowed): ${path}`);
 }
 
-export function readTextFileWithLimit(path, maxBytes, label, { assertPath } = {}) {
+function changedFileError(path, label) {
+  return Object.assign(new Error(`${label} changed while it was read: ${path}`), { code: "ESTALE" });
+}
+
+export function readTextFileWithIdentity(path, maxBytes, label, { assertPath } = {}) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new RangeError("maxBytes must be a non-negative safe integer");
   assertPath?.();
   const before = lstatSync(path);
@@ -53,8 +68,19 @@ export function readTextFileWithLimit(path, maxBytes, label, { assertPath } = {}
     if (total > maxBytes) throw new Error(`${label} is over the ${maxBytes} byte limit`);
     const text = buffer.subarray(0, total).toString("utf8");
     assertPath?.();
-    return text;
+    const completed = fstatSync(descriptor);
+    if (!completed.isFile()) throw regularFileError(path, label);
+    const completedIdentity = fileIdentity(completed);
+    if (!sameVersion(fileIdentity(opened), completedIdentity)) throw changedFileError(path, label);
+    const finalPath = lstatSync(path);
+    if (!finalPath.isFile() || finalPath.isSymbolicLink()) throw regularFileError(path, label);
+    if (!sameVersion(completedIdentity, fileIdentity(finalPath))) throw changedFileError(path, label);
+    return { text, identity: completedIdentity };
   } finally {
     if (descriptor !== undefined) closeSync(descriptor);
   }
+}
+
+export function readTextFileWithLimit(path, maxBytes, label, options) {
+  return readTextFileWithIdentity(path, maxBytes, label, options).text;
 }
