@@ -97,3 +97,13 @@ test("Storybook exposes the source-backed top card and field-list card patterns"
   assert.match(topCard, /DifferentialTesting\/differential-testing\.css/);
   assert.match(fieldList, /DifferentialTesting\/differential-testing\.css/);
 });
+
+test("Storybook's development runtime is documented and verified on a supported CI lane", async () => {
+  const packageJson = JSON.parse(await readFile(new URL("../../../package.json", import.meta.url), "utf8"));
+  const readme = await readFile(new URL("../../../README.md", import.meta.url), "utf8");
+  const workflow = await readFile(new URL("../../../.github/workflows/ci.yml", import.meta.url), "utf8");
+
+  assert.equal(packageJson.engines?.node, ">=18", "Storybook must not raise the shipped Burnlist runtime floor");
+  assert.match(readme, /Storybook\s+10 development commands require Node\.js 20\.19\+ or 22\.12\+/);
+  assert.match(workflow, /- name: Build Storybook\s+if: matrix\.node-version == 22\s+run: npm run build:storybook/);
+});
