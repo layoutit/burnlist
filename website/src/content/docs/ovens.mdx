@@ -21,10 +21,11 @@ An Oven cannot execute commands or code, collect or transform project data, own 
 
 ## Built-in Ovens
 
-Five built-in, read-only Ovens ship with Burnlist:
+Six built-in, read-only Ovens ship with Burnlist:
 
 - Checklist tracks the active work queue and progress.
 - Differential Testing provides aligned reference-versus-candidate series, optional aggregate telemetry, and exact-first evidence.
+- Model Lab inspects one prepared model and its topology, publication, and provenance evidence.
 - Streaming Diff surfaces recently published, session-scoped pre-to-post diff cards read from a local feed.
 - Performance Tracing renders retained browser-output timing evidence — frame pacing, budget checks, and slow steps — from a project-owned trace run.
 - Visual Parity compares trusted reference and candidate frames as isolated render passes, gating each render domain on calibrated channel, mean-delta, and changed-pixel bounds.
@@ -41,6 +42,8 @@ burnlist oven create <id> --package <file|->   # JSON: {name?, instructions, ove
 burnlist oven create <id> --instructions <f|-> [--oven <f|->] [--name <text>]
 burnlist oven update <id> [same inputs as create]
 burnlist oven fork <id> <newId>
+burnlist oven use <id> [--repo <path>] [--force]
+burnlist oven set <id> <path|-|json> [--repo <path>]
 burnlist oven bind <id> <path> [--repo <path>]  # bind an Oven to a normalized data payload
 burnlist oven unbind <id> [--repo <path>]
 burnlist oven bindings [--repo <path>]          # list this repo's Oven data bindings
@@ -48,15 +51,22 @@ burnlist oven bindings [--repo <path>]          # list this repo's Oven data bin
 
 `view` derives structure from the compiled IR. Any file input accepts `-` for standard input. `--name` owns the level-one heading. `create` scaffolds a starter `.oven` when one is omitted, and refuses an existing id; use `update`, or `--force`. Built-in Ovens are read-only, so fork one to customize it.
 
-Validation reuses the same `oven-contract` used by the dashboard. Invalid source or a missing H1 is rejected before anything is written. This CLI never executes Oven instructions.
+Source validation reuses the same `oven-contract` used by the dashboard.
+Invalid source or a missing H1 is rejected before anything is written. For
+data, `use` installs only an existing validated `example/data.json`, while
+`set` calls the same built-in runtime validator as the render handler before
+atomically publishing `.local/burnlist/data/<id>.json` and its binding. A
+custom Oven without a runtime validator receives `shape-only` pointer
+validation, which does not prove truth. This CLI never executes Oven
+instructions.
 
 Structure, widgets, and formats are the `.oven` DSL vocabulary. See the [.oven DSL reference](/ovens/dsl-reference) and [The .oven system](/ovens/oven-system).
 
 ## Binding
 
-A `.oven` source binding is a JSON-pointer into a single read-only data document produced by a project-specific adapter at view time. The adapter is not part of the Oven, and source-value shape is not validated at creation time: the renderer and adapter are the final authority. Record the expected document shape in `instructions.md`, for example in a `## State Contract` section.
+A `.oven` source binding is a JSON-pointer into a single read-only data document produced by a project-specific adapter at view time. The adapter is not part of the Oven, and source-value shape is not validated at creation time. At `set` time, built-ins use their runtime validators and custom Ovens without one require every source pointer to resolve. That fallback is shape-only: the project adapter remains responsible for freshness, provenance, semantics, and truth. Record the expected document shape in `instructions.md`, for example in a `## Data Shape` section.
 
-Rich built-in Ovens define a versioned normalized-data contract validated in code. For example, Differential Testing uses `burnlist-differential-testing-data@1`, bound with `burnlist --oven-data differential-testing=<path>`.
+Rich built-in Ovens define a versioned normalized-data contract validated in code. For example, Differential Testing uses `burnlist-differential-testing-data@1`, configured with `burnlist oven set differential-testing <path>`. Any JSON Schema is informational reference documentation, not runtime validation authority or Oven package identity.
 
 ## Runs
 

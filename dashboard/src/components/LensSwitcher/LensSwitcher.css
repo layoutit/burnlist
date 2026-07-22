@@ -1,0 +1,20 @@
+.lens-switcher {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+}
+
+.lens-switcher-link {
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 999px;
+  color: inherit;
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.65rem;
+  text-decoration: none;
+}
+
+.lens-switcher-link.is-active {
+  background: var(--accent, #2563eb);
+  border-color: var(--accent, #2563eb);
+  color: #fff;
+}

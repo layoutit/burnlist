@@ -1,5 +1,5 @@
 <oven id="differential-testing"
-      version="1"
+      version="0.1.0"
       contract="burnlist-differential-testing-data@1"
       refresh-seconds="2"
       theme="differential-testing">

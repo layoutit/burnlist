@@ -9,6 +9,18 @@ test("root serves the dashboard shell", { timeout: 20_000 }, async () => {
   });
 });
 
+test("reserved and path-scoped dashboard routes serve the SPA shell", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
+    for (const pathname of [
+      "/ovens",
+      "/ovens/example-oven",
+      "/r/aaaaaaaaaaaa/o/model-lab",
+      "/r/aaaaaaaaaaaa/fixture/o/streaming-diff",
+      "/ovens/example-oven/view",
+    ]) assert.equal((await httpGet(baseUrl, pathname)).status, 200);
+  });
+});
+
 test("/api/progress requires an explicit selection when one Burnlist is active", { timeout: 20_000 }, async () => {
   await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
     const response = await httpGet(baseUrl, "/api/progress");

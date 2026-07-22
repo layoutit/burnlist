@@ -1,18 +1,17 @@
 import { useEffect, useMemo } from "react";
-import { useStreamingDiffCards, useStreamingDiffFeeds } from "@hooks";
+import { useStreamingDiffCards, useStreamingDiffFeeds, type ResolvedOvenIr } from "@hooks";
 import { FeedList } from "@oven";
 import { ovenRepoKey, streamingDiffAutoOpenHref, streamingDiffRepositories, streamingDiffSelection } from "@lib";
 import type { Project, StreamingDiffCard } from "@lib";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
-import streamingDiffIr from "../../../../ovens/streaming-diff/streaming-diff.ir.json";
 import "./streaming-diff.css";
 
-export function SelectedFeed({ backHref, cards, error, session }: { backHref: string; cards: StreamingDiffCard[]; error: string; session: string }) {
+export function SelectedFeed({ backHref, cards, error, ir, session }: { backHref: string; cards: StreamingDiffCard[]; error: string; ir: ResolvedOvenIr; session: string }) {
   const payload = { identity: { session }, backHref, cards };
-  return <>{error && <p className="streaming-diff-message is-error">{error}</p>}<OvenRuntime ir={streamingDiffIr} payload={payload} /></>;
+  return <>{error && <p className="streaming-diff-message is-error">{error}</p>}<OvenRuntime ir={ir} payload={payload} /></>;
 }
 
-export function StreamingDiff({ projects, projectsLoading }: { projects: Project[]; projectsLoading: boolean }) {
+export function StreamingDiff({ ir, projects, projectsLoading }: { ir: ResolvedOvenIr; projects: Project[]; projectsLoading: boolean }) {
   const selection = streamingDiffSelection();
   const repoKey = ovenRepoKey();
   const repositories = useMemo(() => repoKey ? [{ repoKey, label: repoKey }] : streamingDiffRepositories(projects), [projects, repoKey]);
@@ -24,5 +23,5 @@ export function StreamingDiff({ projects, projectsLoading }: { projects: Project
     if (autoOpenHref) window.location.replace(autoOpenHref);
   }, [autoOpenHref]);
 
-  return selection ? <SelectedFeed backHref={`/ovens/streaming-diff/view?repoKey=${encodeURIComponent(selection.repoKey)}`} cards={cards.cards} error={cards.error} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
+  return selection ? <SelectedFeed backHref={`/r/${encodeURIComponent(selection.repoKey)}/o/streaming-diff`} cards={cards.cards} error={cards.error} ir={ir} session={selection.session} /> : <FeedList {...feeds} showRepository={!repoKey && repositories.length > 1} />;
 }

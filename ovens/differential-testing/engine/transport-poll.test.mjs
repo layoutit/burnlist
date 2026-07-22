@@ -46,7 +46,7 @@ function tick() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-function createHarness({ respond, locationSearch = "", locationHref = "http://localhost/ovens/differential-testing/view", onError } = {}) {
+function createHarness({ respond, locationSearch = "", locationHref = "http://localhost/r/repository/o/differential-testing", onError } = {}) {
   const requests = [];
   const updates = [];
   const statuses = [];
@@ -206,7 +206,7 @@ test("selectScenario updates history, clears its URL cache, and refetches the se
   let payloadCount = 0;
   const harness = createHarness({
     locationSearch: "?scenario=oldid",
-    locationHref: "http://localhost/ovens/differential-testing/view?scenario=oldid",
+    locationHref: "http://localhost/r/repository/o/differential-testing?scenario=oldid",
     respond(url) {
       if (url === ovenUrl) return response({ oven: { detail: { cells: [] } } });
       payloadCount += 1;

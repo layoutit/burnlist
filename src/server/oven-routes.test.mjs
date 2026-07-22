@@ -110,7 +110,7 @@ test("a generated Differential Testing row href resolves (global built-in, repoK
     const rows = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists;
     const dtRow = rows.find((row) => row.ovenId === "differential-testing" && row.statusLabel !== "Blocked");
     assert.ok(dtRow, "expected a Differential Testing dashboard row");
-    assert.match(dtRow.href, /\/ovens\/differential-testing\/view\?.*repoKey=/u);
+    assert.match(dtRow.href, /^\/r\/[a-f0-9]{12}\/o\/differential-testing\?scenario=/u);
     // The generated row link (built-in oven + a repoKey data selector) must resolve, not 404.
     assert.equal((await httpGet(baseUrl, dtRow.href)).status, 200);
     // The oven itself is global; repoKey only selects that repo's data binding.
@@ -176,12 +176,16 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const shared = catalog.ovens.filter((oven) => oven.id === "shared");
     assert.equal(shared.length, 2);
     assert.equal(new Set(shared.map((oven) => oven.repoKey)).size, 2);
+    assert.ok(shared.every((oven) => oven.dataInput === "json-payload"));
     assert.deepEqual(
       Object.keys(shared[0]).sort(),
-      ["builtIn", "description", "id", "name", "ovenRevision", "repoKey"],
+      ["builtIn", "contract", "dataInput", "description", "id", "name", "ovenRevision", "repoKey", "version"],
     );
+    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").contract, "checklist-progress@1");
     assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").dataInput, "json-payload");
     assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "streaming-diff").dataInput, "producer-managed");
 
     const [first, second] = shared;
     const firstOven = await httpGet(baseUrl, `/api/ovens/shared?repoKey=${first.repoKey}`);
@@ -275,7 +279,7 @@ test("Differential Testing bindings remain distinct for each repository", { time
     for (const entry of entries) {
       assert.equal(entry.planPath, null);
       assert.equal(entry.planLabel, null);
-      assert.match(entry.href, new RegExp(`^/ovens/differential-testing/view\\?scenario=${entry.id}&repoKey=${entry.repoKey}$`, "u"));
+      assert.match(entry.href, new RegExp(`^/r/${entry.repoKey}/o/differential-testing\\?scenario=${entry.id}$`, "u"));
     }
 
     const firstEntry = entries.find((entry) => entry.title === "first-repo");

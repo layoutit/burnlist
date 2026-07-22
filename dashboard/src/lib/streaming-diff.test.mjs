@@ -14,7 +14,7 @@ test("recent feed mapping sorts published activity and creates session deep link
   });
 
   assert.deepEqual(feeds.map((feed) => feed.identity.session), ["newer", "older session"]);
-  assert.equal(feeds[1].href, "/ovens/streaming-diff/view?repoKey=aaaaaaaaaaaa&worktreeKey=111111111111&session=older+session");
+  assert.equal(feeds[1].href, "/r/aaaaaaaaaaaa/o/streaming-diff?worktreeKey=111111111111&session=older+session");
 });
 
 test("landing derives repositories and aggregates their feeds by recent activity", () => {

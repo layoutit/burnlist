@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { parseRoute } from "../../lib/route-model.mjs";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 
 type FetchLike = (input: string, init: RequestInit) => Promise<{ ok: boolean; status: number; headers: { get(name: string): string | null }; json(): Promise<unknown> }>;
@@ -14,6 +15,15 @@ export function scenarioSearch(currentSearch = typeof window === "undefined" ? "
   return query ? `?${query}` : "";
 }
 
+function browserSearchWithRepoKey() {
+  if (typeof window === "undefined") return "";
+  const source = new URLSearchParams(window.location.search);
+  const { repoKey } = parseRoute({ pathname: window.location.pathname, search: window.location.search });
+  if (repoKey) source.set("repoKey", repoKey);
+  const query = source.toString();
+  return query ? `?${query}` : "";
+}
+
 type IrNode = { attributes?: Record<string, unknown>; children?: IrNode[] };
 
 function nodes(items: IrNode[] = []): IrNode[] { return items.flatMap((node) => [node, ...nodes(node.children)]); }
@@ -22,7 +32,7 @@ function attributes(ir: OvenIr, id: string): Record<string, unknown> {
 }
 
 export function ovenPollSearch({ ir, state, scenario }: { ir: OvenIr; state: OvenState; scenario?: string }): string {
-  const base = scenarioSearch(undefined, scenario);
+  const base = scenarioSearch(browserSearchWithRepoKey(), scenario);
   for (const item of ir.collections) {
     const collection = { ...attributes(ir, item.id), ...item };
     const current = state.collections[item.id];
@@ -41,7 +51,7 @@ export function ovenPollSearch({ ir, state, scenario }: { ir: OvenIr; state: Ove
   return base;
 }
 
-export function ovenDataUrl(id: string, search = typeof window === "undefined" ? "" : window.location.search): string {
+export function ovenDataUrl(id: string, search = browserSearchWithRepoKey()): string {
   return `/api/oven-data/${encodeURIComponent(id)}${scenarioSearch(search)}`;
 }
 

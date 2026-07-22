@@ -20,7 +20,7 @@ burnlist oven: Oven <id> .oven source is invalid: Unknown contract <x>
 
 | Registry | Exact allowed values |
 | --- | --- |
-| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
+| Contracts | `checklist-progress@1`, `burnlist-differential-testing-data@1`, `burnlist-model-lab-data@1`, `burnlist-streaming-diff-data@2`, `burnlist-visual-parity-data@1` |
 | Themes | `checklist`, `differential-testing`, `streaming-diff`, `visual-parity` |
 | Icons | `ClipboardList`, `Clock3`, `Gauge`, `TimerReset` |
 
@@ -60,7 +60,7 @@ JSON document; it cannot execute code or transform project data.
 Here is a complete generic `deploy-status` Oven, `kpi.oven`:
 
 ```xml
-<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="deploy-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Deploy status"/>
   <kpi-strip>
     <kpi-item heading="Service" source="/service"/>
@@ -85,13 +85,14 @@ matches the Oven's `source=` and `<bind source=>` [RFC 6901 JSON pointers](https
 
 Here, `healthyPct` renders as `"96.00%"`; `deployedAt` renders as a compact age
 such as `"3h"`. Generic checklist-theme Ovens do not validate payload shape at
-creation. Pointers resolve when viewed, and missing pointers render as empty or
-fallback values.
+creation. A direct `bind` leaves pointers to resolve when viewed, where missing
+values render empty or use fallbacks; `set` instead rejects a missing declared
+pointer before changing the canonical data or binding.
 
 The small Streaming Diff illustration uses its matching built-in pair:
 
 ```xml
-<oven id="streaming-diff" version="1"
+<oven id="streaming-diff" version="0.1.0"
       contract="burnlist-streaming-diff-data@2" theme="streaming-diff">
   <streaming-diff-heading session="/identity/session" back-href="/backHref"/>
   <diff-card source="/cards"/>
@@ -124,6 +125,7 @@ bindings.
 Bind an Oven to its JSON payload, inspect bindings, remove one, or copy an Oven:
 
 ```sh
+burnlist oven set <id> <path|-|json> [--repo <path>]
 burnlist oven bind <id> <path> [--repo <path>]
 burnlist oven bindings [--repo <path>]
 burnlist oven unbind <id> [--repo <path>]
@@ -151,6 +153,66 @@ Successful binding prints `Bound Oven <id> to <path>` and
 `No binding exists…`. `fork` copies a built-in or custom Oven to a new custom
 id and records its `forkedFrom` provenance; built-in Ovens cannot be updated.
 
+### Validated data setup
+
+Use a shipped Oven in a repository, then provide its payload when it has no
+starter:
+
+```sh
+burnlist oven use differential-testing --repo .
+burnlist oven set differential-testing ./differential-testing.json --repo .
+```
+
+`use` keeps `adopt` and pin semantics. It looks only for a shipped,
+non-executable `ovens/<id>/example/data.json`. When present, that exact payload
+is validated and the Oven, data, and binding are installed transactionally.
+When absent, the Oven is adopted with no data or binding and the CLI prints the
+exact `oven set` next step. Reference/candidate inputs, test fixtures, schemas,
+and instructions never become starter data. The optional example is not
+vendored and does not enter the Oven revision or pin.
+
+`set` accepts a JSON file, stdin (`-`), or inline JSON. A built-in uses the same
+runtime validator as its render handler; no JSON Schema validator substitutes
+for it. Producer-managed Streaming Diff refuses a single JSON payload. A custom
+Oven without a registered runtime validator requires every `source=` and
+`<bind source=>` pointer to resolve and warns:
+
+```text
+shape-only validation checks source pointers, not payload truth.
+```
+
+Pointer presence cannot establish types, freshness, provenance, semantic
+correctness, or honest evidence. Any JSON Schema shipped near an Oven is
+informational reference documentation only, not validation authority or
+package/pin content.
+
+After validation, `set` atomically writes the gitignored canonical file
+`.local/burnlist/data/<id>.json` and its binding. Rejection on a fresh install
+writes nothing; rejection or publication failure on an existing install keeps
+the exact prior data bytes and binding. Identical sets are idempotent. Use
+`bind` instead when a project-owned producer must update its own file or
+directory in place: `bind` records a path without copying or validating its
+current content.
+
+Shipped and custom Ovens can be listed, and an Oven can be inspected by its id:
+
+```sh
+burnlist oven list [--json]
+burnlist oven view <id> [--json]
+```
+
+`list` reports `id`, `version`, `name`, `kind`, `contract`, `nodes`, and
+`revision`; `view` identifies an Oven as `id@version`. The semver version is
+distinct from the `o1-sha256:<hex>` content revision. With `--json`, both
+commands include `version` and `ovenRevision`:
+
+```text
+Checklist  (checklist@0.1.0 · built-in)
+version: 0.1.0 · nodes: 11 · contract: checklist-progress@1 · theme: checklist
+revision: o1-sha256:<hex>
+path: ...
+```
+
 Use the CLI to inspect structure only:
 
 ```sh
@@ -159,6 +221,53 @@ burnlist oven view <id> [--json]
 
 It prints the compiled node tree and a `node / prop / source` pointer table. It
 never shows data values, even when an Oven is bound.
+
+### Vendoring and pinning
+
+Adopt a shipped Oven to copy its source into the committed per-project
+directory, or opt in to moving that pin later:
+
+```sh
+burnlist oven adopt <id> [--repo <path>] [--force]
+burnlist oven upgrade <id> [--repo <path>]
+```
+
+The vendored directory contains exactly the Oven source, its instructions, and
+its pin record:
+
+```text
+.burnlist/ovens/<id>/
+  <id>.oven
+  instructions.md
+  pin.json
+```
+
+```json
+{
+  "id": "<id>",
+  "version": "0.1.0",
+  "revision": "o1-sha256:<hex>",
+  "source": "built-in",
+  "pinnedAt": "<ISO timestamp>"
+}
+```
+
+Adoption and upgrade print:
+
+```text
+Adopted Oven <id>@<version> at <repo>/.burnlist/ovens/<id>
+burnlist oven: Oven <id> is already vendored at <path>.
+Upgraded Oven <id>@<version> at <repo>/.burnlist/ovens/<id>
+revision: o1-sha256:<hex>
+```
+
+Re-adopting without `--force` reports the second line; `--force` copies the
+Oven again. An upgrade is opt-in: it copies the newer shipped source and moves
+the pin.
+
+Because the vendored copy and pin are committed, upgrading the Burnlist CLI
+never changes a pinned Oven. Only `upgrade` moves it, and the dashboard resolves
+a repo's vendored Oven ahead of the shipped built-in.
 
 To render with data, run the dashboard:
 
@@ -169,7 +278,7 @@ burnlist --scan-root <repo>
 It is loopback-only at `http://127.0.0.1:4510/` by default; add `--auto-port`
 to select a free port. A bound custom Oven appears on the index as a **Custom
 Oven** with status **Oven**. Selecting it opens
-`/ovens/<id>/view?repoKey=<key>` and renders the bound payload. An unbound
+`/r/<key>/o/<id>` and renders the bound payload. An unbound
 custom Oven is authored but does not appear there.
 
 For a read-only binding for one dashboard session, without writing
@@ -190,7 +299,7 @@ this sequence creates and displays the example:
 cd <repo>                                   # a git repo
 burnlist init                               # ignore .local/, register root
 burnlist oven create deploy-status --instructions instr.md --oven kpi.oven
-burnlist oven bind deploy-status deploy-data.json
+burnlist oven set deploy-status deploy-data.json
 burnlist oven bindings                       # confirm the binding
 burnlist oven view deploy-status             # structure only
 burnlist --scan-root <repo>                  # dashboard; open the "Custom Oven" row

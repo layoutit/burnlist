@@ -79,7 +79,7 @@ test("CLI url prints the URL-addressed logical/worktree/session route", () => {
     const identity = resolveStreamingDiffIdentity({ cwd: context.root, session: "agent-one" });
     assert.equal(
       run(context, "url", "--session", "agent-one").trim(),
-      `/ovens/streaming-diff/view?repoKey=${identity.logicalRepoKey}&worktreeKey=${identity.worktreeKey}&session=agent-one`,
+      `/r/${identity.logicalRepoKey}/o/streaming-diff?worktreeKey=${identity.worktreeKey}&session=agent-one`,
     );
   } finally { context.cleanup(); }
 });

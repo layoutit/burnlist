@@ -1,7 +1,7 @@
 import { opendirSync, realpathSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-import { registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../../src/ovens/oven-registry.mjs";
 import { containedJoin } from "../../../src/server/repo-state.mjs";
 import { STREAMING_DIFF_FEED_VERSION, STREAMING_DIFF_OVEN_ID, identifierPathComponent, streamingDiffIdentifier } from "./streaming-diff-feed.mjs";
 import { readJournal, readManifestPure, resolveReconnect } from "./streaming-diff-journal.mjs";
@@ -302,6 +302,7 @@ function startSse(ctx, feed) {
 
 export const streamingDiffHandler = Object.freeze({
   id: STREAMING_DIFF_OVEN_ID,
+  dataInput: OVEN_DATA_INPUT.producerManaged,
 
   serveData(ctx) {
     try {

@@ -1,4 +1,4 @@
-<oven id="visual-parity" version="1" contract="burnlist-visual-parity-data@1" theme="visual-parity">
+<oven id="visual-parity" version="0.1.0" contract="burnlist-visual-parity-data@1" theme="visual-parity">
   <verdict-header>
     <bind prop="targetPass" source="/verdict/targetPass"/>
     <bind prop="framesCount" source="/verdict/framesCount"/>

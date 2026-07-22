@@ -6,6 +6,18 @@ Inspect one prepared PolyCSS model through the product's real mount path while r
 
 The live surface mounts one prepared model without runtime parsing, geometry construction, topology construction, material construction, asset construction, or LOD substitution. Frame changes update styles on the same DOM root and leaves.
 
+## Data Shape
+
+- Input mode: `json-payload`.
+- Runtime validator: `validateModelLabRuntimeData`.
+- Starter data: none.
+
+The runtime validator is the authority used by both `oven set` and the render
+handler. It requires a `burnlist-model-lab-data@1` document with `generatedAt`,
+`project`, loopback `surface`, prepared `model`, and hash-bound `evidence`, plus
+an optional reconciled `comparison`. There is no `example/data.json`, so `oven
+use model-lab` adopts without data.
+
 ## State Contract
 
 The bound document uses `burnlist-model-lab-data@1`. It identifies one loopback-hosted live surface, one prepared frameset, its selected frame, its stable topology hashes, the single `<s>` leaf tag, `lodCount: 1`, zero runtime construction counters, and manifest/render-publication SHA-256 evidence.

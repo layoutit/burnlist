@@ -4,12 +4,102 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { atomicDirectory, atomicOvenPackage, OVEN_REV_GRACE_MS, resolveOvenPackageDir, withOvenPackageLock } from "./fs-safe.mjs";
+import {
+  atomicDirectory,
+  atomicOvenPackage,
+  OVEN_REV_GRACE_MS,
+  readTextFileWithLimit,
+  resolveOvenPackageDir,
+  withOvenPackageLock,
+} from "./fs-safe.mjs";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-fs-safe-"));
   return { root, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
+
+test("readTextFileWithLimit rejects leaf symlinks", () => {
+  const context = fixture();
+  try {
+    const outside = join(context.root, "outside.txt");
+    const linked = join(context.root, "linked.txt");
+    writeFileSync(outside, "outside secret\n");
+    symlinkSync(outside, linked, process.platform === "win32" ? "file" : undefined);
+    assert.throws(() => readTextFileWithLimit(linked, 64, "Fixture"), /symbolic links are not allowed/u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("readTextFileWithLimit bounds descriptor reads even when the opened size reports zero", () => {
+  const context = fixture();
+  const script = [
+    'import fs, { writeFileSync } from "node:fs";',
+    'import { syncBuiltinESMExports } from "node:module";',
+    'const [path, moduleUrl] = process.argv.slice(1);',
+    'writeFileSync(path, "");',
+    'const { readTextFileWithLimit } = await import(moduleUrl);',
+    'const nativeFstat = fs.fstatSync;',
+    'let largestRequest = 0;',
+    'fs.fstatSync = (descriptor) => {',
+    '  const entry = nativeFstat(descriptor);',
+    '  Object.defineProperty(entry, "size", { value: 0 });',
+    '  return entry;',
+    '};',
+    'fs.readSync = (_descriptor, buffer, offset, length) => {',
+    '  largestRequest = Math.max(largestRequest, length);',
+    '  buffer.fill(120, offset, offset + length);',
+    '  return length;',
+    '};',
+    'syncBuiltinESMExports();',
+    'let message;',
+    'try { readTextFileWithLimit(path, 4, "Virtual fixture"); } catch (error) { message = error.message; }',
+    'process.stdout.write(JSON.stringify({ largestRequest, message }));',
+  ].join("\n");
+  try {
+    const path = join(context.root, "virtual.txt");
+    const result = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      script,
+      path,
+      new URL("./fs-safe.mjs", import.meta.url).href,
+    ], { encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      largestRequest: 5,
+      message: "Virtual fixture is over the 4 byte limit",
+    });
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("Oven package locks reject preplanted lock symlinks without writing outside", () => {
+  for (const component of ["root", "id"]) {
+    const context = fixture();
+    try {
+      const outside = join(context.root, `outside-${component}`);
+      const lockRoot = join(context.root, ".oven-locks");
+      mkdirSync(outside);
+      if (component === "root") {
+        symlinkSync(outside, lockRoot, process.platform === "win32" ? "junction" : "dir");
+      } else {
+        mkdirSync(lockRoot);
+        symlinkSync(outside, join(lockRoot, "guarded"), process.platform === "win32" ? "junction" : "dir");
+      }
+      let called = false;
+      assert.throws(
+        () => withOvenPackageLock(context.root, "guarded", () => { called = true; }),
+        /must be a real directory/u,
+      );
+      assert.equal(called, false);
+      assert.deepEqual(readdirSync(outside), []);
+    } finally {
+      context.cleanup();
+    }
+  }
+});
 
 test("atomicDirectory reports EEXIST for a populated collision", () => {
   const context = fixture();

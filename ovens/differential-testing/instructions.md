@@ -13,6 +13,24 @@ An adapter may publish either mode:
 
 When `exactSession.strategy` is `exact-first`, exact target selection fails closed. Missing, stale, failed, contradictory, or unbound exact evidence produces `blocked`. The adapter and validator must not fall back to field failure counts, first failing aggregate ticks, Changed, history, or visually prominent intervals.
 
+## Data Shape
+
+- Input mode: `json-payload`.
+- Runtime validator: `validateDifferentialTestingRuntimeData`.
+- Starter data: none.
+
+The runtime validator is the authority used by both `oven set` and the render
+handler. It validates the root `burnlist-differential-testing-data@1` document,
+including `publishedAt`, adapter and trust metadata, `scenarioCatalog`,
+event-driven `refresh`, reconciled `summary`, chronological `progress`, reverse
+chronological `log`, aligned `fields`, and the optional `telemetry` and
+`exactSession` surfaces described below. The engine's `data.schema.json` is
+available to humans and agents, but JSON Schema is informational reference
+documentation only; it is not the validation authority. The shipped
+`example/reference.json` and `example/candidate.json` are adapter inputs, not a
+renderable payload. There is no `example/data.json`, so `oven use
+differential-testing` adopts without data.
+
 ## State Contract
 
 Canonical state stays in project-owned captures, reports, retained runtime state, replay/profile data, exact artifacts, checker outputs, and source evidence. A project adapter maps compact facts from those artifacts into `burnlist-differential-testing-data@1`. Burnlist validates and renders only that normalized document.

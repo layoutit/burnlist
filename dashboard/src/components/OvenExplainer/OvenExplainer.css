@@ -1,0 +1,22 @@
+.oven-explainer { gap: 20px; }
+.oven-explainer-heading { display: grid; gap: 9px; padding: 2px 0 4px; }
+.oven-explainer-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.oven-explainer-note { max-width: 720px; margin: 0; color: var(--muted-foreground); line-height: 1.5; }
+.oven-explainer-note code, .oven-explainer-data-shape code { color: var(--foreground); font-family: var(--dashboard-font); }
+.oven-explainer-card { gap: 14px; border-color: rgba(232, 232, 232, .1); }
+.oven-explainer-card-content { display: grid; gap: 16px; }
+.oven-explainer-data-shape { display: grid; gap: 6px; }
+.oven-explainer-data-shape h3 { margin: 0; font: 400 14px/1.2 var(--dashboard-title-font); }
+.oven-explainer-data-shape p, .oven-explainer-docs-only { margin: 0; color: var(--muted-foreground); line-height: 1.5; }
+
+.oven-explainer-agent-block { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: #090909; }
+.oven-explainer-agent-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.oven-explainer-agent-heading h3 { margin: 0; font: 400 13px/1.2 var(--dashboard-title-font); color: var(--muted-foreground); }
+.oven-explainer-agent-block pre { margin: 0; padding: 12px; overflow-x: auto; color: var(--foreground); font: 13px/1.55 var(--dashboard-font); white-space: pre-wrap; }
+.oven-explainer .copy-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted-foreground); cursor: pointer; }
+.oven-explainer .copy-btn:hover { border-color: #3a3a3a; background: var(--accent); color: var(--foreground); }
+.oven-explainer .copy-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.oven-explainer .copy-btn svg { width: 14px; height: 14px; }
+.oven-explainer .copy-btn span { font: 12px/1 var(--dashboard-title-font); }
+
+.oven-explainer-demo-runtime { overflow: auto; max-height: 760px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #090909; }

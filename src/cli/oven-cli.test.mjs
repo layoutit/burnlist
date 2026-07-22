@@ -175,15 +175,19 @@ test("oven view and list render IR structure and source packages", () => {
   try {
     writeOven(ovensDir, "rendered-oven");
     const view = run(context, "oven", "view", "rendered-oven", "--ovens-dir", ovensDir);
-    assert.match(view, /nodes: 1 · contract: checklist-progress@1 · theme: checklist/u);
+    assert.match(view, /Forked Oven  \(rendered-oven@0\.1\.0 · custom\)/u);
+    assert.match(view, /version: 0\.1\.0 · nodes: 1 · contract: checklist-progress@1 · theme: checklist/u);
     assert.match(view, /section-header\n\nnode  prop  source\n/u);
     const list = run(context, "oven", "list", "--ovens-dir", ovensDir);
-    assert.match(list, /^id\s+name\s+kind\s+contract\s+nodes\s+revision$/mu);
-    assert.match(list, /^rendered-oven\s+Forked Oven\s+custom\s+checklist-progress@1\s+1\s+/mu);
+    assert.match(list, /^id\s+version\s+name\s+kind\s+contract\s+nodes\s+revision$/mu);
+    assert.match(list, /^rendered-oven\s+0\.1\.0\s+Forked Oven\s+custom\s+checklist-progress@1\s+1\s+/mu);
     const json = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir));
     const oven = json.find((item) => item.id === "rendered-oven");
     assert.equal(oven.oven, ovenFixture("rendered-oven"));
+    assert.equal(oven.version, "0.1.0");
     assert.equal(Object.hasOwn(oven, "ir"), false);
+    const viewJson = JSON.parse(run(context, "oven", "view", "rendered-oven", "--json", "--ovens-dir", ovensDir));
+    assert.equal(viewJson.version, "0.1.0");
   } finally { context.cleanup(); }
 });
 

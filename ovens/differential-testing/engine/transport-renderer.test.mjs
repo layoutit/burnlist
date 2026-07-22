@@ -73,7 +73,7 @@ test("live updates preserve field-page metadata and issue server-side view queri
   });
 
   const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
-    locationImpl: { search: `?scenario=${scenarioId}`, href: `http://localhost/ovens/differential-testing/view?scenario=${scenarioId}` },
+    locationImpl: { search: `?scenario=${scenarioId}`, href: `http://localhost/r/repository/o/differential-testing?scenario=${scenarioId}` },
     historyImpl: { replaceState() {} },
     fetchImpl: async (url) => {
       requests.push(url);

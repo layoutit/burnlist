@@ -247,6 +247,7 @@ h1, h2, h3, h4, h5, h6, strong, b, th { font-weight: 400; }
 .dashboard-index-heading { display: grid; gap: 3px; }
 .dashboard-index-title { margin: 0; font: 400 22px/1.2 var(--dashboard-title-font); letter-spacing: -.01em; }
 .dashboard-index-summary { margin: 0; color: rgba(168, 168, 168, .62); font-size: 14px; }
+.dashboard-index-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
 .dashboard-filters { flex: 0 0 auto; }
 
 .dashboard-empty-state { display: grid; min-height: 288px; padding: 0 24px; place-items: center; text-align: center; }
@@ -681,6 +682,7 @@ body.checklist-detail-view .dashboard-oven-title {
   .event-card-description { padding: 10px; }
   .dashboard-main[data-layout="index"] { padding-inline: 12px; }
   .dashboard-index-header { align-items: flex-start; flex-direction: column; }
+  .dashboard-index-actions { width: 100%; align-items: flex-start; flex-direction: column; }
   .dashboard-filters { width: 100%; overflow-x: auto; }
   .burnlist-table[data-show-status] .burnlist-table-column-project { width: 27%; }
   .burnlist-table[data-show-status] .burnlist-table-column-primary { width: 48%; }

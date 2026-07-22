@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { compileOven } from "./oven-compile.mjs";
 
 const invalid = (xml, code) => { const r = compileOven(xml); assert.equal(r.ok, false); assert.ok(r.diagnostics.some((x) => x.code === code), JSON.stringify(r.diagnostics)); };
-const root = (body, attrs = "") => `<oven id="test" version="1" contract="checklist-progress@1" theme="checklist" ${attrs}>${body}</oven>`;
+const root = (body, attrs = "") => `<oven id="test" version="0.1.0" contract="checklist-progress@1" theme="checklist" ${attrs}>${body}</oven>`;
 test("vocabulary, scalar, registry and references are closed", () => {
   invalid(root("<unknown/>"), "GRAMMAR_ELEMENT");
   invalid(root("<grid columns='2' nope='x'/>"), "GRAMMAR_ATTRIBUTE");
@@ -14,7 +14,7 @@ test("vocabulary, scalar, registry and references are closed", () => {
   invalid(root("<kpi-item><icon slot='visual' name='Nope'/></kpi-item>"), "REGISTRY_ICON");
   invalid(root("<field-toolbar id='tools'><filter-toggle id='f' key='nope' label='x' initial='on'/></field-toolbar>"), "REGISTRY_FILTER");
   invalid(root("<field-toolbar id='tools'><sort-toggle id='s' key='nope' label='x' initial='on'/></field-toolbar>"), "REGISTRY_SORT");
-  invalid('<oven id="test" version="1" contract="checklist-progress@1" theme="wrong"/>', "REGISTRY_THEME");
+  invalid('<oven id="test" version="0.1.0" contract="checklist-progress@1" theme="wrong"/>', "REGISTRY_THEME");
 });
 test("structure and interaction validation", () => {
   invalid(root("<grid columns='2' rows='2'><panel id='a' column='1' row='1' column-span='2' row-span='2'/><panel id='b' column='2' row='1'/></grid>"), "STRUCTURE_GRID_OVERLAP");

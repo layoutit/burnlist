@@ -7,6 +7,7 @@
 // own file plumbing so it never has to import the dashboard server (which
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
@@ -14,8 +15,11 @@ import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
+import { readVendoredOven, vendoredOvenPath, writeVendoredOven } from "../server/oven-vendor.mjs";
 import { renderOvenTree, sourceTable } from "./oven-cli-render.mjs";
+import { setOvenDataFromCli } from "./oven-set.mjs";
 import { createOvenCatalog, persistOven, resolvePackageInput } from "./oven-storage.mjs";
+import { useShippedOven } from "./oven-use.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 
 // ── argv ────────────────────────────────────────────────────────────────────
@@ -95,9 +99,9 @@ function printOven(oven) {
   };
   countNodes(oven.ir.root);
   const kind = oven.builtIn ? "built-in" : "custom";
-  console.log(`${oven.name}  (${oven.id} · ${kind})`);
+  console.log(`${oven.name}  (${oven.id}@${oven.ir.version} · ${kind})`);
   if (oven.description) console.log(oven.description);
-  console.log(`nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
+  console.log(`version: ${oven.ir.version} · nodes: ${nodeCount} · contract: ${oven.ir.contract} · theme: ${oven.ir.theme}`);
   console.log(`revision: ${oven.ovenRevision}`);
   console.log(`path: ${oven.path}`);
   console.log("");
@@ -132,6 +136,8 @@ const HELP = `burnlist oven — author and inspect Ovens
 Usage:
   burnlist oven list [--json]
   burnlist oven view <id> [--json]
+  burnlist oven use <id> [--repo <path>] [--force]
+  burnlist oven set <id> <path|-|json> [--repo <path>]
   burnlist oven bind <id> <path> [--repo <path>]
   burnlist oven unbind <id> [--repo <path>]
   burnlist oven bindings [--repo <path>]
@@ -141,6 +147,8 @@ Usage:
   burnlist oven create <id> --package <file|->     (JSON: {name?, instructions, oven})
   burnlist oven update <id> [same inputs as create]
   burnlist oven fork <id> <newId>
+  burnlist oven adopt <id> [--repo <path>] [--force]
+  burnlist oven upgrade <id> [--repo <path>]
 
 Options:
   --name <text>        Set the Oven name (owns the level-one heading).
@@ -157,12 +165,16 @@ Options:
   --payload <json>     Optional compact JSON event payload.
   --ovens-dir <p>      Custom Oven storage (default .local/burnlist/ovens).
   --unsafe-ovens-dir   Permit --ovens-dir outside repo-local state.
-  --force              On create, replace an existing custom Oven.
+  --force              On create, adopt, or use, replace an existing Oven.
   --json               Machine-readable output for list/view.
 
 Custom Ovens live under ignored local state and only affect future Runs.
 Create scaffolds a minimal .oven source when --oven, --dir, and --package omit one.
-Built-in Ovens are read-only; this command never executes Oven instructions.`;
+Built-in Ovens are read-only; this command never executes Oven instructions.
+Use adopts a shipped Oven and binds only an existing, validated example/data.json.
+Set validates first with the same runtime validator, then atomically publishes
+.local/burnlist/data/<id>.json and its binding. Custom Ovens without a runtime
+validator receive shape-only source-pointer validation, which does not prove truth.`;
 
 function main() {
 try {
@@ -174,7 +186,7 @@ try {
   if (subcommand === "list") {
     const ovens = discoverOvens();
     if (flags.has("json")) {
-      console.log(JSON.stringify(ovens.map(({ instructions, ir, ...rest }) => rest), null, 2));
+      console.log(JSON.stringify(ovens.map(({ instructions, ir, ...rest }) => ({ ...rest, version: ir.version })), null, 2));
       return;
     }
     if (ovens.length === 0) {
@@ -184,13 +196,14 @@ try {
     const nodeCount = (nodes) => nodes.reduce((count, node) => count + 1 + nodeCount(node.children), 0);
     const rows = ovens.map((oven) => [
       oven.id,
+      oven.ir.version,
       oven.name,
       oven.builtIn ? "built-in" : "custom",
       oven.ir.contract,
       String(nodeCount(oven.ir.root)),
       oven.ovenRevision,
     ]);
-    const header = ["id", "name", "kind", "contract", "nodes", "revision"];
+    const header = ["id", "version", "name", "kind", "contract", "nodes", "revision"];
     const widths = header.map((label, index) => Math.max(label.length, ...rows.map((row) => row[index].length)));
     const line = (cols) => cols.map((value, index) => value.padEnd(widths[index])).join("  ").trimEnd();
     console.log(line(header));
@@ -207,6 +220,7 @@ try {
     if (flags.has("json")) {
       console.log(JSON.stringify({
         id: oven.id,
+        version: oven.ir.version,
         name: oven.name,
         builtIn: oven.builtIn,
         instructions: oven.instructions,
@@ -247,6 +261,28 @@ try {
       console.log(`Oven bindings: ${bindingStorePath(repoRoot)}`);
       for (const [id, binding] of entries) console.log(`${id}  ${binding.path}  ${binding.boundAt}`);
     }
+    return;
+  }
+
+  if (subcommand === "set") {
+    const result = setOvenDataFromCli({ positionals, repoRoot: bindingRepo(), launchCwd, findOven });
+    for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
+    console.log(result.output);
+    return;
+  }
+
+  if (subcommand === "use") {
+    const [id, ...extra] = positionals;
+    if (!id || extra.length > 0) fail("Usage: burnlist oven use <id> [--repo <path>] [--force]");
+    const result = useShippedOven({
+      id,
+      repoRoot: repoRoot(),
+      builtInOvensDir,
+      readOvenDir,
+      force: flags.has("force"),
+    });
+    for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
+    console.log(result.output);
     return;
   }
 
@@ -308,6 +344,30 @@ try {
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },
     });
     console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
+    return;
+  }
+
+  if (subcommand === "adopt" || subcommand === "upgrade") {
+    const id = positionals[0];
+    if (!id) fail(`Usage: burnlist oven ${subcommand} <id> [--repo <path>]${subcommand === "adopt" ? " [--force]" : ""}`);
+    const shipped = readOvenDir(builtInOvensDir, id, true);
+    if (!shipped) fail(`Oven ${id} is not a shipped built-in.`);
+    const shippedInstructions = readFileSync(join(builtInOvensDir, shipped.id, "instructions.md"), "utf8");
+    const shippedOven = readFileSync(join(builtInOvensDir, shipped.id, `${shipped.id}.oven`), "utf8");
+    const targetRoot = repoRoot();
+    const targetPath = vendoredOvenPath(targetRoot, id);
+    if (subcommand === "adopt") {
+      if (existsSync(targetPath) && !flags.has("force")) fail(`Oven ${id} is already vendored at ${targetPath}.`);
+    } else if (!readVendoredOven(targetRoot, id)) {
+      fail(`Oven ${id} is not adopted; run \`oven adopt ${id}\` first.`);
+    }
+    const saved = writeVendoredOven(targetRoot, {
+      id,
+      instructions: shippedInstructions,
+      oven: shippedOven,
+    });
+    if (subcommand === "adopt") console.log(`Adopted Oven ${saved.id}@${saved.version} at ${targetPath}`);
+    else console.log(`Upgraded Oven ${saved.id}@${saved.version} at ${targetPath}\nrevision: ${saved.revision}`);
     return;
   }
 

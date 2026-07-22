@@ -21,6 +21,6 @@ export function adaptStreamingDiff(snapshot: StreamingDiffSnapshot): StreamingDi
     identity,
     updatedAt,
     cards: snapshot.cards.map(parseStreamingDiffCard).filter((card): card is StreamingDiffCard => card !== null),
-    backHref: `/ovens/streaming-diff/view?repoKey=${encodeURIComponent(identity.logicalRepoKey)}`,
+    backHref: `/r/${encodeURIComponent(identity.logicalRepoKey)}/o/streaming-diff`,
   };
 }

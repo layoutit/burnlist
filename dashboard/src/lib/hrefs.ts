@@ -1,55 +1,52 @@
+import { burnlistHref as buildBurnlistHref, parseRoute } from "./route-model.mjs";
 import type { Burnlist, Filter, SelectedBurnlist } from "./types";
 
-const BUILT_IN_OVEN_IDS = new Set([
-  "checklist",
-  "differential-testing",
-  "model-lab",
-  "performance-tracing",
-  "streaming-diff",
-  "visual-parity",
-]);
-
-export function currentSection() {
-  if (window.location.pathname === "/ovens/new") return "new-oven";
-  if (window.location.pathname === "/ovens/differential-testing/view") return "differential-testing";
-  if (window.location.pathname === "/ovens/model-lab/view") return "model-lab";
-  if (window.location.pathname === "/ovens/performance-tracing/view") return "performance-tracing";
-  if (window.location.pathname === "/ovens/streaming-diff/view") return "streaming-diff";
-  if (window.location.pathname === "/ovens/visual-parity/view") return "visual-parity";
-  const customOvenMatch = window.location.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-  if (customOvenMatch && !BUILT_IN_OVEN_IDS.has(customOvenMatch[1])) return "custom-oven";
-  if (window.location.pathname === "/runs/new") return "run-burn";
-  return "burnlists";
+function route() {
+  return parseRoute({ pathname: window.location.pathname, search: window.location.search });
 }
 
-export function customOvenSelection(): { id: string; repoKey: string | null } | null {
-  if (currentSection() !== "custom-oven") return null;
-  const match = window.location.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-  return match ? { id: match[1], repoKey: new URLSearchParams(window.location.search).get("repoKey") } : null;
+export function currentSection() {
+  return route().section;
+}
+
+export function customOvenSelection(): { id: string; repoKey: string | null; burnlistId: string | null } | null {
+  const current = route();
+  return current.section === "custom-oven" ? { id: current.ovenId, repoKey: current.repoKey, burnlistId: current.burnlistId ?? null } : null;
+}
+
+export function ovenExplainerSelection(): { ovenId: string; repoKey: string | null } | null {
+  const current = route();
+  return current.section === "oven-explainer"
+    ? { ovenId: current.ovenId, repoKey: new URLSearchParams(window.location.search).get("repoKey") }
+    : null;
+}
+
+export function burnlistLensContext(): { repoKey: string; burnlistId: string; activeOvenId: string } | null {
+  const current = route();
+  if (!current.repoKey || !current.burnlistId) return null;
+  if (current.section === "burnlist") return { repoKey: current.repoKey, burnlistId: current.burnlistId, activeOvenId: current.ovenId ?? "checklist" };
+  return current.ovenId ? { repoKey: current.repoKey, burnlistId: current.burnlistId, activeOvenId: current.ovenId } : null;
 }
 
 export function ovenRepoKey() {
-  return ["differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"].includes(currentSection())
-    ? new URLSearchParams(window.location.search).get("repoKey")
+  const current = route();
+  return ["differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity", "custom-oven"].includes(current.section)
+    ? current.repoKey
     : null;
 }
 
 export function streamingDiffSelection() {
-  if (currentSection() !== "streaming-diff") return null;
-  const params = new URLSearchParams(window.location.search);
-  const repoKey = params.get("repoKey");
-  const worktreeKey = params.get("worktreeKey");
-  const session = params.get("session");
-  return repoKey && worktreeKey && session ? { repoKey, worktreeKey, session } : null;
+  const current = route();
+  return current.section === "streaming-diff" && current.repoKey && current.worktreeKey && current.session
+    ? { repoKey: current.repoKey, worktreeKey: current.worktreeKey, session: current.session }
+    : null;
 }
 
 export function selectedBurnlist(): SelectedBurnlist | null {
-  if (currentSection() !== "burnlists") return null;
-  const plan = new URLSearchParams(window.location.search).get("plan");
-  if (plan) return { plan };
-  const parts = window.location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-  if (parts.length === 3 && parts[0] === "r") return { repoKey: parts[1], id: parts[2] };
-  return parts.length === 2 ? { repo: parts[0], id: parts[1] } : null;
+  const current = route();
+  if (current.plan) return { plan: current.plan };
+  if (current.repoKey && current.burnlistId) return { repoKey: current.repoKey, id: current.burnlistId };
+  return current.repo && current.burnlistId ? { repo: current.repo, id: current.burnlistId } : null;
 }
 
 export function filterFromUrl(filters: Array<{ value: Filter }>): Filter {
@@ -63,8 +60,7 @@ export function listHref(filter: Filter) {
 
 export function burnlistHref(entry: Burnlist, filter: Filter, ambiguous = false) {
   if (ambiguous) return `/?plan=${encodeURIComponent(entry.planPath ?? "")}&filter=${encodeURIComponent(filter)}`;
-  const path = entry.repoKey
-    ? `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}`
-    : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}`;
-  return `${path}?filter=${encodeURIComponent(filter)}`;
+  return entry.repoKey
+    ? buildBurnlistHref({ repoKey: entry.repoKey, burnlistId: entry.id, query: { filter } })
+    : `/${encodeURIComponent(entry.repo)}/${encodeURIComponent(entry.id)}?filter=${encodeURIComponent(filter)}`;
 }

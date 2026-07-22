@@ -10,6 +10,18 @@ import { DifferentialTestingThemeView } from "./differential-testing-theme-view"
 export const OvenRuntimeContext = createContext<{ state: OvenState; dispatch: (action: OvenAction) => void } | null>(null);
 type RootNode = NonNullable<OvenIr["root"]>[number];
 
+export function resolveOvenRuntimeInputs({ initialPayload, payload, refreshSeconds }: {
+  initialPayload?: unknown;
+  payload?: unknown;
+  refreshSeconds?: unknown;
+}) {
+  const controlled = payload !== undefined;
+  return {
+    inputPayload: controlled ? payload : initialPayload,
+    refreshSeconds: controlled ? undefined : refreshSeconds,
+  };
+}
+
 export function themedRegions(root: RootNode[], theme: ReturnType<typeof getOvenTheme>, renderNode: (node: RootNode, index: number) => ReactNode): ReactNode | undefined {
   if (!theme) return undefined;
   const expected = theme.regions.flatMap((region) => region.kinds);
@@ -27,13 +39,13 @@ export function themedRegions(root: RootNode[], theme: ReturnType<typeof getOven
 }
 
 export function OvenRuntime({ ir, initialPayload, payload, controls, pages, initialAction, adapt }: { ir: OvenIr & { id?: string; refreshSeconds?: number }; initialPayload?: unknown; payload?: unknown; controls?: OvenControlSeed; pages?: OvenPageSeed; initialAction?: OvenAction; adapt?: OvenPayloadAdapter }) {
-  const inputPayload = payload === undefined ? initialPayload : payload;
+  const { inputPayload, refreshSeconds } = resolveOvenRuntimeInputs({ initialPayload, payload, refreshSeconds: ir.refreshSeconds });
   const [state, dispatch] = useReducer((current: OvenState, action: OvenAction) => ovenReducer(current, action, ir), inputPayload, (nextPayload) => {
     const initialState = initOvenState(ir, nextPayload, controls, pages);
     return initialAction ? ovenReducer(initialState, initialAction, ir) : initialState;
   });
   const pollSearch = useMemo(() => ovenPollSearch({ ir, state, scenario: state.scenario }), [ir, state, state.scenario]);
-  useOvenLiveData(ir.id, ir.refreshSeconds, dispatch, pollSearch, adapt);
+  useOvenLiveData(ir.id, refreshSeconds, dispatch, pollSearch, adapt);
   useEffect(() => {
     if (payload !== undefined) dispatch({ type: "payloadAccepted", payload });
   }, [payload]);

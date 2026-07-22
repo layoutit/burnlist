@@ -13,7 +13,7 @@ import { assertDomEquivalent, extractFirstByClass } from "../test-support/dom-no
 import { lowerOvenIr } from "./lower-oven-ir";
 
 const payload = { value: 7, ratio: 0.123, items: ["a", "b"] };
-const open = '<oven id="test" version="1" contract="checklist-progress@1" theme="checklist">';
+const open = '<oven id="test" version="0.1.0" contract="checklist-progress@1" theme="checklist">';
 
 function lower(fragment: string) {
   const result = compileOven(`${open}${fragment}</oven>`);

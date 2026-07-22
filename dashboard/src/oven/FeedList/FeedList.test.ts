@@ -21,21 +21,21 @@ test("FeedList preserves the empty state", () => {
 test("FeedList preserves repository details when requested", () => {
   const feed = {
     identity: { logicalRepoKey: "repo-key", worktreeKey: "worktree-1", session: "session-1" },
-    updatedAt: "2026-07-18T13:14:15.000Z", href: "/ovens/streaming-diff/view?session=session-1", repoLabel: "Example repository",
+    updatedAt: "2026-07-18T13:14:15.000Z", href: "/r/repo-key/o/streaming-diff?worktreeKey=worktree-1&session=session-1", repoLabel: "Example repository",
   };
   const timestamp = new Date(feed.updatedAt).toLocaleString();
   const markup = renderToStaticMarkup(createElement(FeedList, { feeds: [feed], error: "", loading: false, showRepository: true }));
 
-  assert.equal(markup, `${heading}<div class="streaming-diff-feed-list"><a class="streaming-diff-feed" href="${feed.href}"><span class="streaming-diff-feed-session">session-1</span><span class="streaming-diff-feed-worktree">repository Example repository</span><span class="streaming-diff-feed-worktree">worktree worktree-1</span><time class="streaming-diff-feed-time" dateTime="${feed.updatedAt}">${timestamp}</time></a></div></section>`);
+  assert.equal(markup, `${heading}<div class="streaming-diff-feed-list"><a class="streaming-diff-feed" href="${feed.href.replace("&", "&amp;")}"><span class="streaming-diff-feed-session">session-1</span><span class="streaming-diff-feed-worktree">repository Example repository</span><span class="streaming-diff-feed-worktree">worktree worktree-1</span><time class="streaming-diff-feed-time" dateTime="${feed.updatedAt}">${timestamp}</time></a></div></section>`);
 });
 
 test("FeedList omits repository details when not requested", () => {
   const feed = {
     identity: { logicalRepoKey: "repo-key", worktreeKey: "worktree-1", session: "session-1" },
-    updatedAt: "2026-07-18T13:14:15.000Z", href: "/ovens/streaming-diff/view?session=session-1", repoLabel: "Example repository",
+    updatedAt: "2026-07-18T13:14:15.000Z", href: "/r/repo-key/o/streaming-diff?worktreeKey=worktree-1&session=session-1", repoLabel: "Example repository",
   };
   const markup = renderToStaticMarkup(createElement(FeedList, { feeds: [feed], error: "", loading: false, showRepository: false }));
 
-  assert.equal(markup, `${heading}<div class="streaming-diff-feed-list"><a class="streaming-diff-feed" href="${feed.href}"><span class="streaming-diff-feed-session">session-1</span><span class="streaming-diff-feed-worktree">worktree worktree-1</span><time class="streaming-diff-feed-time" dateTime="${feed.updatedAt}">${new Date(feed.updatedAt).toLocaleString()}</time></a></div></section>`);
+  assert.equal(markup, `${heading}<div class="streaming-diff-feed-list"><a class="streaming-diff-feed" href="${feed.href.replace("&", "&amp;")}"><span class="streaming-diff-feed-session">session-1</span><span class="streaming-diff-feed-worktree">worktree worktree-1</span><time class="streaming-diff-feed-time" dateTime="${feed.updatedAt}">${new Date(feed.updatedAt).toLocaleString()}</time></a></div></section>`);
   assert.doesNotMatch(markup, /repository Example repository/u);
 });

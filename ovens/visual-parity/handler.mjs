@@ -1,13 +1,15 @@
 import { basename } from "node:path";
-import { registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
+import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
 import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
+
+export const validateVisualParityRuntimeData = assertVisualParityData;
 
 function readVisualParityData(bindingPath, maxOvenDataBytes) {
   const stat = safeStat(bindingPath);
   if (!stat?.isFile()) throw new Error("configured Visual Parity data is missing");
   const payload = JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, "Visual Parity Oven data"));
-  assertVisualParityData(payload);
+  validateVisualParityRuntimeData(payload);
   return { payload, stat };
 }
 
@@ -22,6 +24,8 @@ function targetProgress(payload) {
 
 export const visualParityHandler = Object.freeze({
   id: "visual-parity",
+  dataInput: OVEN_DATA_INPUT.jsonPayload,
+  validateData: validateVisualParityRuntimeData,
 
   serveData({ bindingPath, maxOvenDataBytes }) {
     const { payload } = readVisualParityData(bindingPath, maxOvenDataBytes);
@@ -51,7 +55,7 @@ export const visualParityHandler = Object.freeze({
           lastCompletedAt: complete ? payload.differentialTesting.publishedAt : null,
           updatedAt: payload.differentialTesting.publishedAt ?? stat.mtime.toISOString(),
           ovenId: "visual-parity", ovenName: "Visual Parity",
-          href: `/ovens/visual-parity/view${binding.repoKey === null ? "" : `?repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null ? "/ovens/visual-parity" : `/r/${encodeURIComponent(binding.repoKey)}/o/visual-parity`,
           progressLabel: `${progress.qualified}/${progress.total} target frames`,
         };
       } catch (error) {
@@ -62,7 +66,7 @@ export const visualParityHandler = Object.freeze({
           status: "active", statusLabel: "Blocked", total: 0, done: null, remaining: null, percent: null,
           errors: 1, warnings: 0, lastCompletedAt: null, updatedAt: null,
           ovenId: "visual-parity", ovenName: "Visual Parity",
-          href: `/ovens/visual-parity/view${binding.repoKey === null ? "" : `?repoKey=${encodeURIComponent(binding.repoKey)}`}`,
+          href: binding.repoKey === null ? "/ovens/visual-parity" : `/r/${encodeURIComponent(binding.repoKey)}/o/visual-parity`,
           progressLabel: "Blocked", blockers: String(error?.message ?? error ?? "Data binding is unavailable.").slice(0, 200),
         };
       }

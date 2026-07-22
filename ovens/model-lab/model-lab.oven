@@ -1,3 +1,3 @@
-<oven id="model-lab" version="1" contract="burnlist-model-lab-data@1" theme="checklist">
-  <section-header title="Model Lab"/>
+<oven id="model-lab" version="0.1.0" contract="burnlist-model-lab-data@1" theme="checklist">
+  <model-lab-view source="/"/>
 </oven>

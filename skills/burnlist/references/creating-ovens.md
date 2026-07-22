@@ -52,7 +52,7 @@ Every source has exactly one root:
 
 ```xml
 <oven id="streaming-diff"
-      version="1"
+      version="0.1.0"
       contract="burnlist-streaming-diff-data@2"
       refresh-seconds="2"
       theme="streaming-diff">
@@ -61,8 +61,9 @@ Every source has exactly one root:
 ```
 
 `id`, `version`, `contract`, and `theme` are required. `refresh-seconds` is
-optional. Version is currently `1`; `refresh-seconds` is a positive integer no
-greater than 3600. The complete closed registries are:
+optional. Version is a semver identity; built-in Ovens currently use `0.1.0`.
+`refresh-seconds` is a positive integer no greater than 3600. The complete
+closed registries are:
 
 | Registry | Exact allowed values |
 | --- | --- |
@@ -216,9 +217,9 @@ These components require exactly one `bind` for every named property:
 
 ## Keep Sources Clean
 
-Normal Ovens use neither `class=` nor `<box>`. The five shipped sources
-(`streaming-diff`, `checklist`, `visual-parity`, `performance-tracing`, and
-`differential-testing`) follow that rule: theme entries and shared components
+Normal Ovens use neither `class=` nor `<box>`. The six shipped sources
+(`streaming-diff`, `checklist`, `visual-parity`, `performance-tracing`,
+`model-lab`, and `differential-testing`) follow that rule: theme entries and shared components
 supply chrome and default classes.
 
 `class=` is an optional escape hatch only on `box`, `kpi-strip`, `kpi-item`,
@@ -229,14 +230,20 @@ corresponding super-custom escape hatch. Keep both out of ordinary sources.
 
 First run `burnlist init` from the repository; then author an `instructions.md`
 with a level-one heading and a `.oven` file. Create the package with
-`burnlist oven create <id> --instructions <file> --oven <file>`, then bind the
-JSON payload with `burnlist oven bind <id> <path>`. The CLI and dashboard details
+`burnlist oven create <id> --instructions <file> --oven <file>`, then validate
+and snapshot the JSON payload with `burnlist oven set <id> <path>`. Use `bind`
+instead for a producer-owned path that changes in place. The CLI and dashboard details
 are in `references/oven-authoring.md`.
+
+The `<oven version="0.1.0">` value is the Oven's `id@version` identity, not its
+content revision. To pin a shipped Oven per project, run `burnlist oven adopt
+<id>`; it is committed under `.burnlist/ovens/<id>/`, so a Burnlist CLI upgrade
+never changes it.
 
 Here is a complete generic KPI-and-table source, `kpi.oven`:
 
 ```xml
-<oven id="deploy-status" version="1" contract="checklist-progress@1" theme="checklist">
+<oven id="deploy-status" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <section-header title="Deploy status"/>
   <kpi-strip>
     <kpi-item heading="Service" source="/service"/>

@@ -1,7 +1,7 @@
 <!-- Demonstrates the smallest useful oven: the existing 12-column Checklist detail grid.
      Its six regions bind only adapter payload data and use established oven components. -->
 <oven id="checklist"
-      version="1"
+      version="0.1.0"
       contract="checklist-progress@1"
       theme="checklist">
   <grid id="checklist-grid" columns="12" rows="10" row-height="48">

@@ -50,3 +50,33 @@ export function assertBuiltInOven(repoRoot, id, expectedName) {
     process.exit(1);
   }
 }
+
+function containsJsonSchema(path) {
+  return readdirSync(path, { withFileTypes: true }).some((entry) => {
+    const entryPath = join(path, entry.name);
+    return entry.isDirectory() ? containsJsonSchema(entryPath) : entry.name.endsWith(".schema.json");
+  });
+}
+
+export function assertBuiltInOvenDataDocs(repoRoot, id, { dataInput, validator }) {
+  const root = resolve(repoRoot, "ovens", id);
+  const instructions = readFileSync(join(root, "instructions.md"), "utf8");
+  const exampleExists = existsSync(join(root, "example", "data.json"));
+  const expected = [
+    "## Data Shape",
+    `- Input mode: \`${dataInput}\`.`,
+    `- Runtime validator: \`${validator ?? "none"}\`.`,
+    exampleExists ? "- Starter data: `example/data.json`." : "- Starter data: none.",
+  ];
+  const missing = expected.filter((line) => !instructions.includes(line));
+  const starterLines = instructions.split(/\r?\n/u).filter((line) => line.startsWith("- Starter data:"));
+  if (missing.length || starterLines.length !== 1) {
+    console.error(`Default oven ${id} instructions do not accurately declare data input, validator, and starter availability: ${missing.join(", ") || "duplicate starter declaration"}.`);
+    process.exit(1);
+  }
+  if (containsJsonSchema(root)
+    && !/JSON Schema is informational reference\s+documentation only; it is not the validation authority\./u.test(instructions)) {
+    console.error(`Default oven ${id} must label its JSON Schema as informational rather than authoritative.`);
+    process.exit(1);
+  }
+}

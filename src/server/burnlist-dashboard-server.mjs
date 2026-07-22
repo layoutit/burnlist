@@ -51,6 +51,7 @@ import {
   serializeOvenPackage,
 } from "./oven-storage.mjs";
 import { warmOvenHandler } from "./oven-warm.mjs";
+import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
 import {
   LIFECYCLES,
   burnlistIdForPlan,
@@ -341,7 +342,7 @@ function customOvenDashboardEntries(ctx) {
         updatedAt: null,
         ovenId: oven.id,
         ovenName: oven.name,
-        href: `/ovens/${encodeURIComponent(oven.id)}/view?repoKey=${encodeURIComponent(oven.repoKey)}`,
+        href: `/r/${encodeURIComponent(oven.repoKey)}/o/${encodeURIComponent(oven.id)}`,
         progressLabel: "Custom Oven",
       });
     } catch {
@@ -491,6 +492,45 @@ function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
   }
 }
 
+function readVendoredOvenForRepo(repoRoot, id) {
+  const path = vendoredOvenPath(repoRoot, id);
+  if (!safeStat(path)?.isDirectory()) return null;
+  const ovenPackage = readVendoredOven(repoRoot, id);
+  if (!ovenPackage) return null;
+  return {
+    id: ovenPackage.id,
+    name: instructionsName(ovenPackage.instructions, ovenPackage.id),
+    description: instructionsDescription(ovenPackage.instructions),
+    builtIn: true,
+    instructions: ovenPackage.instructions,
+    oven: ovenPackage.oven,
+    ir: compileOven(ovenPackage.oven).ir,
+    ovenRevision: ovenPackage.revision,
+  };
+}
+
+function vendoredOvensIn(repoRoot) {
+  let entries;
+  try {
+    entries = readdirSync(vendoredOvensDir(repoRoot), { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  }
+  return entries
+    .map((entry) => entry.name)
+    .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
+    .map((id) => {
+      try {
+        return readVendoredOvenForRepo(repoRoot, id);
+      } catch (error) {
+        console.warn(`Ignoring malformed vendored Oven ${id}: ${error.message}`);
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
 function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
   if (!builtIn) assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
   let entries;
@@ -517,6 +557,9 @@ function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
 function discoverOvens() {
   const ovens = ovensIn(builtInOvensDir, true).map((oven) => ({ ...oven, repoKey: null, repoRoot: null }));
   for (const repo of ovenScopeRepos()) {
+    for (const oven of vendoredOvensIn(repo.root)) {
+      ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
+    }
     const customOvensDir = customOvensDirFor(repo.root);
     for (const oven of ovensIn(customOvensDir, false, repo.root)) {
       ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
@@ -538,8 +581,13 @@ function selectedRepoKey(url) {
 
 function findOven(id, selectedKey = null) {
   const safeId = ovenId(id);
-  // Built-ins are global: resolve them by id regardless of repoKey (repoKey only selects a repo's
-  // DATA binding, not the oven's identity). Custom ovens are identified by (repoKey, id).
+  if (selectedKey !== null) {
+    const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
+    const vendored = repo ? readVendoredOvenForRepo(repo.root, safeId) : null;
+    if (vendored) return { ...vendored, repoKey: repo.repoKey, repoRoot: repo.root };
+  }
+  // Built-ins are global: resolve them by id regardless of repoKey when no repo has a pin.
+  // Custom ovens are identified by (repoKey, id).
   const builtin = readOven(builtInOvensDir, safeId, true);
   if (builtin) return { ...builtin, repoKey: null, repoRoot: null };
   if (selectedKey === null) return null;
@@ -549,12 +597,16 @@ function findOven(id, selectedKey = null) {
 }
 
 function ovenSummary(oven) {
+  const dataInput = getOvenHandler(oven.id)?.dataInput ?? genericJsonHandler.dataInput;
   return {
     id: oven.id,
+    contract: oven.ir.contract,
+    version: oven.ir.version,
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
     repoKey: oven.repoKey,
+    dataInput,
     ovenRevision: oven.ovenRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
   };
@@ -1238,9 +1290,13 @@ const server = createServer(async (req, res) => {
       json(res, 200, { run });
       return;
     }
-    const ovenViewRoute = url.pathname.match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-    const isKnownOvenView = Boolean(ovenViewRoute && findOven(ovenViewRoute[1], selectedRepoKey(url)));
-    if (["/", "/index.html", "/ovens/new", "/runs/new"].includes(url.pathname) || isKnownOvenView || routeSelection(url)) {
+    const ovenIdPattern = "[a-z0-9]+(?:-[a-z0-9]+)*";
+    const ovenViewRoute = url.pathname.match(new RegExp(`^/ovens/(${ovenIdPattern})/view$`, "u"));
+    const isLegacyOvenView = Boolean(ovenViewRoute);
+    const ovenCatalogRoute = new RegExp(`^/ovens/${ovenIdPattern}$`, "u").test(url.pathname);
+    const repoOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/o/${ovenIdPattern}$`, "u").test(url.pathname);
+    const burnlistOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/${ovenIdPattern}/o/${ovenIdPattern}$`, "u").test(url.pathname);
+    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || isLegacyOvenView || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;

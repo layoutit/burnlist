@@ -9,7 +9,7 @@ const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const binPath = join(repoRoot, "bin", "burnlist.mjs");
 
 function largeOvenSource() {
-  return `<oven id="large-oven" version="1" contract="checklist-progress@1" theme="checklist">
+  return `<oven id="large-oven" version="0.1.0" contract="checklist-progress@1" theme="checklist">
   <!--${"x".repeat(17_000)}-->
   <section-header title="Large Oven"/>
 </oven>

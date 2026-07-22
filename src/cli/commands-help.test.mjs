@@ -37,6 +37,23 @@ test("install, uninstall, and hooks subcommand help exit successfully with usage
   } finally { context.cleanup(); }
 });
 
+test("top-level and Oven help expose the validated use and set flow", () => {
+  const context = fixture({ git: false });
+  try {
+    const top = run(context.directory, ["--help"]);
+    assert.equal(top.status, 0, top.stderr);
+    assert.match(top.stdout, /burnlist oven <[^\n]*use[^\n]*set[^\n]*>/u);
+
+    const oven = run(context.directory, ["oven", "help"]);
+    assert.equal(oven.status, 0, oven.stderr);
+    assert.match(oven.stdout, /burnlist oven use <id> \[--repo <path>\] \[--force\]/u);
+    assert.match(oven.stdout, /burnlist oven set <id> <path\|-\|json> \[--repo <path>\]/u);
+    assert.match(oven.stdout, /same runtime validator/u);
+    assert.match(oven.stdout, /shape-only/u);
+    assert.match(oven.stdout, /\.local\/burnlist\/data\/<id>\.json/u);
+  } finally { context.cleanup(); }
+});
+
 test("empty skill and hook uninstalls report that there is nothing to remove", () => {
   const context = fixture();
   try {

@@ -4,6 +4,7 @@ import {
   legacyOvenRevision,
   normalizeOvenDetail,
   normalizeOvenPackage,
+  ovenIdentity,
   ovenRevision,
 } from "./oven-contract.mjs";
 
@@ -11,7 +12,7 @@ function packageFixture(id = "sample-oven") {
   return {
     id,
     instructions: "# Sample Oven\n\nFollow the checklist.\n",
-    oven: `<oven id="${id}" version="1" contract="checklist-progress@1" theme="checklist">\n  <section-header title="Sample Oven"/>\n</oven>\n`,
+    oven: `<oven id="${id}" version="0.1.0" contract="checklist-progress@1" theme="checklist">\n  <section-header title="Sample Oven"/>\n</oven>\n`,
   };
 }
 
@@ -46,6 +47,14 @@ test("normalizeOvenDetail retains legacy detail validation", () => {
 
 test("id-is-part-of-revision", () => {
   assert.notEqual(ovenRevision(normalizedFixture("original-oven")), ovenRevision(normalizedFixture("forked-oven")));
+});
+
+test("normalized packages expose a semver identity distinct from their revision", () => {
+  const pkg = normalizedFixture("sample-oven");
+  assert.equal(pkg.version, "0.1.0");
+  assert.equal(ovenIdentity(pkg), "sample-oven@0.1.0");
+  assert.match(ovenRevision(pkg), /^o1-sha256:/u);
+  assert.notEqual(ovenIdentity(pkg), ovenRevision(pkg));
 });
 
 test("normalizeOvenPackage rejects a root id that differs from the package id", () => {

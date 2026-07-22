@@ -122,7 +122,11 @@ export function normalizeOvenPackage(value) {
   if (compiled.ir.id !== id) {
     throw new Error(`Oven ${id} .oven root id "${compiled.ir.id}" must match the package id.`);
   }
-  return { id, instructions, oven };
+  return { id, version: compiled.ir.version, instructions, oven };
+}
+
+export function ovenIdentity(pkg) {
+  return `${pkg.id}@${pkg.version}`;
 }
 
 function canonicalJson(value) {
