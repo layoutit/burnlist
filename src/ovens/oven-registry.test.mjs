@@ -23,6 +23,9 @@ test("the Oven handler registry validates and retrieves code-owned handlers", ()
   assert.throws(() => registerOvenHandler("Invalid id", { id: "Invalid id" }), /lowercase slug/u);
   assert.throws(() => registerOvenHandler("registry-mismatch", { id: "another-id" }), /must equal/u);
   assert.throws(() => registerOvenHandler("registry-hook", { id: "registry-hook", warm: true }), /must be a function/u);
+  assert.throws(() => registerOvenHandler("registry-reconcile", {
+    id: "registry-reconcile", reconcileDataBindings: true,
+  }), /must be a function/u);
   assert.throws(() => registerOvenHandler("registry-warm", { id: "registry-warm", warmIntervalMs: 0 }), /positive integer/u);
 });
 

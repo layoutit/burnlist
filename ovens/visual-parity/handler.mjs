@@ -4,10 +4,16 @@ import { basename } from "node:path";
 import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
 import { readTextFileWithIdentity } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
+import {
+  streamVisualParityResponse,
+  VISUAL_PARITY_RESPONSE_CHUNK_BYTES,
+  VISUAL_PARITY_RESPONSE_TIMEOUT_MS,
+} from "./response-stream.mjs";
 
 export const VISUAL_PARITY_CACHE_MAX_ENTRIES = 8;
 export const VISUAL_PARITY_CACHE_MAX_BYTES = 128 * 1024 * 1024;
-export const VISUAL_PARITY_RESPONSE_CHUNK_BYTES = 64 * 1024;
+export { VISUAL_PARITY_RESPONSE_CHUNK_BYTES, VISUAL_PARITY_RESPONSE_TIMEOUT_MS };
+export const VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES = 8;
 
 const DATA_CACHE_KEY = "validated-response-data";
 const DATA_READ_ATTEMPTS = 3;
@@ -84,8 +90,12 @@ export function readStableVisualParitySource(bindingPath, maxBytes, {
 function responseCache(ctx) {
   let state = ctx.cache.get(DATA_CACHE_KEY);
   if (!state || !(state.responses instanceof Map) || !(state.summaries instanceof Map)
-    || !Number.isSafeInteger(state.responseBytes)) {
-    state = { responses: new Map(), summaries: new Map(), responseBytes: 0 };
+    || !Number.isSafeInteger(state.responseBytes) || !Number.isSafeInteger(state.activeResponses)
+    || !Number.isSafeInteger(state.activeResponseBytes)) {
+    state = {
+      responses: new Map(), summaries: new Map(), responseBytes: 0,
+      activeResponses: 0, activeResponseBytes: 0,
+    };
     ctx.cache.set(DATA_CACHE_KEY, state);
   }
   return state;
@@ -96,6 +106,11 @@ function removeCachedResponse(state, path) {
   if (!cached) return;
   state.responses.delete(path);
   state.responseBytes -= cached.sourceBytes;
+}
+
+function removeCachedData(state, path) {
+  removeCachedResponse(state, path);
+  state.summaries.delete(path);
 }
 
 function cacheByteLimit(ctx) {
@@ -128,6 +143,11 @@ function prepareResponseCache(ctx) {
   return state;
 }
 
+function reconcileResponseCache(ctx) {
+  if (!ctx.cache.get(DATA_CACHE_KEY)) return;
+  prepareResponseCache(ctx);
+}
+
 function responsePrefix(bindingPath) {
   return Buffer.from(`${JSON.stringify({ ovenId: "visual-parity", path: bindingPath }).slice(0, -1)},"payload":`);
 }
@@ -147,27 +167,43 @@ function cacheSummary(state, bindingPath, data) {
 
 function visualParitySummaryCache(ctx, bindingPath, state) {
   const observed = fileSnapshot(bindingPath);
-  if (!observed) throw new Error("configured Visual Parity data is missing");
+  if (!observed) {
+    removeCachedData(state, bindingPath);
+    throw new Error("configured Visual Parity data is missing");
+  }
   const cached = state.summaries.get(bindingPath);
   if (cached?.signature === observed.signature) {
     return cached.summary;
   }
-  state.summaries.delete(bindingPath);
-  removeCachedResponse(state, bindingPath);
-  return cacheSummary(state, bindingPath, readValidatedVisualParityData(ctx, bindingPath));
+  removeCachedData(state, bindingPath);
+  try {
+    return cacheSummary(state, bindingPath, readValidatedVisualParityData(ctx, bindingPath));
+  } catch (error) {
+    removeCachedData(state, bindingPath);
+    throw error;
+  }
 }
 
 function visualParityDataCache(ctx, bindingPath, state) {
   const observed = fileSnapshot(bindingPath);
-  if (!observed) throw new Error("configured Visual Parity data is missing");
+  if (!observed) {
+    removeCachedData(state, bindingPath);
+    throw new Error("configured Visual Parity data is missing");
+  }
   const cached = state.responses.get(bindingPath);
   if (cached?.signature === observed.signature) {
     state.responses.delete(bindingPath);
     state.responses.set(bindingPath, cached);
     return cached;
   }
-  removeCachedResponse(state, bindingPath);
-  const data = readValidatedVisualParityData(ctx, bindingPath);
+  removeCachedData(state, bindingPath);
+  let data;
+  try {
+    data = readValidatedVisualParityData(ctx, bindingPath);
+  } catch (error) {
+    removeCachedData(state, bindingPath);
+    throw error;
+  }
   cacheSummary(state, bindingPath, data);
   const sourceBuffer = Buffer.from(data.source);
   const prefix = responsePrefix(bindingPath);
@@ -214,64 +250,30 @@ export function ifNoneMatchMatches(value, currentEtag) {
   return false;
 }
 
-function streamResponse(req, res, segments) {
-  let segmentIndex = 0;
-  let segmentOffset = 0;
-  let closed = false;
-  let waitingDrain = false;
-
-  function cleanup() {
-    if (closed) return;
-    closed = true;
-    res.off?.("drain", onDrain);
-    res.off?.("close", cleanup);
-    res.off?.("error", cleanup);
-    res.off?.("finish", cleanup);
-    req.off?.("aborted", abort);
-  }
-  function abort() {
-    cleanup();
-    if (!res.destroyed) res.destroy?.();
-  }
-  function onDrain() {
-    waitingDrain = false;
-    pump();
-  }
-  function pump() {
-    if (closed || waitingDrain) return;
-    try {
-      while (segmentIndex < segments.length) {
-        const segment = segments[segmentIndex];
-        while (segmentOffset < segment.length) {
-          const end = Math.min(segmentOffset + VISUAL_PARITY_RESPONSE_CHUNK_BYTES, segment.length);
-          const chunk = segment.subarray(segmentOffset, end);
-          segmentOffset = end;
-          if (!res.write(chunk)) {
-            waitingDrain = true;
-            res.once("drain", onDrain);
-            return;
-          }
-        }
-        segmentIndex += 1;
-        segmentOffset = 0;
-      }
-      res.end();
-      cleanup();
-    } catch {
-      abort();
-    }
-  }
-
-  res.once("close", cleanup);
-  res.once("error", cleanup);
-  res.once("finish", cleanup);
-  req.once?.("aborted", abort);
-  pump();
+function reserveActiveResponse(state, responseBytes, maxBytes) {
+  if (state.activeResponses >= VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES
+    || state.activeResponseBytes + responseBytes > maxBytes) return null;
+  state.activeResponses += 1;
+  state.activeResponseBytes += responseBytes;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    state.activeResponses -= 1;
+    state.activeResponseBytes -= responseBytes;
+  };
 }
 
-function sendVisualParityData(req, res, cached) {
+function sendVisualParityData(ctx, state, cached) {
+  const { req, res } = ctx;
   if (ifNoneMatchMatches(req.headers["if-none-match"], cached.etag)) {
     res.writeHead(304, { etag: cached.etag, "cache-control": "no-store" });
+    res.end();
+    return;
+  }
+  const release = reserveActiveResponse(state, cached.responseBytes, cacheByteLimit(ctx));
+  if (!release) {
+    res.writeHead(503, { "cache-control": "no-store", "retry-after": "1" });
     res.end();
     return;
   }
@@ -281,7 +283,11 @@ function sendVisualParityData(req, res, cached) {
     etag: cached.etag,
     "content-length": cached.responseBytes,
   });
-  streamResponse(req, res, [cached.prefix, cached.source, cached.suffix]);
+  streamVisualParityResponse(req, res, [cached.prefix, cached.source, cached.suffix], {
+    onCleanup: release,
+    timeoutMs: ctx.responseTimeoutMs ?? VISUAL_PARITY_RESPONSE_TIMEOUT_MS,
+    timers: ctx.responseTimers ?? globalThis,
+  });
 }
 
 export const visualParityHandler = Object.freeze({
@@ -289,9 +295,13 @@ export const visualParityHandler = Object.freeze({
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateVisualParityRuntimeData,
 
+  reconcileDataBindings(ctx) {
+    reconcileResponseCache(ctx);
+  },
+
   serveData(ctx) {
     const state = prepareResponseCache(ctx);
-    sendVisualParityData(ctx.req, ctx.res, visualParityDataCache(ctx, ctx.bindingPath, state));
+    sendVisualParityData(ctx, state, visualParityDataCache(ctx, ctx.bindingPath, state));
   },
 
   dashboardEntries(ctx) {

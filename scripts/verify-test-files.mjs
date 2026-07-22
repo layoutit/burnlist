@@ -31,6 +31,7 @@ export const verificationTestFiles = [
   "ovens/performance-tracing/contract.test.mjs",
   "ovens/visual-parity/contract.test.mjs",
   "ovens/visual-parity/handler.test.mjs",
+  "ovens/visual-parity/handler-cache-lifecycle.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-data-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture-git.test.mjs",
