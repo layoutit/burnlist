@@ -18,6 +18,9 @@ const SSE_WIRE_PREFIX = `${STREAMING_DIFF_FEED_VERSION}:`;
 const subscribers = new Map();
 let subscriberTotal = 0;
 
+// This is an ordered producer-owned content feed, not snapshot invalidation.
+// Its card/reset SSE contract intentionally stays separate from Oven events.
+
 function httpError(message, status = 400) {
   return Object.assign(new Error(message), { status, streamingDiffPublic: true });
 }

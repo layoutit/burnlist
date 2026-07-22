@@ -85,6 +85,13 @@ test("oven bind, bindings, and unbind persist a logical repo-local binding", () 
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /Unbound Oven sample-oven/u);
     assert.deepEqual(JSON.parse(readFileSync(storePath, "utf8")), { schemaVersion: 1, bindings: {} });
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /No binding exists for Oven sample-oven/u);
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: ["sample-oven"] }).map((event) => ({
+      kind: event.kind,
+      action: event.payload.action,
+    })), [
+      { kind: "binding-changed", action: "bound" },
+      { kind: "binding-changed", action: "unbound" },
+    ]);
   } finally { context.cleanup(); }
 });
 
@@ -228,6 +235,10 @@ test("oven create and update swap the package while preserving sibling files", (
     assert.equal(readFileSync(join(current, "sample-oven.oven"), "utf8"), ovenFixture("sample-oven"));
     assert.equal(JSON.parse(readFileSync(join(current, "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
     assert.equal(readdirSync(join(ovensDir, "sample-oven")).filter((name) => name.startsWith("rev-")).length, 2);
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: ["sample-oven"] }).map((event) => event.payload.action), [
+      "created",
+      "updated",
+    ]);
   } finally { context.cleanup(); }
 });
 

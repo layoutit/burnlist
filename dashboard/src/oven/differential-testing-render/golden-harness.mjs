@@ -11,7 +11,8 @@ import {
   differentialStateVectorSha256,
 } from "../../../../ovens/differential-testing/engine/data-contract.mjs";
 import { assertPerformanceTracingData } from "../../../../ovens/performance-tracing/contract.mjs";
-import { mountDifferentialTestingDashboard, startDifferentialTestingLiveUpdates } from "./differential-testing-renderer.js";
+import { escapeHtml } from "./differential-testing-render.js";
+import { mountDifferentialTestingDashboard } from "./differential-testing-renderer.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const exampleDir = resolve(here, "../../../../ovens/differential-testing/example");
@@ -129,20 +130,9 @@ export function captureDashboardHtml(oven, payload, mountOptions = {}) {
 }
 
 export async function captureDashboardLoadError(error) {
-  const restoreGlobals = installGlobals();
   const root = fakeRoot();
-  try {
-    const liveUpdates = startDifferentialTestingLiveUpdates(root, {
-      fetchImpl: async () => { throw error; },
-      setIntervalImpl: () => 0,
-      clearIntervalImpl() {},
-    });
-    await liveUpdates.ready;
-    liveUpdates.stop();
-    return root;
-  } finally {
-    restoreGlobals();
-  }
+  root.innerHTML = `<div class="empty">${escapeHtml(error?.message || error)}</div>`;
+  return root;
 }
 
 export function ovenLayout() {

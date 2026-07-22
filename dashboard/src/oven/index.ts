@@ -15,6 +15,7 @@ export { DiffCardList } from "./DiffCardList";
 export { FileDiff } from "./FileDiff";
 export { StreamingDiffHeading } from "./StreamingDiffHeading";
 export { useOvenLiveData } from "./utils/useOvenLiveData";
+export type { ModelLabPayload } from "./ModelLabView";
 export { VerdictHeader } from "./VerdictHeader";
 export { DomainTabs } from "./DomainTabs";
 export { MetricTiles } from "./MetricTiles";

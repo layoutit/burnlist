@@ -3,6 +3,10 @@
 import { randomBytes } from "node:crypto";
 import { closeSync, constants, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import {
+  ovenBindingChangedInput,
+  publishCanonicalMutation,
+} from "../events/oven-canonical-mutations.mjs";
 import { ovenId } from "../ovens/oven-contract.mjs";
 import { repoKey } from "./registry.mjs";
 import { withRepoStateLock } from "./repo-state.mjs";
@@ -117,18 +121,22 @@ export function writeBindingWithinRepoStateLock(repoRoot, id, logicalPath, bound
   return { path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
 }
 
-export function writeBinding(repoRoot, id, logicalPath, boundAt) {
-  return withRepoStateLock(repoRoot, () => writeBindingWithinRepoStateLock(repoRoot, id, logicalPath, boundAt));
+export function writeBinding(repoRoot, id, logicalPath, boundAt, eventOptions = {}) {
+  const result = withRepoStateLock(repoRoot, () => writeBindingWithinRepoStateLock(repoRoot, id, logicalPath, boundAt));
+  const event = publishCanonicalMutation(repoRoot, ovenBindingChangedInput({
+    ovenId: id, action: "bound", path: logicalPath, occurredAt: result.binding.boundAt,
+  }), eventOptions);
+  return { ...result, event };
 }
 
 // Producers that establish a durable discovery root must not silently replace a
 // user-selected binding. This keeps first-run setup idempotent while preserving
 // the ordinary CLI's explicit replacement behavior above.
-export function writeBindingIfAbsent(repoRoot, id, logicalPath, boundAt) {
+export function writeBindingIfAbsent(repoRoot, id, logicalPath, boundAt, eventOptions = {}) {
   const safeId = ovenId(id);
   if (typeof logicalPath !== "string" || logicalPath.length === 0) throw new Error("Oven binding path must be a non-empty string.");
   if (!isTimestamp(boundAt)) throw new Error("Oven binding timestamp must be a valid ISO timestamp.");
-  return withRepoStateLock(repoRoot, () => {
+  const result = withRepoStateLock(repoRoot, () => {
     const store = mutableBindingStore(repoRoot);
     if (Object.hasOwn(store.bindings, safeId)) {
       return { created: false, path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
@@ -137,17 +145,31 @@ export function writeBindingIfAbsent(repoRoot, id, logicalPath, boundAt) {
     writeStore(repoRoot, store);
     return { created: true, path: bindingStorePath(repoRoot), binding: store.bindings[safeId] };
   });
+  if (!result.created) return result;
+  const event = publishCanonicalMutation(repoRoot, ovenBindingChangedInput({
+    ovenId: safeId, action: "bound", path: logicalPath, occurredAt: result.binding.boundAt,
+  }), eventOptions);
+  return { ...result, event };
 }
 
-export function removeBinding(repoRoot, id) {
+export function removeBinding(repoRoot, id, {
+  occurredAt = new Date().toISOString(),
+  ...eventOptions
+} = {}) {
   const safeId = ovenId(id);
-  return withRepoStateLock(repoRoot, () => {
+  const removed = withRepoStateLock(repoRoot, () => {
     const store = mutableBindingStore(repoRoot);
-    if (!Object.hasOwn(store.bindings, safeId)) return false;
+    if (!Object.hasOwn(store.bindings, safeId)) return null;
+    const binding = store.bindings[safeId];
     delete store.bindings[safeId];
     writeStore(repoRoot, store);
-    return true;
+    return binding;
   });
+  if (!removed) return false;
+  publishCanonicalMutation(repoRoot, ovenBindingChangedInput({
+    ovenId: safeId, action: "unbound", path: removed.path, occurredAt,
+  }), eventOptions);
+  return true;
 }
 
 const cachedStores = new Map();

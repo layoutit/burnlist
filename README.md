@@ -167,6 +167,39 @@ npm run test:global-install
 
 `verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
 
+## Oven events
+
+`burnlist/oven-events` exposes a durable, repo-local observational event log.
+After atomically publishing canonical Oven data, producers may call
+`publishOvenDataPublishedEvent` with a stable subject and durable publication
+generation. Consumers use `data-published/complete` only to invalidate and refetch
+canonical data; events never contain or replace the snapshot or its proof. The
+dashboard serves bounded JSON replay and SSE at `GET /api/events`.
+
+Every live Oven uses the same canonical architecture: one process-wide event
+observer, one bounded JSON snapshot service, one browser-shell snapshot client,
+and the declarative `OvenRuntime`. A publication burst invalidates a keyed
+snapshot; the next conditional request reopens canonical data. There are no
+handler warm hooks, page-owned JSON pollers, or alternate live Oven routes.
+Differential Testing uses the same source snapshot and response-admission
+boundary, retaining only a bounded query-projection LRU. Inactive browser
+snapshots are bounded by entry and byte limits; transient failures visibly mark
+retained data stale, while authoritative missing responses clear it.
+One 30-second server reconciliation and one 30-second browser reconciliation
+cover manual writes, event-publication failure, and disconnects. Streaming
+Diff remains a separate ordered content SSE protocol, and Performance Tracing
+deliberately revalidates external provenance on each canonical request.
+
+Run `node scripts/measure-oven-snapshot-architecture.mjs` to reproduce the
+empirical architecture measurement. It uses real wall-clock timers, loopback
+HTTP, filesystem reads/parses, three SSE clients, and a spawned dashboard
+server—never fake timers or arithmetic request counts. The retained run reduced
+two executable legacy polls to zero inside a 4.2-second canonical idle window,
+reduced a three-consumer publication burst from three reads/parses/responses to
+one, shared two subscriber catch-up scans across three SSE clients instead of
+six per-client scans, returned an unchanged generation as a zero-byte `304`,
+and rejected a second 4 MiB maximum response until abort released admission.
+
 ## Local State
 
 Burnlist state stays local by default. Task files live under `notes/burnlists/`; dashboard observer state, custom Ovens, and Run snapshots live under `.local/burnlist/`. Keep both paths ignored unless you deliberately want to share task state.

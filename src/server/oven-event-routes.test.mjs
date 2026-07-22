@@ -92,6 +92,25 @@ test("/api/events streams a newly published event without an agent heartbeat", {
   });
 });
 
+test("/api/events tail cursor establishes a backlog-free canonical-fetch baseline", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl, repoRoot }) => {
+    publishOvenEvent(repoRoot, event("before-baseline", "2026-07-21T12:00:00.000Z"));
+    const baselineResponse = await httpGet(baseUrl, "/api/events?tail=1&ovenId=future-oven");
+    assert.equal(baselineResponse.status, 200);
+    const baseline = JSON.parse(baselineResponse.body);
+    assert.equal(baseline.baseline, true);
+    assert.equal(baseline.total, 0);
+    assert.deepEqual(baseline.events, []);
+
+    const published = publishOvenEvent(repoRoot, event("after-baseline", "2026-07-21T12:01:00.000Z"));
+    const replay = JSON.parse((await httpGet(
+      baseUrl,
+      `/api/events?ovenId=future-oven&after=${encodeURIComponent(baseline.cursor)}`,
+    )).body);
+    assert.deepEqual(replay.events.map((item) => item.eventId), [published.event.eventId]);
+  });
+});
+
 test("/api/events rejects malformed replay cursors and unknown project keys", { timeout: 20_000 }, async () => {
   await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
     const unknownRepo = await httpGet(baseUrl, `/api/events?repoKey=${"f".repeat(12)}`);

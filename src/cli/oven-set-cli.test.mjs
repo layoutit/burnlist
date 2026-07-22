@@ -7,6 +7,8 @@ import test from "node:test";
 import { buildPayload } from "../../ovens/differential-testing/example/adapter.mjs";
 import { readBindingStore } from "../server/oven-bindings.mjs";
 import { canonicalOvenDataPath } from "../server/oven-data-store.mjs";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
+import { setOvenDataFromCli } from "./oven-set.mjs";
 
 const packageRoot = resolve(new URL("../..", import.meta.url).pathname);
 const binPath = join(packageRoot, "bin", "burnlist.mjs");
@@ -71,10 +73,33 @@ test("oven set reads a file for a repo-selected vendored built-in", (t) => {
   assert.ok(output.includes(`Binding: ${join(repo, ".local", "burnlist", "bindings.json")}`));
   assert.equal(readFileSync(dataPath, "utf8"), serialized(payload));
   assert.equal(readBindingStore(repo).bindings.checklist.path, ".local/burnlist/data/checklist.json");
+  const events = readOvenEvents(repo, { ovenIds: ["checklist"] });
+  assert.deepEqual(events.map((event) => event.kind), ["definition-changed", "data-published"]);
+  const published = events[1];
+  assert.equal(published.kind, "data-published");
+  assert.equal(published.subjectId, "checklist");
+  assert.match(published.cursor, /^sha256-[a-f0-9]{64}$/u);
 
   const beforeBinding = readFileSync(join(repo, ".local", "burnlist", "bindings.json"), "utf8");
   run(repo, "oven", "set", "checklist", JSON.stringify(payload), "--repo", repo);
   assert.equal(readFileSync(join(repo, ".local", "burnlist", "bindings.json"), "utf8"), beforeBinding);
+  assert.equal(readOvenEvents(repo, { ovenIds: ["checklist"] }).length, 2);
+});
+
+test("oven set reports event failure without failing canonical publication", (t) => {
+  const repo = fixture(t);
+  const result = setOvenDataFromCli({
+    positionals: ["checklist", "{}"],
+    repoRoot: repo,
+    launchCwd: repo,
+    findOven: () => ({ id: "checklist", builtIn: true }),
+    now: () => new Date("2026-07-22T00:00:00.000Z"),
+    publishDataEvent() { throw new Error(`observer ${"x".repeat(400)}`); },
+  });
+  assert.equal(readFileSync(canonicalOvenDataPath(repo, "checklist"), "utf8"), "{}\n");
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /observational event failed/u);
+  assert.ok(result.warnings[0].length < 280);
 });
 
 test("oven set reads bounded JSON from stdin", (t) => {

@@ -158,6 +158,14 @@ gitignored canonical path `.local/burnlist/data/<id>.json` and atomically update
 nothing. A rejected replacement or publication failure preserves the exact
 prior data bytes and binding. Repeating an identical set is idempotent.
 
+After that canonical transaction succeeds, `set` best-effort publishes one
+`data-published/complete` Oven event whose cursor is the canonical JSON content
+digest. The event write happens after the repository data lock is released and
+never rolls back a successful set. Repeating identical data retries the same
+idempotent event identity. External project publishers should do the same after
+their own atomic publication by calling `publishOvenDataPublishedEvent` from
+`burnlist/oven-events`; consumers still reopen the canonical data.
+
 ## Vendoring and pinning an Oven
 
 `burnlist oven adopt <id>` copies the shipped source into the committed

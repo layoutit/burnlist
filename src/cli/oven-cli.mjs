@@ -8,10 +8,14 @@
 // boots an HTTP listener on import). Like the dashboard, it can only create or
 // replace custom Ovens under ignored local state; it never executes anything.
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { publishOvenEvent } from "../events/oven-event-store.mjs";
+import {
+  ovenDefinitionChangedInput,
+  publishCanonicalMutation,
+} from "../events/oven-canonical-mutations.mjs";
 import { scanXml } from "../ovens/dsl/xml-scan.mjs";
 import { bindingStorePath, readBindingStore, removeBinding, writeBinding } from "../server/oven-bindings.mjs";
 import { resolveCustomOvensDir } from "../server/oven-storage.mjs";
@@ -58,6 +62,21 @@ function repoRoot() {
 
 function bindingRepo() {
   return repoRoot();
+}
+
+function mutationError(label) {
+  return (error) => console.warn(`${label}, but could not publish its observational Oven event: ${error.message}`);
+}
+
+function publishDefinitionChange(root, saved, action) {
+  const occurredAt = new Date().toISOString();
+  publishCanonicalMutation(root, ovenDefinitionChangedInput({
+    ovenId: saved.id,
+    action,
+    revision: saved.ovenRevision ?? saved.revision,
+    generation: saved.pin?.pinnedAt ?? basename(saved.path),
+    occurredAt,
+  }), { onError: mutationError(`${action} Oven ${saved.id}`) });
 }
 
 // ── storage locations (mirror the dashboard server) ──────────────────────────
@@ -158,7 +177,7 @@ Options:
   --package <p>        JSON package file, or - for stdin.
   --repo <p>           Repository whose local Oven bindings to use.
   --subject <id>       Event subject such as a Burnlist or scenario id.
-  --kind <slug>        Generic event kind.
+  --kind <slug>        Generic event kind; data-published invalidates a snapshot.
   --phase <slug>       Generic event phase.
   --cursor <text>      Stable cursor for one logical event.
   --occurred-at <iso>  Optional event timestamp; defaults to now.
@@ -238,7 +257,9 @@ try {
     const [id, logicalPath] = positionals;
     if (!id || logicalPath === undefined) fail("Usage: burnlist oven bind <id> <path> [--repo <path>]");
     const repoRoot = bindingRepo();
-    const result = writeBinding(repoRoot, id, logicalPath, new Date().toISOString());
+    const result = writeBinding(repoRoot, id, logicalPath, new Date().toISOString(), {
+      onError: mutationError(`Bound Oven ${ovenId(id)}`),
+    });
     console.log(`Bound Oven ${ovenId(id)} to ${logicalPath}\nStore: ${result.path}`);
     return;
   }
@@ -247,7 +268,9 @@ try {
     const id = positionals[0];
     if (!id) fail("Usage: burnlist oven unbind <id> [--repo <path>]");
     const repoRoot = bindingRepo();
-    if (removeBinding(repoRoot, id)) console.log(`Unbound Oven ${ovenId(id)} from ${bindingStorePath(repoRoot)}`);
+    if (removeBinding(repoRoot, id, { onError: mutationError(`Unbound Oven ${ovenId(id)}`) })) {
+      console.log(`Unbound Oven ${ovenId(id)} from ${bindingStorePath(repoRoot)}`);
+    }
     else console.log(`No binding exists for Oven ${ovenId(id)} in ${bindingStorePath(repoRoot)}.`);
     return;
   }
@@ -324,6 +347,7 @@ try {
     const { customRepoRoot, customOvensDir, unsafeOvensDir } = ovenContext();
     const path = persistOven({ customRepoRoot, customOvensDir, unsafeOvensDir }, pkg, { allowReplace });
     const saved = readOvenDir(customOvensDir, pkg.id, false);
+    publishDefinitionChange(customRepoRoot, saved, subcommand === "update" ? "updated" : "created");
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
     printOven(saved);
     return;
@@ -343,6 +367,7 @@ try {
       allowReplace: false,
       sidecar: { forkedFrom: { ovenId: source.id, revision: sourceRevision } },
     });
+    publishDefinitionChange(customRepoRoot, readOvenDir(customOvensDir, pkg.id, false), "forked");
     console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
     return;
   }
@@ -366,6 +391,7 @@ try {
       instructions: shippedInstructions,
       oven: shippedOven,
     });
+    publishDefinitionChange(targetRoot, saved, subcommand === "adopt" ? "adopted" : "upgraded");
     if (subcommand === "adopt") console.log(`Adopted Oven ${saved.id}@${saved.version} at ${targetPath}`);
     else console.log(`Upgraded Oven ${saved.id}@${saved.version} at ${targetPath}\nrevision: ${saved.revision}`);
     return;

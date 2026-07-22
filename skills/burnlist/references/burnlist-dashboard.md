@@ -52,9 +52,6 @@ Agents should not start, stop, or announce this server during ordinary Burnlist 
 - `/ovens` — the Oven catalog.
 - `/ovens/<ovenId>` — an Oven explainer page.
 
-Older `/ovens/<name>/view?repoKey=<key>` URLs redirect to
-`/r/<key>/o/<name>`.
-
 A Burnlist detail shows a lens switcher containing only Ovens whose data
 contract fits its `checklist-progress@1` contract. Each link opens
 `/r/<repoKey>/<burnlistId>/o/<ovenId>`; `checklist` is the default lens and

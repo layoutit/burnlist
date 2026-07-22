@@ -1,9 +1,10 @@
 export { formatListTime, formatTime } from "./format";
 export { burnlistHref, burnlistLensContext, currentSection, customOvenSelection, filterFromUrl, listHref, ovenExplainerSelection, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
-export { burnlistOvenHref, differentialTestingScenarioHref, legacyRoute, parseRoute, repoOvenHref } from "./route-model.mjs";
+export { burnlistOvenHref, differentialTestingScenarioHref, parseRoute, repoOvenHref } from "./route-model.mjs";
 export { BURNLIST_DATA_CONTRACT, fittingOvens, ovenFitsContract, ovenInRepoScope } from "./oven-fit.mjs";
 export { buildOvenCatalog } from "./oven-catalog.mjs";
 export { checklistOvenRepoKey } from "./oven-definition.mjs";
+export { browserOvenSnapshotClient, createOvenSnapshotClient, ovenSnapshotKey } from "./oven-event-client.mjs";
 export { ovenSamplePayload } from "./oven-samples.mjs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";

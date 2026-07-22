@@ -11,7 +11,7 @@ test("selectors expose control and refresh state", () => {
   const state = initOvenState(ir, payload);
   assert.equal(selectMode(state, "mode"), "a");
   assert.equal(selectDomain(state, "domain"), "south");
-  assert.deepEqual(selectRefreshStatus(state), { phase: "idle", error: undefined, generation: 0 });
+  assert.deepEqual(selectRefreshStatus(state), { phase: "idle", error: undefined, generation: 0, stale: false });
 });
 
 test("collection selector supplies first, middle, and clamped last pages", () => {

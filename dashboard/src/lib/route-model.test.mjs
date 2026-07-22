@@ -4,7 +4,6 @@ import {
   burnlistHref,
   burnlistOvenHref,
   differentialTestingScenarioHref,
-  legacyRoute,
   parseRoute,
   repoOvenHref,
   streamingDiffFeedHref,
@@ -48,13 +47,4 @@ test("href builders put repo keys only in path segments", () => {
     "/r/repo%2Fkey/o/differential-testing?scenario=case+1",
   ]);
   for (const href of hrefs) assert.doesNotMatch(href, /repoKey=/u);
-});
-
-test("legacyRoute redirects old oven views and leaves current paths alone", () => {
-  assert.equal(legacyRoute({ pathname: "/ovens/model-lab/view", search: "?repoKey=repo%2Fkey" }), "/r/repo%2Fkey/o/model-lab");
-  assert.equal(legacyRoute({ pathname: "/ovens/differential-testing/view", search: "?scenario=case+1&repoKey=repo%2Fkey" }), "/r/repo%2Fkey/o/differential-testing?scenario=case+1");
-  assert.equal(legacyRoute({ pathname: "/ovens/streaming-diff/view", search: "?repoKey=repo%2Fkey&worktreeKey=work+tree&session=session+1" }), "/r/repo%2Fkey/o/streaming-diff?worktreeKey=work+tree&session=session+1");
-  assert.equal(legacyRoute({ pathname: "/ovens/custom-oven/view", search: "?repoKey=repo%2Fkey&filter=active" }), "/r/repo%2Fkey/o/custom-oven?filter=active");
-  assert.equal(legacyRoute({ pathname: "/ovens/custom-oven/view", search: "?filter=active" }), "/ovens/custom-oven?filter=active");
-  assert.equal(legacyRoute({ pathname: "/r/repo/o/model-lab", search: "" }), null);
 });

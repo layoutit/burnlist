@@ -37,8 +37,10 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
+import { createOvenJsonSnapshotStore, OVEN_JSON_CACHE_MAX_BYTES } from "./oven-json-snapshot.mjs";
 import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
 import { serveOvenEventFeed } from "../events/oven-event-feed.mjs";
+import { createOvenEventObserver } from "../events/oven-event-observer.mjs";
 import { isolatedDashboardEntries } from "./dashboard-entry-isolation.mjs";
 import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import {
@@ -50,7 +52,7 @@ import {
   resolveCustomOvensDir,
   serializeOvenPackage,
 } from "./oven-storage.mjs";
-import { warmOvenHandler } from "./oven-warm.mjs";
+import { createOvenProjectionCoordinator } from "./oven-projection-coordinator.mjs";
 import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
 import {
   LIFECYCLES,
@@ -117,6 +119,11 @@ const initialPort = positiveInteger(args.get("port") ?? process.env.PORT ?? "451
 const autoPort = args.has("auto-port");
 const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "max-plan-bytes");
 const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
+const ovenJsonBudget = Math.min(OVEN_JSON_CACHE_MAX_BYTES, maxOvenDataBytes * 2);
+const ovenJsonSnapshots = createOvenJsonSnapshotStore({
+  maxCacheBytes: ovenJsonBudget,
+  maxActiveBytes: ovenJsonBudget,
+});
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
 const globalRuntimePath = join(os.homedir(), ".burnlist", "server.json");
@@ -375,6 +382,7 @@ function ovenHandlerContext({ id, oven, req, res, url, binding, bindingPath, ove
     binding,
     bindingPath: bindingPath ?? binding?.path,
     cache: cacheId ? ovenHandlerCaches.get(cacheId) : new Map(),
+    ovenJsonSnapshots,
     ovenDataBindings,
     maxOvenDataBytes,
     discoverBurnlists,
@@ -1120,6 +1128,9 @@ function serveDashboardShell(res) {
   serveDashboardFile(res, dashboardIndexPath);
 }
 if (!reportMode) mkdirSync(stateDir, { recursive: true });
+const ovenEventObserver = createOvenEventObserver({
+  resolveRepos: ovenScopeRepos,
+});
 
 function stopExistingIfRequested() {
   if (!args.has("stop") && !args.has("replace")) return;
@@ -1160,6 +1171,18 @@ function stopExistingIfRequested() {
 
 stopExistingIfRequested();
 
+const ovenProjectionCoordinator = reportMode ? null : createOvenProjectionCoordinator({
+  observer: ovenEventObserver,
+  snapshotStore: ovenJsonSnapshots,
+  handlers: listOvenHandlers(),
+  resolveBindings: resolvedOvenDataBindings,
+  createContext: (handler, ovenDataBindings) => ovenHandlerContext({
+    id: handler.id,
+    oven: { id: handler.id },
+    ovenDataBindings,
+  }),
+});
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
@@ -1199,7 +1222,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/events") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      serveOvenEventFeed({ req, res, url, repos: ovenScopeRepos(), json });
+      serveOvenEventFeed({ req, res, url, repos: ovenScopeRepos(), json, observer: ovenEventObserver });
       return;
     }
     if (url.pathname === "/api/ovens") {
@@ -1294,12 +1317,10 @@ const server = createServer(async (req, res) => {
       return;
     }
     const ovenIdPattern = "[a-z0-9]+(?:-[a-z0-9]+)*";
-    const ovenViewRoute = url.pathname.match(new RegExp(`^/ovens/(${ovenIdPattern})/view$`, "u"));
-    const isLegacyOvenView = Boolean(ovenViewRoute);
     const ovenCatalogRoute = new RegExp(`^/ovens/${ovenIdPattern}$`, "u").test(url.pathname);
     const repoOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/o/${ovenIdPattern}$`, "u").test(url.pathname);
     const burnlistOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/${ovenIdPattern}/o/${ovenIdPattern}$`, "u").test(url.pathname);
-    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || isLegacyOvenView || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;
@@ -1312,6 +1333,10 @@ const server = createServer(async (req, res) => {
     }
     json(res, Number.isInteger(error.status) ? error.status : 400, { error: error.message || "request failed" });
   }
+});
+server.once("close", () => {
+  ovenProjectionCoordinator?.stop();
+  ovenEventObserver.close();
 });
 
 function listen(port) {
@@ -1338,21 +1363,6 @@ function listen(port) {
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);
   });
-}
-
-if (!reportMode) {
-  for (const handler of listOvenHandlers()) {
-    if (typeof handler.warm !== "function" || !handler.warmIntervalMs) continue;
-    if (!handler.id) continue;
-    const warm = () => warmOvenHandler(
-      handler,
-      resolvedOvenDataBindings,
-      (context) => ovenHandlerContext(context),
-    );
-    warm();
-    const warmTimer = setInterval(warm, handler.warmIntervalMs);
-    warmTimer.unref();
-  }
 }
 
 listen(initialPort);

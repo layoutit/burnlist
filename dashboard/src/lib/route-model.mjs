@@ -92,12 +92,3 @@ export function streamingDiffFeedHref({ repoKey, worktreeKey, session } = {}) {
 export function differentialTestingScenarioHref({ repoKey, scenario } = {}) {
   return repoOvenHref({ repoKey, ovenId: "differential-testing", query: { scenario } });
 }
-
-export function legacyRoute({ pathname = "/", search = "" } = {}) {
-  const match = String(pathname).match(/^\/ovens\/([a-z0-9]+(?:-[a-z0-9]+)*)\/view$/u);
-  if (!match) return null;
-  const source = params(search);
-  const repoKey = source.get("repoKey");
-  source.delete("repoKey");
-  return repoOvenHref({ repoKey, ovenId: decode(match[1]), query: source });
-}

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   closeSync,
   constants,
@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, posix, resolve } from "node:path";
+import { publishOvenDataPublishedEvent } from "../events/oven-data-events.mjs";
 import { ovenId } from "../ovens/oven-contract.mjs";
 import {
   bindingStorePath,
@@ -120,14 +121,22 @@ function rollback(error, steps) {
   );
 }
 
-export function publishOvenData(repoRoot, id, serializedJson, boundAt, { hooks = {}, commit } = {}) {
+export function publishOvenData(repoRoot, id, serializedJson, boundAt, {
+  hooks = {},
+  commit,
+  publishDataEvent = publishOvenDataPublishedEvent,
+  onOvenEventError = () => {},
+} = {}) {
   const safeId = ovenId(id);
   const bytes = validatedBytes(serializedJson);
+  if (typeof publishDataEvent !== "function") throw new Error("Oven data event publisher must be a function.");
+  if (typeof onOvenEventError !== "function") throw new Error("Oven data event error observer must be a function.");
   if (!isTimestamp(boundAt)) throw new Error("Oven binding timestamp must be a valid ISO timestamp.");
   const logicalPath = canonicalLogicalPath(safeId);
   const root = resolve(repoRoot);
+  const contentDigest = createHash("sha256").update(bytes).digest("hex");
 
-  return withRepoStateLock(root, () => {
+  const publication = withRepoStateLock(root, () => {
     const dataPath = ensureDataDirectory(root, safeId);
     const storePath = bindingStorePath(root);
     const priorData = snapshot(dataPath);
@@ -169,4 +178,27 @@ export function publishOvenData(repoRoot, id, serializedJson, boundAt, { hooks =
       return rollback(error, steps);
     }
   });
+  const cursor = `sha256-${createHash("sha256")
+    .update(contentDigest)
+    .update("\0")
+    .update(publication.binding.boundAt)
+    .digest("hex")}`;
+  let event = null;
+  try {
+    event = publishDataEvent(root, {
+      ovenId: safeId,
+      subjectId: safeId,
+      cursor,
+      occurredAt: publication.binding.boundAt,
+      payload: {},
+    });
+    if (event && typeof event.then === "function") {
+      void Promise.resolve(event).catch(() => {});
+      throw new Error("Oven data event publisher must complete synchronously.");
+    }
+  } catch (error) {
+    event = null;
+    try { onOvenEventError(error, { ovenId: safeId, subjectId: safeId, cursor }); } catch {}
+  }
+  return { ...publication, cursor, event };
 }

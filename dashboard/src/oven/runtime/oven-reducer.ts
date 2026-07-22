@@ -12,7 +12,7 @@ export type OvenState = {
   payload: unknown;
   payloadRevision: number;
   scenario?: string; // User request key; accepted payloads remain the selector display authority.
-  refresh: { phase: RefreshPhase; error: unknown; generation: number };
+  refresh: { phase: RefreshPhase; error: unknown; generation: number; stale: boolean };
   controls: Record<string, string | boolean>;
   collections: Record<string, { pageIndex: number; pageSize: number; serverPage?: OvenServerPage }>;
   expanded: ReadonlySet<string>;
@@ -20,10 +20,11 @@ export type OvenState = {
 export type OvenControlSeed = Record<string, string | boolean>;
 export type OvenPageSeed = Record<string, OvenServerPage>;
 export type OvenAction =
-  | { type: "payloadRequested" }
+  | { type: "payloadRequested"; generation?: number }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
   | { type: "payloadUnchanged"; generation: number }
   | { type: "payloadRejected"; error: unknown; generation: number }
+  | { type: "payloadMissing"; error: unknown; generation: number }
   | { type: "scenarioSelected"; scenarioId: string }
   | { type: "modeSelected"; id: string; value: string }
   | { type: "queryChanged"; id: string; query: string }
@@ -142,7 +143,7 @@ export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls
     }];
   }));
   return {
-    payload, payloadRevision: 0, scenario: undefined, refresh: { phase: "idle", error: undefined, generation: 0 },
+    payload, payloadRevision: 0, scenario: undefined, refresh: { phase: "idle", error: undefined, generation: 0, stale: false },
     controls: normalizedControls(ir, payload, controls, serverControlIds(ir, collections)),
     collections,
     expanded: new Set(),
@@ -153,8 +154,12 @@ export function initOvenState(ir: OvenIr, payload: unknown = undefined, controls
 export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): OvenState {
   switch (action.type) {
     case "payloadRequested":
+      if (action.generation !== undefined) {
+        if (action.generation <= state.refresh.generation) return state;
+        return { ...state, refresh: { phase: "loading", error: undefined, generation: action.generation, stale: state.payload !== undefined } };
+      }
       if (state.refresh.phase === "loading" || state.refresh.phase === "running") return { ...state, refresh: { ...state.refresh, phase: "queued" } };
-      return { ...state, refresh: { phase: state.refresh.phase === "queued" ? "running" : "loading", error: undefined, generation: state.refresh.generation + 1 } };
+      return { ...state, refresh: { phase: state.refresh.phase === "queued" ? "running" : "loading", error: undefined, generation: state.refresh.generation + 1, stale: state.payload !== undefined } };
     case "payloadAccepted": {
       if (action.generation !== undefined && action.generation !== state.refresh.generation) return state;
       const controls = normalizedControls(ir, action.payload, state.controls, serverControlIds(ir, state.collections));
@@ -169,12 +174,19 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
           ...(serverPage ? { serverPage } : {}),
         }];
       }));
-      return { ...state, payload: action.payload, payloadRevision: state.payloadRevision + 1, controls, collections, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined } };
+      return { ...state, payload: action.payload, payloadRevision: state.payloadRevision + 1, controls, collections, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined, stale: false } };
     }
     case "payloadUnchanged":
-      return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined } };
+      return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "idle", error: undefined, stale: false } };
     case "payloadRejected":
-      return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "failed", error: action.error } };
+      return action.generation !== state.refresh.generation ? state : { ...state, refresh: { ...state.refresh, phase: state.refresh.phase === "queued" ? "queued" : "failed", error: action.error, stale: state.payload !== undefined } };
+    case "payloadMissing":
+      return action.generation !== state.refresh.generation ? state : {
+        ...state,
+        payload: undefined,
+        payloadRevision: state.payloadRevision + 1,
+        refresh: { ...state.refresh, phase: "failed", error: action.error, stale: false },
+      };
     case "scenarioSelected": return { ...state, scenario: action.scenarioId };
     case "modeSelected": return { ...state, controls: { ...state.controls, [action.id]: action.value } };
     case "queryChanged": return { ...state, controls: { ...state.controls, [action.id]: action.query }, collections: resetConsumers(state, ir, action.id) };

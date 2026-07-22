@@ -2,10 +2,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { App } from "@/App";
-import { legacyRoute } from "@/lib";
+import { browserOvenSnapshotClient } from "@/lib/oven-event-client.mjs";
 
-const redirected = legacyRoute({ pathname: window.location.pathname, search: window.location.search });
-if (redirected) window.history.replaceState(null, "", redirected);
+browserOvenSnapshotClient.start();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

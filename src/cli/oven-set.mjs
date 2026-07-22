@@ -34,7 +34,22 @@ function invalidData(id, errors) {
   return new Error(`Oven ${id} data validation failed:\n${details}`);
 }
 
-export function setOvenDataFromCli({ positionals, repoRoot, launchCwd, findOven, now = () => new Date() }) {
+function eventWarning(error) {
+  const detail = String(error?.message ?? error ?? "unknown error")
+    .replace(/[\u0000-\u001f\u007f]+/gu, " ")
+    .trim()
+    .slice(0, 200);
+  return `Canonical Oven data was set, but its observational event failed: ${detail || "unknown error"}`;
+}
+
+export function setOvenDataFromCli({
+  positionals,
+  repoRoot,
+  launchCwd,
+  findOven,
+  now = () => new Date(),
+  publishDataEvent,
+}) {
   const [id, input, ...extra] = positionals;
   if (!id || input === undefined || extra.length > 0) {
     throw new Error("Usage: burnlist oven set <id> <path|-|json> [--repo <path>]");
@@ -49,14 +64,19 @@ export function setOvenDataFromCli({ positionals, repoRoot, launchCwd, findOven,
   });
   if (!validation.ok) throw invalidData(oven.id, validation.errors);
   assertGitIgnored(repoRoot, dataPath);
+  const observerWarnings = [];
   const saved = publishOvenData(
     repoRoot,
     oven.id,
     `${JSON.stringify(payload, null, 2)}\n`,
     now().toISOString(),
+    {
+      ...(publishDataEvent ? { publishDataEvent } : {}),
+      onOvenEventError(error) { observerWarnings.push(eventWarning(error)); },
+    },
   );
   return {
-    warnings: validation.warnings,
+    warnings: [...validation.warnings, ...observerWarnings],
     output: `Set Oven ${oven.id} data.\nData: ${saved.dataPath}\nBinding: ${saved.bindingPath}`,
   };
 }

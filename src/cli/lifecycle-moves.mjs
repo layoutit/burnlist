@@ -21,6 +21,10 @@ import {
 } from "../server/plan-model.mjs";
 import { safeStat, withLock } from "../server/fs-safe.mjs";
 import { publishOvenEvent } from "../events/oven-event-store.mjs";
+import {
+  ovenLifecycleChangedInput,
+  publishCanonicalMutation,
+} from "../events/oven-canonical-mutations.mjs";
 
 export { withLock } from "../server/fs-safe.mjs";
 
@@ -103,7 +107,21 @@ function reclaimEmptyTarget(targetDir, id) {
   }
 }
 
-export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
+function lifecycleEventError(id, from, to, error) {
+  console.warn(`Moved Burnlist ${id} from ${from} to ${to}, but could not publish its observational Oven event: ${error.message}`);
+}
+
+export function publishLifecycleChange(repoRoot, id, from, to, {
+  occurredAt = localIsoTimestamp(),
+  publishEvent,
+  onError = (error) => lifecycleEventError(id, from, to, error),
+} = {}) {
+  return publishCanonicalMutation(repoRoot, ovenLifecycleChangedInput({
+    burnlistId: id, from, to, occurredAt,
+  }), { ...(publishEvent ? { publishEvent } : {}), onError });
+}
+
+export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove, eventOptions }) {
   assertValidBurnlistId(id);
   const sourceLifecycle = LIFECYCLES.find((lifecycle) => lifecycle.folder === from);
   const sourceDir = join(lifecycleRoot(repoRoot, sourceLifecycle), id);
@@ -113,7 +131,7 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
   }
   const targetRoot = join(repoRoot, "notes", "burnlists", to);
   const targetDir = join(targetRoot, id);
-  return withLock(sourceDir, ({ retarget }) => {
+  const result = withLock(sourceDir, ({ retarget }) => {
     const plan = parsePlan(join(sourceDir, "burnlist.md"));
     validateOrThrow(plan);
     gate(plan);
@@ -130,9 +148,11 @@ export function moveLifecycle({ repoRoot, id, from, to, gate, afterMove }) {
     console.log(`${id}  ${from} -> ${to}`);
     return targetDir;
   });
+  publishLifecycleChange(repoRoot, id, from, to, eventOptions);
+  return result;
 }
 
-export function readyLifecycle(repoRoot, id) {
+export function readyLifecycle(repoRoot, id, eventOptions) {
   return moveLifecycle({
     repoRoot,
     id,
@@ -146,19 +166,20 @@ export function readyLifecycle(repoRoot, id) {
       const contentful = plan.items.some((item) => item.id.trim() || item.title.trim());
       if (!contentful) throw new Error("not ready: active checklist is empty");
     },
+    eventOptions,
   });
 }
 
-export function startLifecycle(repoRoot, id) {
-  return moveLifecycle({ repoRoot, id, from: "ready", to: "inprogress", gate() {} });
+export function startLifecycle(repoRoot, id, eventOptions) {
+  return moveLifecycle({ repoRoot, id, from: "ready", to: "inprogress", gate() {}, eventOptions });
 }
 
-export function closeLifecycle(repoRoot, id) {
+export function closeLifecycle(repoRoot, id, eventOptions) {
   assertValidBurnlistId(id);
   const inprogressDir = join(repoRoot, "notes", "burnlists", "inprogress", id);
   const completedDir = join(repoRoot, "notes", "burnlists", "completed", id);
   if (!safeStat(inprogressDir)?.isDirectory() && safeStat(completedDir)?.isDirectory()) {
-    return withLock(completedDir, () => {
+    const result = withLock(completedDir, () => {
       const plan = parsePlan(join(completedDir, "burnlist.md"));
       validateOrThrow(plan);
       assertCloseGate(plan);
@@ -166,6 +187,8 @@ export function closeLifecycle(repoRoot, id) {
       console.log(repaired ? `${id} completed (digest repaired)` : `${id} already completed`);
       return completedDir;
     });
+    publishLifecycleChange(repoRoot, id, "inprogress", "completed", eventOptions);
+    return result;
   }
   return moveLifecycle({
     repoRoot,
@@ -174,6 +197,7 @@ export function closeLifecycle(repoRoot, id) {
     to: "completed",
     gate: assertCloseGate,
     afterMove: appendCompletionDigestIfMissing,
+    eventOptions,
   });
 }
 

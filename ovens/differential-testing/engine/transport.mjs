@@ -50,10 +50,11 @@ export function isDifferentialTestingBundle(value) {
 }
 
 export function readDifferentialTestingBundleManifest(path, {
-  maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES,
+  maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES, readSource = readBoundedFile,
 } = {}) {
   const readPath = regularContainedFile(resolve(path), dirname(resolve(path)), "Differential Testing bundle manifest");
-  const bytes = readBoundedFile(readPath, maxDocumentBytes, "Differential Testing bundle manifest");
+  const bytes = readSource(readPath, maxDocumentBytes, "Differential Testing bundle manifest");
+  if (!Buffer.isBuffer(bytes) || bytes.length > maxDocumentBytes) fail(`Differential Testing bundle manifest exceeds ${maxDocumentBytes} bytes`, 413);
   const manifest = parseJson(bytes, "Differential Testing bundle manifest");
   assertOnlyKeys(manifest, new Set(["schema", "publishedAt", "scenarioCatalog", "scenarioBindings", "emptyData"]), "bundle manifest");
   if (manifest.schema !== DIFFERENTIAL_TESTING_BUNDLE_SCHEMA) fail(`bundle schema must equal ${DIFFERENTIAL_TESTING_BUNDLE_SCHEMA}`);
@@ -96,17 +97,17 @@ export function readDifferentialTestingBundleManifest(path, {
     scenarioBindings: byId,
   };
 }
-
 export function readDifferentialTestingBundleScenario(bundle, requestedScenarioId, {
   maxDocumentBytes = DEFAULT_MAX_DOCUMENT_BYTES,
   maxRecordsBytes = DEFAULT_MAX_RECORDS_BYTES,
-  maxRecordBytes = DEFAULT_MAX_RECORD_BYTES,
+  maxRecordBytes = DEFAULT_MAX_RECORD_BYTES, readSource = readBoundedFile,
 } = {}) {
   const id = scenarioId(requestedScenarioId, "requested scenario id");
   const binding = bundle.scenarioBindings.get(id);
   if (!binding) throw new DifferentialTestingTransportError(`scenario ${id} is not in the published bundle`, 404);
   const scenarioPath = regularContainedFile(resolveRelative(bundle.root, binding.path, "scenario binding"), bundle.root, `scenario ${id}`);
-  const scenarioBytes = readBoundedFile(scenarioPath, maxDocumentBytes, `Differential Testing scenario ${id}`);
+  const scenarioBytes = readSource(scenarioPath, maxDocumentBytes, `Differential Testing scenario ${id}`);
+  if (!Buffer.isBuffer(scenarioBytes) || scenarioBytes.length > maxDocumentBytes) fail(`Differential Testing scenario ${id} exceeds ${maxDocumentBytes} bytes`, 413);
   if (scenarioBytes.length !== binding.size || sha256(scenarioBytes) !== binding.sha256) fail(`scenario binding changed for ${id}`);
   const scenario = parseJson(scenarioBytes, `Differential Testing scenario ${id}`);
   assertOnlyKeys(scenario, new Set(["schema", "scenarioId", "data", "frameDelta", "fieldIndex", "records"]), `scenario ${id}`);
@@ -147,11 +148,10 @@ export function readDifferentialTestingBundleScenario(bundle, requestedScenarioI
     frameDeltaMetrics: validation.frameDeltaMetrics,
     fieldIndex: validation.fieldIndex,
     recordsPath,
-    recordsSignature: fileSignature(recordsPath),
+    recordsSignature: differentialTestingRecordsSignature(recordsPath),
     scenarioSha256: binding.sha256,
   };
 }
-
 export function assertDifferentialTestingBundle(path, options = {}) {
   const bundle = readDifferentialTestingBundleManifest(path, options);
   for (const scenario of bundle.scenarios) readDifferentialTestingBundleScenario(bundle, scenario.id, options);
@@ -191,7 +191,7 @@ export function queryDifferentialTestingFieldPage(scenario, {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const normalizedPage = Math.min(page, pageCount - 1);
   const selected = matches.slice(normalizedPage * pageSize, normalizedPage * pageSize + pageSize);
-  if (fileSignature(scenario.recordsPath) !== scenario.recordsSignature) fail(`scenario ${scenario.scenarioId} records changed after validation`);
+  if (differentialTestingRecordsSignature(scenario.recordsPath) !== scenario.recordsSignature) fail(`scenario ${scenario.scenarioId} records changed after validation`);
   const records = selected.map((entry) => readBoundRecord(scenario.recordsPath, scenario.scenarioId, entry));
   return {
     search: query,
@@ -601,7 +601,7 @@ function hashFile(path) {
   }
 }
 
-function fileSignature(path) {
+export function differentialTestingRecordsSignature(path) {
   const stat = statSync(path);
   return `${stat.dev}\0${stat.ino}\0${stat.size}\0${stat.mtimeMs}`;
 }

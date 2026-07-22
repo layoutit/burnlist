@@ -1,7 +1,7 @@
 <oven id="performance-tracing"
       version="0.1.0"
       contract="burnlist-differential-testing-data@1"
-      refresh-seconds="2"
+      refresh-seconds="30"
       theme="differential-testing">
   <switch source="/pageMode">
     <case value="empty">

@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 import { normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
 
 const packageRoot = resolve(new URL("../..", import.meta.url).pathname);
@@ -76,6 +77,7 @@ test("oven adopt copies a shipped built-in into a repo with a valid pin", () => 
     assert.match(output, /Adopted Oven checklist/u);
     assert.ok(output.includes(directory));
     assert.ok(output.includes(`${builtInId}@${pin.version}`));
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: [builtInId] }).map((event) => event.payload.action), ["adopted"]);
   } finally { context.cleanup(); }
 });
 
@@ -140,6 +142,10 @@ test("oven upgrade is opt-in and re-copies the shipped source after adoption", a
     assert.ok(output.includes(vendoredPath(context)));
     assert.ok(output.includes(`${builtInId}@${after.version}`));
     assert.ok(output.includes(after.revision));
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: [builtInId] }).map((event) => event.payload.action), [
+      "adopted",
+      "upgraded",
+    ]);
   } finally { context.cleanup(); }
 });
 

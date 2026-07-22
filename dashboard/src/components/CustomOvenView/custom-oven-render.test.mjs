@@ -16,7 +16,7 @@ const ovenSource = `<oven id="widget-oven" version="0.1.0" contract="checklist-p
   </kpi-strip>
 </oven>`;
 
-test("custom Oven runtime modes preserve live standalone polling and controlled Burnlist data", { timeout: 20_000 }, async () => {
+test("custom Oven runtime modes use canonical live snapshots and controlled Burnlist data", { timeout: 20_000 }, async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".custom-oven-render-test-"));
   try {
     const runtimeOutput = join(outputDir, "CustomOvenView.mjs");
@@ -38,18 +38,16 @@ test("custom Oven runtime modes preserve live standalone polling and controlled 
 
     const payload = { widget: { name: "Sprockets", count: 42 } };
     const ir = { ...compiled.ir, refreshSeconds: 7 };
-    const standalone = CustomOvenRuntime({ loaded: { ir, payload } });
+    const standalone = CustomOvenRuntime({ ir });
     assert.equal(standalone.props.ir, ir);
-    assert.equal(standalone.props.initialPayload, payload);
+    assert.equal("initialPayload" in standalone.props, false);
     assert.equal("payload" in standalone.props, false);
     assert.equal(standalone.props.ir.refreshSeconds, 7);
     assert.equal(typeof standalone.props.adapt, "function");
 
-    const markup = renderToStaticMarkup(standalone);
-    assert.match(markup, /Sprockets/u);
-    assert.match(markup, />42</u);
+    assert.match(renderToStaticMarkup(standalone), /Loading Oven data/u);
 
-    const burnlist = CustomOvenRuntime({ burnlistId: "260722-001", loaded: { ir, payload } });
+    const burnlist = CustomOvenRuntime({ burnlistId: "260722-001", ir, payload });
     const controlled = burnlist.props.children[1];
     assert.equal(controlled.props.payload, payload);
     assert.equal("initialPayload" in controlled.props, false);

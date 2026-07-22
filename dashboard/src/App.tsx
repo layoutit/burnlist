@@ -11,8 +11,8 @@ export function App() {
   const selected = useMemo(selectedBurnlist, [window.location.pathname, window.location.search]);
   const repoKey = ovenRepoKey();
   const [filter, setFilter] = useState(() => filterFromUrl(FILTERS));
-  const dashboardSection = ["landing", "burnlist", "streaming-diff"].includes(section) ? "burnlists" : section;
-  const { projects, progress, error, loading } = useDashboardData({ section: dashboardSection, selected });
+  const dashboardSection = ["landing", "burnlist", "streaming-diff"].includes(section) || (section === "custom-oven" && selected) ? "burnlists" : section;
+  const { projects, progress, error, loading, stale } = useDashboardData({ section: dashboardSection, selected });
   const checklistRepoKey = checklistOvenRepoKey(progress, selected);
   const visibleBurnlistCount = projects.reduce((total, project) => total + project.entries.filter((entry) => filter === "all" || entry.status === filter).length, 0);
   const visibleProjectCount = projects.filter((project) => project.entries.some((entry) => filter === "all" || entry.status === filter)).length;
@@ -32,10 +32,10 @@ export function App() {
     <div className="dashboard-app">
       <AppHeader detail={progress} section={section} />
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
-        {section === "differential-testing" ? <OvenDefinition id="differential-testing" repoKey={repoKey}>{(ir) => <DifferentialTestingOvenPage ir={ir} />}</OvenDefinition> : section === "model-lab" ? <OvenDefinition id="model-lab" repoKey={repoKey}>{(ir) => <ModelLabPage ir={ir} />}</OvenDefinition> : section === "performance-tracing" ? <OvenDefinition id="performance-tracing" repoKey={repoKey}>{(ir) => <PerformanceTracingOvenPage ir={ir} />}</OvenDefinition> : section === "streaming-diff" ? <OvenDefinition id="streaming-diff" repoKey={repoKey}>{(ir) => <StreamingDiff ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "visual-parity" ? <OvenDefinition id="visual-parity" repoKey={repoKey}>{(ir) => <VisualParityPage ir={ir} />}</OvenDefinition> : section === "custom-oven" ? <CustomOvenView /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
-          error ? <DashboardError message={error} /> : loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
-            <><LensSwitcher /><OvenDefinition id="checklist" repoKey={checklistRepoKey}>{(ir) => <ChecklistOvenView data={progress} ir={ir} />}</OvenDefinition></>
-          ) : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
+        {section === "differential-testing" ? <OvenDefinition id="differential-testing" repoKey={repoKey}>{(ir) => <DifferentialTestingOvenPage ir={ir} />}</OvenDefinition> : section === "model-lab" ? <OvenDefinition id="model-lab" repoKey={repoKey}>{(ir) => <ModelLabPage ir={ir} />}</OvenDefinition> : section === "performance-tracing" ? <OvenDefinition id="performance-tracing" repoKey={repoKey}>{(ir) => <PerformanceTracingOvenPage ir={ir} />}</OvenDefinition> : section === "streaming-diff" ? <OvenDefinition id="streaming-diff" repoKey={repoKey}>{(ir) => <StreamingDiff ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "visual-parity" ? <OvenDefinition id="visual-parity" repoKey={repoKey}>{(ir) => <VisualParityPage ir={ir} />}</OvenDefinition> : section === "custom-oven" ? <CustomOvenView error={error} loading={loading} progress={progress} stale={stale} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
+          loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
+            <>{(error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}<LensSwitcher /><OvenDefinition id="checklist" repoKey={checklistRepoKey}>{(ir) => <ChecklistOvenView data={progress} ir={ir} />}</OvenDefinition></>
+          ) : error ? <DashboardError message={error} /> : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
         ) : (
           <section className="dashboard-index">
             <div className="dashboard-index-header">
@@ -48,9 +48,10 @@ export function App() {
                 <Filters filter={filter} onFilterChange={updateFilter} />
               </div>
             </div>
-            {error ? <DashboardError message={error} /> : projects.length && visibleBurnlistCount ? (
+            {(error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist index while fresh data loads."} />}
+            {projects.length && visibleBurnlistCount ? (
               <div className="dashboard-project-groups"><BurnlistTable showStatus={filter === "all"}>{projects.map((project) => <ProjectGroup filter={filter} key={project.canonicalRoot} project={project} />)}</BurnlistTable></div>
-            ) : projects.length ? <EmptyState title="No Burnlists in this view" detail="Choose another lifecycle filter." /> : <EmptyState title="Nothing here yet" detail="Run `burnlist init` to initialize this repository." />}
+            ) : projects.length ? <EmptyState title="No Burnlists in this view" detail="Choose another lifecycle filter." /> : error ? null : <EmptyState title="Nothing here yet" detail="Run `burnlist init` to initialize this repository." />}
           </section>
         )}
       </main>

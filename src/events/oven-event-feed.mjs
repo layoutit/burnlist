@@ -1,19 +1,17 @@
 import { ovenId } from "../ovens/oven-contract.mjs";
-import {
-  openOvenEventStreams,
-  OVEN_EVENT_MAX_READ_EVENTS,
-  OVEN_EVENT_MAX_READ_STREAMS,
-} from "./oven-event-store.mjs";
+import { OVEN_EVENT_MAX_READ_EVENTS } from "./oven-event-store.mjs";
+import { readOvenEventDeliveries } from "./oven-event-deliveries.mjs";
+import { createOvenEventObserver } from "./oven-event-observer.mjs";
+
+export { readOvenEventDeliveries } from "./oven-event-deliveries.mjs";
 
 const replayCursorPattern = /^oev1-[A-Za-z0-9_-]{2,8192}$/u;
 const watermarkKeyPattern = /^[a-f0-9]{12}\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const repoKeyPattern = /^[a-f0-9]{12}$/u;
-const allowedQueryKeys = new Set(["after", "limit", "ovenId", "repoKey", "stream"]);
+const allowedQueryKeys = new Set(["after", "limit", "ovenId", "repoKey", "stream", "tail"]);
 const MAX_STREAM_SUBSCRIBERS = 32;
 const MAX_FEED_REPOS = 32;
 const MAX_FEED_STREAMS = 64;
-const MAX_FEED_WARNINGS = 64;
-let activeStreamSubscribers = 0;
 
 function requestError(message, status = 400) {
   return Object.assign(new Error(message), { status });
@@ -90,7 +88,6 @@ export function ovenEventFeedSelection(url, repos, headers = {}) {
   const headerValue = headers["last-event-id"];
   const headerAfter = typeof headerValue === "string" ? headerValue.trim() : "";
   const queryAfter = one(url, "after") ?? "";
-  if (headerAfter && queryAfter && headerAfter !== queryAfter) throw requestError("after and Last-Event-ID disagree.");
   const limitText = one(url, "limit");
   const limit = limitText === null ? 256 : Number(limitText);
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > OVEN_EVENT_MAX_READ_EVENTS) {
@@ -98,127 +95,25 @@ export function ovenEventFeedSelection(url, repos, headers = {}) {
   }
   const streamValue = one(url, "stream");
   if (streamValue !== null && streamValue !== "1") throw requestError("stream must be 1 when supplied.");
+  const tailValue = one(url, "tail");
+  if (tailValue !== null && tailValue !== "1") throw requestError("tail must be 1 when supplied.");
+  if (tailValue === "1" && (headerAfter || queryAfter)) throw requestError("tail cannot be combined with after or Last-Event-ID.");
+  if (tailValue === "1" && streamValue === "1") throw requestError("tail cannot be combined with stream.");
   return {
     repos: selectedRepos(repos, repoKeys),
     ovenIds,
+    // Native EventSource reconnects retain the original query while advancing
+    // Last-Event-ID. The header is therefore the authoritative reconnect cursor.
     watermarks: decodeOvenEventReplayCursor(headerAfter || queryAfter || null),
     limit,
     stream: streamValue === "1",
+    tail: tailValue === "1",
   };
 }
 
-function repoAfterSequences(watermarks, repoKey) {
-  const result = {};
-  const prefix = `${repoKey}/`;
-  for (const [key, sequence] of Object.entries(watermarks)) {
-    if (key.startsWith(prefix)) result[key.slice(prefix.length)] = sequence;
-  }
-  return result;
-}
-
-function delivery(repo, event) {
-  return {
-    deliveryId: `${repo.repoKey}:${event.ovenId}:${event.sequence}:${event.eventId}`,
-    repoKey: repo.repoKey,
-    repo: repo.name,
-    ...event,
-  };
-}
-
-function warningCollector() {
-  const warnings = [];
-  const seen = new Set();
-  return {
-    warnings,
-    add(repoKey, error) {
-      const warning = { repoKey, code: error?.code ?? "EOBSERVER", error: error?.message ?? String(error) };
-      const signature = JSON.stringify(warning);
-      if (seen.has(signature)) return;
-      seen.add(signature);
-      if (warnings.length < MAX_FEED_WARNINGS) warnings.push(warning);
-    },
-  };
-}
-
-function compareHeads(left, right) {
-  return left.current.occurredAt.localeCompare(right.current.occurredAt) || left.key.localeCompare(right.key);
-}
-
-function heapDown(heap, start) {
-  let index = start;
-  while (true) {
-    const left = index * 2 + 1;
-    const right = left + 1;
-    let smallest = index;
-    if (left < heap.length && compareHeads(heap[left], heap[smallest]) < 0) smallest = left;
-    if (right < heap.length && compareHeads(heap[right], heap[smallest]) < 0) smallest = right;
-    if (smallest === index) return;
-    [heap[index], heap[smallest]] = [heap[smallest], heap[index]];
-    index = smallest;
-  }
-}
-
-export function readOvenEventDeliveries(repos, { ovenIds = [], watermarks = {}, limit = 256 } = {}) {
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > OVEN_EVENT_MAX_READ_EVENTS) {
-    throw requestError(`limit must be an integer from 1 to ${OVEN_EVENT_MAX_READ_EVENTS}.`);
-  }
-  const observed = warningCollector();
-  const sources = [];
-  const streamKeys = [];
-  let streamCount = 0;
-  for (const repo of repos) {
-    let streams;
-    try {
-      streams = openOvenEventStreams(repo.root, {
-        ovenIds,
-        afterSequences: repoAfterSequences(watermarks, repo.repoKey),
-        maxStreams: OVEN_EVENT_MAX_READ_STREAMS,
-        onInvalid: (error) => observed.add(repo.repoKey, error),
-      });
-    } catch (error) {
-      if (error?.code === "ESTREAMLIMIT") throw requestError(error.message, 413);
-      observed.add(repo.repoKey, error);
-      continue;
-    }
-    if (streamCount + streams.length > MAX_FEED_STREAMS) {
-      throw requestError(`The event feed spans more than ${MAX_FEED_STREAMS} streams; filter by repoKey or ovenId.`, 413);
-    }
-    streamCount += streams.length;
-    for (const reader of streams) {
-      streamKeys.push(`${repo.repoKey}/${reader.ovenId}`);
-      const event = reader.next();
-      if (event) sources.push({ key: `${repo.repoKey}/${event.ovenId}`, repo, reader, current: delivery(repo, event) });
-    }
-  }
-  const heap = sources;
-  for (let index = Math.floor(heap.length / 2) - 1; index >= 0; index -= 1) heapDown(heap, index);
-  const deliveries = [];
-  while (heap.length && deliveries.length < limit + 1) {
-    const head = heap[0];
-    deliveries.push(head.current);
-    const next = head.reader.next();
-    if (next) head.current = delivery(head.repo, next);
-    else {
-      heap[0] = heap.at(-1);
-      heap.pop();
-    }
-    if (heap.length) heapDown(heap, 0);
-  }
-  return { deliveries, warnings: observed.warnings, streamKeys };
-}
-
-function advancedWatermarks(watermarks, deliveries) {
-  const next = { ...watermarks };
-  for (const item of deliveries) {
-    const key = `${item.repoKey}/${item.ovenId}`;
-    next[key] = Math.max(next[key] ?? 0, item.sequence);
-  }
-  return next;
-}
-
-function scopedWatermarks(watermarks, streamKeys = [], deliveries = []) {
+function scopedWatermarks(watermarks, streamKeys = [], deliveries = [], startWatermarks = {}) {
   const next = {};
-  for (const key of streamKeys) next[key] = watermarks[key] ?? 0;
+  for (const key of streamKeys) next[key] = startWatermarks[key] ?? watermarks[key] ?? 0;
   for (const item of deliveries) {
     const key = `${item.repoKey}/${item.ovenId}`;
     next[key] = Math.max(next[key] ?? 0, item.sequence);
@@ -241,6 +136,7 @@ export function serveOvenEventFeed({
   maxSubscribers = MAX_STREAM_SUBSCRIBERS,
   timers = { setInterval, clearInterval },
   readDeliveries = readOvenEventDeliveries,
+  observer,
 }) {
   const selection = ovenEventFeedSelection(url, repos, req.headers);
   const acceptsSse = String(req.headers.accept ?? "").includes("text/event-stream");
@@ -248,97 +144,65 @@ export function serveOvenEventFeed({
   if (!Number.isSafeInteger(maxSubscribers) || maxSubscribers < 1 || maxSubscribers > MAX_STREAM_SUBSCRIBERS) {
     throw new Error(`Oven event subscriber limit must be from 1 to ${MAX_STREAM_SUBSCRIBERS}.`);
   }
-  if (streaming && activeStreamSubscribers >= maxSubscribers) throw requestError("Too many Oven event subscribers.", 429);
-  const initial = readDeliveries(selection.repos, selection);
+  const eventObserver = observer ?? createOvenEventObserver({
+    resolveRepos: () => repos,
+    ...(readDeliveries === readOvenEventDeliveries ? {} : { readDeliveries }),
+    scanIntervalMs,
+    maxSubscribers,
+    timers,
+  });
+  const ownedObserver = !observer;
+  if (selection.tail) {
+    if (streaming) throw requestError("tail is available only as JSON.");
+    const baseline = eventObserver.baseline(selection);
+    json(res, 200, {
+      schema: "burnlist-oven-event-feed@1",
+      generatedAt: new Date().toISOString(),
+      cursor: encodeOvenEventReplayCursor(baseline.watermarks),
+      baseline: true,
+      total: 0,
+      truncated: false,
+      events: [],
+      warnings: baseline.warnings,
+    });
+    return;
+  }
   if (!streaming) {
+    const initial = readDeliveries(selection.repos, selection);
     const events = initial.deliveries.slice(0, selection.limit);
     json(res, 200, {
       schema: "burnlist-oven-event-feed@1",
       generatedAt: new Date().toISOString(),
-      cursor: encodeOvenEventReplayCursor(scopedWatermarks(selection.watermarks, initial.streamKeys, events)),
+      cursor: encodeOvenEventReplayCursor(scopedWatermarks(
+        selection.watermarks, initial.streamKeys, events, initial.startWatermarks,
+      )),
       total: events.length,
       truncated: events.length < initial.deliveries.length,
       events,
       warnings: initial.warnings,
+      resets: initial.resets ?? [],
     });
     return;
   }
-  activeStreamSubscribers += 1;
+  eventObserver.prepare();
+  if (!eventObserver.canSubscribe()) throw requestError("Too many Oven event subscribers.", 429);
   let closed = false;
-  let waitingDrain = false;
-  let scanTimer = null;
-  let keepAliveTimer = null;
-  let watermarks = scopedWatermarks(selection.watermarks, initial.streamKeys);
-  let pending = [];
-  let pendingIndex = 0;
-  const reportedWarnings = new Set();
+  let subscription = null;
+  let lastKeepAlive = Date.now();
 
   const cleanup = () => {
     if (closed) return;
     closed = true;
-    activeStreamSubscribers = Math.max(0, activeStreamSubscribers - 1);
-    if (scanTimer !== null) timers.clearInterval(scanTimer);
-    if (keepAliveTimer !== null) timers.clearInterval(keepAliveTimer);
-    res.off?.("drain", onDrain);
+    subscription?.unsubscribe();
     res.off?.("close", cleanup);
     res.off?.("error", cleanup);
     res.off?.("finish", cleanup);
     req.off?.("aborted", cleanup);
+    if (ownedObserver) eventObserver.close();
   };
   const closeStream = () => {
     cleanup();
     if (!res.destroyed) res.destroy?.();
-  };
-  const onDrain = () => {
-    waitingDrain = false;
-    pump();
-  };
-  const queueBatch = (batch) => {
-    for (const warning of batch.warnings ?? []) {
-      const signature = JSON.stringify(warning);
-      if (reportedWarnings.has(signature) || reportedWarnings.size >= MAX_FEED_WARNINGS) continue;
-      reportedWarnings.add(signature);
-      pending.push({ type: "warning", value: warning });
-    }
-    for (const item of batch.deliveries.slice(0, selection.limit)) pending.push({ type: "delivery", value: item });
-  };
-  function pump() {
-    if (closed || waitingDrain) return;
-    try {
-      while (!closed && pendingIndex < pending.length) {
-        const frame = pending[pendingIndex];
-        pendingIndex += 1;
-        let accepted;
-        if (frame.type === "delivery") {
-          watermarks = advancedWatermarks(watermarks, [frame.value]);
-          accepted = writeSse(res, "oven-event", frame.value, encodeOvenEventReplayCursor(watermarks));
-        } else accepted = writeSse(res, "observer-error", frame.value);
-        if (!accepted) {
-          waitingDrain = true;
-          res.once("drain", onDrain);
-          return;
-        }
-      }
-      pending = [];
-      pendingIndex = 0;
-    } catch { closeStream(); }
-  }
-  const scan = () => {
-    if (closed || waitingDrain || pendingIndex < pending.length) return;
-    try { queueBatch(readDeliveries(selection.repos, { ...selection, watermarks })); }
-    catch (error) {
-      queueBatch({ deliveries: [], warnings: [{ code: error?.code ?? "EOBSERVER", error: error?.message ?? String(error) }] });
-    }
-    pump();
-  };
-  const keepAlive = () => {
-    if (closed || waitingDrain || pendingIndex < pending.length) return;
-    try {
-      if (!res.write(`: keepalive ${Date.now()}\n\n`)) {
-        waitingDrain = true;
-        res.once("drain", onDrain);
-      }
-    } catch { closeStream(); }
   };
 
   try {
@@ -352,17 +216,46 @@ export function serveOvenEventFeed({
     res.once("error", cleanup);
     res.once("finish", cleanup);
     req.once?.("aborted", cleanup);
-    queueBatch(initial);
     if (!res.write("retry: 1000\n\n")) {
-      waitingDrain = true;
-      res.once("drain", onDrain);
-    } else pump();
-    if (!closed) {
-      scanTimer = timers.setInterval(scan, scanIntervalMs);
-      keepAliveTimer = timers.setInterval(keepAlive, keepAliveMs);
-      scanTimer?.unref?.();
-      keepAliveTimer?.unref?.();
+      closeStream();
+      return;
     }
+    subscription = eventObserver.subscribe(selection, {
+      onDelivery(item, watermarks) {
+        if (closed) return false;
+        try {
+          const accepted = writeSse(res, "oven-event", item, encodeOvenEventReplayCursor(watermarks));
+          if (!accepted) closeStream();
+          return accepted;
+        } catch { closeStream(); return false; }
+      },
+      onReset(item, watermarks) {
+        if (closed) return false;
+        try {
+          const accepted = writeSse(res, "oven-reset", item, encodeOvenEventReplayCursor(watermarks));
+          if (!accepted) closeStream();
+          return accepted;
+        } catch { closeStream(); return false; }
+      },
+      onWarning(item) {
+        if (closed) return false;
+        try {
+          const accepted = writeSse(res, "observer-error", item);
+          if (!accepted) closeStream();
+          return accepted;
+        } catch { closeStream(); return false; }
+      },
+      onIdle(at) {
+        if (closed || at - lastKeepAlive < keepAliveMs) return !closed;
+        lastKeepAlive = at;
+        try {
+          const accepted = res.write(`: keepalive ${at}\n\n`);
+          if (!accepted) closeStream();
+          return accepted;
+        } catch { closeStream(); return false; }
+      },
+      onClose: closeStream,
+    });
   } catch (error) {
     cleanup();
     if (res.headersSent) res.destroy?.();

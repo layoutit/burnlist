@@ -29,8 +29,8 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
-    "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
-    "test:model-lab": "node --test ovens/model-lab/engine/model-lab-contract.test.mjs",
+    "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/handler.test.mjs ovens/differential-testing/engine/query-projection-cache.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
+    "test:model-lab": "node --test ovens/model-lab/engine/model-lab-contract.test.mjs ovens/model-lab/engine/model-lab-handler.test.mjs",
     "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
     "test:visual-parity": "node --test ovens/visual-parity/contract.test.mjs ovens/visual-parity/handler.test.mjs ovens/visual-parity/handler-cache-lifecycle.test.mjs",
     "verify": "node scripts/verify.mjs",

@@ -1,0 +1,20 @@
+.oven-runtime-state {
+  margin: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 0.5rem;
+  color: var(--foreground, #111827);
+  background: var(--card, #fff);
+}
+
+.oven-runtime-state.is-stale {
+  border-color: #d97706;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.oven-runtime-state.is-error {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #991b1b;
+}

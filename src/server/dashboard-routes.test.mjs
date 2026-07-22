@@ -16,8 +16,13 @@ test("reserved and path-scoped dashboard routes serve the SPA shell", { timeout:
       "/ovens/example-oven",
       "/r/aaaaaaaaaaaa/o/model-lab",
       "/r/aaaaaaaaaaaa/fixture/o/streaming-diff",
-      "/ovens/example-oven/view",
     ]) assert.equal((await httpGet(baseUrl, pathname)).status, 200);
+  });
+});
+
+test("legacy Oven view routes are not live dashboard implementations", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
+    assert.equal((await httpGet(baseUrl, "/ovens/example-oven/view")).status, 404);
   });
 });
 

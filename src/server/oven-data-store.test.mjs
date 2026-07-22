@@ -14,6 +14,8 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
+import { publishOvenDataPublishedEvent } from "../events/oven-data-events.mjs";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 import { bindingStorePath, readBindingStore, writeBinding } from "./oven-bindings.mjs";
 import {
   canonicalOvenDataPath,
@@ -22,6 +24,7 @@ import {
 
 const FIRST_AT = "2026-07-22T00:00:00.000Z";
 const SECOND_AT = "2026-07-22T00:01:00.000Z";
+const THIRD_AT = "2026-07-22T00:02:00.000Z";
 const firstBytes = '{"version":1,"items":["old"]}\n';
 const secondBytes = '{"version":2,"items":["new"]}\n';
 
@@ -50,6 +53,9 @@ test("fresh publication writes private canonical data and its binding", (t) => {
   });
   assert.equal(mode(bindingStorePath(root)), 0o600);
   assert.deepEqual(readdirSync(dirname(result.dataPath)).sort(), ["sample-oven.json"]);
+  assert.match(result.cursor, /^sha256-[a-f0-9]{64}$/u);
+  assert.equal(result.event.created, true);
+  assert.deepEqual(readOvenEvents(root), [result.event.event]);
 });
 
 test("publishing identical canonical state is idempotent", (t) => {
@@ -64,6 +70,59 @@ test("publishing identical canonical state is idempotent", (t) => {
   assert.equal(lstatSync(result.dataPath).ino, beforeData.ino);
   assert.equal(readFileSync(bindingStorePath(root), "utf8"), beforeBinding);
   assert.equal(result.binding.boundAt, FIRST_AT);
+  assert.equal(result.event.created, false);
+  assert.equal(readOvenEvents(root).length, 1);
+});
+
+test("X-to-Y-to-X canonical mutations publish distinct increasing generations", (t) => {
+  const root = fixture(t);
+  const first = publishOvenData(root, "sample-oven", firstBytes, FIRST_AT);
+  const second = publishOvenData(root, "sample-oven", secondBytes, SECOND_AT);
+  const third = publishOvenData(root, "sample-oven", firstBytes, THIRD_AT);
+  assert.notEqual(first.cursor, third.cursor);
+  assert.deepEqual([first.event.event.sequence, second.event.event.sequence, third.event.event.sequence], [1, 2, 3]);
+  assert.deepEqual(readOvenEvents(root).map((event) => event.cursor), [first.cursor, second.cursor, third.cursor]);
+});
+
+test("data event publication runs after canonical data and binding are durable", (t) => {
+  const root = fixture(t);
+  let observed;
+  const result = publishOvenData(root, "sample-oven", firstBytes, FIRST_AT, {
+    publishDataEvent(repoRoot, event) {
+      observed = {
+        data: readFileSync(canonicalOvenDataPath(root, "sample-oven"), "utf8"),
+        binding: readBindingStore(root).bindings["sample-oven"],
+        event,
+      };
+      return publishOvenDataPublishedEvent(repoRoot, event);
+    },
+  });
+  assert.equal(observed.data, firstBytes);
+  assert.equal(observed.binding.boundAt, FIRST_AT);
+  assert.equal(observed.event.cursor, result.cursor);
+  assert.equal(result.event.created, true);
+});
+
+test("data event failure is non-fatal and retrying identical data repairs it", (t) => {
+  const root = fixture(t);
+  const errors = [];
+  const first = publishOvenData(root, "sample-oven", firstBytes, FIRST_AT, {
+    publishDataEvent() { throw new Error("observer unavailable"); },
+    onOvenEventError(error, identity) { errors.push({ error: error.message, identity }); },
+  });
+  assert.equal(first.changed, true);
+  assert.equal(first.event, null);
+  assert.equal(readFileSync(first.dataPath, "utf8"), firstBytes);
+  assert.equal(readBindingStore(root).bindings["sample-oven"].boundAt, FIRST_AT);
+  assert.equal(readOvenEvents(root).length, 0);
+  assert.equal(errors[0].error, "observer unavailable");
+  assert.equal(errors[0].identity.cursor, first.cursor);
+
+  const retry = publishOvenData(root, "sample-oven", firstBytes, SECOND_AT);
+  assert.equal(retry.changed, false);
+  assert.equal(retry.event.created, true);
+  assert.equal(retry.event.event.occurredAt, FIRST_AT);
+  assert.equal(readOvenEvents(root).length, 1);
 });
 
 test("publication replaces a noncanonical binding without touching its source", (t) => {
@@ -138,11 +197,14 @@ test("a failed transaction commit restores existing and fresh publication state"
   const priorData = readFileSync(canonicalOvenDataPath(existing, "sample-oven"));
   const priorBinding = readFileSync(bindingStorePath(existing));
 
+  let eventCalls = 0;
   assert.throws(() => publishOvenData(existing, "sample-oven", secondBytes, SECOND_AT, {
     commit() { throw new Error("composite commit failed"); },
+    publishDataEvent() { eventCalls += 1; },
   }), /composite commit failed/u);
   assert.deepEqual(readFileSync(canonicalOvenDataPath(existing, "sample-oven")), priorData);
   assert.deepEqual(readFileSync(bindingStorePath(existing)), priorBinding);
+  assert.equal(eventCalls, 0);
 
   const fresh = fixture(t);
   assert.throws(() => publishOvenData(fresh, "sample-oven", firstBytes, FIRST_AT, {

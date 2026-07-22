@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { readOvenEvents } from "../events/oven-event-store.mjs";
-import { burnItem, closeLifecycle, findBurnlistDir, moveLifecycle, withLock } from "./lifecycle-moves.mjs";
+import { burnItem, closeLifecycle, findBurnlistDir, moveLifecycle, readyLifecycle, withLock } from "./lifecycle-moves.mjs";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-lifecycle-moves-"));
@@ -198,6 +198,23 @@ test("concurrent same-id lifecycle moves publish only one target", async () => {
   } finally {
     context.cleanup();
   }
+});
+
+test("lifecycle movement stays canonical when observational publication fails", () => {
+  const context = fixture();
+  const id = "260713-001";
+  try {
+    const { dir } = writePlan(context.root, "draft", id);
+    writeFileSync(join(dir, "goal.md"), "# Goal\n");
+    const errors = [];
+    const target = readyLifecycle(context.root, id, {
+      publishEvent() { throw new Error("observer unavailable"); },
+      onError(error) { errors.push(error.message); },
+    });
+    assert.equal(target, folder(context.root, "ready", id));
+    assert.equal(existsSync(target), true);
+    assert.deepEqual(errors, ["observer unavailable"]);
+  } finally { context.cleanup(); }
 });
 
 test("burn rejects an id duplicated across lifecycle folders", () => {

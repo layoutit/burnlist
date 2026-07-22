@@ -276,7 +276,7 @@ assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateData: validateDifferentialTestingRuntimeData", "Differential Testing does not expose its server-boundary validator.");
-assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateDifferentialTestingRuntimeData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateDifferentialTestingRuntimeData(document)", "Differential Testing source snapshots are not validated at the shared read boundary.");
 assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validateData: validatePerformanceTracingRuntimeData", "Performance Tracing does not expose its server-boundary validator.");
 assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validatePerformanceTracingRuntimeData(payload", "Performance Tracing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/visual-parity/handler.mjs", "validateData: validateVisualParityRuntimeData", "Visual Parity does not expose its server-boundary validator.");
@@ -345,9 +345,15 @@ assertSourceIncludes("ovens/differential-testing/instructions.md", "No per-candi
 assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
 assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("ovens/differential-testing/engine/data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", 'target.set("scenario"', "Canonical Differential Testing is not bound to read-only scenario selection.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", 'query.set("pageSize"', "Canonical Differential Testing is not bound to server-side field paging.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", "subscribeOvenRuntimeSnapshot", "Canonical Differential Testing does not use shared snapshot updates.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'from "./oven-projection-coordinator.mjs"', "Dashboard server is missing the canonical Oven projection coordinator.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "oven-warm", "Dashboard server still imports the retired Oven warming layer.");
+assertSourceExcludes("ovens/visual-parity/handler.mjs", "readStableVisualParitySource", "Visual Parity still exposes a private stable-read implementation.");
+assertSourceIncludes("README.md", "There are no\nhandler warm hooks", "README does not document the canonical-only Oven architecture.");
+assertSourceIncludes("skills/burnlist/references/oven-event-coordination.md", "The remaining intervals are intentional and regression-allowlisted", "Oven event guidance does not document surviving timers.");
+assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "The legacy Differential Testing live updater still exists.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
 assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "exactSession?.exactComparison", "Differential Testing renderer still reads the removed exact-comparison surface.");

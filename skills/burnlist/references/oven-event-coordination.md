@@ -59,6 +59,85 @@ burnlist oven event future-oven \
 
 Checklist `burn` publishes `item-burned/completed`. Differential Testing SDK v4 publishes one `iteration` event after every persisted telemetry attempt, including retry, terminal failure, completion, or supersession. A future Oven should emit at its own durable unit of progress rather than inventing an Oven-specific supervisor protocol.
 
+## Canonical snapshot invalidation
+
+An Oven that atomically publishes a new canonical data snapshot may emit
+`data-published/complete` after the canonical data and binding are durable. Use
+the stable Oven subject and a producer-owned durable publication generation as
+the cursor. A generation may include the content digest, but must also distinguish
+a later X-to-Y-to-X publication while keeping one logical retry idempotent. The
+event is only an invalidation: a consumer must reopen and
+validate the canonical Oven data, and a failed event publication must not roll
+back or falsely fail the canonical write.
+
+```js
+import { publishOvenDataPublishedEvent } from "burnlist/oven-events";
+
+publishOvenDataPublishedEvent(repoRoot, {
+  ovenId: "future-oven",
+  subjectId: ovenId,
+  cursor: snapshotGeneration,
+  occurredAt: publishedAt,
+  payload: {},
+});
+```
+
+Shell publishers can express the same convention with `burnlist oven event`
+using `--kind data-published --phase complete`. Keep the event payload compact;
+the canonical snapshot, proof, and source paths stay outside the event store.
+Binding, definition, lifecycle, and item-burn CLI mutations likewise publish
+their compact observational event only after canonical state commits; a failed
+event never changes the canonical command result.
+
+### Canonical dashboard snapshot architecture
+
+All live Ovens render through the declarative `OvenRuntime`; there is no legacy
+live renderer. Ordinary JSON handlers use the one process-wide snapshot store
+for stable reads, validation, projections, cache limits, ETags, conditional
+responses, and backpressure-safe streaming. One process-wide event observer
+discovers durable streams in bounded pages, separates the live invalidation tail
+from subscriber catch-up, and shares each scan across its listeners. Retention
+checkpoints and missing or regressed streams emit an explicit reset that forces
+canonical reconciliation. One browser-shell snapshot client owns EventSource,
+keyed queries, conditional requests, burst/in-flight coalescing, last-good data,
+and reconnect/focus/manual-change reconciliation. Its inactive query cache is
+bounded to 16 entries and 64 MiB; stale retained data is labeled, and authoritative
+`404`/`410` responses remove it.
+
+Events only remove a matching cached projection. They never eagerly reopen or
+parse the canonical file, and handlers must not expose `warm` or
+`warmIntervalMs`. The next canonical request performs the read. A failed event
+publication therefore leaves a successful canonical write intact; slow server
+and browser reconciliation eventually observes the changed file.
+
+The remaining intervals are intentional and regression-allowlisted:
+
+| Owner | Cadence | Reason |
+| --- | ---: | --- |
+| Process event observer | 500 ms | One live scan and one subscriber catch-up scan, each shared rather than multiplied by listeners. |
+| Server projection coordinator | 30 s | Identity-only fallback for manual writes or missed events; never warms data. |
+| Browser snapshot client | 30 s | Conditional fallback and reconnect attempt shared by all active queries. |
+| Differential Testing log clock | 60 s | Display-only relative-age refresh; performs no I/O. |
+| Streaming Diff content SSE | 300 ms / 15 s | Ordered journal delivery and heartbeat for its specialized content protocol. |
+| Differential Testing worker | 250 ms default | Project execution inbox, not dashboard snapshot freshness. |
+
+Use `node scripts/measure-oven-snapshot-architecture.mjs` in a Burnlist source
+checkout to reproduce real-timer idle, publish-burst, parse, response-byte,
+multi-SSE filesystem-scan, and slow/aborted response-admission measurements.
+
+### Specialized transports
+
+Snapshot invalidation does not replace content protocols. Streaming Diff owns an
+ordered, producer-managed card/reset SSE feed; it does not publish those cards
+inside `data-published` events and must not be routed through the snapshot
+observer. Differential Testing keeps bundle, scenario, field-page, and ETag
+identities defined by its transport contract, but its source reads, stable
+validation, source cache, response-count/byte admission, conditional responses,
+and streaming all use the shared canonical JSON snapshot service. Only its
+derived query projections remain in a separate bounded 16-entry, 64 MiB LRU.
+Performance Tracing revalidates its external provenance files on every canonical
+read, so report identity alone is never a cache hit.
+
 ## Replayable feed
 
 The dashboard server exposes `GET /api/events`:

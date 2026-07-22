@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { adaptPerformanceTracingReport } from "../../dashboard/src/lib/performance-tracing.mjs";
-import { startDifferentialTestingLiveUpdates } from "../../dashboard/src/oven/differential-testing-render/differential-testing-renderer.js";
 import { assertPerformanceTracingData } from "./contract.mjs";
-import { assertPerformanceTracingProvenanceCurrent } from "./handler.mjs";
+import {
+  assertPerformanceTracingProvenanceCurrent,
+  performanceTracingHandler,
+} from "./handler.mjs";
 import { createHash } from "node:crypto";
 
 test("Performance Tracing validates reconciled browser-output reports", () => {
@@ -53,45 +56,59 @@ test("Performance Tracing blocks a report after a measured input changes", () =>
   }
 });
 
-test("Performance Tracing live view reads its own Oven and adapts its report", async () => {
-  const requests = [];
-  const oven = { id: "performance-tracing", name: "Performance Tracing", detail: { cells: [] } };
-  let mounted = null;
-  const controller = startDifferentialTestingLiveUpdates({ innerHTML: "" }, {
-    dataOvenId: "performance-tracing",
-    repoKey: "repo-key",
-    adaptPayload: adaptPerformanceTracingReport,
-    mountOptions: { initialChart: "current", initialProgressChart: "delta" },
-    fetchImpl: async (url) => {
-      requests.push(url);
+test("Performance Tracing never serves a cached report after provenance changes", () => {
+  const root = mkdtempSync(join(tmpdir(), "performance-handler-freshness-"));
+  try {
+    const reportPath = join(root, ".local", "performance", "report.json");
+    const sourcePath = join(root, "source.mjs");
+    mkdirSync(join(root, ".local", "performance"), { recursive: true });
+    const source = Buffer.from("export const value = 1;\n");
+    writeFileSync(sourcePath, source);
+    const report = fixture();
+    report.provenance.files = {
+      "source.mjs": {
+        bytes: source.length,
+        sha256: createHash("sha256").update(source).digest("hex"),
+      },
+    };
+    writeFileSync(reportPath, JSON.stringify(report));
+    const cache = new Map();
+    const bindings = new Map([["performance-tracing", [{
+      path: reportPath, repoKey: null, repoRoot: root,
+    }]]]);
+    const context = () => {
+      const req = new EventEmitter();
+      req.headers = {};
+      const res = new EventEmitter();
+      res.writeHead = (status) => { res.status = status; };
+      res.write = () => true;
+      res.end = () => res.emit("finish");
       return {
-        ok: true,
-        status: 200,
-        headers: { get: () => null },
-        async json() {
-          return url === "/api/ovens/performance-tracing" ? { oven } : { payload: fixture() };
-        },
+        bindingPath: reportPath,
+        cache,
+        ovenDataBindings: bindings,
+        maxOvenDataBytes: 1024 * 1024,
+        req,
+        res,
       };
-    },
-    setIntervalImpl: () => 17,
-    clearIntervalImpl() {},
-    mount: (_root, mountedOven, payload, options) => {
-      mounted = { mountedOven, payload, options };
-      return { update() {} };
-    },
-  });
+    };
 
-  await controller.ready;
-  controller.stop();
-  assert.deepEqual(requests, [
-    "/api/ovens/performance-tracing",
-    "/api/oven-data/performance-tracing?repoKey=repo-key",
-  ]);
-  assert.equal(mounted.mountedOven, oven);
-  assert.equal(mounted.payload.subtitle, "fixture");
-  assert.equal(mounted.payload.fields.length, 6);
-  assert.equal(mounted.options.initialChart, "current");
+    const initial = context();
+    performanceTracingHandler.serveData(initial);
+    assert.equal(initial.res.status, 200);
+    const store = [...cache.values()].find((entry) => typeof entry?.stats === "function");
+    assert.equal(store.stats().entries, 0);
+
+    writeFileSync(sourcePath, "export const value = 2;\n");
+    assert.throws(
+      () => performanceTracingHandler.serveData(context()),
+      (error) => error.status === 409 && /report is stale/u.test(error.message),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
+
 
 function fixture() {
   const value = {

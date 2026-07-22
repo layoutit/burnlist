@@ -55,6 +55,20 @@ test("writeBindingIfAbsent preserves the first binding", () => {
   } finally { cleanup(); }
 });
 
+test("binding mutation stays canonical when observational publication fails", () => {
+  const { root, cleanup } = fixture();
+  const errors = [];
+  try {
+    const result = writeBinding(root, "sample-oven", "canonical.json", BOUND_AT, {
+      publishEvent() { throw new Error("observer unavailable"); },
+      onError(error) { errors.push(error.message); },
+    });
+    assert.equal(result.event, null);
+    assert.equal(readBindingStore(root).bindings["sample-oven"].path, "canonical.json");
+    assert.deepEqual(errors, ["observer unavailable"]);
+  } finally { cleanup(); }
+});
+
 test("barrier-synchronized first writers create exactly one binding and preserve its path", async () => {
   const { root, cleanup } = fixture();
   const ready = join(root, "ready");
