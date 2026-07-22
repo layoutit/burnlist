@@ -13,7 +13,7 @@ An Oven does not:
 - import arbitrary UI components
 - start Codex
 
-A project-specific adapter may produce normalized data, but that adapter is not part of the Oven. A `.oven` binding uses a JSON-pointer-like source beginning with `/`. Source-value shape is outside creation-time validation. At `oven set` time, a built-in uses its render handler's runtime validator; a custom Oven without one receives pointer-presence validation with an explicit `shape-only` warning. Shape validation never proves payload truth.
+A project-specific adapter may produce normalized data, but that adapter is not part of the Oven. A `.oven` binding uses a JSON-pointer-like source beginning with `/`. Source-value shape is outside creation-time validation. At `oven set` time, a built-in uses its registered producer-input validator; a custom Oven without one receives pointer-presence validation with an explicit `shape-only` warning. Shape validation never proves payload truth.
 
 ## Package
 
@@ -39,45 +39,34 @@ validation authority.
 
 Official Ovens are the shipped definitions named by `ovens/catalog.json`. Custom Ovens are created under ignored `.local/burnlist/ovens/` state. The dashboard has no update endpoint, but the `burnlist oven` CLI can create, update, fork, list, view, use, set, bind, unbind, and show bindings; official Ovens stay read-only there. `set` publishes only to ignored `.local/burnlist/data/<id>.json` after validation and preserves a prior valid install on failure. Manual source changes affect only future Runs. An official handler may define and validate a versioned normalized-data contract; Differential Testing uses `burnlist-differential-testing-data@1`. For the controlled DSL vocabulary and source-binding conventions, see `creating-ovens.md`.
 
-## Official Catalog and Evidence
+## Official Catalog
 
 `ovens/catalog.json` is the versioned, non-executable source of official Oven
-membership. It records each shipped id, version, normalized-data contract,
-input mode, source-owned producer, route kind, maturity, and acceptance state.
+membership. It records each shipped id, version, producer `inputContract`, DSL
+`renderContract`, input mode, source-owned producer, route kind, maturity, and
+`runtimeCompatibility`.
 It is metadata about Ovens and is not itself an Oven. An unlisted package,
 registered handler, custom Oven, vendored Oven, demo, or screenshot is not
 official. `GET /api/oven-catalog` exposes this validated set;
 `GET /api/ovens` is separate availability inventory with explicit `official`,
 `vendored`, or `custom` origins.
 
-Evidence uses four disjoint classes:
-
-- `unit-fixture` proves a bounded parser, validator, or renderer mechanic.
-- `transport-fixture` proves bounded event, cache, conditional-request,
-  reconnect, or fallback mechanics.
-- `catalog-route` proves the production `/ovens` catalog page and exact official
-  set. It does not qualify an Oven.
-- `canonical-oven` is the only class that may satisfy an official entry's
-  acceptance state.
-
-Canonical Oven evidence must bind the current catalog revision, matching Oven
-id/version/revision and named producer, repository key, real bound-data digest,
-canonical `/r/.../o/<id>` route, exact production script and stylesheet hashes,
-and retained screenshot and network artifacts. It must declare
-`sourceKind: "canonical-producer"` and `fixture: false`. Fixture servers,
-placeholder images, synthetic payloads, mock screenshots, catalog-page
-captures, counts, topology checks, and green builds cannot substitute for that
-proof. Missing proof is `unverified` or `blocked`, never inferred acceptance.
-
-Validate a retained evidence bundle against the installed catalog with:
-
-```sh
-node scripts/verify-official-oven-evidence.mjs <evidence.json>
-```
+The input contract is what the named producer must publish and what the server
+handler validates. The render contract is what the declarative `.oven` IR
+consumes. They may differ when an adapter converts validated producer data for
+a shared renderer; Performance Tracing uses `performance-tracing-oven@1` as its
+input and `burnlist-differential-testing-data@1` as its render contract. The
+catalog auditor checks both boundaries. This catalog has no acceptance or
+retained-evidence subsystem.
 
 ## Run Boundary
 
 `Run Burn` records a repository, title, and objective, then copies the selected `instructions.md` and `<id>.oven` into a new ignored `.local/burnlist/runs/` directory. That snapshot is immutable run provenance; the app does not execute it or start Codex.
+
+The target repository and Oven id determine the effective Oven: repository
+vendored package, then official package, then repository custom package.
+`ovenRepoKey` is recorded as resolved provenance; callers cannot select an Oven
+from a different repository independently.
 
 Oven-specific inputs belong in the objective unless the generic Run contract is deliberately expanded for every Oven. For Differential Testing, the objective names the reference and candidate artifacts, project adapter or report, active scenario and alignment contract, exact comparator when used, and comparable rerun procedure.
 

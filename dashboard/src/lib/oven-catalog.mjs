@@ -6,7 +6,8 @@ function officialAgentInstructions(oven) {
   const instructions = [
     `Use the official ${oven.name} Oven (${oven.id}@${oven.version}).`,
     "Do not invent a replacement Oven, renderer, or data contract.",
-    `Its normalized data must satisfy ${oven.contract}.`,
+    `Its producer output must satisfy ${oven.inputContract}.`,
+    `The declarative renderer consumes ${oven.renderContract}.`,
     `Use the source-owned producer: ${oven.producer}.`,
     "Install the shipped Oven in the target repository:",
     `burnlist oven use ${oven.id}`,
@@ -16,10 +17,6 @@ function officialAgentInstructions(oven) {
   } else {
     instructions.push("Its data is producer-managed; use the named producer workflow.");
   }
-  instructions.push(
-    `Canonical acceptance is ${oven.acceptance.state}.`,
-    "Only canonical-oven evidence from the named producer qualifies; fixtures do not.",
-  );
   return instructions.join("\n");
 }
 
@@ -30,10 +27,13 @@ function inventoryOrigin(oven) {
 }
 
 function localAgentInstructions(oven, origin) {
+  const inputContract = oven.inputContract ?? oven.contract;
+  const renderContract = oven.renderContract ?? oven.contract;
   if (origin === "official") {
     const instructions = [
       `Use the official ${oven.name} Oven (${oven.id}@${oven.version}).`,
-      `Its data must satisfy ${oven.contract}.`,
+      `Its producer output must satisfy ${inputContract}.`,
+      `Its renderer consumes ${renderContract}.`,
       "Install the shipped Oven in the target repository:",
       `burnlist oven use ${oven.id}`,
     ];
@@ -46,7 +46,8 @@ function localAgentInstructions(oven, origin) {
   }
   const instructions = [
     `Use the repository ${origin} Oven ${oven.name} (${oven.id}@${oven.version}).`,
-    `Its data must satisfy ${oven.contract}.`,
+    `Its producer output must satisfy ${inputContract}.`,
+    `Its renderer consumes ${renderContract}.`,
     "This local entry is already available in its repository; it is not official catalog membership.",
   ];
   if (oven.dataInput === "json-payload") {
@@ -72,7 +73,6 @@ export function buildOfficialOvenCatalog(entries) {
     label: `${oven.id}@${oven.version}`,
     href: `/ovens/${encodeURIComponent(oven.id)}`,
     maturityLabel: titleCase(oven.maturity),
-    acceptanceLabel: titleCase(oven.acceptance?.state),
     agentInstructions: officialAgentInstructions(oven),
   }));
 }

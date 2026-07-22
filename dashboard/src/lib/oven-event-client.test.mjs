@@ -27,6 +27,14 @@ function response(body, { status = 200, etag = "" } = {}) {
   };
 }
 
+function eventQuery(url) {
+  return new URL(url, "http://burnlist.test").searchParams;
+}
+
+function isEventBaseline(url) {
+  return eventQuery(url).get("tail") === "1";
+}
+
 function fakeTimers() {
   const intervals = [];
   const timeouts = [];
@@ -153,7 +161,7 @@ test("one shell EventSource starts from a backlog-free tail and coalesces matchi
       return source;
     },
     fetchImpl: async (url, init) => {
-      if (url === "/api/events?tail=1") return baseline.promise;
+      if (isEventBaseline(url)) return baseline.promise;
       snapshotCalls.push({ url, init });
       snapshotRequest += 1;
       return snapshotRequest === 1
@@ -165,17 +173,23 @@ test("one shell EventSource starts from a backlog-free tail and coalesces matchi
   client.start();
   client.start();
   await Promise.resolve();
-  assert.equal(sources.length, 0, "the stream cannot attach before its tail baseline");
+  assert.equal(sources.length, 0, "no stream exists without a mounted consumer");
+  const subscription = client.subscribe(descriptor(), (state) => states.push(state));
+  await Promise.resolve();
+  assert.equal(sources.length, 0, "the stream cannot attach before its scoped tail baseline");
   baseline.resolve(response({
     cursor: "oev1-backlog-free",
     events: [publication({ payload: { version: 999 } })],
   }));
   await settle();
   assert.equal(sources.length, 1);
-  assert.match(sources[0].url, /stream=1&after=oev1-backlog-free/u);
+  const streamQuery = eventQuery(sources[0].url);
+  assert.equal(streamQuery.get("stream"), "1");
+  assert.equal(streamQuery.get("after"), "oev1-backlog-free");
+  assert.deepEqual(streamQuery.getAll("repoKey"), ["aaaaaaaaaaaa"]);
+  assert.deepEqual(streamQuery.getAll("ovenId"), ["visual-parity"]);
   sources[0].open();
 
-  const subscription = client.subscribe(descriptor(), (state) => states.push(state));
   await settle();
   assert.equal(snapshotCalls.length, 1, "baseline response events never invalidate view state");
   assert.deepEqual(subscription.getState().data, { version: 1 });
@@ -214,16 +228,15 @@ test("in-flight invalidations queue one monotonic conditional retry", async () =
       return source;
     },
     fetchImpl: async (url, init) => {
-      if (url === "/api/events?tail=1") return response({ cursor: "oev1-current" });
+      if (isEventBaseline(url)) return response({ cursor: "oev1-current" });
       snapshotCalls.push(init);
       return snapshotCalls.length === 1 ? first.promise : second.promise;
     },
   });
   client.start();
+  const subscription = client.subscribe(descriptor(), () => {});
   await settle();
   sources[0].open();
-  const subscription = client.subscribe(descriptor(), () => {});
-  await Promise.resolve();
   assert.equal(snapshotCalls.length, 1);
 
   sources[0].publish(publication());
@@ -264,7 +277,7 @@ test("reconnect, focus, and the one slow timer reconcile while failures retain l
       return source;
     },
     fetchImpl: async (url, init) => {
-      if (url === "/api/events?tail=1") return response({ cursor: "oev1-current" });
+      if (isEventBaseline(url)) return response({ cursor: "oev1-current" });
       calls.push(init);
       const next = snapshotResponses.shift();
       if (next instanceof Error) throw next;
@@ -272,10 +285,9 @@ test("reconnect, focus, and the one slow timer reconcile while failures retain l
     },
   });
   client.start();
-  await settle();
-  sources[0].open();
   const subscription = client.subscribe(descriptor(), () => {});
   await settle();
+  sources[0].open();
   assert.deepEqual(subscription.getState().data, { version: 1 });
 
   sources[0].publish(publication());
@@ -320,16 +332,15 @@ test("a late response from a stopped lifecycle cannot replace a newer generation
       return source;
     },
     fetchImpl: async (url) => {
-      if (url === "/api/events?tail=1") return response({ cursor: `oev1-${sources.length}` });
+      if (isEventBaseline(url)) return response({ cursor: `oev1-${sources.length}` });
       snapshotRequest += 1;
       return snapshotRequest === 1 ? first.promise : second.promise;
     },
   });
   client.start();
+  const subscription = client.subscribe(descriptor(), () => {});
   await settle();
   sources[0].open();
-  const subscription = client.subscribe(descriptor(), () => {});
-  await Promise.resolve();
   client.stop();
 
   client.start();

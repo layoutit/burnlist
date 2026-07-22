@@ -13,7 +13,6 @@ type OfficialEntry = OfficialOvenCatalogEntry & {
   label: string;
   href: string;
   maturityLabel: string;
-  acceptanceLabel: string;
   agentInstructions: string;
 };
 
@@ -56,7 +55,7 @@ export function OvenCatalogView({ catalogRevision, official, local, inventoryErr
       <section className="oven-catalog-section" aria-labelledby="official-ovens-heading">
         <div className="oven-catalog-section-heading">
           <h2 id="official-ovens-heading">Official Ovens</h2>
-          <p>Only these shipped definitions are official. Catalog membership does not imply canonical acceptance.</p>
+          <p>Only these validated declarative packages are official catalog members.</p>
         </div>
         <div className="oven-catalog-list">
           {official.map((entry) => (
@@ -68,17 +67,15 @@ export function OvenCatalogView({ catalogRevision, official, local, inventoryErr
               <CardContent className="oven-catalog-card-content">
                 <div className="oven-catalog-badges">
                   <Badge>Official</Badge>
-                  <Badge variant="outline">Contract: {entry.contract}</Badge>
+                  <Badge variant="outline">Input: {entry.inputContract}</Badge>
+                  <Badge variant="outline">Render: {entry.renderContract}</Badge>
                   <Badge variant="secondary">{entry.maturityLabel}</Badge>
-                  <Badge variant={entry.acceptance.state === "accepted" ? "default" : "outline"}>
-                    Acceptance: {entry.acceptanceLabel}
-                  </Badge>
                 </div>
                 <p className="oven-catalog-description">{entry.description}</p>
                 <dl className="oven-catalog-meta">
                   <div><dt>Producer</dt><dd>{entry.producer}</dd></div>
                   <div><dt>Route</dt><dd>{entry.routeKind}</dd></div>
-                  <div><dt>Evidence</dt><dd>{entry.acceptance.evidenceClass}; fixtures {entry.acceptance.fixtureEvidence}</dd></div>
+                  <div><dt>Runtime</dt><dd>{entry.runtimeCompatibility}</dd></div>
                 </dl>
                 <a className="oven-catalog-explainer-link" href={entry.href}>Open Oven explainer</a>
                 <AgentBlock text={entry.agentInstructions} />

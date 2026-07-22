@@ -242,6 +242,7 @@ function legacyResponse(ctx, index, scenarioId) {
 
 export const differentialTestingHandler = Object.freeze({
   id: "differential-testing",
+  inputContract: "burnlist-differential-testing-data@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateDifferentialTestingRuntimeData,
 

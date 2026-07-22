@@ -77,6 +77,7 @@ export function useShippedOven({
     id: shipped.id,
     instructions: shipped.instructions,
     oven: shipped.oven,
+    runtimeCompatibility: shipped.catalogEntry?.runtimeCompatibility,
     now: timestamp,
   });
   if (!existsSync(examplePath)) {

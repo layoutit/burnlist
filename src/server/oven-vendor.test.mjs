@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
+import { OVEN_RUNTIME_COMPATIBILITY } from "../ovens/oven-runtime-compatibility.mjs";
 import {
   OVEN_PIN_MAX_BYTES,
   readVendoredOven,
@@ -80,12 +81,31 @@ test("writeVendoredOven writes byte copies and an exact content pin", () => {
     assert.equal(readFileSync(join(expectedPath, `${pkg.id}.oven`), "utf8"), pkg.oven);
 
     const pin = JSON.parse(readFileSync(join(expectedPath, "pin.json"), "utf8"));
-    assert.deepEqual(Object.keys(pin).sort(), ["id", "pinnedAt", "revision", "source", "version"]);
+    assert.deepEqual(Object.keys(pin).sort(), [
+      "id", "pinnedAt", "revision", "runtimeCompatibility", "source", "version",
+    ]);
     assert.equal(pin.id, pkg.id);
     assert.equal(pin.version, "1.0.0");
     assert.equal(pin.revision, ovenRevision(pkg));
     assert.equal(pin.source, "built-in");
+    assert.equal(pin.runtimeCompatibility, OVEN_RUNTIME_COMPATIBILITY);
     assertIso8601(pin.pinnedAt);
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads refuse packages for a different runtime contract", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Incompatible");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const pin = JSON.parse(readFileSync(pinPath, "utf8"));
+    pin.runtimeCompatibility = "burnlist-oven-runtime@2";
+    writeFileSync(pinPath, `${JSON.stringify(pin, null, 2)}\n`);
+    assert.throws(
+      () => readVendoredOven(context.repoRoot, pkg.id),
+      /incompatible with installed runtime burnlist-oven-runtime@1/u,
+    );
   } finally { context.cleanup(); }
 });
 

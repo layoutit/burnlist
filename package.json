@@ -24,7 +24,6 @@
     "dashboard/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
-    "scripts/verify-official-oven-evidence.mjs",
     "!**/*.test.mjs",
     "!**/*.test.js"
   ],

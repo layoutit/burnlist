@@ -47,7 +47,7 @@ test("loads and freezes the exact shipped Oven catalog", () => {
   ]);
   assert.match(catalog.catalogRevision, /^[a-f0-9]{64}$/u);
   assert.ok(Object.isFrozen(catalog));
-  assert.ok(Object.isFrozen(catalog.entries[0].acceptance));
+  assert.equal(catalog.entries[0].runtimeCompatibility, "burnlist-oven-runtime@1");
   assert.equal(officialOvenEntry(catalog, "visual-parity")?.producer, "project-visual-parity-adapter");
   assert.equal(officialOvenEntry(catalog, "not-official"), null);
 });
@@ -55,12 +55,13 @@ test("loads and freezes the exact shipped Oven catalog", () => {
 test("normalizes semantically identical catalogs to one revision", () => {
   const reorderedKeys = {
     entries: sourceCatalog.entries.map((entry) => ({
-      acceptance: { fixtureEvidence: entry.acceptance.fixtureEvidence, ...entry.acceptance },
+      runtimeCompatibility: entry.runtimeCompatibility,
       maturity: entry.maturity,
       routeKind: entry.routeKind,
       producer: entry.producer,
       dataInput: entry.dataInput,
-      contract: entry.contract,
+      renderContract: entry.renderContract,
+      inputContract: entry.inputContract,
       version: entry.version,
       id: entry.id,
     })),
@@ -82,8 +83,7 @@ test("rejects unknown, missing, duplicate, unordered, and unsafe catalog values"
     ["unordered ids", (value) => { [value.entries[0], value.entries[1]] = [value.entries[1], value.entries[0]]; }, /ordered/u],
     ["unsafe producer", (value) => { value.entries[0].producer = "../producer"; }, /producer is invalid/u],
     ["unknown data input", (value) => { value.entries[0].dataInput = "script"; }, /dataInput must be one of/u],
-    ["executable evidence", (value) => { value.entries[0].acceptance.evidenceClass = "module"; }, /canonical-oven/u],
-    ["fixture acceptance", (value) => { value.entries[0].acceptance.fixtureEvidence = "allowed"; }, /must be forbidden/u],
+    ["invalid runtime", (value) => { value.entries[0].runtimeCompatibility = "other-runtime@1"; }, /runtime contract/u],
   ];
 
   for (const [label, mutate, pattern] of cases) {
@@ -106,7 +106,7 @@ test("rejects unlisted package directories", () => {
 test("rejects package identity drift", () => {
   const target = installFixture();
   const catalog = clone(sourceCatalog);
-  catalog.entries[0].contract = "wrong-contract@1";
+  catalog.entries[0].renderContract = "wrong-contract@1";
   writeFileSync(join(target, "catalog.json"), `${JSON.stringify(catalog, null, 2)}\n`);
 
   assert.throws(
@@ -118,10 +118,13 @@ test("rejects package identity drift", () => {
 test("rejects missing, orphan, duplicate, and mismatched handlers", () => {
   const catalog = parseOfficialOvenCatalog(sourceCatalog);
   const withoutChecklist = handlers.filter(({ id }) => id !== "checklist");
-  const orphan = [...handlers, { id: "invented-oven", dataInput: "json-payload" }];
+  const orphan = [...handlers, { id: "invented-oven", dataInput: "json-payload", inputContract: "invented@1" }];
   const duplicate = [...handlers, handlers[0]];
   const mismatched = handlers.map((handler) => handler.id === "streaming-diff"
     ? { ...handler, dataInput: "json-payload" }
+    : handler);
+  const wrongContract = handlers.map((handler) => handler.id === "performance-tracing"
+    ? { ...handler, inputContract: "burnlist-differential-testing-data@1" }
     : handler);
 
   assert.throws(
@@ -139,5 +142,9 @@ test("rejects missing, orphan, duplicate, and mismatched handlers", () => {
   assert.throws(
     () => auditOfficialOvenInstall({ catalog, ovensDir, handlers: mismatched }),
     /streaming-diff handler dataInput does not match/u,
+  );
+  assert.throws(
+    () => auditOfficialOvenInstall({ catalog, ovensDir, handlers: wrongContract }),
+    /performance-tracing handler inputContract does not match/u,
   );
 });

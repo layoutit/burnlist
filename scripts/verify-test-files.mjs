@@ -39,6 +39,7 @@ export const verificationTestFiles = [
   "dashboard/src/lib/oven-event-client.test.mjs",
   "dashboard/src/lib/oven-event-client-cache.test.mjs",
   "dashboard/src/lib/oven-event-client-integration.test.mjs",
+  "dashboard/src/lib/oven-event-client-scope.test.mjs",
   "dashboard/src/lib/canonical-oven-architecture.test.mjs",
   "dashboard/src/hooks/dashboard-data.test.mjs",
   "dashboard/src/oven/differential-testing-render/differential-testing-goldens.test.mjs",
@@ -95,7 +96,6 @@ export const verificationTestFiles = [
   "src/server/dir-lock.test.mjs",
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",
-  "scripts/verify-official-oven-evidence.test.mjs",
   "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
   "dashboard/src/components/ModelLab/ModelLab.test.mjs",
   "dashboard/src/components/CustomOvenView/custom-oven-render.test.mjs",
@@ -115,6 +115,7 @@ export const verificationTestFiles = [
   "dashboard/src/lib/streaming-diff.test.mjs",
   "dashboard/src/lib/project-open.test.mjs",
   "dashboard/src/lib/oven-identity.test.mjs",
+  "dashboard/src/lib/oven-samples.test.mjs",
   "dashboard/src/components/OvenExplainer/oven-explainer-render.test.mjs",
 ];
 

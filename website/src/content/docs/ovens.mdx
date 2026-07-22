@@ -23,11 +23,11 @@ An Oven cannot execute commands or code, collect or transform project data, own 
 
 The validated, non-executable `ovens/catalog.json` is the only official Oven
 inventory. It records each shipped definition's id, version, normalized-data
-contract, input mode, producer, route kind, maturity, and evidence-gated
-acceptance state. `/api/oven-catalog` exposes that exact set and revision;
+producer input contract, declarative render contract, input mode, producer,
+route kind, maturity, and runtime compatibility. `/api/oven-catalog` exposes that exact set and revision;
 `/api/ovens` separately reports locally available official, vendored, and
-custom packages. Catalog membership does not imply acceptance, and this page
-does not duplicate the inventory.
+custom packages. The catalog makes no acceptance or retained-evidence claim,
+and this page does not duplicate the inventory.
 
 Custom Ovens use the same two-file package and live in ignored `.local/burnlist/ovens/` state, scoped to the repository that owns them.
 
@@ -53,7 +53,7 @@ burnlist oven bindings [--repo <path>]          # list this repo's Oven data bin
 Source validation reuses the same `oven-contract` used by the dashboard.
 Invalid source or a missing H1 is rejected before anything is written. For
 data, `use` installs only an existing validated `example/data.json`, while
-`set` calls the same official runtime validator as the render handler before
+`set` calls the official handler's producer-input validator before
 atomically publishing `.local/burnlist/data/<id>.json` and its binding. A
 custom Oven without a runtime validator receives `shape-only` pointer
 validation, which does not prove truth. This CLI never executes Oven
@@ -65,8 +65,8 @@ Structure, widgets, and formats are the `.oven` DSL vocabulary. See the [.oven D
 
 A `.oven` source binding is a JSON-pointer into a single read-only data document produced by a project-specific adapter at view time. The adapter is not part of the Oven, and source-value shape is not validated at creation time. At `set` time, official Ovens use their runtime validators and custom Ovens without one require every source pointer to resolve. That fallback is shape-only: the project adapter remains responsible for freshness, provenance, semantics, and truth. Record the expected document shape in `instructions.md`, for example in a `## Data Shape` section.
 
-Rich official Ovens define a versioned normalized-data contract validated in code. For example, Differential Testing uses `burnlist-differential-testing-data@1`, configured with `burnlist oven set differential-testing <path>`. Any JSON Schema is informational reference documentation, not runtime validation authority or Oven package identity.
+Rich official Ovens define a versioned producer input contract validated in code and a declarative render contract consumed by the shared runtime. They are usually identical. Performance Tracing validates `performance-tracing-oven@1`, then adapts it to the `burnlist-differential-testing-data@1` renderer. Generated catalog instructions always name the input contract. Any JSON Schema is informational reference documentation, not runtime validation authority or Oven package identity.
 
 ## Runs
 
-Run Burn records a repository, title, and objective, then copies the selected `instructions.md` and `<id>.oven` into a new ignored `.local/burnlist/runs/` directory as immutable run provenance. The app does not execute it.
+Run Burn records a repository, title, and objective, then resolves the Oven by target repository and id (vendored, official, then repository custom). It copies the selected `instructions.md` and `<id>.oven` into a new ignored `.local/burnlist/runs/` directory as immutable run provenance. The app does not execute it, and callers cannot select an Oven from another repository independently.

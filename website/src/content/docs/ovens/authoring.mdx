@@ -171,8 +171,8 @@ exact `oven set` next step. Reference/candidate inputs, test fixtures, schemas,
 and instructions never become starter data. The optional example is not
 vendored and does not enter the Oven revision or pin.
 
-`set` accepts a JSON file, stdin (`-`), or inline JSON. A built-in uses the same
-runtime validator as its render handler; no JSON Schema validator substitutes
+`set` accepts a JSON file, stdin (`-`), or inline JSON. A built-in uses its
+registered producer-input validator; no JSON Schema validator substitutes
 for it. Producer-managed Streaming Diff refuses a single JSON payload. A custom
 Oven without a registered runtime validator requires every `source=` and
 `<bind source=>` pointer to resolve and warns:
@@ -248,6 +248,7 @@ its pin record:
   "version": "0.1.0",
   "revision": "o1-sha256:<hex>",
   "source": "built-in",
+  "runtimeCompatibility": "burnlist-oven-runtime@1",
   "pinnedAt": "<ISO timestamp>"
 }
 ```
@@ -265,9 +266,13 @@ Re-adopting without `--force` reports the second line; `--force` copies the
 Oven again. An upgrade is opt-in: it copies the newer shipped source and moves
 the pin.
 
-Because the vendored copy and pin are committed, upgrading the Burnlist CLI
-never changes a pinned Oven. Only `upgrade` moves it, and the dashboard resolves
-a repo's vendored Oven ahead of the shipped built-in.
+The committed copy and pin freeze the declarative `.oven` source and
+instructions. They do not pin the installed CLI validator, server handler,
+frontend adapter, or renderer implementation. `runtimeCompatibility` is a
+coarse gate: Burnlist refuses an incompatible vendored package, while behavior
+may still evolve within that runtime contract. Only `upgrade` moves the
+declarative pin, and the dashboard resolves a repo's vendored Oven ahead of the
+shipped built-in.
 
 To render with data, run the dashboard:
 

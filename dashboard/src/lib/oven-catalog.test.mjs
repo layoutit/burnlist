@@ -7,17 +7,17 @@ const officialFixture = ({
   id = 'alpha',
   name = 'Alpha Oven',
   maturity = 'shipped',
-  state = 'unverified',
   dataInput = 'json-payload',
 } = {}) => ({
   id,
   version: '1.0.0',
-  contract: 'official-contract@1',
+  inputContract: 'official-input@1',
+  renderContract: 'official-render@1',
   dataInput,
   producer: `project-${id}-adapter`,
   routeKind: 'repo-oven',
   maturity,
-  acceptance: { state, evidenceClass: 'canonical-oven', fixtureEvidence: 'forbidden' },
+  runtimeCompatibility: 'burnlist-oven-runtime@1',
   name,
   description: `Official ${name}.`,
   ovenRevision: `o1-sha256:${'a'.repeat(64)}`,
@@ -110,19 +110,20 @@ test('buildOvenCatalog does not reinstall a repo-scoped built-in', () => {
   assert.doesNotMatch(vendored.agentInstructions, /burnlist oven (?:use|adopt|bind)/u);
 });
 
-test('buildOfficialOvenCatalog keeps membership distinct from acceptance', () => {
+test('buildOfficialOvenCatalog exposes producer and renderer contracts without acceptance claims', () => {
   const [entry] = buildOfficialOvenCatalog([officialFixture()]);
 
   assert.equal(entry.origin, 'official');
   assert.equal(entry.repoKey, null);
   assert.equal(entry.maturityLabel, 'Shipped');
-  assert.equal(entry.acceptanceLabel, 'Unverified');
   assert.equal(entry.href, '/ovens/alpha');
   assert.match(entry.agentInstructions, /Do not invent a replacement Oven, renderer, or data contract/u);
   assert.match(entry.agentInstructions, /project-alpha-adapter/u);
+  assert.match(entry.agentInstructions, /official-input@1/u);
+  assert.match(entry.agentInstructions, /official-render@1/u);
   assert.match(entry.agentInstructions, /burnlist oven use alpha/u);
   assert.match(entry.agentInstructions, /burnlist oven set alpha <path>/u);
-  assert.match(entry.agentInstructions, /fixtures do not/u);
+  assert.doesNotMatch(entry.agentInstructions, /acceptance|evidence/iu);
 });
 
 test('buildOfficialOvenCatalog respects producer-managed data and visible status labels', () => {
@@ -130,12 +131,10 @@ test('buildOfficialOvenCatalog respects producer-managed data and visible status
     id: 'retired-feed',
     name: 'Retired Feed',
     maturity: 'deprecated',
-    state: 'blocked',
     dataInput: 'producer-managed',
   })]);
 
   assert.equal(entry.maturityLabel, 'Deprecated');
-  assert.equal(entry.acceptanceLabel, 'Blocked');
   assert.match(entry.agentInstructions, /producer-managed/u);
   assert.doesNotMatch(entry.agentInstructions, /burnlist oven set/u);
 });

@@ -14,10 +14,10 @@ the Oven only declares how the shared runtime presents that payload.
 
 Creating a local package does not make it an official Oven. Official membership
 comes only from the validated `ovens/catalog.json` control-plane manifest; the
-manifest is not an Oven and cannot name executable imports. A fixture or demo
-may test this declarative runtime, but only verifier-approved `canonical-oven`
-evidence from the catalog entry's named producer may change its acceptance
-state.
+manifest is not an Oven and cannot name executable imports. It distinguishes
+the project producer's `inputContract` from the `.oven` DSL's `renderContract`
+and declares the compatible Burnlist runtime contract. It makes no acceptance
+or retained-evidence claim.
 
 ```text
 human .oven source

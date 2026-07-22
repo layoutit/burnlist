@@ -103,10 +103,16 @@ test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled
     ]);
     assert.equal(catalog.entries.some(({ id }) => id === "local-only"), false);
     for (const entry of catalog.entries) {
-      assert.equal(entry.acceptance.fixtureEvidence, "forbidden");
+      assert.equal(entry.runtimeCompatibility, "burnlist-oven-runtime@1");
+      assert.match(entry.inputContract, /@[1-9][0-9]*$/u);
+      assert.match(entry.renderContract, /@[1-9][0-9]*$/u);
+      assert.equal(Object.hasOwn(entry, "acceptance"), false);
       assert.equal(Object.hasOwn(entry, "repoKey"), false);
       assert.match(entry.ovenRevision, /^o1-sha256:[a-f0-9]{64}$/u);
     }
+    const tracing = catalog.entries.find(({ id }) => id === "performance-tracing");
+    assert.equal(tracing.inputContract, "performance-tracing-oven@1");
+    assert.equal(tracing.renderContract, "burnlist-differential-testing-data@1");
 
     const inventory = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body).ovens;
     const official = inventory.filter(({ origin }) => origin === "official");

@@ -223,6 +223,24 @@ test("the internal observer discovers and invalidates streams after the public 6
   stop();
 });
 
+test("a filtered subscriber advances past an unrelated bounded backlog", (t) => {
+  const repo = fixture(t);
+  for (let index = 0; index < 3; index += 1) {
+    publishOvenEvent(repo.root, event(`unrelated-${index}`, index, `other-${index}`));
+  }
+  const timers = fakeTimers();
+  const observer = createOvenEventObserver({ resolveRepos: () => [repo], batchLimit: 2, timers });
+  const received = [];
+  const subscription = observer.subscribe(selection(repo, {}, ["future-oven"]), {
+    onDelivery(item) { received.push(item.cursor); },
+  });
+  publishOvenEvent(repo.root, event("subscribed", 3, "future-oven"));
+  for (let scan = 0; scan < 6; scan += 1) timers.handles[0].callback();
+
+  assert.deepEqual(received, ["subscribed"]);
+  subscription.unsubscribe();
+});
+
 test("stale subscriber catch-up cannot delay the independent live invalidation tail", () => {
   const repo = { root: "/unused", repoKey: "aaaaaaaaaaaa", name: "fixture" };
   const timers = fakeTimers();

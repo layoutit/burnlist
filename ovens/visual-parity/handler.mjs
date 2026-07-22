@@ -65,6 +65,7 @@ function blockedEntry(binding, error) {
 
 export const visualParityHandler = Object.freeze({
   id: "visual-parity",
+  inputContract: "burnlist-visual-parity-data@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateVisualParityRuntimeData,
 

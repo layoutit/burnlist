@@ -7,12 +7,14 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { readOvenEvents } from "../events/oven-event-store.mjs";
 import { normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
+import { OVEN_RUNTIME_COMPATIBILITY } from "../ovens/oven-runtime-compatibility.mjs";
 
 const packageRoot = resolve(new URL("../..", import.meta.url).pathname);
 const binPath = join(packageRoot, "bin", "burnlist.mjs");
@@ -55,11 +57,14 @@ function readPin(context) {
 
 function assertValidPin(pin, pkg) {
   const normalized = normalizeOvenPackage(pkg);
-  assert.deepEqual(Object.keys(pin).sort(), ["id", "pinnedAt", "revision", "source", "version"]);
+  assert.deepEqual(Object.keys(pin).sort(), [
+    "id", "pinnedAt", "revision", "runtimeCompatibility", "source", "version",
+  ]);
   assert.equal(pin.id, builtInId);
   assert.equal(pin.version, normalized.version);
   assert.equal(pin.revision, ovenRevision(pkg));
   assert.equal(pin.source, "built-in");
+  assert.equal(pin.runtimeCompatibility, OVEN_RUNTIME_COMPATIBILITY);
   assert.equal(new Date(pin.pinnedAt).toISOString(), pin.pinnedAt);
 }
 
@@ -146,6 +151,20 @@ test("oven upgrade is opt-in and re-copies the shipped source after adoption", a
       "adopted",
       "upgraded",
     ]);
+  } finally { context.cleanup(); }
+});
+
+test("oven upgrade replaces an incompatible declarative pin with the installed runtime contract", () => {
+  const context = fixture();
+  const shipped = shippedSource();
+  try {
+    run(context, "oven", "adopt", builtInId, "--repo", context.repo);
+    const pin = readPin(context);
+    pin.runtimeCompatibility = "burnlist-oven-runtime@2";
+    writeFileSync(join(vendoredPath(context), "pin.json"), `${JSON.stringify(pin, null, 2)}\n`);
+    const output = run(context, "oven", "upgrade", builtInId, "--repo", context.repo);
+    assert.match(output, /Upgraded Oven checklist/u);
+    assertValidPin(readPin(context), shipped);
   } finally { context.cleanup(); }
 });
 

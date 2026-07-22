@@ -3,9 +3,10 @@ export { burnlistHref, burnlistLensContext, currentSection, customOvenSelection,
 export { burnlistOvenHref, differentialTestingScenarioHref, parseRoute, repoOvenHref } from "./route-model.mjs";
 export { BURNLIST_DATA_CONTRACT, fittingOvens, ovenFitsContract, ovenInRepoScope } from "./oven-fit.mjs";
 export { buildLocalOvenInventory, buildOfficialOvenCatalog, buildOvenCatalog } from "./oven-catalog.mjs";
+export { effectiveOvensForRepo } from "./oven-identity.mjs";
 export { checklistOvenRepoKey } from "./oven-definition.mjs";
 export { browserOvenSnapshotClient, createOvenSnapshotClient, ovenSnapshotKey } from "./oven-event-client.mjs";
-export { ovenSamplePayload } from "./oven-samples.mjs";
+export { ovenSamplePayload, ovenSamplePayloadForEntry } from "./oven-samples.mjs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
 export { visualParityDomainSummary } from "./visual-parity";

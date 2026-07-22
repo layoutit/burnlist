@@ -12,16 +12,20 @@ export const OVEN_DATA_INPUT = Object.freeze({
 });
 
 const dataInputs = new Set(Object.values(OVEN_DATA_INPUT));
+const contractPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*@[1-9][0-9]*$/u;
 
 function validateDataCapability(handler, id) {
   if (handler.dataInput === undefined) {
-    if (handler.validateData !== undefined) {
-      throw new Error(`Oven handler ${id} validateData requires dataInput.`);
+    if (handler.validateData !== undefined || handler.inputContract !== undefined) {
+      throw new Error(`Oven handler ${id} inputContract and validateData require dataInput.`);
     }
     return;
   }
   if (!dataInputs.has(handler.dataInput)) {
     throw new Error(`Oven handler ${id} dataInput must be json-payload or producer-managed.`);
+  }
+  if (typeof handler.inputContract !== "string" || !contractPattern.test(handler.inputContract)) {
+    throw new Error(`Oven handler ${id} dataInput requires a versioned inputContract.`);
   }
   if (handler.dataInput === OVEN_DATA_INPUT.jsonPayload && typeof handler.validateData !== "function") {
     throw new Error(`Oven handler ${id} json-payload dataInput requires validateData.`);

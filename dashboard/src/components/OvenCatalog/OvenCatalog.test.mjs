@@ -34,16 +34,17 @@ async function loadView() {
   };
 }
 
-function official(id, { maturity = "shipped", state = "unverified" } = {}) {
+function official(id, { maturity = "shipped" } = {}) {
   return {
     id,
     version: "1.0.0",
-    contract: `${id}@1`,
+    inputContract: `${id}-input@1`,
+    renderContract: `${id}-render@1`,
     dataInput: "json-payload",
     producer: `project-${id}-adapter`,
     routeKind: "repo-oven",
     maturity,
-    acceptance: { state, evidenceClass: "canonical-oven", fixtureEvidence: "forbidden" },
+    runtimeCompatibility: "burnlist-oven-runtime@1",
     name: `${id} Oven`,
     description: `${id} official description`,
     ovenRevision: `o1-sha256:${"a".repeat(64)}`,
@@ -52,8 +53,7 @@ function official(id, { maturity = "shipped", state = "unverified" } = {}) {
     label: `${id}@1.0.0`,
     href: `/ovens/${id}`,
     maturityLabel: maturity[0].toUpperCase() + maturity.slice(1),
-    acceptanceLabel: state[0].toUpperCase() + state.slice(1),
-    agentInstructions: `Use official ${id}. Fixtures do not qualify.`,
+    agentInstructions: `Use official ${id}.`,
   };
 }
 
@@ -68,6 +68,10 @@ function local(id, origin, repoKey) {
     origin,
     repoKey,
     dataInput: "json-payload",
+    inputContract: `${id}@1`,
+    renderContract: `${id}@1`,
+    runtimeCompatibility: "burnlist-oven-runtime@1",
+    ovenRevision: `o1-sha256:${"a".repeat(64)}`,
     catalogRevision: null,
     label: `${id}@2.0.0`,
     href: `/ovens/${id}?repoKey=${repoKey}`,
@@ -75,14 +79,14 @@ function local(id, origin, repoKey) {
   };
 }
 
-test("the catalog view separates official membership, acceptance, and local inventory", async () => {
+test("the catalog view separates official membership and local inventory", async () => {
   const { module, cleanup } = await loadView();
   try {
     const markup = renderToStaticMarkup(createElement(module.OvenCatalogView, {
       catalogRevision: "b".repeat(64),
       official: [
         official("alpha"),
-        official("retired", { maturity: "deprecated", state: "blocked" }),
+        official("retired", { maturity: "deprecated" }),
       ],
       local: [
         local("alpha", "vendored", "aaaaaaaaaaaa"),
@@ -93,12 +97,13 @@ test("the catalog view separates official membership, acceptance, and local inve
 
     assert.match(markup, /Official Oven catalog/u);
     assert.match(markup, /2 official entries · revision b{12}/u);
-    assert.match(markup, /Only these shipped definitions are official/u);
-    assert.match(markup, /Acceptance: Unverified/u);
+    assert.match(markup, /Only these validated declarative packages are official/u);
+    assert.match(markup, /Input: alpha-input@1/u);
+    assert.match(markup, /Render: alpha-render@1/u);
     assert.match(markup, /Deprecated/u);
-    assert.match(markup, /Acceptance: Blocked/u);
     assert.match(markup, /project-alpha-adapter/u);
-    assert.match(markup, /canonical-oven; fixtures forbidden/u);
+    assert.match(markup, /burnlist-oven-runtime@1/u);
+    assert.doesNotMatch(markup, /Acceptance:/u);
     assert.match(markup, /Repository inventory/u);
     assert.match(markup, /Vendored/u);
     assert.match(markup, /Custom/u);

@@ -10,6 +10,7 @@ import {
   ovenSnapshotKey,
   publicOvenSnapshotState,
 } from "./oven-snapshot-contract.mjs";
+import { createOvenEventConnection } from "./oven-event-connection.mjs";
 
 export { ovenSnapshotKey } from "./oven-snapshot-contract.mjs";
 export {
@@ -68,11 +69,8 @@ export function createOvenSnapshotClient({
   const pendingKeys = new Set();
   let started = false;
   let lifecycle = 0;
-  let eventSource = null;
-  let connectPromise = null;
   let reconcileTimer = null;
   let pendingTimer = null;
-  let observerError = "";
   let requestGeneration = 0;
 
   const notify = (entry) => {
@@ -238,41 +236,17 @@ export function createOvenSnapshotClient({
     }
   };
 
-  const connect = () => {
-    if (!started || eventSource || connectPromise) return connectPromise;
-    const connectLifecycle = lifecycle;
-    const task = Promise.resolve()
-      .then(() => fetchImpl("/api/events?tail=1", { cache: "no-store" }))
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Oven event baseline failed (${response.status})`);
-        const baseline = await response.json();
-        if (typeof baseline?.cursor !== "string" || !baseline.cursor) throw new Error("Oven event baseline cursor is missing.");
-        if (!started || lifecycle !== connectLifecycle) return;
-        const source = eventSourceFactory(`/api/events?stream=1&after=${encodeURIComponent(baseline.cursor)}`);
-        if (!source || typeof source.addEventListener !== "function" || typeof source.close !== "function") {
-          throw new Error("Oven EventSource factory returned an invalid source.");
-        }
-        eventSource = source;
-        source.addEventListener("oven-event", onEvent);
-        source.addEventListener("oven-reset", onReset);
-        source.onopen = () => {
-          observerError = "";
-          reconcileFallback();
-        };
-        source.onerror = () => {
-          observerError = "Oven event stream disconnected; canonical fallback remains active.";
-        };
-      })
-      .catch((cause) => {
-        observerError = cause instanceof Error ? cause.message : "Could not establish the Oven event baseline.";
-      })
-      .finally(() => { if (connectPromise === task) connectPromise = null; });
-    connectPromise = task;
-    return task;
-  };
+  const eventConnection = createOvenEventConnection({
+    entries: () => snapshotCache.values(),
+    fetchImpl,
+    eventSourceFactory,
+    onEvent,
+    onReset,
+    onOpen: reconcileFallback,
+  });
 
   const onFocus = () => {
-    void connect();
+    void eventConnection.sync();
     reconcile();
   };
   const stop = () => {
@@ -284,14 +258,8 @@ export function createOvenSnapshotClient({
     if (pendingTimer !== null) timers.clearTimeout(pendingTimer);
     reconcileTimer = null;
     pendingTimer = null;
-    connectPromise = null;
     pendingKeys.clear();
-    if (eventSource) {
-      eventSource.removeEventListener?.("oven-event", onEvent);
-      eventSource.removeEventListener?.("oven-reset", onReset);
-      eventSource.close();
-      eventSource = null;
-    }
+    eventConnection.stop();
     for (const entry of snapshotCache.values()) cancelRequest(entry);
   };
   const start = () => {
@@ -300,11 +268,11 @@ export function createOvenSnapshotClient({
     lifecycle += 1;
     focusTarget?.addEventListener?.("focus", onFocus);
     reconcileTimer = timers.setInterval(() => {
-      void connect();
+      void eventConnection.sync();
       reconcileFallback();
     }, reconcileIntervalMs);
     reconcileTimer?.unref?.();
-    void connect();
+    void eventConnection.start();
     return stop;
   };
 
@@ -356,6 +324,7 @@ export function createOvenSnapshotClient({
       snapshotCache.touch(entry);
       listener(publicOvenSnapshotState(entry));
       if (!started) start();
+      else void eventConnection.sync();
       if (wasInactive && !entry.inFlight) refreshEntry(entry);
       let subscribed = true;
       return Object.freeze({
@@ -370,6 +339,7 @@ export function createOvenSnapshotClient({
           if (!entry.listeners.size) {
             if (entry.inFlight) cancelRequest(entry);
             pruneInactive();
+            void eventConnection.sync();
           }
         },
       });
@@ -378,12 +348,11 @@ export function createOvenSnapshotClient({
       const cached = snapshotCache.stats();
       return {
         started,
-        eventSources: eventSource ? 1 : 0,
+        ...eventConnection.stats(),
         ...cached,
         activeQueries: [...snapshotCache.values()].filter((entry) => entry.listeners.size).length,
         inFlight: [...snapshotCache.values()].filter((entry) => entry.inFlight).length,
         pending: pendingKeys.size,
-        observerError,
       };
     },
   });

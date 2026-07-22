@@ -137,16 +137,13 @@ converted into starter data. The optional example is not vendored and does not
 enter the Oven revision or pin. `--force` has the same deterministic duplicate
 behavior as `adopt`.
 
-An example or fixture proves only the mechanic it targets. It cannot promote a
-shipped definition's official acceptance state. Use
-`unit-fixture` or `transport-fixture` for synthetic checks, `catalog-route` for
-the `/ovens` inventory surface, and `canonical-oven` only for a real
-source-owned producer on its canonical route. The canonical class must pass
-`scripts/verify-official-oven-evidence.mjs`; otherwise keep the catalog entry
-`unverified` or `blocked`.
+Examples and fixtures test only the mechanics they target. The official catalog
+does not qualify acceptance or retained evidence. Its generated agent guidance
+uses the producer `inputContract`; the `.oven` source declares the separate
+`renderContract` consumed by the shared runtime.
 
 `set` resolves a repo's vendored Oven before the shipped or custom source. For an
-official Oven, it calls the same runtime validator used by that Oven's render handler;
+official Oven, it calls that handler's producer `inputContract` validator;
 there is no second schema-based approximation. A producer-managed Oven such as
 Streaming Diff refuses a single JSON payload. A custom Oven with no registered
 runtime validator checks that every `.oven` `source=` and `<bind source=>`
@@ -189,15 +186,19 @@ identity and source revision:
   "version": "0.1.0",
   "revision": "o1-sha256:<hex>",
   "source": "built-in",
+  "runtimeCompatibility": "burnlist-oven-runtime@1",
   "pinnedAt": "2026-07-21T20:23:35.554Z"
 }
 ```
 
 The declared `id@version` identity is distinct from the content revision: the
-revision changes when source bytes change. Because the vendored copy and pin
-are committed, upgrading the Burnlist CLI never silently changes a project's
-Oven. Run `burnlist oven upgrade <id>` to opt in to copying the shipped source
-again, then commit the changed vendored directory. The dashboard resolves a
+revision changes when source bytes change. The pin freezes the declarative
+source and instructions, not the installed CLI's validators, server handlers,
+adapters, or frontend runtime. `runtimeCompatibility` is a coarse compatibility
+gate: Burnlist refuses a vendored package for another runtime contract, while
+behavior may still evolve within a compatible runtime version. Run `burnlist
+oven upgrade <id>` to opt in to copying the shipped source again, then commit
+the changed vendored directory. The dashboard resolves a
 repo's vendored Oven before the shipped official definition when
 `.burnlist/ovens/<id>/` exists; otherwise it uses the catalog-backed shipped
 definition. The pin's historical `source: "built-in"` value is an on-disk

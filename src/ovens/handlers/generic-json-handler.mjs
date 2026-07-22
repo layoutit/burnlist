@@ -11,6 +11,7 @@ export function validateGenericJsonData(payload) {
 
 export const genericJsonHandler = Object.freeze({
   id: "checklist",
+  inputContract: "checklist-progress@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateGenericJsonData,
 

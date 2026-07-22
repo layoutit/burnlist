@@ -5,86 +5,68 @@
     {
       "id": "checklist",
       "version": "0.1.0",
-      "contract": "checklist-progress@1",
+      "inputContract": "checklist-progress@1",
+      "renderContract": "checklist-progress@1",
       "dataInput": "json-payload",
       "producer": "burnlist-checklist-progress",
       "routeKind": "burnlist-lens",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
       "id": "differential-testing",
       "version": "0.1.0",
-      "contract": "burnlist-differential-testing-data@1",
+      "inputContract": "burnlist-differential-testing-data@1",
+      "renderContract": "burnlist-differential-testing-data@1",
       "dataInput": "json-payload",
       "producer": "project-differential-testing-adapter",
       "routeKind": "repo-oven",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
       "id": "model-lab",
       "version": "0.1.0",
-      "contract": "burnlist-model-lab-data@1",
+      "inputContract": "burnlist-model-lab-data@1",
+      "renderContract": "burnlist-model-lab-data@1",
       "dataInput": "json-payload",
       "producer": "project-model-lab-adapter",
       "routeKind": "repo-oven",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
       "id": "performance-tracing",
       "version": "0.1.0",
-      "contract": "burnlist-differential-testing-data@1",
+      "inputContract": "performance-tracing-oven@1",
+      "renderContract": "burnlist-differential-testing-data@1",
       "dataInput": "json-payload",
       "producer": "project-performance-tracing-adapter",
       "routeKind": "repo-oven",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
       "id": "streaming-diff",
       "version": "0.1.0",
-      "contract": "burnlist-streaming-diff-data@2",
+      "inputContract": "burnlist-streaming-diff-data@2",
+      "renderContract": "burnlist-streaming-diff-data@2",
       "dataInput": "producer-managed",
       "producer": "burnlist-streaming-diff-hooks",
       "routeKind": "repo-oven",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
       "id": "visual-parity",
       "version": "0.1.0",
-      "contract": "burnlist-visual-parity-data@1",
+      "inputContract": "burnlist-visual-parity-data@1",
+      "renderContract": "burnlist-visual-parity-data@1",
       "dataInput": "json-payload",
       "producer": "project-visual-parity-adapter",
       "routeKind": "repo-oven",
       "maturity": "shipped",
-      "acceptance": {
-        "state": "unverified",
-        "evidenceClass": "canonical-oven",
-        "fixtureEvidence": "forbidden"
-      }
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
     }
   ]
 }

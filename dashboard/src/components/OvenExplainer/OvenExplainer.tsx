@@ -1,5 +1,10 @@
 import { useEffect, useState, type ComponentProps } from "react";
-import { buildOvenCatalog, ovenExplainerSelection, ovenSamplePayload } from "@lib";
+import {
+  buildOvenCatalog,
+  effectiveOvensForRepo,
+  ovenExplainerSelection,
+  ovenSamplePayloadForEntry,
+} from "@lib";
 import type { OvenSummary } from "@lib/types";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
 import { DashboardError } from "../DashboardError";
@@ -11,16 +16,20 @@ type OvenCatalogEntry = {
   name: string;
   version: string;
   contract: string;
+  inputContract: string;
+  renderContract: string;
   description: string;
   builtIn: boolean;
+  origin: "official" | "vendored" | "custom";
   repoKey: string | null;
+  ovenRevision: string;
   dataInput: "json-payload" | "producer-managed";
   label: string;
   href: string;
   agentInstructions: string;
 };
 type OvenIr = ComponentProps<typeof OvenRuntime>["ir"];
-type LoadedOven = { entry: OvenCatalogEntry; ir: OvenIr | null };
+type LoadedOven = { entry: OvenCatalogEntry; ir: OvenIr | null; sample: unknown | null };
 
 export function OvenExplainer() {
   const selection = ovenExplainerSelection();
@@ -42,9 +51,16 @@ export function OvenExplainer() {
         if (!catalogResponse.ok) throw new Error(`Could not load Ovens (${catalogResponse.status}).`);
         const catalogBody = await catalogResponse.json() as { ovens?: OvenSummary[] };
         if (controller.signal.aborted) return;
-        const entry = (buildOvenCatalog(catalogBody.ovens) as OvenCatalogEntry[]).find((candidate) => candidate.id === selection.ovenId
-          && candidate.repoKey === selection.repoKey);
-        if (!entry) throw new Error("This Oven could not be found.");
+        const inventory = buildOvenCatalog(catalogBody.ovens) as OvenCatalogEntry[];
+        const resolved = selection.repoKey
+          ? (effectiveOvensForRepo(inventory, selection.repoKey) as OvenCatalogEntry[])
+            .find((candidate) => candidate.id === selection.ovenId)
+          : inventory.find((candidate) => candidate.id === selection.ovenId && candidate.origin === "official");
+        if (!resolved) throw new Error("This Oven could not be found.");
+        const entry = resolved.origin === "official" && selection.repoKey
+          ? { ...resolved, repoKey: selection.repoKey }
+          : resolved;
+        const sample = ovenSamplePayloadForEntry(entry, inventory);
 
         const query = entry.repoKey ? `?repoKey=${encodeURIComponent(entry.repoKey)}` : "";
         try {
@@ -52,10 +68,10 @@ export function OvenExplainer() {
           if (!ovenResponse.ok) throw new Error(`Could not load Oven (${ovenResponse.status}).`);
           const ovenBody = await ovenResponse.json() as { oven?: { ir?: OvenIr } };
           if (controller.signal.aborted) return;
-          setLoaded({ entry, ir: ovenBody.oven?.ir ?? null });
+          setLoaded({ entry, ir: ovenBody.oven?.ir ?? null, sample });
         } catch {
           if (controller.signal.aborted) return;
-          setLoaded({ entry, ir: null });
+          setLoaded({ entry, ir: null, sample: null });
         }
       } catch (cause) {
         if (controller.signal.aborted) return;
@@ -68,6 +84,6 @@ export function OvenExplainer() {
 
   if (error) return <DashboardError message={error} />;
   if (!loaded) return <EmptyState title="Loading Oven" detail="Reading the Oven definition and explainer details." />;
-  if (!loaded.ir) return <OvenExplainerView entry={loaded.entry} ir={{ contract: loaded.entry.contract, controls: [], collections: [], root: [] }} sample={null} />;
-  return <OvenExplainerView entry={loaded.entry} ir={loaded.ir} sample={ovenSamplePayload(loaded.entry.id)} />;
+  if (!loaded.ir) return <OvenExplainerView entry={loaded.entry} ir={{ contract: loaded.entry.renderContract, controls: [], collections: [], root: [] }} sample={null} />;
+  return <OvenExplainerView entry={loaded.entry} ir={loaded.ir} sample={loaded.sample} />;
 }

@@ -226,8 +226,11 @@ export function createOvenEventObserver({
     }
   };
   const subscriberMinimums = () => {
-    const keys = new Set([...subscribers].flatMap((subscriber) => Object.keys(subscriber.watermarks)));
-    const result = {};
+    const result = { ...observerWatermarks };
+    const keys = new Set([
+      ...Object.keys(observerWatermarks),
+      ...[...subscribers].flatMap((subscriber) => Object.keys(subscriber.watermarks)),
+    ]);
     for (const key of keys) {
       let minimum;
       for (const subscriber of subscribers) {
@@ -256,6 +259,7 @@ export function createOvenEventObserver({
     const counts = new Map();
     for (const item of (batch.deliveries ?? []).slice(0, batchLimit)) {
       const key = `${item.repoKey}/${item.ovenId}`;
+      deliverLive(item);
       for (const subscriber of [...subscribers]) {
         if (!interested(subscriber, key) || item.sequence <= (subscriber.watermarks[key] ?? 0)) continue;
         const count = counts.get(subscriber) ?? 0;

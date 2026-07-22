@@ -59,8 +59,8 @@ the active lens is highlighted. Ovens with other contracts are not offered.
 
 The `/ovens` page renders two separate surfaces. **Official Ovens** comes only
 from `GET /api/oven-catalog`, preserves manifest order, and shows the catalog
-revision, `id@version`, contract, producer, route kind, maturity, acceptance,
-and fixture policy. **Repository inventory** comes from `GET /api/ovens` and
+revision, `id@version`, input contract, render contract, producer, route kind,
+maturity, and runtime compatibility. **Repository inventory** comes from `GET /api/ovens` and
 lists locally available vendored and custom Ovens with explicit origin and
 `repoKey`; local availability never promotes catalog membership. Each surface
 has its own **Tell your agent** block.
@@ -68,23 +68,28 @@ has its own **Tell your agent** block.
 ```text
 Use the official <Name> Oven (<id>@<version>).
 Do not invent a replacement Oven, renderer, or data contract.
-Its normalized data must satisfy <contract>.
+Its producer output must satisfy <inputContract>.
+The declarative renderer consumes <renderContract>.
 Use the source-owned producer: <producer>.
 Install the shipped Oven in the target repository:
 burnlist oven use <id>
 Publish the producer's real JSON, then set it:
 burnlist oven set <id> <path>
-Canonical acceptance is <state>.
-Only canonical-oven evidence from the named producer qualifies; fixtures do not.
 ```
 
 An `/ovens/<id>` explainer shows the Oven documentation and a demonstration
-render with sample data. For the live, data-bound view, open the scoped
+render with sample data. A vendored explainer uses that official sample only
+when its content revision matches the current official package. For the live, data-bound view, open the scoped
 `/r/<repoKey>/o/<id>` or `/r/<repoKey>/<burnlistId>/o/<id>` URL instead.
 
 Paginate the main Burnlist table after lifecycle filtering, with `20` rows per page. Store pages in `?page=<number>`, reset to page one when the lifecycle filter changes, clamp invalid or oversized pages, and preserve the current filter and page through detail and back links.
 
 Place `New Oven` at the top right of the main table. Keep `Run Burn` off the primary dashboard controls; its direct `/runs/new` route remains available. The normative definition and ownership boundary are in `oven-contract.md`; this UI must preserve them. Never maintain an official inventory in this document: the exact immutable set is `ovens/catalog.json`. New Oven creation is now `{id, name, instructions}` and the server scaffolds a starter `<id>.oven`; the drag-to-place grid detail-builder was removed. Persist custom Ovens under ignored `.local/burnlist/ovens/` state and immutable Run snapshots under `.local/burnlist/runs/`.
+
+Run Burn selects a target repository first. Its Oven list is the effective
+repository resolution (`vendored -> official -> repository custom`), and the
+POST body contains only `repoRoot` plus `ovenId`; `ovenRepoKey` is resolved and
+recorded by the server rather than accepted from the browser.
 
 ## Local Observer State
 

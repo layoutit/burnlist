@@ -28,6 +28,10 @@ function timers() {
   };
 }
 
+function isEventBaseline(url) {
+  return new URL(url, "http://burnlist.test").searchParams.get("tail") === "1";
+}
+
 function descriptor(index = 0) {
   return {
     repoKey: "repo-a",
@@ -49,7 +53,7 @@ function clientWith(fetchSnapshot, options = {}) {
     focusTarget: null,
     eventSourceFactory: () => ({ addEventListener() {}, close() {} }),
     fetchImpl(url, init) {
-      if (url === "/api/events?tail=1") return Promise.resolve(response({ cursor: "oev1-current" }));
+      if (isEventBaseline(url)) return Promise.resolve(response({ cursor: "oev1-current" }));
       return fetchSnapshot(url, init);
     },
     ...options,
@@ -68,7 +72,7 @@ test("query churn retains only the newest bounded inactive snapshots", async () 
   }
   assert.deepEqual(client.stats(), {
     started: true,
-    eventSources: 1,
+    eventSources: 0,
     queries: 2,
     inactiveQueries: 2,
     inactiveBytes: 8,

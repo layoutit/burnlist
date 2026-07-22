@@ -229,14 +229,16 @@ test("oven list exposes the validated official catalog revision and origin", () 
     for (const oven of official) {
       assert.equal(oven.catalogEntry.id, oven.id);
       assert.equal(oven.catalogEntry.version, oven.version);
-      assert.equal(oven.catalogEntry.contract, expectedContracts.get(oven.id));
-      assert.equal(oven.catalogEntry.acceptance.fixtureEvidence, "forbidden");
+      assert.equal(oven.catalogEntry.renderContract, expectedContracts.get(oven.id));
+      assert.match(oven.catalogEntry.inputContract, /@[1-9][0-9]*$/u);
+      assert.equal(oven.catalogEntry.runtimeCompatibility, "burnlist-oven-runtime@1");
     }
 
     const viewed = JSON.parse(run(context, "oven", "view", "checklist", "--json"));
     assert.equal(viewed.origin, "official");
     assert.equal(viewed.catalogRevision, official[0].catalogRevision);
     assert.equal(viewed.catalogEntry.producer, "burnlist-checklist-progress");
+    assert.equal(viewed.catalogEntry.inputContract, "checklist-progress@1");
 
     const instructionsPath = join(context.repo, "instructions.md");
     writeFileSync(instructionsPath, "# Collision\n\nMust not replace an official Oven.\n");

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { compileOven } from "./dsl/oven-compile.mjs";
 import { ovenId } from "./oven-contract.mjs";
 import { OVEN_DATA_INPUT } from "./oven-registry.mjs";
+import { assertSupportedOvenRuntime, ovenRuntimeCompatibility } from "./oven-runtime-compatibility.mjs";
 
 export const OFFICIAL_OVEN_CATALOG_SCHEMA = "burnlist-official-oven-catalog@1";
 export const OFFICIAL_OVEN_CATALOG_MAX_BYTES = 128 * 1024;
@@ -12,13 +13,12 @@ export const OFFICIAL_OVEN_CATALOG_MAX_BYTES = 128 * 1024;
 const OVEN_SOURCE_MAX_BYTES = 1024 * 1024;
 const rootKeys = ["schema", "catalogVersion", "entries"];
 const entryKeys = [
-  "id", "version", "contract", "dataInput", "producer", "routeKind", "maturity", "acceptance",
+  "id", "version", "inputContract", "renderContract", "dataInput", "producer", "routeKind", "maturity",
+  "runtimeCompatibility",
 ];
-const acceptanceKeys = ["state", "evidenceClass", "fixtureEvidence"];
 const dataInputs = new Set(Object.values(OVEN_DATA_INPUT));
 const routeKinds = new Set(["burnlist-lens", "repo-oven"]);
 const maturities = new Set(["shipped", "experimental", "deprecated"]);
-const acceptanceStates = new Set(["accepted", "unverified", "blocked"]);
 const semverPattern = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const contractPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*@[1-9][0-9]*$/u;
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -62,24 +62,19 @@ function normalizeEntry(value, index) {
   } catch {
     fail(`${label}.id is invalid.`);
   }
-  assertExactKeys(value.acceptance, acceptanceKeys, `${label}.acceptance`);
   return {
     id,
     version: assertString(value.version, `${label}.version`, semverPattern),
-    contract: assertString(value.contract, `${label}.contract`, contractPattern),
+    inputContract: assertString(value.inputContract, `${label}.inputContract`, contractPattern),
+    renderContract: assertString(value.renderContract, `${label}.renderContract`, contractPattern),
     dataInput: assertEnum(value.dataInput, dataInputs, `${label}.dataInput`),
     producer: assertString(value.producer, `${label}.producer`, slugPattern),
     routeKind: assertEnum(value.routeKind, routeKinds, `${label}.routeKind`),
     maturity: assertEnum(value.maturity, maturities, `${label}.maturity`),
-    acceptance: {
-      state: assertEnum(value.acceptance.state, acceptanceStates, `${label}.acceptance.state`),
-      evidenceClass: value.acceptance.evidenceClass === "canonical-oven"
-        ? value.acceptance.evidenceClass
-        : fail(`${label}.acceptance.evidenceClass must be canonical-oven.`),
-      fixtureEvidence: value.acceptance.fixtureEvidence === "forbidden"
-        ? value.acceptance.fixtureEvidence
-        : fail(`${label}.acceptance.fixtureEvidence must be forbidden.`),
-    },
+    runtimeCompatibility: ovenRuntimeCompatibility(
+      value.runtimeCompatibility,
+      `Official Oven catalog ${label}.runtimeCompatibility`,
+    ),
   };
 }
 
@@ -168,12 +163,18 @@ export function auditOfficialOvenInstall({ catalog, ovensDir, handlers }) {
     } catch (error) {
       fail(`${entry.id} source does not compile: ${error.message}`);
     }
-    if (ir.id !== entry.id || ir.version !== entry.version || ir.contract !== entry.contract) {
+    if (ir.id !== entry.id || ir.version !== entry.version || ir.contract !== entry.renderContract) {
       fail(`${entry.id} package identity does not match its catalog entry.`);
     }
-    if (handlerById.get(entry.id).dataInput !== entry.dataInput) {
+    const handler = handlerById.get(entry.id);
+    if (handler.dataInput !== entry.dataInput) {
       fail(`${entry.id} handler dataInput does not match its catalog entry.`);
     }
+    if (handler.inputContract !== entry.inputContract) {
+      fail(`${entry.id} handler inputContract does not match its catalog entry.`);
+    }
+    try { assertSupportedOvenRuntime(entry.runtimeCompatibility); }
+    catch (error) { fail(`${entry.id} ${error.message}`); }
   }
   return catalog;
 }

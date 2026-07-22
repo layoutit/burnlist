@@ -305,6 +305,7 @@ function startSse(ctx, feed) {
 
 export const streamingDiffHandler = Object.freeze({
   id: STREAMING_DIFF_OVEN_ID,
+  inputContract: "burnlist-streaming-diff-data@2",
   dataInput: OVEN_DATA_INPUT.producerManaged,
 
   serveData(ctx) {

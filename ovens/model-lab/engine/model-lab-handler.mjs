@@ -32,6 +32,7 @@ function readModelLabSnapshot(ctx, path = ctx.bindingPath) {
 
 export const modelLabHandler = Object.freeze({
   id: "model-lab",
+  inputContract: "burnlist-model-lab-data@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateModelLabRuntimeData,
 

@@ -530,6 +530,7 @@ function readVendoredOvenForRepo(repoRoot, id) {
     oven: ovenPackage.oven,
     ir: compileOven(ovenPackage.oven).ir,
     ovenRevision: ovenPackage.revision,
+    runtimeCompatibility: ovenPackage.pin.runtimeCompatibility,
   };
 }
 
@@ -622,17 +623,23 @@ function findOven(id, selectedKey = null) {
 }
 
 function ovenSummary(oven) {
-  const dataInput = getOvenHandler(oven.id)?.dataInput ?? genericJsonHandler.dataInput;
+  const registeredHandler = getOvenHandler(oven.id);
+  const handler = registeredHandler ?? genericJsonHandler;
+  const inputContract = registeredHandler?.inputContract ?? oven.ir.contract;
+  const renderContract = oven.ir.contract;
   return {
     id: oven.id,
-    contract: oven.ir.contract,
+    contract: renderContract,
+    inputContract,
+    renderContract,
     version: oven.ir.version,
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
     origin: oven.origin,
     repoKey: oven.repoKey,
-    dataInput,
+    dataInput: handler.dataInput,
+    runtimeCompatibility: oven.catalogEntry?.runtimeCompatibility ?? oven.runtimeCompatibility ?? null,
     ovenRevision: oven.ovenRevision,
     catalogRevision: oven.catalogRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
@@ -747,18 +754,12 @@ function assertSnapshotSize(contents, maxBytes, label) {
 }
 
 function createBurnRun(value) {
-  assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run");
+  assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
-  if (!Object.hasOwn(value, "ovenRepoKey") || (value.ovenRepoKey !== null && typeof value.ovenRepoKey !== "string")) {
-    throw new Error("Burn run ovenRepoKey must be null or a repository key.");
-  }
-  const selectedOvenRepoKey = value.ovenRepoKey === null
-    ? null
-    : boundedText(value.ovenRepoKey, "Oven repository key", 64);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
   const repo = ovenScopeRepos().find((entry) => entry.root === requestedRoot);
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
-  const oven = findOven(selectedOvenId, selectedOvenRepoKey);
+  const oven = findOven(selectedOvenId, repo.repoKey);
   if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const title = boundedText(value.title, "Run title", 120);
   const objective = boundedText(value.objective, "Run objective", 12000);
@@ -768,7 +769,7 @@ function createBurnRun(value) {
     schemaVersion: 5,
     id,
     ovenId: selectedOvenId,
-    ovenRepoKey: selectedOvenRepoKey,
+    ovenRepoKey: oven.repoKey,
     ovenRevision: oven.ovenRevision,
     repoRoot: repo.root,
     repo: repo.name,

@@ -9,8 +9,11 @@ type OvenCatalogEntry = {
   name: string;
   version: string;
   contract: string;
+  inputContract: string;
+  renderContract: string;
   description: string;
   builtIn: boolean;
+  origin: "official" | "vendored" | "custom";
   repoKey: string | null;
   dataInput: "json-payload" | "producer-managed";
   label: string;
@@ -21,17 +24,24 @@ type OvenCatalogEntry = {
 type OvenIr = ComponentProps<typeof OvenRuntime>["ir"];
 
 export function OvenExplainerView({ entry, ir, sample }: { entry: OvenCatalogEntry; ir: OvenIr; sample: unknown | null }) {
+  const originLabel = entry.origin[0].toUpperCase() + entry.origin.slice(1);
+  const liveHref = entry.repoKey ? `/r/${encodeURIComponent(entry.repoKey)}/o/${encodeURIComponent(entry.id)}` : null;
   return (
     <section className="dashboard-index oven-explainer">
       <header className="oven-explainer-heading">
         <h1 className="dashboard-index-title">{entry.name}</h1>
         <p className="dashboard-index-summary">{entry.label}</p>
         <div className="oven-explainer-badges">
-          <Badge variant="outline">Contract: {entry.contract}</Badge>
-          <Badge variant={entry.builtIn ? "default" : "secondary"}>{entry.builtIn ? "Built-in" : "Custom"}</Badge>
-          {!entry.builtIn && entry.repoKey ? <Badge variant="ghost">{entry.repoKey}</Badge> : null}
+          <Badge variant="outline">Input: {entry.inputContract}</Badge>
+          <Badge variant="outline">Render: {entry.renderContract}</Badge>
+          <Badge variant={entry.origin === "official" ? "default" : "secondary"}>{originLabel}</Badge>
+          {entry.origin !== "official" && entry.repoKey ? <Badge variant="ghost">{entry.repoKey}</Badge> : null}
         </div>
-        <p className="oven-explainer-note">This is the Oven explainer. The live bound view lives at the scoped <code>/r/…/o/{entry.id}</code> URL.</p>
+        <p className="oven-explainer-note">
+          This is the Oven explainer. {liveHref
+            ? <a href={liveHref}>Open the repository live view.</a>
+            : "Choose a repository to open its live bound view."}
+        </p>
       </header>
 
       <Card className="oven-explainer-card">
@@ -42,7 +52,7 @@ export function OvenExplainerView({ entry, ir, sample }: { entry: OvenCatalogEnt
         <CardContent className="oven-explainer-card-content">
           <div className="oven-explainer-data-shape">
             <h3>What it shows / data shape</h3>
-            <p>This Oven renders data that satisfies the <code>{entry.contract}</code> contract.</p>
+            <p>Producer data satisfies <code>{entry.inputContract}</code>; the declarative view renders <code>{entry.renderContract}</code>.</p>
           </div>
           <div className="oven-explainer-agent-block">
             <div className="oven-explainer-agent-heading">

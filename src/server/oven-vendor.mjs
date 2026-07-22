@@ -1,6 +1,10 @@
 import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ovenId, normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
+import {
+  assertSupportedOvenRuntime,
+  OVEN_RUNTIME_COMPATIBILITY,
+} from "../ovens/oven-runtime-compatibility.mjs";
 import { atomicDirectory, readTextFileWithLimit, withOvenPackageLock } from "./fs-safe.mjs";
 import { assertOvenPackageFileLimits, OVEN_INSTRUCTIONS_MAX_BYTES, OVEN_SOURCE_MAX_BYTES } from "./oven-storage.mjs";
 
@@ -130,7 +134,7 @@ function readFileIfPresent(path, maxBytes, label, assertPath) {
 }
 
 function validatePin(pin, pkg) {
-  const expectedKeys = ["id", "version", "revision", "source", "pinnedAt"];
+  const expectedKeys = ["id", "version", "revision", "source", "pinnedAt", "runtimeCompatibility"];
   if (!pin || typeof pin !== "object" || Array.isArray(pin)
     || Object.keys(pin).length !== expectedKeys.length
     || expectedKeys.some((key) => !Object.hasOwn(pin, key))) {
@@ -142,6 +146,7 @@ function validatePin(pin, pkg) {
     || typeof pin.pinnedAt !== "string" || new Date(pin.pinnedAt).toISOString() !== pin.pinnedAt) {
     throw new Error(`Vendored Oven ${pkg.id} pin does not match its source.`);
   }
+  assertSupportedOvenRuntime(pin.runtimeCompatibility, `Vendored Oven ${pkg.id} runtimeCompatibility`);
   return pin;
 }
 
@@ -190,10 +195,18 @@ export function readVendoredOven(repoRoot, id) {
   return result;
 }
 
-export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "built-in", now } = {}) {
+export function writeVendoredOven(repoRoot, {
+  id,
+  instructions,
+  oven,
+  source = "built-in",
+  now,
+  runtimeCompatibility = OVEN_RUNTIME_COMPATIBILITY,
+} = {}) {
   const safeId = ovenId(id);
   const normalized = normalizeOvenPackage({ id: safeId, instructions, oven });
   if (typeof source !== "string" || !source) throw new Error("Vendored Oven source must be a non-empty string.");
+  const compatibility = assertSupportedOvenRuntime(runtimeCompatibility);
   const pkg = { id: safeId, instructions, oven, version: normalized.version };
   assertOvenPackageFileLimits({ "instructions.md": instructions, [`${safeId}.oven`]: oven }, safeId);
   const revision = ovenRevision(pkg);
@@ -202,6 +215,7 @@ export function writeVendoredOven(repoRoot, { id, instructions, oven, source = "
     version: normalized.version,
     revision,
     source,
+    runtimeCompatibility: compatibility,
     pinnedAt: (now ?? new Date()).toISOString(),
   };
   const pinText = `${JSON.stringify(pin, null, 2)}\n`;

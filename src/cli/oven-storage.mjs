@@ -82,7 +82,7 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
       }
       const ir = compileOven(ovenPackage.oven).ir;
       if (catalogEntry && (ir.id !== catalogEntry.id
-        || ir.version !== catalogEntry.version || ir.contract !== catalogEntry.contract)) {
+        || ir.version !== catalogEntry.version || ir.contract !== catalogEntry.renderContract)) {
         throw new Error(`Official Oven ${safeId} no longer matches catalog revision ${officialCatalog.catalogRevision}.`);
       }
       return {

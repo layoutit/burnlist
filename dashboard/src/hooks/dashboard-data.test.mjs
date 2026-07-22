@@ -14,6 +14,10 @@ function response(body, status = 200) {
   };
 }
 
+function isEventBaseline(url) {
+  return new URL(url, "http://burnlist.test").searchParams.get("tail") === "1";
+}
+
 function fakeTimers() {
   const intervals = [], timeouts = [];
   return {
@@ -67,7 +71,7 @@ test("landing projections share matching invalidations and the manual-write fall
       return source;
     },
     async fetchImpl(url) {
-      if (url === "/api/events?tail=1") return response({ cursor: "oev1-dashboard" });
+      if (isEventBaseline(url)) return response({ cursor: "oev1-dashboard" });
       calls.push(url);
       return url === "/api/projects"
         ? response({ projects: [{ version: calls.length }] })
@@ -75,14 +79,13 @@ test("landing projections share matching invalidations and the manual-write fall
     },
   });
   client.start();
-  await settle();
-  sources[0].open();
 
   const selected = { repoKey: "aaaaaaaaaaaa", id: "260722-001" };
   let projects, progress;
   client.subscribe(descriptor(dashboardProjectsSnapshotConfig(true)), (state) => { projects = state; });
   client.subscribe(descriptor(dashboardProgressSnapshotConfig(true, selected)), (state) => { progress = state; });
   await settle();
+  sources.at(-1).open();
   assert.deepEqual(calls, ["/api/projects", "/api/progress?repoKey=aaaaaaaaaaaa&id=260722-001"]);
 
   sources[0].publish({

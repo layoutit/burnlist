@@ -12,6 +12,7 @@ import { assertPerformanceTracingData } from "./contract.mjs";
 
 export const performanceTracingHandler = Object.freeze({
   id: "performance-tracing",
+  inputContract: "performance-tracing-oven@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validatePerformanceTracingRuntimeData,
 

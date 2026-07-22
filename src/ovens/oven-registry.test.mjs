@@ -37,11 +37,13 @@ test("the registry validates pre-write data capabilities", () => {
   const validateData = (payload) => payload;
   const payloadHandler = registerOvenHandler("registry-payload", {
     id: "registry-payload",
+    inputContract: "registry-payload@1",
     dataInput: OVEN_DATA_INPUT.jsonPayload,
     validateData,
   });
   const producerHandler = registerOvenHandler("registry-producer", {
     id: "registry-producer",
+    inputContract: "registry-producer@1",
     dataInput: OVEN_DATA_INPUT.producerManaged,
   });
 
@@ -49,14 +51,16 @@ test("the registry validates pre-write data capabilities", () => {
   assert.equal(producerHandler.validateData, undefined);
   assert.throws(() => registerOvenHandler("registry-input", {
     id: "registry-input",
+    inputContract: "registry-input@1",
     dataInput: "unknown",
   }), /dataInput/u);
   assert.throws(() => registerOvenHandler("registry-validator", {
     id: "registry-validator",
     dataInput: OVEN_DATA_INPUT.jsonPayload,
-  }), /validateData/u);
+  }), /inputContract/u);
   assert.throws(() => registerOvenHandler("registry-managed", {
     id: "registry-managed",
+    inputContract: "registry-managed@1",
     dataInput: OVEN_DATA_INPUT.producerManaged,
     validateData,
   }), /producer-managed/u);
@@ -68,9 +72,11 @@ test("every built-in declares its real runtime data capability", async () => {
   for (const id of ["checklist", "differential-testing", "model-lab", "performance-tracing", "visual-parity"]) {
     const handler = getOvenHandler(id);
     assert.equal(handler.dataInput, OVEN_DATA_INPUT.jsonPayload, id);
+    assert.match(handler.inputContract, /@[1-9][0-9]*$/u, id);
     assert.equal(typeof handler.validateData, "function", id);
   }
   const streamingDiff = getOvenHandler("streaming-diff");
   assert.equal(streamingDiff.dataInput, OVEN_DATA_INPUT.producerManaged);
+  assert.equal(streamingDiff.inputContract, "burnlist-streaming-diff-data@2");
   assert.equal(streamingDiff.validateData, undefined);
 });

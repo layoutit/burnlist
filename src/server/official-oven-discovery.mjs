@@ -7,7 +7,7 @@ export function createOfficialOvenDiscovery({ ovensDir, handlers, readOven }) {
   function materialize(entry) {
     const oven = readOven(ovensDir, entry.id, true);
     if (!oven) throw new Error(`Official Oven ${entry.id} is unavailable.`);
-    if (oven.id !== entry.id || oven.ir?.version !== entry.version || oven.ir?.contract !== entry.contract) {
+    if (oven.id !== entry.id || oven.ir?.version !== entry.version || oven.ir?.contract !== entry.renderContract) {
       throw new Error(`Official Oven ${entry.id} changed after catalog validation.`);
     }
     return {

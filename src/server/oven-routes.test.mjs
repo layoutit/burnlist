@@ -179,11 +179,16 @@ test("custom Ovens are identified by repository while official Ovens remain glob
     assert.ok(shared.every((oven) => oven.dataInput === "json-payload"));
     assert.deepEqual(
       Object.keys(shared[0]).sort(),
-      ["builtIn", "catalogRevision", "contract", "dataInput", "description", "id", "name", "origin", "ovenRevision", "repoKey", "version"],
+      [
+        "builtIn", "catalogRevision", "contract", "dataInput", "description", "id", "inputContract", "name",
+        "origin", "ovenRevision", "renderContract", "repoKey", "runtimeCompatibility", "version",
+      ],
     );
     assert.ok(shared.every((oven) => oven.origin === "custom" && oven.catalogRevision === null));
     const checklist = catalog.ovens.find((oven) => oven.id === "checklist");
     assert.equal(checklist.contract, "checklist-progress@1");
+    assert.equal(checklist.inputContract, "checklist-progress@1");
+    assert.equal(checklist.renderContract, "checklist-progress@1");
     assert.equal(checklist.repoKey, null);
     assert.equal(checklist.dataInput, "json-payload");
     assert.equal(checklist.origin, "official");
@@ -238,7 +243,7 @@ test("custom Ovens are identified by repository while official Ovens remain glob
     const created = await httpRequest(baseUrl, "/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
-      body: JSON.stringify({ ovenId: "shared", ovenRepoKey: b.repoKey, repoRoot: b.root, title: "B run", objective: "Use B's Oven." }),
+      body: JSON.stringify({ ovenId: "shared", repoRoot: b.root, title: "B run", objective: "Use B's Oven." }),
     });
     assert.equal(created.status, 201);
     const run = JSON.parse(created.body).run;
@@ -246,13 +251,20 @@ test("custom Ovens are identified by repository while official Ovens remain glob
     const runDirectory = run.path;
     const snapshot = await readFile(`${runDirectory}/instructions.md`, "utf8");
     assert.match(snapshot, /Oven B/u);
-    const wrongOvenRepo = await httpRequest(baseUrl, "/api/runs", {
+    const crossRepoOverride = await httpRequest(baseUrl, "/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
-      body: JSON.stringify({ ovenId: "shared", ovenRepoKey: c.repoKey, repoRoot: b.root, title: "Rejected run", objective: "Reject a missing Oven." }),
+      body: JSON.stringify({ ovenId: "shared", ovenRepoKey: c.repoKey, repoRoot: b.root, title: "Rejected run", objective: "Reject a cross-repo Oven." }),
     });
-    assert.equal(wrongOvenRepo.status, 400);
-    assert.match(JSON.parse(wrongOvenRepo.body).error, /Unknown oven shared/u);
+    assert.equal(crossRepoOverride.status, 400);
+    assert.match(JSON.parse(crossRepoOverride.body).error, /ovenRepoKey/u);
+    const missingInTarget = await httpRequest(baseUrl, "/api/runs", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-burnlist-token": catalog.writeToken },
+      body: JSON.stringify({ ovenId: "shared", repoRoot: c.root, title: "Rejected run", objective: "Use only target repo Ovens." }),
+    });
+    assert.equal(missingInTarget.status, 400);
+    assert.match(JSON.parse(missingInTarget.body).error, /Unknown oven shared/u);
   });
 });
 

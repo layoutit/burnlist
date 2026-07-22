@@ -45,28 +45,29 @@ A Burnlist in an unregistered repository is still visible when the dashboard lau
 
 New Oven and Run Burn are explicit, user-controlled local controller surfaces. They write local controller records under `.local/burnlist/` by default: custom Ovens under `.local/burnlist/ovens/` and immutable Run snapshots under `.local/burnlist/runs/`. They do not change canonical task state, execute instructions, or start an agent. See [Ovens](/ovens).
 
+Run Burn derives the effective Oven from the selected target repository and Oven id: vendored first, official second, then that repository's custom package. The UI does not expose an independent Oven repository selector, so a recipe from one repository cannot be run against another accidentally.
+
 ## Dashboard URLs
 
 Dashboard URLs keep the repository key in the path. A `repoKey` is 12 hexadecimal characters. The index is `/`; a Burnlist detail is `/r/<repoKey>/<burnlistId>`; and a Burnlist through an Oven lens is `/r/<repoKey>/<burnlistId>/o/<ovenId>`. A repo-scoped Oven is `/r/<repoKey>/o/<ovenId>`.
 
 A Burnlist detail has a lens-switcher that includes only Ovens whose data contract fits its `checklist-progress@1` contract. Its links open the Burnlist-scoped Oven URL, the active lens is highlighted, and `checklist` is the default lens. For example, the checklist lens is `/r/<repoKey>/<burnlistId>/o/checklist`.
 
-The Oven catalog is `/ovens`. Its official section comes only from `/api/oven-catalog` and shows the catalog revision, manifest order, producer, contract, route kind, maturity, acceptance, and fixture policy. A separate repository-inventory section comes from `/api/ovens` and labels locally available vendored and custom Ovens by origin and `repoKey`. Local availability does not create official membership or acceptance.
+The Oven catalog is `/ovens`. Its official section comes only from `/api/oven-catalog` and shows the catalog revision, manifest order, producer, input contract, render contract, route kind, maturity, and runtime compatibility. A separate repository-inventory section comes from `/api/ovens` and labels locally available vendored and custom Ovens by origin and `repoKey`. Local availability does not create official membership.
 
 ```text
 Use the official <Name> Oven (<id>@<version>).
 Do not invent a replacement Oven, renderer, or data contract.
-Its normalized data must satisfy <contract>.
+Its producer output must satisfy <inputContract>.
+The declarative renderer consumes <renderContract>.
 Use the source-owned producer: <producer>.
 Install the shipped Oven in the target repository:
 burnlist oven use <id>
 Publish the producer's real JSON, then set it:
 burnlist oven set <id> <path>
-Canonical acceptance is <state>.
-Only canonical-oven evidence from the named producer qualifies; fixtures do not.
 ```
 
-An Oven explainer lives at `/ovens/<ovenId>`. It shows the Oven documentation and a non-live demonstration rendered with sample data. Open the scoped Oven URL to see the live data-bound view.
+An Oven explainer lives at `/ovens/<ovenId>`. Repository-local explainers use `/ovens/<ovenId>?repoKey=<repoKey>`, preserve `official`, `vendored`, or `custom` origin, and link to `/r/<repoKey>/o/<ovenId>`. A vendored definition receives the official sample only when its content revision matches the current official package. Open the scoped Oven URL to see the live data-bound view.
 
 ## Local state
 

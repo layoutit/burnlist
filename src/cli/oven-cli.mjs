@@ -394,13 +394,14 @@ try {
     const targetPath = vendoredOvenPath(targetRoot, id);
     if (subcommand === "adopt") {
       if (existsSync(targetPath) && !flags.has("force")) fail(`Oven ${id} is already vendored at ${targetPath}.`);
-    } else if (!readVendoredOven(targetRoot, id)) {
+    } else if (!existsSync(targetPath)) {
       fail(`Oven ${id} is not adopted; run \`oven adopt ${id}\` first.`);
     }
     const saved = writeVendoredOven(targetRoot, {
       id,
       instructions: shippedInstructions,
       oven: shippedOven,
+      runtimeCompatibility: shipped.catalogEntry?.runtimeCompatibility,
     });
     publishDefinitionChange(targetRoot, saved, subcommand === "adopt" ? "adopted" : "upgraded");
     if (subcommand === "adopt") console.log(`Adopted Oven ${saved.id}@${saved.version} at ${targetPath}`);

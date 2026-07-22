@@ -17,6 +17,10 @@ function response(body) {
   };
 }
 
+function isEventBaseline(url) {
+  return new URL(url, "http://burnlist.test").searchParams.get("tail") === "1";
+}
+
 function fakeTimers() {
   const timeouts = [];
   return {
@@ -64,14 +68,12 @@ test("a real Oven-wide data publication invalidates every scenario query and res
     focusTarget: null,
     eventSourceFactory: () => source,
     async fetchImpl(url) {
-      if (url === "/api/events?tail=1") return response({ cursor: "oev1-current" });
+      if (isEventBaseline(url)) return response({ cursor: "oev1-current" });
       snapshotRequests += 1;
       return response({ validated: true, payload: { request: snapshotRequests } });
     },
   });
   client.start();
-  await settle();
-  source.onopen?.();
   const subscription = client.subscribe({
     repoKey: "aaaaaaaaaaaa",
     ovenId: "visual-parity",
@@ -80,6 +82,7 @@ test("a real Oven-wide data publication invalidates every scenario query and res
     receive(res, json) { if (!res.ok || !json.validated) throw new Error("invalid"); return json.payload; },
   }, () => {});
   await settle();
+  source.onopen?.();
   assert.equal(snapshotRequests, 1);
 
   source.emit("oven-event", { repoKey: "aaaaaaaaaaaa", ...publication });
