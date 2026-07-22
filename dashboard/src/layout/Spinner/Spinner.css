@@ -1,0 +1,22 @@
+@keyframes ui-spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.ui-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(232, 232, 232, .2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  color: var(--foreground);
+  animation: ui-spinner-rotate .72s linear infinite;
+}
+
+.ui-spinner[data-size="sm"] { width: 14px; height: 14px; }
+.ui-spinner[data-size="lg"] { width: 24px; height: 24px; border-width: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner { animation-duration: 1.8s; }
+}

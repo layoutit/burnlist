@@ -158,6 +158,8 @@ From a source checkout:
 ```sh
 npm install
 npm run build:dashboard
+npm run storybook
+npm run build:storybook
 npm run test:differential-testing
 npm run verify
 npm run verify:clean

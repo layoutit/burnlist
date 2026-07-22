@@ -1,4 +1,5 @@
 export const verificationTestFiles = [
+  "dashboard/src/layout/layout-library.test.mjs",
   "dashboard/src/lib/oven-fit.test.mjs",
   "dashboard/src/lib/oven-catalog.test.mjs",
   "dashboard/src/lib/oven-definition.test.mjs",
