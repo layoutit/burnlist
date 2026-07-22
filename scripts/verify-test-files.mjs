@@ -30,6 +30,7 @@ export const verificationTestFiles = [
   "ovens/model-lab/engine/model-lab-contract.test.mjs",
   "ovens/performance-tracing/contract.test.mjs",
   "ovens/visual-parity/contract.test.mjs",
+  "ovens/visual-parity/handler.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-data-contract.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture.test.mjs",
   "ovens/streaming-diff/engine/streaming-diff-capture-git.test.mjs",
