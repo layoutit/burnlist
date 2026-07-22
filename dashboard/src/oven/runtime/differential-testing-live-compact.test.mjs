@@ -87,7 +87,7 @@ test("DT live compact envelope preserves field rows and server paging", async ()
       ir: compiled.ir,
       initialAction: { type: "payloadAccepted", payload: dtAdapt(envelope) },
     })));
-    const fieldRows = markup.match(/<section class="hybrid-row\b/gu) ?? [];
+    const fieldRows = markup.match(/<div class="hybrid-row\b/gu) ?? [];
     assert.equal(fieldRows.length, 25, "live compact envelopes must render all 25 fields from fieldPage");
     assert.doesNotMatch(markup, /No fields/u);
     assert.match(markup, /1-25 \/ 60/u, "live compact envelopes must preserve the server page total");

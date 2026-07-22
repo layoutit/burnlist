@@ -1,0 +1,15 @@
+@keyframes ui-skeleton-pulse {
+  0%, 100% { opacity: .48; }
+  50% { opacity: .82; }
+}
+
+.ui-skeleton {
+  min-height: 12px;
+  border-radius: 4px;
+  background: var(--muted-surface);
+  animation: ui-skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton { animation: none; }
+}

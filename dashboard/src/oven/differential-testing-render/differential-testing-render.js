@@ -342,6 +342,6 @@ export function fieldRows(fields, { state, telemetryByField, chartMode }) {
   return `<div class="hybrid-list">${fields.map((field, index) => {
     const expanded = state.expanded.has(field.id);
     const telemetry = telemetryByField.get(field.id);
-    return `<section class="hybrid-row ${nonPass(field) ? "fail" : "pass"}${expanded ? " expanded" : ""}" data-row-expand-key="${escapeHtml(field.id)}" role="button" tabindex="0" aria-expanded="${expanded}" title="${escapeHtml(field.label)}">${hybridField(field)}${hybridMetric(field, telemetry)}<div class="hybrid-chart">${chart(field, index === 0, chartMode)}</div></section>`;
+    return `<div class="hybrid-row ${nonPass(field) ? "fail" : "pass"}${expanded ? " expanded" : ""}" data-row-expand-key="${escapeHtml(field.id)}" role="button" tabindex="0" aria-expanded="${expanded}" title="${escapeHtml(field.label)}">${hybridField(field)}${hybridMetric(field, telemetry)}<div class="hybrid-chart">${chart(field, index === 0, chartMode)}</div></div>`;
   }).join("")}</div>`;
 }

@@ -1,0 +1,31 @@
+.ui-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.ui-toggle-group-item {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 0 2px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font-family: var(--dashboard-title-font);
+  font-size: 14px;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.ui-toggle-group-item:hover { color: var(--foreground); opacity: 1; }
+.ui-toggle-group-item[data-state="on"] { background: transparent; color: var(--foreground); opacity: 1; }
+.ui-toggle-group-item:focus-visible { outline: 2px solid rgba(90, 162, 255, .62); outline-offset: 1px; }
+.ui-toggle-group-item:disabled { cursor: default; opacity: .5; }
+.ui-toggle-group-item svg { width: 14px; height: 14px; }

@@ -17,9 +17,3 @@
 .oven-catalog-agent-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
 .oven-catalog-agent-heading h3 { margin: 0; font: 400 13px/1.2 var(--dashboard-title-font); color: var(--muted-foreground); }
 .oven-catalog-agent-block pre { margin: 0; padding: 12px; overflow-x: auto; color: var(--foreground); font: 13px/1.55 var(--dashboard-font); white-space: pre-wrap; }
-
-.copy-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted-foreground); cursor: pointer; }
-.copy-btn:hover { border-color: #3a3a3a; background: var(--accent); color: var(--foreground); }
-.copy-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.copy-btn svg { width: 14px; height: 14px; }
-.copy-btn span { font: 12px/1 var(--dashboard-title-font); }

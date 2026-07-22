@@ -37,6 +37,10 @@ jobs:
       - name: Build dashboard
         run: npm run build:dashboard
 
+      - name: Build Storybook
+        if: matrix.node-version == 22
+        run: npm run build:storybook
+
       - name: Verify
         run: npm run verify
 
