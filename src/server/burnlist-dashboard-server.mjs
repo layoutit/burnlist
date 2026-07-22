@@ -37,8 +37,10 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
+import { createOvenJsonSnapshotStore, OVEN_JSON_CACHE_MAX_BYTES } from "./oven-json-snapshot.mjs";
 import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
 import { serveOvenEventFeed } from "../events/oven-event-feed.mjs";
+import { createOvenEventObserver } from "../events/oven-event-observer.mjs";
 import { isolatedDashboardEntries } from "./dashboard-entry-isolation.mjs";
 import { atomicDirectory, atomicOvenPackage, readTextFileWithLimit, resolveOvenPackageDir, safeStat, withOvenPackageLock } from "./fs-safe.mjs";
 import {
@@ -50,7 +52,8 @@ import {
   resolveCustomOvensDir,
   serializeOvenPackage,
 } from "./oven-storage.mjs";
-import { warmOvenHandler } from "./oven-warm.mjs";
+import { createOvenProjectionCoordinator } from "./oven-projection-coordinator.mjs";
+import { createOfficialOvenDiscovery } from "./official-oven-discovery.mjs";
 import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
 import {
   LIFECYCLES,
@@ -117,6 +120,11 @@ const initialPort = positiveInteger(args.get("port") ?? process.env.PORT ?? "451
 const autoPort = args.has("auto-port");
 const maxPlanBytes = positiveInteger(args.get("max-plan-bytes") ?? "1048576", "max-plan-bytes");
 const maxOvenDataBytes = positiveInteger(args.get("max-oven-data-bytes") ?? "67108864", "max-oven-data-bytes");
+const ovenJsonBudget = Math.min(OVEN_JSON_CACHE_MAX_BYTES, maxOvenDataBytes * 2);
+const ovenJsonSnapshots = createOvenJsonSnapshotStore({
+  maxCacheBytes: ovenJsonBudget,
+  maxActiveBytes: ovenJsonBudget,
+});
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
 const globalRuntimePath = join(os.homedir(), ".burnlist", "server.json");
@@ -375,6 +383,7 @@ function ovenHandlerContext({ id, oven, req, res, url, binding, bindingPath, ove
     binding,
     bindingPath: bindingPath ?? binding?.path,
     cache: cacheId ? ovenHandlerCaches.get(cacheId) : new Map(),
+    ovenJsonSnapshots,
     ovenDataBindings,
     maxOvenDataBytes,
     discoverBurnlists,
@@ -439,10 +448,13 @@ function instructionsName(instructions, defaultName) {
 }
 
 function instructionsDescription(instructions) {
-  return instructions
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .find((line) => line && !line.startsWith("#")) ?? "";
+  const description = [];
+  for (const line of instructions.split(/\r?\n/u).map((value) => value.trim())) {
+    if (!description.length && (!line || line.startsWith("#"))) continue;
+    if (!line || line.startsWith("#")) break;
+    description.push(line);
+  }
+  return description.join(" ");
 }
 
 function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
@@ -480,6 +492,9 @@ function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
       name: instructionsName(ovenPackage.instructions, safeId),
       description: instructionsDescription(ovenPackage.instructions),
       builtIn,
+      origin: builtIn ? "official" : "custom",
+      catalogRevision: null,
+      catalogEntry: null,
       instructions: ovenPackage.instructions,
       oven: ovenPackage.oven,
       ir: compileOven(ovenPackage.oven).ir,
@@ -492,6 +507,12 @@ function readOven(root, id, builtIn, customRepoRoot = umbrellaRoot) {
   }
 }
 
+const officialOvenDiscovery = createOfficialOvenDiscovery({
+  ovensDir: builtInOvensDir,
+  handlers: listOvenHandlers(),
+  readOven,
+});
+
 function readVendoredOvenForRepo(repoRoot, id) {
   const path = vendoredOvenPath(repoRoot, id);
   if (!safeStat(path)?.isDirectory()) return null;
@@ -502,10 +523,14 @@ function readVendoredOvenForRepo(repoRoot, id) {
     name: instructionsName(ovenPackage.instructions, ovenPackage.id),
     description: instructionsDescription(ovenPackage.instructions),
     builtIn: true,
+    origin: "vendored",
+    catalogRevision: null,
+    catalogEntry: null,
     instructions: ovenPackage.instructions,
     oven: ovenPackage.oven,
     ir: compileOven(ovenPackage.oven).ir,
     ovenRevision: ovenPackage.revision,
+    runtimeCompatibility: ovenPackage.pin.runtimeCompatibility,
   };
 }
 
@@ -531,8 +556,8 @@ function vendoredOvensIn(repoRoot) {
     .filter(Boolean);
 }
 
-function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
-  if (!builtIn) assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
+function customOvensIn(root, customRepoRoot = umbrellaRoot) {
+  assertCustomOvensDir(customRepoRoot, root, { unsafe: unsafeOvensDir });
   let entries;
   try {
     entries = readdirSync(root, { withFileTypes: true });
@@ -545,7 +570,7 @@ function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
     .filter((id) => !id.startsWith(".") && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id))
     .map((id) => {
       try {
-        return readOven(root, id, builtIn, customRepoRoot);
+        return readOven(root, id, false, customRepoRoot);
       } catch (error) {
         console.warn(`Ignoring malformed Oven ${id}: ${error.message}`);
         return null;
@@ -555,17 +580,18 @@ function ovensIn(root, builtIn, customRepoRoot = umbrellaRoot) {
 }
 
 function discoverOvens() {
-  const ovens = ovensIn(builtInOvensDir, true).map((oven) => ({ ...oven, repoKey: null, repoRoot: null }));
+  const ovens = officialOvenDiscovery.discover();
   for (const repo of ovenScopeRepos()) {
     for (const oven of vendoredOvensIn(repo.root)) {
       ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
     }
     const customOvensDir = customOvensDirFor(repo.root);
-    for (const oven of ovensIn(customOvensDir, false, repo.root)) {
+    for (const oven of customOvensIn(customOvensDir, repo.root)) {
       ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
     }
   }
-  return ovens.sort((left, right) => Number(right.builtIn) - Number(left.builtIn)
+  const originRank = { official: 0, vendored: 1, custom: 2 };
+  return ovens.sort((left, right) => originRank[left.origin] - originRank[right.origin]
     || left.name.localeCompare(right.name) || String(left.repoKey).localeCompare(String(right.repoKey)));
 }
 
@@ -588,7 +614,7 @@ function findOven(id, selectedKey = null) {
   }
   // Built-ins are global: resolve them by id regardless of repoKey when no repo has a pin.
   // Custom ovens are identified by (repoKey, id).
-  const builtin = readOven(builtInOvensDir, safeId, true);
+  const builtin = officialOvenDiscovery.find(safeId);
   if (builtin) return { ...builtin, repoKey: null, repoRoot: null };
   if (selectedKey === null) return null;
   const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
@@ -597,18 +623,41 @@ function findOven(id, selectedKey = null) {
 }
 
 function ovenSummary(oven) {
-  const dataInput = getOvenHandler(oven.id)?.dataInput ?? genericJsonHandler.dataInput;
+  const registeredHandler = getOvenHandler(oven.id);
+  const handler = registeredHandler ?? genericJsonHandler;
+  const inputContract = registeredHandler?.inputContract ?? oven.ir.contract;
+  const renderContract = oven.ir.contract;
   return {
     id: oven.id,
-    contract: oven.ir.contract,
+    contract: renderContract,
+    inputContract,
+    renderContract,
     version: oven.ir.version,
     name: oven.name,
     description: oven.description,
     builtIn: oven.builtIn,
+    origin: oven.origin,
     repoKey: oven.repoKey,
-    dataInput,
+    dataInput: handler.dataInput,
+    runtimeCompatibility: oven.catalogEntry?.runtimeCompatibility ?? oven.runtimeCompatibility ?? null,
     ovenRevision: oven.ovenRevision,
+    catalogRevision: oven.catalogRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
+  };
+}
+
+function officialCatalogSnapshot() {
+  const { schema, catalogVersion, catalogRevision } = officialOvenDiscovery.catalog;
+  return {
+    schema,
+    catalogVersion,
+    catalogRevision,
+    entries: officialOvenDiscovery.discover().map((oven) => ({
+      ...oven.catalogEntry,
+      name: oven.name,
+      description: oven.description,
+      ovenRevision: oven.ovenRevision,
+    })),
   };
 }
 
@@ -630,7 +679,7 @@ function createOven(value) {
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
   const customOvensDir = customOvensDirFor(repo.root);
   const id = ovenId(ovenValue.id);
-  if (readOven(builtInOvensDir, id, true) || readOven(customOvensDir, id, false, repo.root)) {
+  if (officialOvenDiscovery.find(id) || readOven(customOvensDir, id, false, repo.root)) {
     throw new Error(`Oven ${id} already exists.`);
   }
   const name = boundedText(ovenValue.name, "Oven name", 80);
@@ -705,18 +754,12 @@ function assertSnapshotSize(contents, maxBytes, label) {
 }
 
 function createBurnRun(value) {
-  assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run");
+  assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run");
   const selectedOvenId = ovenId(value.ovenId);
-  if (!Object.hasOwn(value, "ovenRepoKey") || (value.ovenRepoKey !== null && typeof value.ovenRepoKey !== "string")) {
-    throw new Error("Burn run ovenRepoKey must be null or a repository key.");
-  }
-  const selectedOvenRepoKey = value.ovenRepoKey === null
-    ? null
-    : boundedText(value.ovenRepoKey, "Oven repository key", 64);
   const requestedRoot = resolve(boundedText(value.repoRoot, "Repository", 4096));
   const repo = ovenScopeRepos().find((entry) => entry.root === requestedRoot);
   if (!repo) throw new Error("Repository must be one of the dashboard scan roots.");
-  const oven = findOven(selectedOvenId, selectedOvenRepoKey);
+  const oven = findOven(selectedOvenId, repo.repoKey);
   if (!oven) throw new Error(`Unknown oven ${selectedOvenId}.`);
   const title = boundedText(value.title, "Run title", 120);
   const objective = boundedText(value.objective, "Run objective", 12000);
@@ -726,7 +769,7 @@ function createBurnRun(value) {
     schemaVersion: 5,
     id,
     ovenId: selectedOvenId,
-    ovenRepoKey: selectedOvenRepoKey,
+    ovenRepoKey: oven.repoKey,
     ovenRevision: oven.ovenRevision,
     repoRoot: repo.root,
     repo: repo.name,
@@ -1120,6 +1163,9 @@ function serveDashboardShell(res) {
   serveDashboardFile(res, dashboardIndexPath);
 }
 if (!reportMode) mkdirSync(stateDir, { recursive: true });
+const ovenEventObserver = createOvenEventObserver({
+  resolveRepos: ovenScopeRepos,
+});
 
 function stopExistingIfRequested() {
   if (!args.has("stop") && !args.has("replace")) return;
@@ -1160,6 +1206,18 @@ function stopExistingIfRequested() {
 
 stopExistingIfRequested();
 
+const ovenProjectionCoordinator = reportMode ? null : createOvenProjectionCoordinator({
+  observer: ovenEventObserver,
+  snapshotStore: ovenJsonSnapshots,
+  handlers: listOvenHandlers(),
+  resolveBindings: resolvedOvenDataBindings,
+  createContext: (handler, ovenDataBindings) => ovenHandlerContext({
+    id: handler.id,
+    oven: { id: handler.id },
+    ovenDataBindings,
+  }),
+});
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
@@ -1199,7 +1257,12 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/events") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      serveOvenEventFeed({ req, res, url, repos: ovenScopeRepos(), json });
+      serveOvenEventFeed({ req, res, url, repos: ovenScopeRepos(), json, observer: ovenEventObserver });
+      return;
+    }
+    if (url.pathname === "/api/oven-catalog") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      json(res, 200, officialCatalogSnapshot());
       return;
     }
     if (url.pathname === "/api/ovens") {
@@ -1294,12 +1357,10 @@ const server = createServer(async (req, res) => {
       return;
     }
     const ovenIdPattern = "[a-z0-9]+(?:-[a-z0-9]+)*";
-    const ovenViewRoute = url.pathname.match(new RegExp(`^/ovens/(${ovenIdPattern})/view$`, "u"));
-    const isLegacyOvenView = Boolean(ovenViewRoute);
     const ovenCatalogRoute = new RegExp(`^/ovens/${ovenIdPattern}$`, "u").test(url.pathname);
     const repoOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/o/${ovenIdPattern}$`, "u").test(url.pathname);
     const burnlistOvenRoute = new RegExp(`^/r/[a-f0-9]{12}/${ovenIdPattern}/o/${ovenIdPattern}$`, "u").test(url.pathname);
-    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || isLegacyOvenView || routeSelection(url)) {
+    if (["/", "/index.html", "/ovens", "/ovens/new", "/runs/new"].includes(url.pathname) || ovenCatalogRoute || repoOvenRoute || burnlistOvenRoute || routeSelection(url)) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       serveDashboardShell(res);
       return;
@@ -1312,6 +1373,10 @@ const server = createServer(async (req, res) => {
     }
     json(res, Number.isInteger(error.status) ? error.status : 400, { error: error.message || "request failed" });
   }
+});
+server.once("close", () => {
+  ovenProjectionCoordinator?.stop();
+  ovenEventObserver.close();
 });
 
 function listen(port) {
@@ -1338,21 +1403,6 @@ function listen(port) {
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);
   });
-}
-
-if (!reportMode) {
-  for (const handler of listOvenHandlers()) {
-    if (typeof handler.warm !== "function" || !handler.warmIntervalMs) continue;
-    if (!handler.id) continue;
-    const warm = () => warmOvenHandler(
-      handler,
-      resolvedOvenDataBindings,
-      (context) => ovenHandlerContext(context),
-    );
-    warm();
-    const warmTimer = setInterval(warm, handler.warmIntervalMs);
-    warmTimer.unref();
-  }
 }
 
 listen(initialPort);

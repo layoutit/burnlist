@@ -121,6 +121,13 @@ async function canBindLoopback() {
   }
 }
 
+test("Streaming Diff remains a producer-managed content SSE outside snapshot invalidation", () => {
+  assert.equal(streamingDiffHandler.dataInput, "producer-managed");
+  assert.equal(streamingDiffHandler.validateData, undefined);
+  assert.equal(streamingDiffHandler.reconcileDataBindings, undefined);
+  assert.equal(streamingDiffHandler.warm, undefined);
+});
+
 test("dashboard pure read leaves a raced feed untouched and reports reset", () => {
   const { context, cleanup } = fixture();
   try {

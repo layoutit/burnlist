@@ -1,28 +1,29 @@
-export const VISUAL_PARITY_RESPONSE_CHUNK_BYTES = 64 * 1024;
-export const VISUAL_PARITY_RESPONSE_TIMEOUT_MS = 30_000;
+export const OVEN_RESPONSE_CHUNK_BYTES = 64 * 1024;
+export const OVEN_RESPONSE_TIMEOUT_MS = 30_000;
 
-export function streamVisualParityResponse(req, res, segments, {
-  onCleanup = () => {},
-  timeoutMs = VISUAL_PARITY_RESPONSE_TIMEOUT_MS,
+export function streamOvenResponse(req, res, segments, {
+  chunkBytes = OVEN_RESPONSE_CHUNK_BYTES,
+  timeoutMs = OVEN_RESPONSE_TIMEOUT_MS,
   timers = globalThis,
+  onCleanup = () => {},
 } = {}) {
+  if (!Number.isSafeInteger(chunkBytes) || chunkBytes < 1) throw new Error("Oven response chunkBytes must be positive.");
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) throw new Error("Oven response timeoutMs must be positive.");
+  if (!Array.isArray(segments) || segments.some((segment) => !Buffer.isBuffer(segment))) {
+    throw new Error("Oven response segments must be Buffers.");
+  }
   let segmentIndex = 0;
   let segmentOffset = 0;
   let closed = false;
   let waitingDrain = false;
   let stallTimeout = null;
 
-  function clearStallTimeout() {
+  const clearStallTimeout = () => {
     if (stallTimeout === null) return;
     timers.clearTimeout(stallTimeout);
     stallTimeout = null;
-  }
-  function armStallTimeout() {
-    clearStallTimeout();
-    stallTimeout = timers.setTimeout(abort, timeoutMs);
-  }
-
-  function cleanup() {
+  };
+  const cleanup = () => {
     if (closed) return;
     closed = true;
     clearStallTimeout();
@@ -32,11 +33,15 @@ export function streamVisualParityResponse(req, res, segments, {
     res.off?.("finish", cleanup);
     req.off?.("aborted", abort);
     onCleanup();
-  }
-  function abort() {
+  };
+  const abort = () => {
     cleanup();
     if (!res.destroyed) res.destroy?.();
-  }
+  };
+  const armStallTimeout = () => {
+    clearStallTimeout();
+    stallTimeout = timers.setTimeout(abort, timeoutMs);
+  };
   function onDrain() {
     waitingDrain = false;
     clearStallTimeout();
@@ -48,7 +53,7 @@ export function streamVisualParityResponse(req, res, segments, {
       while (segmentIndex < segments.length) {
         const segment = segments[segmentIndex];
         while (segmentOffset < segment.length) {
-          const end = Math.min(segmentOffset + VISUAL_PARITY_RESPONSE_CHUNK_BYTES, segment.length);
+          const end = Math.min(segmentOffset + chunkBytes, segment.length);
           const chunk = segment.subarray(segmentOffset, end);
           segmentOffset = end;
           if (!res.write(chunk)) {

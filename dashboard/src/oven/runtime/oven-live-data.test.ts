@@ -5,51 +5,163 @@ import { test } from "node:test";
 import { dtAdapt, ptAdapt } from "../../components/DifferentialTestingOven/DifferentialTestingOven";
 import { adaptDifferentialTesting } from "../../lib/differential-testing-adapter";
 import { adaptPerformanceTracingReport } from "../../lib/performance-tracing.mjs";
-import { createOvenPoller, ovenDataUrl, scenarioSearch } from "./oven-live-data";
+import {
+  ovenDataUrl,
+  ovenRuntimeSnapshotDescriptor,
+  scenarioSearch,
+  subscribeOvenRuntimeSnapshot,
+} from "./oven-live-data";
 import { initOvenState, ovenReducer, type OvenAction } from "./oven-reducer";
 
-function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
-const response = (payload: unknown, etag = "v1") => ({ ok: true, status: 200, headers: { get: (name: string) => name === "etag" ? etag : null }, json: async () => payload });
+type Snapshot = {
+  data: unknown;
+  error: string;
+  generation: number;
+  stale?: boolean;
+  outcome: "initial" | "loading" | "accepted" | "unchanged" | "rejected" | "missing";
+};
 
-test("oven poller keeps one request active, queues one retry, and retains ETags", async () => {
-  const first = deferred<any>(), second = deferred<any>(), calls: RequestInit[] = [], actions: OvenAction[] = [];
-  const poller = createOvenPoller({ id: "sample", dispatch: (action) => actions.push(action), fetchImpl: async (_url, init) => { calls.push(init); return calls.length === 1 ? first.promise : second.promise; }, search: "?repoKey=abc&ignored=x" });
-  poller.refresh(); poller.refresh(); poller.refresh();
-  assert.equal(calls.length, 1);
-  first.resolve(response({ version: 1 })); await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.equal(calls.length, 2);
-  second.resolve(response({ version: 2 }, "v2")); await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.deepEqual(calls[1].headers, { "If-None-Match": "v1" });
-  assert.equal(actions.filter((action) => action.type === "payloadAccepted").length, 2);
-  assert.equal(ovenDataUrl("sample", "?repoKey=abc&bad=no"), "/api/oven-data/sample?repoKey=abc");
-});
+function fakeClient() {
+  let descriptor: any;
+  let listener: ((state: Snapshot) => void) | undefined;
+  let unsubscribed = false;
+  return {
+    subscribe(nextDescriptor: any, nextListener: (state: Snapshot) => void) {
+      descriptor = nextDescriptor;
+      listener = nextListener;
+      return { refresh() {}, unsubscribe() { unsubscribed = true; } };
+    },
+    emit(state: Snapshot) { listener!(state); },
+    descriptor: () => descriptor,
+    unsubscribed: () => unsubscribed,
+  };
+}
 
-test("oven poller reports failures without inventing an accepted replacement", async () => {
+function loading(generation: number): Snapshot {
+  return { data: null, error: "", generation, outcome: "loading" };
+}
+
+test("runtime subscriptions key canonical snapshots by repository, scenario, and query", () => {
+  const client = fakeClient();
   const actions: OvenAction[] = [];
-  const poller = createOvenPoller({ id: "sample", dispatch: (action) => actions.push(action), fetchImpl: async () => { throw new Error("offline"); }, search: "" });
-  poller.refresh(); await Promise.resolve(); await Promise.resolve();
-  assert.equal(actions.some((action) => action.type === "payloadAccepted"), false);
-  assert.equal(actions.some((action) => action.type === "payloadRejected"), true);
+  const search = scenarioSearch("?repoKey=repo-1&scenario=old&ignored=x", "case-a");
+  const subscription = subscribeOvenRuntimeSnapshot({
+    client,
+    id: "differential-testing",
+    search,
+    dispatch: (action) => actions.push(action),
+  });
+
+  assert.deepEqual(client.descriptor(), {
+    repoKey: "repo-1",
+    ovenId: "differential-testing",
+    subjectId: "case-a",
+    query: "repoKey=repo-1&scenario=case-a",
+    url: "/api/oven-data/differential-testing?repoKey=repo-1&scenario=case-a",
+    fallbackMs: 30_000,
+    fallbackError: "Could not load Oven differential-testing.",
+    receive: client.descriptor().receive,
+  });
+  assert.equal(ovenDataUrl("differential-testing", scenarioSearch("", "X")), "/api/oven-data/differential-testing?scenario=X");
+  subscription.unsubscribe();
+  assert.equal(client.unsubscribed(), true);
+  assert.deepEqual(actions, []);
 });
 
-test("scenario selection rekeys poller requests while retaining the repository key", async () => {
-  const urls: string[] = [], actions: OvenAction[] = [];
-  const fetchImpl = async (url: string) => { urls.push(url); return response({}); };
-  for (const scenario of ["A", "B"]) {
-    const poller = createOvenPoller({
-      id: "differential-testing",
-      dispatch: (action) => actions.push(action),
-      fetchImpl,
-      search: scenarioSearch("?repoKey=repo-1&scenario=old&ignored=x", scenario),
-    });
-    poller.refresh();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-  }
-  assert.deepEqual(urls, [
-    "/api/oven-data/differential-testing?repoKey=repo-1&scenario=A",
-    "/api/oven-data/differential-testing?repoKey=repo-1&scenario=B",
+test("shared snapshot outcomes retain reducer generations and unchanged payloads", () => {
+  const client = fakeClient();
+  const actions: OvenAction[] = [];
+  subscribeOvenRuntimeSnapshot({
+    client,
+    id: "sample",
+    search: "",
+    dispatch: (action) => actions.push(action),
+  });
+  client.emit(loading(41));
+  client.emit({ data: { version: 1 }, error: "", generation: 41, outcome: "accepted" });
+  client.emit(loading(42));
+  client.emit({ data: { version: 1 }, error: "", generation: 42, outcome: "unchanged" });
+
+  assert.deepEqual(actions, [
+    { type: "payloadRequested", generation: 41 },
+    { type: "payloadAccepted", payload: { version: 1 }, generation: 41 },
+    { type: "payloadRequested", generation: 42 },
+    { type: "payloadUnchanged", generation: 42 },
   ]);
-  assert.equal(ovenDataUrl("differential-testing", scenarioSearch("", "X")), "/api/oven-data/differential-testing?scenario=X");
+});
+
+test("a reactivated cached query accepts its keyed payload after a 304", () => {
+  const client = fakeClient();
+  const actions: OvenAction[] = [];
+  subscribeOvenRuntimeSnapshot({
+    client,
+    id: "sample",
+    search: "?scenario=returning",
+    dispatch: (action) => actions.push(action),
+  });
+  client.emit(loading(75));
+  client.emit({ data: { scenario: "returning" }, error: "", generation: 75, outcome: "unchanged" });
+  assert.deepEqual(actions.at(-1), {
+    type: "payloadAccepted",
+    payload: { scenario: "returning" },
+    generation: 75,
+  });
+});
+
+test("runtime snapshot failures preserve the reducer's last good payload", () => {
+  const ir = { contract: "fixture", controls: [], collections: [], root: [] };
+  const retained = { version: 1 };
+  let state = initOvenState(ir, retained);
+  const client = fakeClient();
+  subscribeOvenRuntimeSnapshot({
+    client,
+    id: "sample",
+    search: "",
+    dispatch(action) { state = ovenReducer(state, action, ir); },
+  });
+  client.emit(loading(9));
+  client.emit({ data: null, error: "offline", generation: 9, outcome: "rejected" });
+  assert.equal(state.payload, retained);
+  assert.deepEqual(state.refresh, { phase: "failed", error: "offline", generation: 9, stale: true });
+});
+
+test("runtime snapshot missing outcomes clear a formerly valid payload", () => {
+  const ir = { contract: "fixture", controls: [], collections: [], root: [] };
+  let state = initOvenState(ir, { version: 1 });
+  const client = fakeClient();
+  subscribeOvenRuntimeSnapshot({
+    client,
+    id: "sample",
+    search: "",
+    dispatch(action) { state = ovenReducer(state, action, ir); },
+  });
+  client.emit(loading(10));
+  client.emit({ data: null, error: "Oven is unbound.", generation: 10, outcome: "missing" });
+  assert.equal(state.payload, undefined);
+  assert.deepEqual(state.refresh, { phase: "failed", error: "Oven is unbound.", generation: 10, stale: false });
+});
+
+test("runtime snapshot descriptors adapt DT and PT envelopes", async () => {
+  const fixture = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
+  const dtReport = fixture.differentialTestingPayload();
+  const ptReport = {
+    runId: "trace-fixture", generatedAt: "2026-07-15T12:00:00.000Z", status: "pass",
+    scenario: { id: "prepared" }, metrics: { p95FrameMs: 20 }, budgets: { p95FrameMs: 25 },
+    runs: [{ frameTiming: { series: [{ frame: 0, frameMs: 20 }] } }],
+  };
+  const envelopes = [
+    { ovenId: "differential-testing", payload: dtReport },
+    { ovenId: "performance-tracing", payload: ptReport, validated: true },
+  ];
+  const expected = [adaptDifferentialTesting(dtReport), adaptDifferentialTesting(adaptPerformanceTracingReport(ptReport))];
+  const response = { ok: true, status: 200 } as Response;
+
+  for (const [index, adapt] of [dtAdapt, ptAdapt].entries()) {
+    const descriptor = ovenRuntimeSnapshotDescriptor({ id: String(envelopes[index].ovenId), search: "", adapt });
+    assert.deepEqual(descriptor.receive(response, envelopes[index]), expected[index]);
+  }
+  const failing = ovenRuntimeSnapshotDescriptor({ id: "sample", search: "" });
+  assert.throws(() => failing.receive({ ok: false, status: 422 } as Response, { error: "invalid fixture" }), /invalid fixture/u);
 });
 
 test("oven data API calls inject the path-scoped repository key", () => {
@@ -62,49 +174,4 @@ test("oven data API calls inject the path-scoped repository key", () => {
     if (original) target.window = original;
     else delete target.window;
   }
-});
-
-test("oven poller adapts DT and PT envelopes while unadapted polls retain raw bodies", async () => {
-  const fixture = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
-  const dtReport = fixture.differentialTestingPayload();
-  const ptReport = {
-    runId: "trace-fixture", generatedAt: "2026-07-15T12:00:00.000Z", status: "pass",
-    scenario: { id: "prepared" }, metrics: { p95FrameMs: 20 }, budgets: { p95FrameMs: 25 },
-    runs: [{ frameTiming: { series: [{ frame: 0, frameMs: 20 }] } }],
-  };
-  const envelopes = [
-    { ovenId: "differential-testing", path: "/api/oven-data/differential-testing", scenarioId: "fixture", payload: dtReport },
-    { ovenId: "performance-tracing", path: "/api/oven-data/performance-tracing", payload: ptReport, validated: true },
-  ];
-  const expected = [adaptDifferentialTesting(dtReport), adaptDifferentialTesting(adaptPerformanceTracingReport(ptReport))];
-
-  for (const [index, adapt] of [dtAdapt, ptAdapt].entries()) {
-    const actions: OvenAction[] = [];
-    const poller = createOvenPoller({ id: String(envelopes[index].ovenId), dispatch: (action) => actions.push(action), fetchImpl: async () => response(envelopes[index]), adapt });
-    poller.refresh();
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    assert.deepEqual(actions.find((action) => action.type === "payloadAccepted"), { type: "payloadAccepted", payload: expected[index], generation: 1 });
-  }
-
-  const rawActions: OvenAction[] = [];
-  const rawPoller = createOvenPoller({ id: "sample", dispatch: (action) => rawActions.push(action), fetchImpl: async () => response(envelopes[0]) });
-  rawPoller.refresh();
-  await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.deepEqual(rawActions.find((action) => action.type === "payloadAccepted"), { type: "payloadAccepted", payload: envelopes[0], generation: 1 });
-});
-
-test("oven poller coalesces in-flight retries into one reducer request and resolves to idle", async () => {
-  const ir = { contract: "checklist", controls: [], collections: [], root: [] };
-  let state = initOvenState(ir as any);
-  const generationRef = { current: 0 }, first = deferred<any>(), second = deferred<any>(), calls: RequestInit[] = [], actions: OvenAction[] = [];
-  const dispatch = (action: OvenAction) => { actions.push(action); state = ovenReducer(state, action, ir as any); };
-  const poller = createOvenPoller({ id: "sample", dispatch, fetchImpl: async (_url, init) => { calls.push(init); return calls.length === 1 ? first.promise : second.promise; }, search: "", generationRef });
-  poller.refresh(); poller.refresh(); poller.refresh();
-  assert.equal(actions.filter((action) => action.type === "payloadRequested").length, 2);
-  assert.equal(state.refresh.generation, generationRef.current);
-  first.resolve(response({ version: 1 })); await new Promise<void>((resolve) => setImmediate(resolve));
-  second.resolve(response({ version: 2 }, "v2")); await new Promise<void>((resolve) => setImmediate(resolve));
-  assert.equal(state.refresh.phase, "idle");
-  assert.equal(state.payloadRevision, 2);
-  assert.equal(calls.length, 2);
 });

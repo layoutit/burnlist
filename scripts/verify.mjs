@@ -3,11 +3,18 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import "../src/ovens/built-in-handlers.mjs";
+import { loadOfficialOvenCatalog } from "../src/ovens/official-oven-catalog.mjs";
+import { listOvenHandlers } from "../src/ovens/oven-registry.mjs";
 import { assertBuiltInOven, assertBuiltInOvenDataDocs, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
 import { verificationSerialTestFiles, verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
+const officialOvenCatalog = loadOfficialOvenCatalog({
+  ovensDir: resolve(repoRoot, "ovens"),
+  handlers: listOvenHandlers(),
+});
 
 function run(command, args, options = {}) {
   const label = [command, ...args].join(" ");
@@ -266,17 +273,18 @@ assertSourceIncludes("dashboard/src/components/ChecklistDashboard/ChecklistDashb
 assertSourceExcludes("dashboard/src/App.tsx", "function Detail(", "Dashboard still carries the superseded simplified Checklist detail path.");
 assertSourceIncludes("dashboard/src/components/BurnOvens/BurnOvens.tsx", "New Oven", "Oven controls are missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/ovens"', "Oven API is missing.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/oven-catalog"', "Official Oven catalog API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "/api\\/oven-data", "Read-only Oven data API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/events"', "Replayable generic Oven event API is missing.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'url.pathname === "/api/repo-map"', "Read-only repository map API is missing.");
 assertSourceIncludes("src/server/repo-map.mjs", 'REPO_MAP_SCHEMA = "burnlist-repo-map@1"', "Repository map API does not expose its strict v1 schema.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["id", "name", "instructions"]), "Oven")', "Oven creation does not reject fields outside the strict Oven contract.");
-assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "ovenRepoKey", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'assertKnownKeys(value, new Set(["ovenId", "repoRoot", "title", "objective"]), "Burn run")', "Burn run creation does not reject fields outside the strict Oven contract.");
 assertSourceIncludes(".github/workflows/publish.yml", "git fetch origin main", "Publish reruns must refresh origin/main before release-state checks.");
 assertSourceIncludes(".github/workflows/publish.yml", '"refs/tags/${VERSION}^{}"', "Publish tag verification must request annotated-tag peeled refs.");
 assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", "ovenId(record.ovenId);", "Burn run reads do not require the canonical ovenId.");
 assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateData: validateDifferentialTestingRuntimeData", "Differential Testing does not expose its server-boundary validator.");
-assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateDifferentialTestingRuntimeData(payload)", "Differential Testing data is not validated at the server boundary.");
+assertSourceIncludes("ovens/differential-testing/engine/handler.mjs", "validateDifferentialTestingRuntimeData(document)", "Differential Testing source snapshots are not validated at the shared read boundary.");
 assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validateData: validatePerformanceTracingRuntimeData", "Performance Tracing does not expose its server-boundary validator.");
 assertSourceIncludes("ovens/performance-tracing/handler.mjs", "validatePerformanceTracingRuntimeData(payload", "Performance Tracing data is not validated at the server boundary.");
 assertSourceIncludes("ovens/visual-parity/handler.mjs", "validateData: validateVisualParityRuntimeData", "Visual Parity does not expose its server-boundary validator.");
@@ -346,9 +354,15 @@ assertSourceIncludes("ovens/differential-testing/instructions.md", "No per-candi
 assertSourceIncludes("ovens/differential-testing/instructions.md", "queued`, `running`, `complete`, or `failed`", "Differential Testing is missing refresh-state discipline.");
 assertSourceExcludes("ovens/differential-testing/instructions.md", "exactCycles", "Differential Testing instructions still expose exactCycles ceremony.");
 assertSourceIncludes("ovens/differential-testing/engine/data-contract.mjs", "buildDifferentialTelemetry", "Differential Testing is missing deterministic telemetry construction.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("scenario", scenarioId)', "Differential Testing is not bound to read-only scenario selection.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", 'searchParams.set("pageSize"', "Differential Testing is not bound to server-side field paging.");
-assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "Differential Testing does not refresh live data.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", 'target.set("scenario"', "Canonical Differential Testing is not bound to read-only scenario selection.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", 'query.set("pageSize"', "Canonical Differential Testing is not bound to server-side field paging.");
+assertSourceIncludes("dashboard/src/oven/runtime/oven-live-data.ts", "subscribeOvenRuntimeSnapshot", "Canonical Differential Testing does not use shared snapshot updates.");
+assertSourceIncludes("src/server/burnlist-dashboard-server.mjs", 'from "./oven-projection-coordinator.mjs"', "Dashboard server is missing the canonical Oven projection coordinator.");
+assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", "oven-warm", "Dashboard server still imports the retired Oven warming layer.");
+assertSourceExcludes("ovens/visual-parity/handler.mjs", "readStableVisualParitySource", "Visual Parity still exposes a private stable-read implementation.");
+assertSourceIncludes("README.md", "There are no\nhandler warm hooks", "README does not document the canonical-only Oven architecture.");
+assertSourceIncludes("skills/burnlist/references/oven-event-coordination.md", "The remaining intervals are intentional and regression-allowlisted", "Oven event guidance does not document surviving timers.");
+assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "startDifferentialTestingLiveUpdates", "The legacy Differential Testing live updater still exists.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "differentialTelemetryFieldMap", "Differential Testing Changed view is not bound to telemetry transitions.");
 assertSourceIncludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "differentialExactTarget", "Differential Testing exact decisions are not bound to exact-session authority.");
 assertSourceExcludes("dashboard/src/oven/differential-testing-render/differential-testing-renderer.js", "exactSession?.exactComparison", "Differential Testing renderer still reads the removed exact-comparison surface.");
@@ -411,19 +425,29 @@ assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
-assertBuiltInOvenSet(repoRoot, ["checklist", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"]);
-assertBuiltInOven(repoRoot, "checklist", "Checklist");
-assertBuiltInOven(repoRoot, "differential-testing", "Differential Testing");
-assertBuiltInOven(repoRoot, "model-lab", "Model Lab");
-assertBuiltInOven(repoRoot, "performance-tracing", "Performance Tracing");
-assertBuiltInOven(repoRoot, "streaming-diff", "Streaming Diff");
-assertBuiltInOven(repoRoot, "visual-parity", "Visual Parity");
-assertBuiltInOvenDataDocs(repoRoot, "checklist", { dataInput: "json-payload", validator: "validateGenericJsonData" });
-assertBuiltInOvenDataDocs(repoRoot, "differential-testing", { dataInput: "json-payload", validator: "validateDifferentialTestingRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "model-lab", { dataInput: "json-payload", validator: "validateModelLabRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "performance-tracing", { dataInput: "json-payload", validator: "validatePerformanceTracingRuntimeData" });
-assertBuiltInOvenDataDocs(repoRoot, "streaming-diff", { dataInput: "producer-managed" });
-assertBuiltInOvenDataDocs(repoRoot, "visual-parity", { dataInput: "json-payload", validator: "validateVisualParityRuntimeData" });
+const officialOvenExpectations = new Map([
+  ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
+  ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
+  ["model-lab", { name: "Model Lab", validator: "validateModelLabRuntimeData" }],
+  ["performance-tracing", { name: "Performance Tracing", validator: "validatePerformanceTracingRuntimeData" }],
+  ["streaming-diff", { name: "Streaming Diff" }],
+  ["visual-parity", { name: "Visual Parity", validator: "validateVisualParityRuntimeData" }],
+]);
+const officialIds = officialOvenCatalog.entries.map(({ id }) => id);
+if (officialOvenExpectations.size !== officialIds.length
+  || officialIds.some((id) => !officialOvenExpectations.has(id))) {
+  console.error("Official Oven documentation expectations must match the catalog exactly.");
+  process.exit(1);
+}
+assertBuiltInOvenSet(repoRoot, officialIds);
+for (const entry of officialOvenCatalog.entries) {
+  const expectation = officialOvenExpectations.get(entry.id);
+  assertBuiltInOven(repoRoot, entry.id, expectation.name);
+  assertBuiltInOvenDataDocs(repoRoot, entry.id, {
+    dataInput: entry.dataInput,
+    validator: expectation.validator,
+  });
+}
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 

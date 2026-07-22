@@ -8,7 +8,14 @@ import {
   summaryForPlan,
   twoDigit,
 } from "../server/plan-model.mjs";
-import { assertValidBurnlistId, burnItem, closeLifecycle, readyLifecycle, startLifecycle } from "./lifecycle-moves.mjs";
+import {
+  assertValidBurnlistId,
+  burnItem,
+  closeLifecycle,
+  publishLifecycleChange,
+  readyLifecycle,
+  startLifecycle,
+} from "./lifecycle-moves.mjs";
 import { repoKey, readRegistry } from "../server/registry.mjs";
 import { atomicDirectory, safeStat } from "../server/fs-safe.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
@@ -114,6 +121,7 @@ function create(repoRoot) {
     try {
       const folder = atomicDirectory(draftRoot, id, scaffold(id, canonicalRoot, now));
       const planPath = join(folder, "burnlist.md");
+      publishLifecycleChange(canonicalRoot, id, "none", "draft", { occurredAt: now.toISOString() });
       console.log(id);
       console.log(planPath);
       console.log(`${repoKey(canonicalRoot)}/${id}`);

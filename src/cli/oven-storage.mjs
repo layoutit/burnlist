@@ -2,6 +2,7 @@ import { readFileSync, readSync, readdirSync, realpathSync, statSync } from "nod
 import { join, resolve } from "node:path";
 import { normalizeOvenForkedFrom, normalizeOvenPackage, ovenId, ovenRevision } from "../ovens/oven-contract.mjs";
 import { compileOven } from "../ovens/dsl/oven-compile.mjs";
+import { loadOfficialOvenCatalog, officialOvenEntry } from "../ovens/official-oven-catalog.mjs";
 import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { atomicOvenPackage, resolveOvenPackageDir, withOvenPackageLock } from "../server/fs-safe.mjs";
 import {
@@ -44,9 +45,13 @@ function instructionsDescription(instructions) {
     .find((line) => line && !line.startsWith("#")) ?? "";
 }
 
-export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoRoot, unsafeOvensDir }) {
+export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoRoot, unsafeOvensDir, handlers }) {
+  const officialCatalog = loadOfficialOvenCatalog({ ovensDir: builtInOvensDir, handlers });
+
   function readOvenDir(root, id, builtIn) {
     const safeId = ovenId(id);
+    const catalogEntry = builtIn ? officialOvenEntry(officialCatalog, safeId) : null;
+    if (builtIn && !catalogEntry) return null;
     let ovenRoot;
     try {
       const path = builtIn ? join(root, safeId) : assertCustomOvenPath(customRepoRoot, root, safeId, { unsafe: unsafeOvensDir });
@@ -75,15 +80,23 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
           throw new Error(`Oven ${safeId} lineage sidecar is invalid: ${error.message}`);
         }
       }
+      const ir = compileOven(ovenPackage.oven).ir;
+      if (catalogEntry && (ir.id !== catalogEntry.id
+        || ir.version !== catalogEntry.version || ir.contract !== catalogEntry.renderContract)) {
+        throw new Error(`Official Oven ${safeId} no longer matches catalog revision ${officialCatalog.catalogRevision}.`);
+      }
       return {
         id: ovenPackage.id,
         name: instructionsName(ovenPackage.instructions, safeId),
         description: instructionsDescription(ovenPackage.instructions),
         builtIn,
+        origin: builtIn ? "official" : "custom",
+        catalogRevision: builtIn ? officialCatalog.catalogRevision : null,
+        catalogEntry,
         path: ovenRoot,
         instructions: ovenPackage.instructions,
         oven: ovenPackage.oven,
-        ir: compileOven(ovenPackage.oven).ir,
+        ir,
         ovenRevision: ovenRevision(ovenPackage),
         ...(forkedFrom ? { forkedFrom } : {}),
       };
@@ -117,10 +130,15 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
   }
 
   return {
+    officialCatalog,
     readOvenDir,
     discoverOvens() {
       const byId = new Map();
-      for (const oven of ovensIn(builtInOvensDir, true)) byId.set(oven.id, oven);
+      for (const entry of officialCatalog.entries) {
+        const oven = readOvenDir(builtInOvensDir, entry.id, true);
+        if (!oven) throw new Error(`Official Oven ${entry.id} is unavailable.`);
+        byId.set(oven.id, oven);
+      }
       for (const oven of ovensIn(customOvensDir, false)) if (!byId.get(oven.id)?.builtIn) byId.set(oven.id, oven);
       return [...byId.values()].sort(
         (left, right) => Number(right.builtIn) - Number(left.builtIn) || left.name.localeCompare(right.name),
@@ -128,7 +146,10 @@ export function createOvenCatalog({ builtInOvensDir, customOvensDir, customRepoR
     },
     findOven(id) {
       const safeId = ovenId(id);
-      return readOvenDir(builtInOvensDir, safeId, true) ?? readOvenDir(customOvensDir, safeId, false);
+      const official = officialOvenEntry(officialCatalog, safeId)
+        ? readOvenDir(builtInOvensDir, safeId, true)
+        : null;
+      return official ?? readOvenDir(customOvensDir, safeId, false);
     },
   };
 }

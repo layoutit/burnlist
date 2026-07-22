@@ -1,6 +1,11 @@
 .oven-catalog { gap: 20px; }
 
 .oven-catalog-heading { display: grid; gap: 3px; padding: 2px 0 4px; }
+.oven-catalog-section { display: grid; gap: 12px; }
+.oven-catalog-section-heading { display: grid; gap: 4px; }
+.oven-catalog-section-heading h2 { margin: 0; font: 500 16px/1.2 var(--dashboard-title-font); }
+.oven-catalog-section-heading p,
+.oven-catalog-empty { margin: 0; color: var(--muted-foreground); font: 13px/1.5 var(--dashboard-font); }
 .oven-catalog-list { display: grid; gap: 12px; }
 .oven-catalog-card { gap: 16px; border-color: rgba(232, 232, 232, .1); }
 .oven-catalog-card-header { gap: 6px; }
@@ -9,6 +14,10 @@
 .oven-catalog-card-content { display: grid; gap: 14px; }
 .oven-catalog-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .oven-catalog-description { margin: 0; color: var(--muted-foreground); line-height: 1.5; }
+.oven-catalog-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.oven-catalog-meta > div { min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; background: rgba(255, 255, 255, .018); }
+.oven-catalog-meta dt { color: var(--muted-foreground); font: 11px/1.2 var(--dashboard-title-font); text-transform: uppercase; letter-spacing: .05em; }
+.oven-catalog-meta dd { margin: 4px 0 0; overflow-wrap: anywhere; font: 13px/1.35 var(--dashboard-font); }
 .oven-catalog-explainer-link { width: fit-content; color: var(--primary); font-family: var(--dashboard-title-font); }
 .oven-catalog-explainer-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .oven-catalog-explainer-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
@@ -17,3 +26,7 @@
 .oven-catalog-agent-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
 .oven-catalog-agent-heading h3 { margin: 0; font: 400 13px/1.2 var(--dashboard-title-font); color: var(--muted-foreground); }
 .oven-catalog-agent-block pre { margin: 0; padding: 12px; overflow-x: auto; color: var(--foreground); font: 13px/1.55 var(--dashboard-font); white-space: pre-wrap; }
+
+@media (max-width: 760px) {
+  .oven-catalog-meta { grid-template-columns: 1fr; }
+}

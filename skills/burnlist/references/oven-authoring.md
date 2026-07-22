@@ -8,11 +8,11 @@ Oven.
 
 ## Closed contract and theme allowlist
 
-**A custom Oven cannot define a new contract, theme, or icon.** It must reuse a
-built-in contract and theme pair. For a generic KPI-and-table Oven that reads
+**A custom Oven cannot define a new contract, theme, or icon.** It must reuse an
+allowlisted contract and theme pair. For a generic KPI-and-table Oven that reads
 arbitrary project JSON, use `contract="checklist-progress@1"` and
 `theme="checklist"`. The choice governs the chrome and normalized-data contract
-the built-in renderer validates.
+the matching shipped handler validates.
 
 The complete closed registries are:
 
@@ -80,15 +80,16 @@ burnlist oven update <id> [same inputs as create]
 burnlist oven fork <id> <newId>
 ```
 
-- `list` lists custom and built-in Ovens with `id`, `version`, `name`, `kind`,
+- `list` lists custom and official Ovens with `id`, `version`, `name`, `origin`,
   `contract`, `nodes`, and `revision` columns. Its Oven identity is
   `id@version`; `version` is distinct from the `o1-sha256:<hex>` content
-  revision. `--json` includes `version` and `ovenRevision`.
+  revision. `--json` also exposes `origin`, and official entries include the
+  current `catalogRevision` and `catalogEntry` metadata.
 - `view` prints compiled structure only; it never prints bound data values. Its
   header identifies a shipped Oven as, for example,
-  `Checklist  (checklist@0.1.0 · built-in)`, then reports `version`, `nodes`,
+  `Checklist  (checklist@0.1.0 · official)`, then reports `version`, `nodes`,
   `contract`, `theme`, `revision`, and `path`. `--json` includes `version` and
-  `ovenRevision`.
+  `ovenRevision` plus the same origin and catalog metadata.
 - `use` adopts a shipped Oven and, only if the shipped directory contains an
   exact `example/data.json`, validates and installs that example. Without one,
   it adopts only and prints the exact `oven set` next step.
@@ -107,8 +108,8 @@ burnlist oven fork <id> <newId>
   directory. It prints `Upgraded Oven <id>@<version> at
   <repo>/.burnlist/ovens/<id>` followed by `revision: o1-sha256:<hex>`.
 - `create` adds a custom Oven; `update` changes an existing custom Oven only.
-- `fork` copies a built-in or custom Oven into a new custom id and records its
-  `forkedFrom` provenance. Built-in Ovens are read-only and cannot be updated.
+- `fork` copies an official or custom Oven into a new custom id and records its
+  `forkedFrom` provenance. Official Ovens are read-only and cannot be updated.
 
 For `create`, `--dir` reads `instructions.md` and `<id>.oven`; `--package`
 reads JSON `{name?, instructions, oven}`. Any file input accepts `-` for stdin.
@@ -136,8 +137,13 @@ converted into starter data. The optional example is not vendored and does not
 enter the Oven revision or pin. `--force` has the same deterministic duplicate
 behavior as `adopt`.
 
-`set` resolves a repo's vendored Oven before the shipped or custom source. For a
-built-in, it calls the same runtime validator used by that Oven's render handler;
+Examples and fixtures test only the mechanics they target. The official catalog
+does not qualify acceptance or retained evidence. Its generated agent guidance
+uses the producer `inputContract`; the `.oven` source declares the separate
+`renderContract` consumed by the shared runtime.
+
+`set` resolves a repo's vendored Oven before the shipped or custom source. For an
+official Oven, it calls that handler's producer `inputContract` validator;
 there is no second schema-based approximation. A producer-managed Oven such as
 Streaming Diff refuses a single JSON payload. A custom Oven with no registered
 runtime validator checks that every `.oven` `source=` and `<bind source=>`
@@ -158,6 +164,14 @@ gitignored canonical path `.local/burnlist/data/<id>.json` and atomically update
 nothing. A rejected replacement or publication failure preserves the exact
 prior data bytes and binding. Repeating an identical set is idempotent.
 
+After that canonical transaction succeeds, `set` best-effort publishes one
+`data-published/complete` Oven event whose cursor is the canonical JSON content
+digest. The event write happens after the repository data lock is released and
+never rolls back a successful set. Repeating identical data retries the same
+idempotent event identity. External project publishers should do the same after
+their own atomic publication by calling `publishOvenDataPublishedEvent` from
+`burnlist/oven-events`; consumers still reopen the canonical data.
+
 ## Vendoring and pinning an Oven
 
 `burnlist oven adopt <id>` copies the shipped source into the committed
@@ -172,17 +186,25 @@ identity and source revision:
   "version": "0.1.0",
   "revision": "o1-sha256:<hex>",
   "source": "built-in",
+  "runtimeCompatibility": "burnlist-oven-runtime@1",
   "pinnedAt": "2026-07-21T20:23:35.554Z"
 }
 ```
 
 The declared `id@version` identity is distinct from the content revision: the
-revision changes when source bytes change. Because the vendored copy and pin
-are committed, upgrading the Burnlist CLI never silently changes a project's
-Oven. Run `burnlist oven upgrade <id>` to opt in to copying the shipped source
-again, then commit the changed vendored directory. The dashboard resolves a
-repo's vendored Oven before the shipped built-in when
-`.burnlist/ovens/<id>/` exists; otherwise it uses the shipped built-in.
+revision changes when source bytes change. The pin freezes the declarative
+source and instructions, not the installed CLI's validators, server handlers,
+adapters, or frontend runtime. `runtimeCompatibility` is a coarse compatibility
+gate: Burnlist refuses a vendored package for another runtime contract, while
+behavior may still evolve within a compatible runtime version. Legacy five-key
+pins created before this field existed are read as
+`burnlist-oven-runtime@1` in memory without rewriting the committed pin. Run
+`burnlist oven upgrade <id>` to opt in to copying the shipped source again,
+then commit the changed vendored directory. The dashboard resolves a
+repo's vendored Oven before the shipped official definition when
+`.burnlist/ovens/<id>/` exists; otherwise it uses the catalog-backed shipped
+definition. The pin's historical `source: "built-in"` value is an on-disk
+compatibility field, not a second membership authority.
 
 ## Binding & viewing
 
@@ -267,7 +289,7 @@ computes it, see [Designing Ovens](designing-ovens.md); to cite an Oven number
 as a Burnlist item's proof, see the Proof Authority guidance in
 [Burnlist Creation](burnlist-creation.md).
 
-Rich built-in Ovens instead use a renderer-defined, versioned normalized-data
+Rich official Ovens instead use a renderer-defined, versioned normalized-data
 contract. Differential Testing uses `burnlist-differential-testing-data@1` and
 has a packaged adapter SDK for refresh, locking, and atomic publishing; projects
 retain evidence authority. See `references/differential-testing-adapter-sdk.md`.

@@ -9,7 +9,7 @@ import {
   Save,
 } from "lucide-react";
 import { Button } from "@layout";
-import { ovenActionUrl, ovenCatalogKey, ovenTargetRepoRoot } from "@lib/oven-identity.mjs";
+import { effectiveOvensForRepo } from "@lib/oven-identity.mjs";
 import type { OvenSummary, RepoSummary } from "@lib/types";
 import {
   Card,
@@ -185,13 +185,14 @@ export function RunBurnPage() {
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [writeToken, setWriteToken] = useState("");
   const [ovenId, setOvenId] = useState("checklist");
-  const [ovenRepoKey, setOvenRepoKey] = useState<string | null>(null);
   const [repoRoot, setRepoRoot] = useState("");
   const [title, setTitle] = useState("");
   const [objective, setObjective] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const targetRepoKey = repos.find((repo) => repo.root === repoRoot)?.repoKey ?? null;
+  const effectiveOvens = effectiveOvensForRepo(ovens, targetRepoKey) as OvenSummary[];
 
   useEffect(() => {
     Promise.all([
@@ -202,7 +203,10 @@ export function RunBurnPage() {
         setOvens(ovensPayload.ovens || []);
         setRepos(reposPayload.repos || []);
         setWriteToken(ovensPayload.writeToken || "");
-        setRepoRoot(reposPayload.repos?.[0]?.root || "");
+        const firstRepo = reposPayload.repos?.[0];
+        setRepoRoot(firstRepo?.root || "");
+        const available = effectiveOvensForRepo(ovensPayload.ovens || [], firstRepo?.repoKey);
+        setOvenId(available.some((oven) => oven.id === "checklist") ? "checklist" : available[0]?.id || "");
       })
       .catch(() => setError("Could not load Ovens or repositories."));
   }, []);
@@ -213,7 +217,7 @@ export function RunBurnPage() {
     setError("");
     setStatus("Creating run manifest...");
     try {
-      const oven = ovens.find((candidate) => candidate.id === ovenId && candidate.repoKey === ovenRepoKey);
+      const oven = effectiveOvens.find((candidate) => candidate.id === ovenId);
       if (!oven) throw new Error("Select an Oven.");
       const response = await fetch("/api/runs", {
         method: "POST",
@@ -223,8 +227,7 @@ export function RunBurnPage() {
         },
         body: JSON.stringify({
           ovenId: oven.id,
-          ovenRepoKey: oven.repoKey,
-          repoRoot: ovenTargetRepoRoot(oven, repos) ?? repoRoot,
+          repoRoot,
           title,
           objective,
         }),
@@ -266,19 +269,13 @@ export function RunBurnPage() {
             Oven
             <select
               className={fieldClass}
-              onChange={(event) => {
-                const oven = ovens.find((candidate) => ovenCatalogKey(candidate) === event.target.value);
-                setOvenId(oven?.id || "");
-                setOvenRepoKey(oven?.repoKey ?? null);
-                const targetRepoRoot = oven ? ovenTargetRepoRoot(oven, repos) : null;
-                if (targetRepoRoot) setRepoRoot(targetRepoRoot);
-              }}
+              onChange={(event) => setOvenId(event.target.value)}
               required
-              value={ovenCatalogKey({ id: ovenId, repoKey: ovenRepoKey })}
+              value={ovenId}
             >
-              {ovens.map((oven) => (
-                <option data-oven-url={ovenActionUrl(oven)} key={ovenCatalogKey(oven)} value={ovenCatalogKey(oven)}>
-                  {oven.name} · {oven.builtIn ? "default" : "custom"}
+              {effectiveOvens.map((oven) => (
+                <option key={oven.id} value={oven.id}>
+                  {oven.name} · {oven.origin}
                 </option>
               ))}
             </select>
@@ -287,7 +284,13 @@ export function RunBurnPage() {
             Repository
             <select
               className={fieldClass}
-              onChange={(event) => setRepoRoot(event.target.value)}
+              onChange={(event) => {
+                const root = event.target.value;
+                const key = repos.find((repo) => repo.root === root)?.repoKey ?? null;
+                const available = effectiveOvensForRepo(ovens, key);
+                setRepoRoot(root);
+                if (!available.some((oven) => oven.id === ovenId)) setOvenId(available[0]?.id || "");
+              }}
               required
               value={repoRoot}
             >
@@ -339,7 +342,7 @@ export function RunBurnPage() {
           <a href="/">Cancel</a>
         </Button>
         <Button
-          disabled={saving || !repos.length || !ovens.length}
+          disabled={saving || !repos.length || !effectiveOvens.length}
           type="submit"
         >
           <Play />

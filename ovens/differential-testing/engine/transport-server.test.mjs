@@ -118,6 +118,11 @@ test("the Differential Testing data route serves bounded bundle pages with stabl
     assert.equal((await fetch(`${endpoint}?scenario=..%2F..%2Fetc%2Fpasswd`)).status, 400);
     assert.equal((await fetch(`${endpoint}?scenario=aaaaaaaaaaaaaaaa`)).status, 404);
 
+    await writeFile(fixture.recordsPath, "changed after validation\n");
+    const changedRecords = await fetch(endpoint);
+    assert.equal(changedRecords.status, 422);
+    assert.match((await changedRecords.json()).error, /records changed after validation/u);
+
     const emptyBundleSha256 = await publishEmptyBundle(fixture.currentPath);
     const emptyResponse = await fetch(endpoint, { headers: { "If-None-Match": currentEtag } });
     assert.equal(emptyResponse.status, 200);
@@ -221,6 +226,7 @@ async function publishBundle(root) {
   return {
     bundleSha256: sha256(manifestBytes),
     currentPath,
+    recordsPath: join(scenarioDirectory, "fields.ndjson"),
     scenarioId,
     scenarioSha256: sha256(scenarioBytes),
   };

@@ -21,8 +21,11 @@ const entry = {
   name: "Widget Oven",
   version: "0.1.0",
   contract: "checklist-progress@1",
+  inputContract: "checklist-progress@1",
+  renderContract: "checklist-progress@1",
   description: "Shows widget progress.",
   builtIn: true,
+  origin: "official",
   repoKey: null,
   dataInput: "json-payload",
   label: "widget-oven@0.1.0",
@@ -59,11 +62,39 @@ test("an Oven explainer renders catalog details and its sample-data demo", { tim
     assert.match(markup, /Widget Oven/u);
     assert.match(markup, /widget-oven@0\.0*1\.0/u);
     assert.match(markup, /checklist-progress@1/u);
+    assert.match(markup, />Official</u);
     assert.match(markup, /Tell your agent/iu);
     assert.match(markup, /burnlist oven use widget-oven/u);
     assert.match(markup, /Demo \(sample data\)/iu);
     assert.match(markup, /Sprockets/u);
     assert.match(markup, />42</u);
+  } finally {
+    await rm(outputDir, { force: true, recursive: true });
+  }
+});
+
+test("a vendored explainer preserves its origin, repository, and real live link", { timeout: 20_000 }, async () => {
+  const outputDir = await mkdtemp(join(process.cwd(), ".oven-explainer-render-test-"));
+  try {
+    const explainerOutput = join(outputDir, "OvenExplainerView.mjs");
+    await build({
+      entryPoints: [explainerPath], bundle: true, format: "esm", outfile: explainerOutput,
+      platform: "node", alias: { "@": sourceDir, "@lib": libPath, "@oven": ovenPath },
+      jsx: "automatic", packages: "external", target: "node18",
+    });
+    const { OvenExplainerView } = await import(`${new URL(`file://${explainerOutput}`).href}?test=${Date.now()}`);
+    const compiled = compileOven(ovenSource, { file: "widget-oven.oven" });
+    assert.equal(compiled.ok, true);
+    if (!compiled.ok) return;
+    const markup = renderToStaticMarkup(createElement(OvenExplainerView, {
+      entry: { ...entry, builtIn: true, origin: "vendored", repoKey: "aaaaaaaaaaaa" },
+      ir: compiled.ir,
+      sample: null,
+    }));
+    assert.match(markup, />Vendored</u);
+    assert.match(markup, /aaaaaaaaaaaa/u);
+    assert.match(markup, /href="\/r\/aaaaaaaaaaaa\/o\/widget-oven"/u);
+    assert.doesNotMatch(markup, />Built-in</u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
   }

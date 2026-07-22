@@ -2,25 +2,42 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { safeStat } from "../../src/server/fs-safe.mjs";
+import {
+  readOvenJsonSnapshot,
+  reconcileOvenJsonBindings,
+  serveOvenJsonSnapshot,
+} from "../../src/server/oven-json-handler.mjs";
 import { assertPerformanceTracingData } from "./contract.mjs";
 
 export const performanceTracingHandler = Object.freeze({
   id: "performance-tracing",
+  inputContract: "performance-tracing-oven@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validatePerformanceTracingRuntimeData,
 
-  serveData({ bindingPath, maxOvenDataBytes }) {
-    if (!safeStat(bindingPath)?.isFile()) {
-      throw Object.assign(new Error("configured Performance Tracing data is missing"), { status: 404 });
-    }
-    const payload = JSON.parse(readTextFileWithLimit(
-      bindingPath,
-      maxOvenDataBytes,
-      "Performance Tracing Oven data",
-    ));
-    validatePerformanceTracingRuntimeData(payload, { bindingPath, maxOvenDataBytes });
-    return { ovenId: "performance-tracing", path: bindingPath, payload, validated: true };
+  reconcileDataBindings(ctx) {
+    reconcileOvenJsonBindings(ctx, "performance-tracing");
+  },
+
+  serveData(ctx) {
+    reconcileOvenJsonBindings(ctx, "performance-tracing");
+    // Provenance files are external freshness dependencies. Deliberately
+    // revalidate them on every request instead of caching by report identity.
+    const snapshot = readOvenJsonSnapshot(ctx, {
+      ovenId: "performance-tracing",
+      label: "configured Performance Tracing data",
+      cache: false,
+      validate(payload) {
+        validatePerformanceTracingRuntimeData(payload, {
+          bindingPath: ctx.bindingPath,
+          maxOvenDataBytes: ctx.maxOvenDataBytes,
+        });
+      },
+    });
+    serveOvenJsonSnapshot(ctx, snapshot, {
+      ovenId: "performance-tracing", path: ctx.bindingPath, validated: true,
+    });
   },
 });
 

@@ -1,4 +1,8 @@
-import { readTextFileWithLimit, safeStat } from "../../server/fs-safe.mjs";
+import {
+  readOvenJsonSnapshot,
+  reconcileOvenJsonBindings,
+  serveOvenJsonSnapshot,
+} from "../../server/oven-json-handler.mjs";
 import { OVEN_DATA_INPUT } from "../oven-registry.mjs";
 
 export function validateGenericJsonData(payload) {
@@ -7,17 +11,26 @@ export function validateGenericJsonData(payload) {
 
 export const genericJsonHandler = Object.freeze({
   id: "checklist",
+  inputContract: "checklist-progress@1",
   dataInput: OVEN_DATA_INPUT.jsonPayload,
   validateData: validateGenericJsonData,
 
-  serveData({ id, bindingPath, maxOvenDataBytes }) {
-    if (!safeStat(bindingPath)?.isFile()) {
-      throw Object.assign(new Error(`configured data for Oven ${id} is missing`), { status: 404 });
-    }
-    const payload = validateGenericJsonData(
-      JSON.parse(readTextFileWithLimit(bindingPath, maxOvenDataBytes, `Oven ${id} data`)),
-    );
-    return { ovenId: id, path: bindingPath, payload, validated: false };
+  reconcileDataBindings(ctx) {
+    reconcileOvenJsonBindings(ctx, ctx.id);
+  },
+
+  serveData(ctx) {
+    reconcileOvenJsonBindings(ctx, ctx.id);
+    const snapshot = readOvenJsonSnapshot(ctx, {
+      ovenId: ctx.id,
+      label: `configured data for Oven ${ctx.id}`,
+      validate: validateGenericJsonData,
+    });
+    serveOvenJsonSnapshot(ctx, snapshot, {
+      ovenId: ctx.id,
+      path: ctx.bindingPath,
+      validated: false,
+    });
   },
 
   dashboardEntries({ id, discoverBurnlists }) {

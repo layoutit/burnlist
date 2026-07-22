@@ -44,14 +44,11 @@ The dashboard scans lifecycle folders and refreshes automatically. Its progress 
 
 ## Ovens
 
-An Oven is a declarative recipe for a Burn. Its `instructions.md` defines the outcome, canonical state, required inputs, and evidence rules. Its `detail.json` defines the grid, controlled widgets, and bindings used to present normalized data.
+An Oven is a declarative recipe for a Burn. Its `instructions.md` defines the outcome, canonical state, required inputs, and evidence rules. Its `<id>.oven` source declares controlled widgets and bindings used to present normalized data.
 
-Burnlist ships with two default Ovens:
+Official Oven membership is defined only by the validated, non-executable [`ovens/catalog.json`](ovens/catalog.json). The catalog records each shipped definition's producer input contract, declarative render contract, route kind, maturity, and runtime compatibility. `GET /api/oven-catalog` exposes that official set; `GET /api/ovens` separately reports the official, vendored, and custom Ovens available to the observed repositories. The catalog makes no acceptance or retained-evidence claim.
 
-- **Checklist** tracks the active work queue.
-- **Differential Testing** renders aligned reference and candidate series, optional aggregate telemetry, and optional exact-first evidence.
-
-Custom Ovens use the same two-file package and are scoped to the repository that owns their ignored local state; built-in Ovens are global. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. `--ovens-dir` overrides custom Oven storage only for the dashboard's launch repository, while other observed repositories continue to use their own `.local/burnlist/ovens/`. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
+Custom Ovens use the same two-file package and are scoped to the repository that owns their ignored local state; shipped official Ovens are package-wide and read-only. An Oven cannot run commands, collect or transform project data, mutate project files, import arbitrary UI, or start an agent. `--ovens-dir` overrides custom Oven storage only for the dashboard's launch repository, while other observed repositories continue to use their own `.local/burnlist/ovens/`. See the [Oven contract](skills/burnlist/references/oven-contract.md) for the complete boundary.
 
 ## Differential Testing
 
@@ -171,6 +168,42 @@ npm run test:global-install
 ```
 
 `verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
+
+## Oven events
+
+`burnlist/oven-events` exposes a durable, repo-local observational event log.
+After atomically publishing canonical Oven data, producers may call
+`publishOvenDataPublishedEvent` with a stable subject and durable publication
+generation. Consumers use `data-published/complete` only to invalidate and refetch
+canonical data; events never contain or replace the snapshot or its proof. The
+dashboard serves bounded JSON replay and SSE at `GET /api/events`.
+
+Every live Oven uses the same canonical architecture: one process-wide event
+observer, one bounded JSON snapshot service, one browser-shell snapshot client,
+and the declarative `OvenRuntime`. A publication burst invalidates a keyed
+snapshot; the next conditional request reopens canonical data. There are no
+handler warm hooks, page-owned JSON pollers, or alternate live Oven routes.
+Exact browser consumers use filter-scoped replay cursors. Wildcard projections
+use a live server-tail subscription with internal paged watermarks, so they keep
+all-Oven invalidation semantics beyond the public 64-stream replay boundary.
+Differential Testing uses the same source snapshot and response-admission
+boundary, retaining only a bounded query-projection LRU. Inactive browser
+snapshots are bounded by entry and byte limits; transient failures visibly mark
+retained data stale, while authoritative missing responses clear it.
+One 30-second server reconciliation and one 30-second browser reconciliation
+cover manual writes, event-publication failure, and disconnects. Streaming
+Diff remains a separate ordered content SSE protocol, and Performance Tracing
+deliberately revalidates external provenance on each canonical request.
+
+Run `node scripts/measure-oven-snapshot-architecture.mjs` to reproduce the
+empirical architecture measurement. It uses real wall-clock timers, loopback
+HTTP, filesystem reads/parses, three SSE clients, and a spawned dashboard
+server—never fake timers or arithmetic request counts. The retained run reduced
+two executable legacy polls to zero inside a 4.2-second canonical idle window,
+reduced a three-consumer publication burst from three reads/parses/responses to
+one, shared two subscriber catch-up scans across three SSE clients instead of
+six per-client scans, returned an unchanged generation as a zero-byte `304`,
+and rejected a second 4 MiB maximum response until abort released admission.
 
 ## Local State
 

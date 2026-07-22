@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState, type DependencyList } from "react";
-import { createPollTransport, createSseTransport } from "./transports";
+import { useEffect, useState, type DependencyList } from "react";
+import { browserOvenSnapshotClient } from "../../lib/oven-event-client.mjs";
+import { createSseTransport } from "./transports";
 
 type PropsConfig<T> = { transport: "props"; data: T };
 
-type PollConfig<T> = {
-  transport: "poll";
+type SnapshotConfig<T> = {
+  transport: "snapshot";
+  enabled?: boolean;
+  repoKey: string | null;
+  ovenId: string;
+  subjectId?: string | null;
+  query?: string;
   makeUrl: () => string;
-  intervalMs: number;
   receive: (response: Response, json: unknown) => T;
   fallbackError: string;
+  fallbackMs?: number;
   initialData?: T | null;
+  events?: Array<{ ovenId?: string; kind: string; phase: string }>;
   deps?: DependencyList;
 };
 
@@ -24,41 +31,60 @@ type SseConfig<T> = {
   deps?: DependencyList;
 };
 
-export type OvenLiveDataConfig<T> = PropsConfig<T> | PollConfig<T> | SseConfig<T>;
+export type OvenLiveDataConfig<T> = PropsConfig<T> | SnapshotConfig<T> | SseConfig<T>;
 
-type PropsResult<T> = { data: T; error: ""; loading: false };
-type PollResult<T> = { data: T | null; error: string; loading: boolean };
+type PropsResult<T> = { data: T; error: ""; loading: false; stale: false };
+export type SnapshotResult<T> = { data: T | null; error: string; loading: boolean; stale: boolean };
 type SseResult<T> = { data: T; error: string };
 
+export function snapshotLiveResult<T>(current: SnapshotResult<T>, snapshot: {
+  data: T | null;
+  error: string;
+  stale?: boolean;
+  outcome: "initial" | "loading" | "accepted" | "unchanged" | "rejected" | "missing";
+}): SnapshotResult<T> {
+  if (snapshot.outcome === "initial") return current;
+  if (snapshot.outcome === "loading") return { ...current, error: "", loading: true, stale: snapshot.stale ?? current.data !== null };
+  if (snapshot.outcome === "rejected") return { ...current, error: snapshot.error, loading: false, stale: current.data !== null };
+  if (snapshot.outcome === "missing") return { data: null, error: snapshot.error, loading: false, stale: false };
+  return { data: snapshot.data, error: "", loading: false, stale: false };
+}
+
 export function useOvenLiveData<T>(config: PropsConfig<T>): PropsResult<T>;
-export function useOvenLiveData<T>(config: PollConfig<T>): PollResult<T>;
+export function useOvenLiveData<T>(config: SnapshotConfig<T>): SnapshotResult<T>;
 export function useOvenLiveData<T>(config: SseConfig<T>): SseResult<T>;
 export function useOvenLiveData<T>(config: OvenLiveDataConfig<T>) {
   if (config.transport === "props") {
-    return { data: config.data, error: "", loading: false };
+    return { data: config.data, error: "", loading: false, stale: false };
   }
 
-  if (config.transport === "poll") {
-    const [state, setState] = useState<PollResult<T>>({
+  if (config.transport === "snapshot") {
+    const [state, setState] = useState<SnapshotResult<T>>({
       data: config.initialData ?? null,
       error: "",
       loading: true,
+      stale: false,
     });
-    const inFlightRef = useRef(false);
 
     useEffect(() => {
-      const stop = createPollTransport({
-        makeUrl: config.makeUrl,
-        intervalMs: config.intervalMs,
+      if (config.enabled === false) {
+        setState({ data: config.initialData ?? null, error: "", loading: false, stale: false });
+        return undefined;
+      }
+      setState((current) => ({ ...current, error: "", loading: true, stale: current.data !== null }));
+      const subscription = browserOvenSnapshotClient.subscribe({
+        repoKey: config.repoKey,
+        ovenId: config.ovenId,
+        subjectId: config.subjectId ?? null,
+        query: config.query,
+        url: config.makeUrl(),
         receive: config.receive,
         fallbackError: config.fallbackError,
-        inFlightRef,
-      }).start({
-        onData: (data) => setState((current) => ({ ...current, data, error: "" })),
-        onError: (error) => setState((current) => ({ ...current, error })),
-        onSettled: () => setState((current) => ({ ...current, loading: false })),
-      });
-      return stop;
+        fallbackMs: config.fallbackMs,
+        initialData: config.initialData ?? null,
+        events: config.events,
+      }, (snapshot) => setState((current) => snapshotLiveResult(current, snapshot)));
+      return () => subscription.unsubscribe();
     }, config.deps ?? []);
 
     return state;

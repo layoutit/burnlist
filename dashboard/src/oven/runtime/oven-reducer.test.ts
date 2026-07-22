@@ -132,8 +132,18 @@ test("refresh permits one queued request, rejects stale responses, and keeps las
   state = ovenReducer(state, { type: "payloadAccepted", generation: 1, payload }, ir);
   assert.equal(state.refresh.phase, "queued");
   state = ovenReducer(state, { type: "payloadRequested" }, ir);
-  assert.deepEqual(state.refresh, { phase: "running", error: undefined, generation: 2 });
+  assert.deepEqual(state.refresh, { phase: "running", error: undefined, generation: 2, stale: true });
   state = ovenReducer(state, { type: "payloadRejected", generation: 2, error: "offline" }, ir);
   assert.equal(state.refresh.phase, "failed");
+  assert.equal(state.refresh.stale, true);
   assert.equal(state.payload, payload);
+});
+
+test("authoritative missing data clears the last good payload", () => {
+  let state = initOvenState(ir, payload);
+  state = ovenReducer(state, { type: "payloadRequested", generation: 1 }, ir);
+  state = ovenReducer(state, { type: "payloadMissing", generation: 1, error: "Oven is unbound." }, ir);
+  assert.equal(state.payload, undefined);
+  assert.equal(state.payloadRevision, 1);
+  assert.deepEqual(state.refresh, { phase: "failed", error: "Oven is unbound.", generation: 1, stale: false });
 });

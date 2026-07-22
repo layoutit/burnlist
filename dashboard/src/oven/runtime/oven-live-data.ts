@@ -1,10 +1,23 @@
 import { useEffect, useRef } from "react";
+import {
+  browserOvenSnapshotClient,
+  OVEN_BROWSER_RECONCILE_MS,
+} from "../../lib/oven-event-client.mjs";
 import { parseRoute } from "../../lib/route-model.mjs";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 
-type FetchLike = (input: string, init: RequestInit) => Promise<{ ok: boolean; status: number; headers: { get(name: string): string | null }; json(): Promise<unknown> }>;
-export type OvenPoller = { refresh(): void; stop(): void };
 export type OvenPayloadAdapter = (raw: unknown) => unknown;
+type SnapshotState = {
+  data: unknown;
+  error: string;
+  generation: number;
+  stale?: boolean;
+  outcome: "initial" | "loading" | "accepted" | "unchanged" | "rejected" | "missing";
+};
+type SnapshotSubscription = { unsubscribe(): void; refresh(): void };
+type SnapshotClient = {
+  subscribe(descriptor: Record<string, unknown>, listener: (state: SnapshotState) => void): SnapshotSubscription;
+};
 
 export function scenarioSearch(currentSearch = typeof window === "undefined" ? "" : window.location.search, scenario?: string): string {
   const source = new URLSearchParams(currentSearch), target = new URLSearchParams();
@@ -31,7 +44,7 @@ function attributes(ir: OvenIr, id: string): Record<string, unknown> {
   return nodes(ir.root).find((node) => node.attributes?.id === id)?.attributes ?? {};
 }
 
-export function ovenPollSearch({ ir, state, scenario }: { ir: OvenIr; state: OvenState; scenario?: string }): string {
+export function ovenSnapshotSearch({ ir, state, scenario }: { ir: OvenIr; state: OvenState; scenario?: string }): string {
   const base = scenarioSearch(browserSearchWithRepoKey(), scenario);
   for (const item of ir.collections) {
     const collection = { ...attributes(ir, item.id), ...item };
@@ -55,48 +68,98 @@ export function ovenDataUrl(id: string, search = browserSearchWithRepoKey()): st
   return `/api/oven-data/${encodeURIComponent(id)}${scenarioSearch(search)}`;
 }
 
-/** Poll coordinator kept outside React so request ordering is independently testable. */
-export function createOvenPoller({ id, dispatch, fetchImpl = fetch as FetchLike, search, adapt, generationRef }: { id: string; dispatch: (action: OvenAction) => void; fetchImpl?: FetchLike; search?: string; adapt?: OvenPayloadAdapter; generationRef?: { current: number } }): OvenPoller {
-  let stopped = false, inFlight = false, queued = false, etag: string | undefined;
-  const generation = generationRef ?? { current: 0 };
-  const refresh = () => {
-    if (stopped) return;
-    if (inFlight) { if (!queued) { queued = true; dispatch({ type: "payloadRequested" }); } return; }
-    inFlight = true;
-    generation.current += 1;
-    dispatch({ type: "payloadRequested" });
-    const requestGeneration = generation.current;
-    const url = search === undefined ? ovenDataUrl(id) : `/api/oven-data/${encodeURIComponent(id)}${search}`;
-    void fetchImpl(url, { cache: "no-store", headers: etag ? { "If-None-Match": etag } : undefined }).then(async (response) => {
-      if (response.status === 304) {
-        const nextEtag = response.headers.get("etag");
-        if (nextEtag) etag = nextEtag;
-        if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadUnchanged", generation: requestGeneration });
-        return;
+export function ovenRuntimeSnapshotDescriptor({ id, search, adapt, refreshSeconds }: {
+  id: string;
+  search: string;
+  adapt?: OvenPayloadAdapter;
+  refreshSeconds?: unknown;
+}) {
+  const query = new URLSearchParams(search);
+  const requestedFallbackMs = Number(refreshSeconds) * 1_000;
+  return {
+    repoKey: query.get("repoKey"),
+    ovenId: id,
+    subjectId: query.get("scenario"),
+    query: query.toString(),
+    url: `/api/oven-data/${encodeURIComponent(id)}${search}`,
+    fallbackMs: Number.isFinite(requestedFallbackMs) && requestedFallbackMs > 0
+      ? Math.max(OVEN_BROWSER_RECONCILE_MS, requestedFallbackMs)
+      : OVEN_BROWSER_RECONCILE_MS,
+    fallbackError: `Could not load Oven ${id}.`,
+    receive(response: Response, raw: unknown) {
+      if (!response.ok) {
+        const message = raw && typeof raw === "object" && typeof (raw as { error?: unknown }).error === "string"
+          ? String((raw as { error: string }).error)
+          : `Oven data request failed (${response.status})`;
+        throw new Error(message);
       }
-      if (!response.ok) throw new Error(`Oven data request failed (${response.status})`);
-      const raw = await response.json();
-      const nextEtag = response.headers.get("etag");
-      if (nextEtag) etag = nextEtag;
-      if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadAccepted", payload: adapt ? adapt(raw) : raw, generation: requestGeneration });
-    }).catch((error: unknown) => { if (!stopped && requestGeneration === generation.current) dispatch({ type: "payloadRejected", error, generation: requestGeneration }); }).finally(() => {
-      inFlight = false;
-      if (!stopped && queued) { queued = false; refresh(); }
-    });
+      return adapt ? adapt(raw) : raw;
+    },
   };
-  return { refresh, stop: () => { stopped = true; } };
 }
 
-export function useOvenLiveData(id: string | undefined, refreshSeconds: unknown, dispatch: (action: OvenAction) => void, search: string, adapt: OvenPayloadAdapter | undefined = undefined) {
+export function subscribeOvenRuntimeSnapshot({
+  client = browserOvenSnapshotClient as SnapshotClient,
+  id,
+  search,
+  dispatch,
+  adapt,
+  refreshSeconds,
+}: {
+  client?: SnapshotClient;
+  id: string;
+  search: string;
+  dispatch: (action: OvenAction) => void;
+  adapt?: OvenPayloadAdapter;
+  refreshSeconds?: unknown;
+}) {
+  let acceptedForSubscription = false;
+  return client.subscribe(ovenRuntimeSnapshotDescriptor({ id, search, adapt, refreshSeconds }), (snapshot) => {
+    if (snapshot.outcome === "initial") return;
+    if (snapshot.outcome === "loading") {
+      dispatch({ type: "payloadRequested", generation: snapshot.generation });
+      return;
+    }
+    if (snapshot.outcome === "accepted") {
+      acceptedForSubscription = true;
+      dispatch({ type: "payloadAccepted", payload: snapshot.data, generation: snapshot.generation });
+      return;
+    }
+    if (snapshot.outcome === "unchanged") {
+      if (!acceptedForSubscription && snapshot.data !== null) {
+        acceptedForSubscription = true;
+        dispatch({ type: "payloadAccepted", payload: snapshot.data, generation: snapshot.generation });
+      } else {
+        dispatch({ type: "payloadUnchanged", generation: snapshot.generation });
+      }
+      return;
+    }
+    if (snapshot.outcome === "missing") {
+      dispatch({ type: "payloadMissing", error: snapshot.error, generation: snapshot.generation });
+      return;
+    }
+    dispatch({ type: "payloadRejected", error: snapshot.error, generation: snapshot.generation });
+  });
+}
+
+export function useOvenLiveData(
+  id: string | undefined,
+  refreshSeconds: unknown,
+  dispatch: (action: OvenAction) => void,
+  search: string,
+  adapt: OvenPayloadAdapter | undefined = undefined,
+) {
   const dispatchRef = useRef(dispatch);
-  const generationRef = useRef(0);
   dispatchRef.current = dispatch;
   useEffect(() => {
-    const seconds = Number(refreshSeconds);
-    if (!id || !Number.isFinite(seconds) || seconds <= 0) return undefined;
-    const poller = createOvenPoller({ id, dispatch: (action) => dispatchRef.current(action), search, adapt, generationRef });
-    poller.refresh();
-    const timer = setInterval(() => poller.refresh(), seconds * 1000);
-    return () => { clearInterval(timer); poller.stop(); };
+    if (!id) return undefined;
+    const subscription = subscribeOvenRuntimeSnapshot({
+      id,
+      search,
+      adapt,
+      refreshSeconds,
+      dispatch: (action) => dispatchRef.current(action),
+    });
+    return () => subscription.unsubscribe();
   }, [id, refreshSeconds, search, adapt]);
 }

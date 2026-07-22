@@ -7,9 +7,11 @@ import test from "node:test";
 import {
   decodeOvenEventReplayCursor,
   encodeOvenEventReplayCursor,
+  ovenEventFeedSelection,
   readOvenEventDeliveries,
   serveOvenEventFeed,
 } from "./oven-event-feed.mjs";
+import { createOvenEventObserver } from "./oven-event-observer.mjs";
 import { publishOvenEvent } from "./oven-event-store.mjs";
 
 function fixture(t, repoKey = "aaaaaaaaaaaa") {
@@ -107,6 +109,18 @@ test("unfiltered feed discovery treats ovenIds=[] as every Oven stream", (t) => 
   const batch = readOvenEventDeliveries([repo], { ovenIds: [], limit: 10 });
   assert.deepEqual(batch.deliveries.map((event) => event.cursor), ["future", "other"]);
   assert.deepEqual(batch.deliveries.map((event) => event.ovenId), ["future-oven", "other-oven"]);
+});
+
+test("native EventSource reconnect advances with Last-Event-ID over the original query cursor", () => {
+  const repo = { root: "/unused", repoKey: "aaaaaaaaaaaa", name: "repo" };
+  const baseline = encodeOvenEventReplayCursor({ "aaaaaaaaaaaa/future-oven": 1 });
+  const reconnect = encodeOvenEventReplayCursor({ "aaaaaaaaaaaa/future-oven": 2 });
+  const selection = ovenEventFeedSelection(
+    new URL(`http://localhost/api/events?stream=1&after=${encodeURIComponent(baseline)}`),
+    [repo],
+    { "last-event-id": reconnect },
+  );
+  assert.deepEqual(selection.watermarks, { "aaaaaaaaaaaa/future-oven": 2 });
 });
 
 test("JSON feed paginates with vector cursors while preserving each stream sequence", (t) => {
@@ -210,6 +224,15 @@ test("SSE feed drops stale cursor streams when serving a new stream", (t) => {
 test("SSE subscriber cap is released on disconnect and write failure", () => {
   const repo = { root: "/unused", repoKey: "aaaaaaaaaaaa", name: "repo" };
   const empty = () => ({ deliveries: [], warnings: [] });
+  const timers = fakeTimers();
+  let readDeliveries = empty;
+  const observer = createOvenEventObserver({
+    resolveRepos: () => [repo],
+    readTail: () => ({ watermarks: {}, warnings: [], streamKeys: [] }),
+    readDeliveries: (...args) => readDeliveries(...args),
+    maxSubscribers: 1,
+    timers,
+  });
   const firstReq = request({ accept: "text/event-stream" });
   const firstRes = new FakeResponse();
   serveOvenEventFeed({
@@ -219,8 +242,7 @@ test("SSE subscriber cap is released on disconnect and write failure", () => {
     repos: [repo],
     json() {},
     maxSubscribers: 1,
-    timers: fakeTimers(),
-    readDeliveries: empty,
+    observer,
   });
   assert.throws(() => serveOvenEventFeed({
     req: request({ accept: "text/event-stream" }),
@@ -229,12 +251,12 @@ test("SSE subscriber cap is released on disconnect and write failure", () => {
     repos: [repo],
     json() {},
     maxSubscribers: 1,
-    timers: fakeTimers(),
-    readDeliveries: empty,
+    observer,
   }), (error) => error.status === 429);
   firstReq.emit("aborted");
 
   const failed = new FakeResponse([true, new Error("socket closed")]);
+  readDeliveries = () => ({ deliveries: [delivery(repo, "first", 1)], warnings: [] });
   assert.doesNotThrow(() => serveOvenEventFeed({
     req: request({ accept: "text/event-stream" }),
     res: failed,
@@ -242,12 +264,12 @@ test("SSE subscriber cap is released on disconnect and write failure", () => {
     repos: [repo],
     json() {},
     maxSubscribers: 1,
-    timers: fakeTimers(),
-    readDeliveries: () => ({ deliveries: [delivery(repo, "first", 1)], warnings: [] }),
+    observer,
   }));
   assert.equal(failed.destroyed, true);
 
   const replacement = new FakeResponse();
+  readDeliveries = empty;
   assert.doesNotThrow(() => serveOvenEventFeed({
     req: request({ accept: "text/event-stream" }),
     res: replacement,
@@ -255,44 +277,80 @@ test("SSE subscriber cap is released on disconnect and write failure", () => {
     repos: [repo],
     json() {},
     maxSubscribers: 1,
-    timers: fakeTimers(),
-    readDeliveries: empty,
+    observer,
   }));
   replacement.emit("close");
 });
 
-test("SSE pauses scans under backpressure and reports isolated observer errors", () => {
+test("SSE closes one slow client while a shared observer continues for healthy clients", () => {
   const repo = { root: "/unused", repoKey: "aaaaaaaaaaaa", name: "repo" };
   const timers = fakeTimers();
-  const res = new FakeResponse([true, true, false, true]);
+  const slow = new FakeResponse([true, true, false]);
+  const healthy = new FakeResponse();
   let reads = 0;
   const batches = [
+    { deliveries: [], warnings: [], streamKeys: [] },
     {
       deliveries: [delivery(repo, "first", 1)],
       warnings: [{ repoKey: repo.repoKey, code: "ECORRUPT", error: "bad neighboring stream" }],
     },
     { deliveries: [delivery(repo, "second", 2)], warnings: [] },
   ];
-  const req = request({ accept: "text/event-stream" });
+  const observer = createOvenEventObserver({
+    resolveRepos: () => [repo],
+    readTail: () => ({ watermarks: {}, warnings: [], streamKeys: [] }),
+    readDeliveries() { return batches[Math.min(reads++, batches.length - 1)]; },
+    timers,
+  });
+  const slowReq = request({ accept: "text/event-stream" });
   serveOvenEventFeed({
-    req,
-    res,
+    req: slowReq,
+    res: slow,
     url: new URL("http://localhost/api/events?stream=1"),
     repos: [repo],
     json() {},
-    timers,
-    readDeliveries() { return batches[Math.min(reads++, batches.length - 1)]; },
+    observer,
   });
-  assert.equal(reads, 1);
-  assert.match(res.writes.join(""), /event: observer-error/u);
-  assert.match(res.writes.join(""), /event: oven-event/u);
-  timers.handles[0].callback();
-  timers.handles[0].callback();
-  assert.equal(reads, 1);
-  res.emit("drain");
-  timers.handles[0].callback();
+  const healthyReq = request({ accept: "text/event-stream" });
+  serveOvenEventFeed({
+    req: healthyReq,
+    res: healthy,
+    url: new URL("http://localhost/api/events?stream=1"),
+    repos: [repo],
+    json() {},
+    observer,
+  });
   assert.equal(reads, 2);
-  assert.equal(res.writes.filter((value) => value.includes("event: oven-event")).length, 2);
-  req.emit("aborted");
+  assert.equal(slow.destroyed, true);
+  assert.match(healthy.writes.join(""), /event: observer-error/u);
+  assert.match(healthy.writes.join(""), /event: oven-event/u);
+  timers.handles[0].callback();
+  assert.equal(reads, 3);
+  assert.equal(healthy.writes.filter((value) => value.includes("event: oven-event")).length, 2);
+  healthyReq.emit("aborted");
   assert.ok(timers.handles.every((handle) => handle.cleared));
+});
+
+test("SSE emits an explicit reset before replaying a retained stream window", (t) => {
+  const repo = fixture(t);
+  publishOvenEvent(repo.root, input("one"), { retentionLimit: 2 });
+  publishOvenEvent(repo.root, input("two"), { retentionLimit: 2 });
+  publishOvenEvent(repo.root, input("three"), { retentionLimit: 2 });
+  const cursor = encodeOvenEventReplayCursor({ [`${repo.repoKey}/future-oven`]: 0 });
+  const req = request({ accept: "text/event-stream" });
+  const res = new FakeResponse();
+  serveOvenEventFeed({
+    req,
+    res,
+    url: new URL(`http://localhost/api/events?stream=1&after=${encodeURIComponent(cursor)}`),
+    repos: [repo],
+    json() {},
+    timers: fakeTimers(),
+  });
+  const output = res.writes.join("");
+  assert.match(output, /event: oven-reset/u);
+  assert.match(output, /"reason":"retention-gap"/u);
+  assert.equal(res.writes.filter((value) => value.includes("event: oven-event")).length, 2);
+  assert.ok(output.indexOf("event: oven-reset") < output.indexOf("event: oven-event"));
+  req.emit("aborted");
 });

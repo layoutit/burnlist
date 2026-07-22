@@ -7,11 +7,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { visualParityFixture } from "../../dashboard/src/components/VisualParity/VisualParity.fixture.mjs";
 import { withServer } from "../../src/server/dashboard-routes-fixtures.mjs";
+import { OVEN_JSON_ACTIVE_MAX_RESPONSES } from "../../src/server/oven-json-snapshot.mjs";
 import { repoKey } from "../../src/server/registry.mjs";
-import {
-  VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES,
-  visualParityHandler,
-} from "./handler.mjs";
+import { visualParityHandler } from "./handler.mjs";
 
 function payload(marker, padding = 0) {
   const result = structuredClone(visualParityFixture);
@@ -126,15 +124,14 @@ function context(path, cache, ovenDataBindings, {
 }
 
 function cacheState(cache) {
-  const state = [...cache.values()].find((entry) => entry?.responses instanceof Map);
+  const state = [...cache.values()].find((entry) => typeof entry?.stats === "function");
   assert.ok(state);
   return state;
 }
 
 function assertEmpty(state) {
-  assert.equal(state.responses.size, 0);
-  assert.equal(state.summaries.size, 0);
-  assert.equal(state.responseBytes, 0);
+  assert.equal(state.stats().entries, 0);
+  assert.equal(state.stats().cacheBytes, 0);
 }
 
 test("Visual Parity evicts both caches when a bound data file disappears", async () => {
@@ -146,8 +143,7 @@ test("Visual Parity evicts both caches when a bound data file disappears", async
     await writeFile(path, payload("data-route"));
     visualParityHandler.serveData(context(path, cache, activeBindings));
     const state = cacheState(cache);
-    assert.equal(state.responses.size, 1);
-    assert.equal(state.summaries.size, 1);
+    assert.equal(state.stats().entries, 1);
 
     await rm(path);
     assert.throws(() => visualParityHandler.serveData(context(path, cache, activeBindings)), /data is missing/u);
@@ -196,7 +192,7 @@ test("Visual Parity binding reconciliation clears an already-populated cache", a
 test("Visual Parity aborts stalled responses at the active stream count and timeout", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-visual-active-count-"));
   const cache = new Map();
-  const paths = Array.from({ length: VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES + 1 }, (_, index) =>
+  const paths = Array.from({ length: OVEN_JSON_ACTIVE_MAX_RESPONSES + 1 }, (_, index) =>
     join(root, `${index}.json`));
   const activeBindings = new Map([["visual-parity", paths.map((path) => ({ path, repoKey: null, repoRoot: root }))]]);
   try {
@@ -210,8 +206,8 @@ test("Visual Parity aborts stalled responses at the active stream count and time
       stalled.push({ res, timers });
     }
     const state = cacheState(cache);
-    assert.equal(state.activeResponses, VISUAL_PARITY_ACTIVE_RESPONSE_MAX_ENTRIES);
-    assert.ok(state.activeResponseBytes > 0);
+    assert.equal(state.stats().activeResponses, OVEN_JSON_ACTIVE_MAX_RESPONSES);
+    assert.ok(state.stats().activeBytes > 0);
 
     const rejected = new ResponseRecorder({ writeResult: false });
     visualParityHandler.serveData(context(paths.at(-1), cache, activeBindings, { res: rejected }));
@@ -224,8 +220,8 @@ test("Visual Parity aborts stalled responses at the active stream count and time
       assert.equal(res.listenerCount("drain"), 0);
       assert.equal(timers.active.size, 0);
     }
-    assert.equal(state.activeResponses, 0);
-    assert.equal(state.activeResponseBytes, 0);
+    assert.equal(state.stats().activeResponses, 0);
+    assert.equal(state.stats().activeBytes, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -259,7 +255,7 @@ test("Visual Parity renews the stalled-response timeout after each drain", async
     assert.equal(res.ended, true);
     assert.equal(res.destroyed, false);
     assert.equal(timers.active.size, 0);
-    assert.equal(cacheState(cache).activeResponses, 0);
+    assert.equal(cacheState(cache).stats().activeResponses, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -286,7 +282,7 @@ test("Visual Parity active response bytes reject another stalled large body", as
     assert.equal(first.status, 200);
     assert.equal(second.status, 503);
     timers.fireAll();
-    assert.equal(cacheState(cache).activeResponseBytes, 0);
+    assert.equal(cacheState(cache).stats().activeBytes, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

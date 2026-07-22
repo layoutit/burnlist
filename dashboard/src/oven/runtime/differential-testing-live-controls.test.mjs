@@ -19,7 +19,6 @@ const ovenComponentPath = new URL("../../components/DifferentialTestingOven/Diff
 const sourceDir = new URL("../../", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
 const ovenPath = new URL("..", import.meta.url).pathname;
-const settle = () => new Promise((resolve) => setImmediate(resolve));
 const generatedIrPlugin = {
   name: "generated-oven-ir",
   setup(esbuild) {
@@ -48,7 +47,6 @@ test("DT compact live controls derive server queries and replace field pages", a
     await writeFile(seamEntryTemp, [
       `export { initOvenState, ovenReducer } from ${JSON.stringify(reducerPath)};`,
       `export { selectCollection } from ${JSON.stringify(selectorsPath)};`,
-      `export { createOvenPoller } from ${JSON.stringify(liveDataPath)};`,
       `export * from ${JSON.stringify(liveDataPath)};`,
       `export { resolvePointer } from ${JSON.stringify(pointerPath)};`,
     ].join("\n"));
@@ -69,7 +67,7 @@ test("DT compact live controls derive server queries and replace field pages", a
       import(`${pathToFileURL(ovenComponentOutput).href}${cacheKey}`),
       import(`${pathToFileURL(seamOutput).href}${cacheKey}`),
     ]);
-    const { createOvenPoller, initOvenState, ovenPollSearch, ovenReducer, resolvePointer, selectCollection } = seam;
+    const { initOvenState, ovenSnapshotSearch, ovenReducer, resolvePointer, selectCollection, subscribeOvenRuntimeSnapshot } = seam;
 
     const source = await readFile("ovens/differential-testing/differential-testing.oven", "utf8");
     const compiled = compileOven(source, { file: "ovens/differential-testing/differential-testing.oven" });
@@ -151,7 +149,7 @@ test("DT compact live controls derive server queries and replace field pages", a
     const initialPage = selectCollection(initialState, ir, "field-view", resolvePointer);
     assert.equal(initialPage.pageItems[0].id, "active");
 
-    const initialSearch = ovenPollSearch({ ir, state: initialState, scenario: undefined });
+    const initialSearch = ovenSnapshotSearch({ ir, state: initialState, scenario: undefined });
     const initialParams = new URLSearchParams(initialSearch);
     assert.deepEqual(Object.fromEntries(initialParams), {
       search: "",
@@ -161,19 +159,21 @@ test("DT compact live controls derive server queries and replace field pages", a
       pageSize: "25",
     });
 
-    async function drive(action, fromState = initialState, generationRef = { current: fromState.refresh.generation }) {
+    async function drive(action, fromState = initialState) {
       let state = ovenReducer(fromState, action, ir);
       let responseEnvelope;
-      const search = ovenPollSearch({ ir, state, scenario: undefined });
-      const poller = createOvenPoller({
+      const search = ovenSnapshotSearch({ ir, state, scenario: undefined });
+      const generation = state.refresh.generation + 1;
+      const subscription = subscribeOvenRuntimeSnapshot({
         id: "differential-testing",
         search,
         adapt: dtAdapt,
-        generationRef,
         dispatch(nextAction) { state = ovenReducer(state, nextAction, ir); },
-        async fetchImpl(input) {
-          requests.push(input);
-          const params = new URL(input, "http://localhost").searchParams;
+        client: {
+          subscribe(descriptor, listener) {
+            requests.push(descriptor.url);
+            const params = new URL(descriptor.url, "http://localhost").searchParams;
+            listener({ data: null, error: "", generation, outcome: "loading" });
           responseEnvelope = server({
             search: params.get("search") ?? "",
             filter: params.get("filter") ?? "all",
@@ -181,18 +181,19 @@ test("DT compact live controls derive server queries and replace field pages", a
             page: Number(params.get("page") ?? 0),
             pageSize: Number(params.get("pageSize") ?? 25),
           });
-          return { ok: true, status: 200, headers: { get: () => 'W/"x"' }, json: async () => responseEnvelope };
+            const data = descriptor.receive({ ok: true, status: 200 }, responseEnvelope);
+            listener({ data, error: "", generation, outcome: "accepted" });
+            return { refresh() {}, unsubscribe() {} };
+          },
         },
       });
-      poller.refresh();
-      await settle();
-      poller.stop();
+      subscription.unsubscribe();
       assert.ok(responseEnvelope);
       return { state, envelope: responseEnvelope, url: requests.at(-1) };
     }
 
     function assertParam(url, name, value) {
-      assert.equal(new URL(url, "http://localhost").searchParams.get(name), String(value), `${name} must reach the poll URL`);
+      assert.equal(new URL(url, "http://localhost").searchParams.get(name), String(value), `${name} must reach the snapshot URL`);
       assert.equal(serverQueries.at(-1)[name], value, `${name} must reach the fake server`);
     }
 

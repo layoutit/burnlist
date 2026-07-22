@@ -93,9 +93,7 @@ test("the actual Model Lab page follows its resolved IR", { timeout: 20_000 }, a
       </oven>
     `, "vendored/model-lab.oven");
     const render = (ir) => renderToStaticMarkup(createElement(component.ModelLabPageContent, {
-      error: "",
       ir,
-      loading: false,
       payload,
     }));
 
@@ -113,12 +111,12 @@ test("the actual Model Lab page follows its resolved IR", { timeout: 20_000 }, a
   }
 });
 
-test("Model Lab polling keeps repository scoping in its data URL", async () => {
+test("Model Lab uses the canonical runtime payload adapter without a page transport", async () => {
   const { component, cleanup } = await loadComponent();
   try {
-    assert.equal(component.MODEL_LAB_POLL_MS, 2_000);
-    assert.equal(component.modelLabDataUrl(null), "/api/oven-data/model-lab");
-    assert.equal(component.modelLabDataUrl("repo/key"), "/api/oven-data/model-lab?repoKey=repo%2Fkey");
+    assert.equal(Object.keys(component).some((name) => name.includes("POLL")), false);
+    assert.deepEqual(component.adaptModelLabPayload({ validated: true, payload }), payload);
+    assert.throws(() => component.adaptModelLabPayload({ validated: false, payload }), /was not validated/u);
   } finally {
     await cleanup();
   }

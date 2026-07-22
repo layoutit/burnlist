@@ -64,7 +64,7 @@ burnlist oven set <id> <path|-|json> [--repo <path>]
 `use` adopts a shipped Oven. It validates and binds only an existing shipped
 `example/data.json`; without that exact file it adopts only, creates no data or
 binding, and prints the `oven set` next step. `set` accepts a file, stdin, or
-inline JSON. It validates first with the built-in render handler's runtime
+inline JSON. It validates first with the built-in handler's producer-input
 validator, then atomically writes `.local/burnlist/data/<id>.json` and its
 binding. A custom Oven without a runtime validator checks all declared source
 pointers and prints a `shape-only` warning: pointer presence does not prove

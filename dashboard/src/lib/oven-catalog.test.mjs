@@ -1,7 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildOvenCatalog } from './oven-catalog.mjs';
+import { buildLocalOvenInventory, buildOfficialOvenCatalog, buildOvenCatalog } from './oven-catalog.mjs';
+
+const officialFixture = ({
+  id = 'alpha',
+  name = 'Alpha Oven',
+  maturity = 'shipped',
+  dataInput = 'json-payload',
+} = {}) => ({
+  id,
+  version: '1.0.0',
+  inputContract: 'official-input@1',
+  renderContract: 'official-render@1',
+  dataInput,
+  producer: `project-${id}-adapter`,
+  routeKind: 'repo-oven',
+  maturity,
+  runtimeCompatibility: 'burnlist-oven-runtime@1',
+  name,
+  description: `Official ${name}.`,
+  ovenRevision: `o1-sha256:${'a'.repeat(64)}`,
+});
 
 test('buildOvenCatalog builds sorted catalog entries with state-aware setup instructions', () => {
   const ovens = [
@@ -88,4 +108,45 @@ test('buildOvenCatalog does not reinstall a repo-scoped built-in', () => {
   assert.match(vendored.agentInstructions, /already available/u);
   assert.match(vendored.agentInstructions, /burnlist oven set checklist <path>/u);
   assert.doesNotMatch(vendored.agentInstructions, /burnlist oven (?:use|adopt|bind)/u);
+});
+
+test('buildOfficialOvenCatalog exposes producer and renderer contracts without acceptance claims', () => {
+  const [entry] = buildOfficialOvenCatalog([officialFixture()]);
+
+  assert.equal(entry.origin, 'official');
+  assert.equal(entry.repoKey, null);
+  assert.equal(entry.maturityLabel, 'Shipped');
+  assert.equal(entry.href, '/ovens/alpha');
+  assert.match(entry.agentInstructions, /Do not invent a replacement Oven, renderer, or data contract/u);
+  assert.match(entry.agentInstructions, /project-alpha-adapter/u);
+  assert.match(entry.agentInstructions, /official-input@1/u);
+  assert.match(entry.agentInstructions, /official-render@1/u);
+  assert.match(entry.agentInstructions, /burnlist oven use alpha/u);
+  assert.match(entry.agentInstructions, /burnlist oven set alpha <path>/u);
+  assert.doesNotMatch(entry.agentInstructions, /acceptance|evidence/iu);
+});
+
+test('buildOfficialOvenCatalog respects producer-managed data and visible status labels', () => {
+  const [entry] = buildOfficialOvenCatalog([officialFixture({
+    id: 'retired-feed',
+    name: 'Retired Feed',
+    maturity: 'deprecated',
+    dataInput: 'producer-managed',
+  })]);
+
+  assert.equal(entry.maturityLabel, 'Deprecated');
+  assert.match(entry.agentInstructions, /producer-managed/u);
+  assert.doesNotMatch(entry.agentInstructions, /burnlist oven set/u);
+});
+
+test('buildLocalOvenInventory excludes official entries and origin-qualifies collisions', () => {
+  const local = buildLocalOvenInventory([
+    { id: 'same', name: 'Official Same', version: '1.0.0', contract: 'same@1', description: '', builtIn: true, origin: 'official', repoKey: null, dataInput: 'json-payload', catalogRevision: 'a'.repeat(64) },
+    { id: 'same', name: 'Vendored Same', version: '2.0.0', contract: 'same@1', description: '', builtIn: true, origin: 'vendored', repoKey: 'aaaaaaaaaaaa', dataInput: 'json-payload', catalogRevision: null },
+    { id: 'same', name: 'Custom Same', version: '3.0.0', contract: 'same@1', description: '', builtIn: false, origin: 'custom', repoKey: 'bbbbbbbbbbbb', dataInput: 'json-payload', catalogRevision: null },
+  ]);
+
+  assert.deepEqual(local.map(({ origin }) => origin), ['vendored', 'custom']);
+  assert.deepEqual(local.map(({ repoKey }) => repoKey), ['aaaaaaaaaaaa', 'bbbbbbbbbbbb']);
+  assert.ok(local.every(({ agentInstructions }) => agentInstructions.includes('not official catalog membership')));
 });

@@ -54,6 +54,7 @@ try {
   if (!existsSync(join(cleanRoot, "package.json"))) {
     throw new Error("Clean copy is missing package.json.");
   }
+  run("npm", ["ci", "--ignore-scripts"], cleanRoot);
   run("npm", ["run", "verify"], cleanRoot);
   run("npm", ["run", "verify:package"], cleanRoot);
   run("npm", ["run", "test:global-install"], cleanRoot);

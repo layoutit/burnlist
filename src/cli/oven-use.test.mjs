@@ -11,6 +11,7 @@ import { checklistFixture } from "../../dashboard/src/components/ChecklistDashbo
 import { compileOven } from "../ovens/dsl/oven-compile.mjs";
 import { readBindingStore } from "../server/oven-bindings.mjs";
 import { canonicalOvenDataPath } from "../server/oven-data-store.mjs";
+import { readOvenEvents } from "../events/oven-event-store.mjs";
 import { vendoredOvenPath } from "../server/oven-vendor.mjs";
 import { useShippedOven } from "./oven-use.mjs";
 
@@ -114,9 +115,26 @@ test("oven use validates, transactionally installs, and renders exact example da
   assert.deepEqual(readdirSync(vendor).sort(), ["checklist.oven", "instructions.md", "pin.json"]);
   assert.match(result.output, /Adopted Oven checklist/u);
   assert.ok(result.output.includes(`Data: ${data}`));
+  assert.deepEqual(readOvenEvents(context.repo, { ovenIds: ["checklist"] }).map((event) => event.kind), [
+    "data-published",
+    "definition-changed",
+  ]);
   const markup = await renderChecklist(JSON.parse(readFileSync(data, "utf8")));
   assert.match(markup, /2 of 2 tasks complete/u);
   assert.match(markup, /Second event/u);
+});
+
+test("oven use keeps an installed example when its observational event fails", (t) => {
+  const context = fixture(t);
+  installExample(context, "checklist", checklistFixture);
+  const result = callUse(context, "checklist", {
+    publishDataEvent() { throw new Error("observer unavailable"); },
+    publishDefinitionEvent() { throw new Error("definition observer unavailable"); },
+  });
+  assert.equal(existsSync(vendoredOvenPath(context.repo, "checklist")), true);
+  assert.equal(existsSync(canonicalOvenDataPath(context.repo, "checklist")), true);
+  assert.match(result.warnings.join("\n"), /observational event failed/u);
+  assert.equal(result.warnings.length, 2);
 });
 
 test("invalid or interrupted example setup leaves no partial install", (t) => {

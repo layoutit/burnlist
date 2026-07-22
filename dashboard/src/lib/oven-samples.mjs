@@ -1,4 +1,5 @@
 import { adaptChecklist } from "./checklist-adapter";
+import { officialOvenSampleAllowed } from "./oven-sample-policy.mjs";
 
 const checklistSample = {
   generatedAt: "2026-07-21T10:00:00Z",
@@ -26,4 +27,8 @@ const checklistSample = {
 /** Returns static demo data only when an Oven can render without live data. */
 export function ovenSamplePayload(ovenId) {
   return ovenId === "checklist" ? adaptChecklist(checklistSample) : null;
+}
+
+export function ovenSamplePayloadForEntry(entry, inventory) {
+  return officialOvenSampleAllowed(entry, inventory) ? ovenSamplePayload(entry.id) : null;
 }

@@ -15,8 +15,11 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
     ovenData: [{ id: "widget-oven", payload }],
   }, async ({ baseUrl }) => {
     const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
-    const repoKey = catalog.ovens.find((oven) => oven.id === "widget-oven")?.repoKey;
+    const catalogEntry = catalog.ovens.find((oven) => oven.id === "widget-oven");
+    const repoKey = catalogEntry?.repoKey;
     assert.ok(repoKey);
+    assert.equal(catalogEntry.origin, "custom");
+    assert.equal(catalogEntry.catalogRevision, null);
     const query = `?repoKey=${encodeURIComponent(repoKey)}`;
 
     const ovenResponse = await httpGet(baseUrl, `/api/ovens/widget-oven${query}`);
@@ -28,8 +31,31 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
     assert.deepEqual(JSON.parse(dataResponse.body).payload, payload);
     assert.equal(JSON.parse(dataResponse.body).validated, false);
 
+    const initial = await fetch(new URL(`/api/oven-data/widget-oven${query}`, baseUrl));
+    const etag = initial.headers.get("etag");
+    assert.match(etag, /^W\/"oven-json-[a-f0-9]{64}"$/u);
+    const unchanged = await fetch(new URL(`/api/oven-data/widget-oven${query}`, baseUrl), {
+      headers: { "If-None-Match": etag },
+    });
+    assert.equal(unchanged.status, 304);
+    assert.equal(await unchanged.text(), "");
+
     const viewResponse = await httpGet(baseUrl, `/r/${encodeURIComponent(repoKey)}/o/widget-oven`);
     assert.equal(viewResponse.status, 200);
     assert.ok(viewResponse.body.length > 0);
+  });
+});
+
+test("a custom Oven rejects canonical data above the configured source limit", { timeout: 20_000 }, async () => {
+  await withServer({
+    ovens: [{ id: "bounded-oven" }],
+    ovenData: [{ id: "bounded-oven", payload: { detail: "x".repeat(256) } }],
+    serverArgs: ["--max-oven-data-bytes", "64"],
+  }, async ({ baseUrl }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const repoKey = catalog.ovens.find((oven) => oven.id === "bounded-oven")?.repoKey;
+    const response = await httpGet(baseUrl, `/api/oven-data/bounded-oven?repoKey=${repoKey}`);
+    assert.equal(response.status, 422);
+    assert.match(JSON.parse(response.body).error, /over the 64 byte limit/u);
   });
 });

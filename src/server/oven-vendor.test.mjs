@@ -16,6 +16,10 @@ import { join } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
 import {
+  LEGACY_OVEN_RUNTIME_COMPATIBILITY,
+  OVEN_RUNTIME_COMPATIBILITY,
+} from "../ovens/oven-runtime-compatibility.mjs";
+import {
   OVEN_PIN_MAX_BYTES,
   readVendoredOven,
   resolveOvenForRepo,
@@ -56,6 +60,12 @@ function writeSource(root, pkg) {
   writeFileSync(join(directory, `${pkg.id}.oven`), pkg.oven);
 }
 
+function readSource(root, id) {
+  const instructions = readFileSync(join(root, id, "instructions.md"), "utf8");
+  const oven = readFileSync(join(root, id, `${id}.oven`), "utf8");
+  return { id, instructions, oven, revision: ovenRevision({ id, instructions, oven }) };
+}
+
 function assertIso8601(value) {
   assert.equal(typeof value, "string");
   assert.equal(new Date(value).toISOString(), value);
@@ -74,12 +84,65 @@ test("writeVendoredOven writes byte copies and an exact content pin", () => {
     assert.equal(readFileSync(join(expectedPath, `${pkg.id}.oven`), "utf8"), pkg.oven);
 
     const pin = JSON.parse(readFileSync(join(expectedPath, "pin.json"), "utf8"));
-    assert.deepEqual(Object.keys(pin).sort(), ["id", "pinnedAt", "revision", "source", "version"]);
+    assert.deepEqual(Object.keys(pin).sort(), [
+      "id", "pinnedAt", "revision", "runtimeCompatibility", "source", "version",
+    ]);
     assert.equal(pin.id, pkg.id);
     assert.equal(pin.version, "1.0.0");
     assert.equal(pin.revision, ovenRevision(pkg));
     assert.equal(pin.source, "built-in");
+    assert.equal(pin.runtimeCompatibility, OVEN_RUNTIME_COMPATIBILITY);
     assertIso8601(pin.pinnedAt);
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads refuse packages for a different runtime contract", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Incompatible");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const pin = JSON.parse(readFileSync(pinPath, "utf8"));
+    pin.runtimeCompatibility = "burnlist-oven-runtime@2";
+    writeFileSync(pinPath, `${JSON.stringify(pin, null, 2)}\n`);
+    assert.throws(
+      () => readVendoredOven(context.repoRoot, pkg.id),
+      /incompatible with installed runtime burnlist-oven-runtime@1/u,
+    );
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads reject a null runtime contract in a current pin", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Null runtime");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const pin = JSON.parse(readFileSync(pinPath, "utf8"));
+    pin.runtimeCompatibility = null;
+    writeFileSync(pinPath, `${JSON.stringify(pin, null, 2)}\n`);
+    assert.throws(
+      () => readVendoredOven(context.repoRoot, pkg.id),
+      /must be a Burnlist Oven runtime contract/u,
+    );
+  } finally { context.cleanup(); }
+});
+
+test("vendored reads normalize a valid legacy five-key pin without rewriting it", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Legacy compatible");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const legacyPin = JSON.parse(readFileSync(pinPath, "utf8"));
+    delete legacyPin.runtimeCompatibility;
+    writeFileSync(pinPath, `${JSON.stringify(legacyPin, null, 2)}\n`);
+
+    const saved = readVendoredOven(context.repoRoot, pkg.id);
+    assert.equal(LEGACY_OVEN_RUNTIME_COMPATIBILITY, "burnlist-oven-runtime@1");
+    assert.deepEqual(saved.pin, { ...legacyPin, runtimeCompatibility: LEGACY_OVEN_RUNTIME_COMPATIBILITY });
+    assert.equal(Object.hasOwn(JSON.parse(readFileSync(pinPath, "utf8")), "runtimeCompatibility"), false,
+      "a read-only compatibility normalization does not mutate the committed pin");
   } finally { context.cleanup(); }
 });
 
@@ -110,7 +173,9 @@ test("resolveOvenForRepo prefers vendored, then shipped built-in, then custom", 
   const custom = source("sample-oven", "3.0.0", "Custom");
   const options = {
     repoRoot: context.repoRoot,
-    builtInOvensDir: context.builtInOvensDir,
+    findOfficialOven: (id) => existsSync(join(context.builtInOvensDir, id))
+      ? readSource(context.builtInOvensDir, id)
+      : null,
     customOvensDir: context.customOvensDir,
     id: vendored.id,
   };
@@ -134,7 +199,7 @@ test("a shipped source change cannot move a repo pin without an explicit vendore
   const newer = source("sample-oven", "2.0.0", "Newer");
   const options = {
     repoRoot: context.repoRoot,
-    builtInOvensDir: context.builtInOvensDir,
+    findOfficialOven: (id) => readSource(context.builtInOvensDir, id),
     customOvensDir: context.customOvensDir,
     id: initial.id,
   };
@@ -349,7 +414,7 @@ test("vendored reads reject leaf symlinks", () => {
   } finally { context.cleanup(); }
 });
 
-test("vendored and fallback package reads enforce per-file byte limits", () => {
+test("vendored and custom fallback package reads enforce per-file byte limits", () => {
   const context = fixture();
   const pkg = source("sample-oven", "1.0.0", "Bounded");
   try {
@@ -374,11 +439,11 @@ test("vendored and fallback package reads enforce per-file byte limits", () => {
     assert.equal(existsSync(vendoredOvenPath(context.repoRoot, "oversized-pin")), false);
 
     const fallback = source("fallback-oven", "1.0.0", "Fallback");
-    writeSource(context.builtInOvensDir, fallback);
-    writeFileSync(join(context.builtInOvensDir, fallback.id, "instructions.md"), "x".repeat(OVEN_INSTRUCTIONS_MAX_BYTES + 1));
+    writeSource(context.customOvensDir, fallback);
+    writeFileSync(join(context.customOvensDir, fallback.id, "instructions.md"), "x".repeat(OVEN_INSTRUCTIONS_MAX_BYTES + 1));
     assert.throws(() => resolveOvenForRepo({
       repoRoot: context.repoRoot,
-      builtInOvensDir: context.builtInOvensDir,
+      findOfficialOven: () => null,
       customOvensDir: context.customOvensDir,
       id: fallback.id,
     }), /Oven instructions.*byte limit/u);

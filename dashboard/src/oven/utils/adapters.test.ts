@@ -1,28 +1,34 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { validatedOvenPayload } from "../../lib/canonical-oven-payload.mjs";
 import { applyStreamingDiffCardMessage } from "../../hooks/streaming-diff-transport.mjs";
-import { receiveVisualParity } from "../../hooks/visual-parity-transport.mjs";
+import { snapshotLiveResult } from "./useOvenLiveData";
 
-test("Visual Parity receive returns validated payloads", () => {
+test("canonical Oven adapters return only validated payloads", () => {
   const payload = { score: 0.98 };
-  assert.deepEqual(receiveVisualParity({ ok: true }, { validated: true, payload }), payload);
-});
-
-test("Visual Parity receive enforces the validated gate", () => {
-  for (const json of [{}, { validated: false }]) {
-    assert.throws(
-      () => receiveVisualParity({ ok: true }, json),
-      { message: "Visual Parity data was not validated by the Oven." },
-    );
+  assert.deepEqual(validatedOvenPayload({ validated: true, payload }, "Visual Parity"), payload);
+  for (const json of [{}, { validated: false }, { validated: true }]) {
+    assert.throws(() => validatedOvenPayload(json, "Visual Parity"), /was not validated/u);
   }
 });
 
-test("Visual Parity receive reports response errors exactly", () => {
-  assert.throws(() => receiveVisualParity({ ok: false }, { error: "x" }), { message: "x" });
-  assert.throws(
-    () => receiveVisualParity({ ok: false }, {}),
-    { message: "Could not load Visual Parity." },
-  );
+test("snapshot view state retains last good data across transient failure", () => {
+  const current = { data: { version: 1 }, error: "", loading: false, stale: false };
+  const loading = snapshotLiveResult(current, { data: null, error: "", outcome: "loading" });
+  const failed = snapshotLiveResult(loading, { data: null, error: "offline", outcome: "rejected" });
+  const recovered = snapshotLiveResult(failed, { data: { version: 2 }, error: "", outcome: "accepted" });
+  assert.deepEqual(loading, { data: { version: 1 }, error: "", loading: true, stale: true });
+  assert.deepEqual(failed, { data: { version: 1 }, error: "offline", loading: false, stale: true });
+  assert.deepEqual(recovered, { data: { version: 2 }, error: "", loading: false, stale: false });
+});
+
+test("snapshot view state clears retained data when canonical state is missing", () => {
+  const current = { data: { version: 1 }, error: "offline", loading: false, stale: true };
+  assert.deepEqual(snapshotLiveResult(current, {
+    data: null,
+    error: "Oven is unbound.",
+    outcome: "missing",
+  }), { data: null, error: "Oven is unbound.", loading: false, stale: false });
 });
 
 test("Streaming Diff card messages use the real card adapter", () => {

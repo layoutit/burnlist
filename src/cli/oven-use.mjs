@@ -1,5 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import {
+  ovenDefinitionChangedInput,
+  publishCanonicalMutation,
+} from "../events/oven-canonical-mutations.mjs";
 import { validateOvenData } from "../ovens/oven-data-validate.mjs";
 import { canonicalOvenDataPath, OVEN_DATA_MAX_BYTES, publishOvenData } from "../server/oven-data-store.mjs";
 import { vendoredOvenPath, writeVendoredOven } from "../server/oven-vendor.mjs";
@@ -24,6 +28,31 @@ function adoptedOutput(saved, path) {
   return `Adopted Oven ${saved.id}@${saved.version} at ${path}`;
 }
 
+function eventWarning(error) {
+  const detail = String(error?.message ?? error ?? "unknown error")
+    .replace(/[\u0000-\u001f\u007f]+/gu, " ")
+    .trim()
+    .slice(0, 200);
+  return `Canonical Oven data was set, but its observational event failed: ${detail || "unknown error"}`;
+}
+
+function publishAdoptionEvent(repoRoot, saved, timestamp, warnings, publishDefinitionEvent) {
+  publishCanonicalMutation(repoRoot, ovenDefinitionChangedInput({
+    ovenId: saved.id,
+    action: "adopted",
+    revision: saved.revision,
+    generation: saved.pin.pinnedAt,
+    occurredAt: timestamp.toISOString(),
+  }), {
+    ...(publishDefinitionEvent ? { publishEvent: publishDefinitionEvent } : {}),
+    onError(error) {
+      const detail = String(error?.message ?? error ?? "unknown error")
+        .replace(/[\u0000-\u001f\u007f]+/gu, " ").trim().slice(0, 200);
+      warnings.push(`Canonical Oven definition was adopted, but its observational event failed: ${detail || "unknown error"}`);
+    },
+  });
+}
+
 export function useShippedOven({
   id,
   repoRoot,
@@ -32,6 +61,8 @@ export function useShippedOven({
   force = false,
   now = () => new Date(),
   writeVendor = writeVendoredOven,
+  publishDataEvent,
+  publishDefinitionEvent,
 } = {}) {
   const shipped = readOvenDir(builtInOvensDir, id, true);
   if (!shipped) throw new Error(`Oven ${id} is not a shipped built-in.`);
@@ -46,12 +77,15 @@ export function useShippedOven({
     id: shipped.id,
     instructions: shipped.instructions,
     oven: shipped.oven,
+    runtimeCompatibility: shipped.catalogEntry?.runtimeCompatibility,
     now: timestamp,
   });
   if (!existsSync(examplePath)) {
     const saved = adopt();
+    const observerWarnings = [];
+    publishAdoptionEvent(repoRoot, saved, timestamp, observerWarnings, publishDefinitionEvent);
     return {
-      warnings: [],
+      warnings: observerWarnings,
       output: `${adoptedOutput(saved, targetPath)}\nNo example/data.json is shipped; adopted without data.\nNext: burnlist oven set ${saved.id} <data> --repo ${JSON.stringify(repoRoot)}`,
     };
   }
@@ -65,15 +99,21 @@ export function useShippedOven({
   if (!validation.ok) throw invalidData(shipped.id, validation.errors);
   assertGitIgnored(repoRoot, dataPath);
   let savedOven;
+  const observerWarnings = [];
   const savedData = publishOvenData(
     repoRoot,
     shipped.id,
     `${JSON.stringify(payload, null, 2)}\n`,
     timestamp.toISOString(),
-    { commit() { savedOven = adopt(); } },
+    {
+      commit() { savedOven = adopt(); },
+      ...(publishDataEvent ? { publishDataEvent } : {}),
+      onOvenEventError(error) { observerWarnings.push(eventWarning(error)); },
+    },
   );
+  publishAdoptionEvent(repoRoot, savedOven, timestamp, observerWarnings, publishDefinitionEvent);
   return {
-    warnings: validation.warnings,
+    warnings: [...validation.warnings, ...observerWarnings],
     output: `${adoptedOutput(savedOven, targetPath)}\nSet shipped example data for Oven ${shipped.id}.\nData: ${savedData.dataPath}\nBinding: ${savedData.bindingPath}`,
   };
 }

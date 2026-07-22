@@ -7,7 +7,7 @@ import { publishOvenEvent } from "../events/oven-event-store.mjs";
 import { repoKey } from "./registry.mjs";
 import { httpGet, withServer } from "./dashboard-routes-fixtures.mjs";
 
-function event(cursor, occurredAt) {
+function event(cursor, occurredAt, overrides = {}) {
   return {
     ovenId: "future-oven",
     subjectId: "subject-1",
@@ -16,6 +16,7 @@ function event(cursor, occurredAt) {
     cursor,
     occurredAt,
     payload: { cursor },
+    ...overrides,
   };
 }
 
@@ -89,6 +90,49 @@ test("/api/events streams a newly published event without an agent heartbeat", {
     });
     assert.equal(received.cursor, "live-run");
     assert.equal(received.repoKey, key);
+  });
+});
+
+test("/api/events wildcard live tail remains live beyond the 64-stream replay limit", { timeout: 20_000 }, async () => {
+  await withServer({
+    withBurnlist: true,
+    setup({ fixtureRoot }) {
+      const root = join(fixtureRoot, "fixture-repo");
+      for (let index = 0; index < 65; index += 1) {
+        publishOvenEvent(root, event(`historical-${index}`, "2026-07-21T12:00:00.000Z", {
+          ovenId: `historical-${index}`,
+        }));
+      }
+    },
+  }, async ({ baseUrl, repoRoot }) => {
+    const key = repoKey(repoRoot);
+    const received = await nextSseEvent(baseUrl, `/api/events?stream=1&tail=1&repoKey=${key}`, () => {
+      setTimeout(() => publishOvenEvent(repoRoot, event("live-wildcard", new Date().toISOString(), {
+        ovenId: "model-lab",
+      })), 50);
+    });
+    assert.equal(received.cursor, "live-wildcard");
+    assert.equal(received.ovenId, "model-lab");
+    assert.equal(received.repoKey, key);
+  });
+});
+
+test("/api/events tail cursor establishes a backlog-free canonical-fetch baseline", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl, repoRoot }) => {
+    publishOvenEvent(repoRoot, event("before-baseline", "2026-07-21T12:00:00.000Z"));
+    const baselineResponse = await httpGet(baseUrl, "/api/events?tail=1&ovenId=future-oven");
+    assert.equal(baselineResponse.status, 200);
+    const baseline = JSON.parse(baselineResponse.body);
+    assert.equal(baseline.baseline, true);
+    assert.equal(baseline.total, 0);
+    assert.deepEqual(baseline.events, []);
+
+    const published = publishOvenEvent(repoRoot, event("after-baseline", "2026-07-21T12:01:00.000Z"));
+    const replay = JSON.parse((await httpGet(
+      baseUrl,
+      `/api/events?ovenId=future-oven&after=${encodeURIComponent(baseline.cursor)}`,
+    )).body);
+    assert.deepEqual(replay.events.map((item) => item.eventId), [published.event.eventId]);
   });
 });
 

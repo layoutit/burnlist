@@ -85,6 +85,13 @@ test("oven bind, bindings, and unbind persist a logical repo-local binding", () 
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /Unbound Oven sample-oven/u);
     assert.deepEqual(JSON.parse(readFileSync(storePath, "utf8")), { schemaVersion: 1, bindings: {} });
     assert.match(run(context, "oven", "unbind", "sample-oven", "--repo", context.repo), /No binding exists for Oven sample-oven/u);
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: ["sample-oven"] }).map((event) => ({
+      kind: event.kind,
+      action: event.payload.action,
+    })), [
+      { kind: "binding-changed", action: "bound" },
+      { kind: "binding-changed", action: "unbound" },
+    ]);
   } finally { context.cleanup(); }
 });
 
@@ -179,15 +186,66 @@ test("oven view and list render IR structure and source packages", () => {
     assert.match(view, /version: 0\.1\.0 · nodes: 1 · contract: checklist-progress@1 · theme: checklist/u);
     assert.match(view, /section-header\n\nnode  prop  source\n/u);
     const list = run(context, "oven", "list", "--ovens-dir", ovensDir);
-    assert.match(list, /^id\s+version\s+name\s+kind\s+contract\s+nodes\s+revision$/mu);
+    assert.match(list, /^id\s+version\s+name\s+origin\s+contract\s+nodes\s+revision$/mu);
     assert.match(list, /^rendered-oven\s+0\.1\.0\s+Forked Oven\s+custom\s+checklist-progress@1\s+1\s+/mu);
     const json = JSON.parse(run(context, "oven", "list", "--json", "--ovens-dir", ovensDir));
     const oven = json.find((item) => item.id === "rendered-oven");
     assert.equal(oven.oven, ovenFixture("rendered-oven"));
     assert.equal(oven.version, "0.1.0");
+    assert.equal(oven.origin, "custom");
+    assert.equal(oven.catalogRevision, null);
+    assert.equal(oven.catalogEntry, null);
     assert.equal(Object.hasOwn(oven, "ir"), false);
     const viewJson = JSON.parse(run(context, "oven", "view", "rendered-oven", "--json", "--ovens-dir", ovensDir));
     assert.equal(viewJson.version, "0.1.0");
+    assert.equal(viewJson.origin, "custom");
+    assert.equal(viewJson.catalogRevision, null);
+  } finally { context.cleanup(); }
+});
+
+test("oven list exposes the validated official catalog revision and origin", () => {
+  const context = fixture();
+  try {
+    const ovens = JSON.parse(run(context, "oven", "list", "--json"));
+    const official = ovens.filter(({ origin }) => origin === "official");
+    assert.deepEqual(official.map(({ id }) => id), [
+      "checklist",
+      "differential-testing",
+      "model-lab",
+      "performance-tracing",
+      "streaming-diff",
+      "visual-parity",
+    ]);
+    assert.equal(new Set(official.map(({ catalogRevision }) => catalogRevision)).size, 1);
+    assert.match(official[0].catalogRevision, /^[a-f0-9]{64}$/u);
+    const expectedContracts = new Map([
+      ["checklist", "checklist-progress@1"],
+      ["differential-testing", "burnlist-differential-testing-data@1"],
+      ["model-lab", "burnlist-model-lab-data@1"],
+      ["performance-tracing", "burnlist-differential-testing-data@1"],
+      ["streaming-diff", "burnlist-streaming-diff-data@2"],
+      ["visual-parity", "burnlist-visual-parity-data@1"],
+    ]);
+    for (const oven of official) {
+      assert.equal(oven.catalogEntry.id, oven.id);
+      assert.equal(oven.catalogEntry.version, oven.version);
+      assert.equal(oven.catalogEntry.renderContract, expectedContracts.get(oven.id));
+      assert.match(oven.catalogEntry.inputContract, /@[1-9][0-9]*$/u);
+      assert.equal(oven.catalogEntry.runtimeCompatibility, "burnlist-oven-runtime@1");
+    }
+
+    const viewed = JSON.parse(run(context, "oven", "view", "checklist", "--json"));
+    assert.equal(viewed.origin, "official");
+    assert.equal(viewed.catalogRevision, official[0].catalogRevision);
+    assert.equal(viewed.catalogEntry.producer, "burnlist-checklist-progress");
+    assert.equal(viewed.catalogEntry.inputContract, "checklist-progress@1");
+
+    const instructionsPath = join(context.repo, "instructions.md");
+    writeFileSync(instructionsPath, "# Collision\n\nMust not replace an official Oven.\n");
+    assert.throws(
+      () => run(context, "oven", "create", "checklist", "--instructions", instructionsPath),
+      (error) => String(error.stderr).includes("built-in and read-only"),
+    );
   } finally { context.cleanup(); }
 });
 
@@ -228,6 +286,10 @@ test("oven create and update swap the package while preserving sibling files", (
     assert.equal(readFileSync(join(current, "sample-oven.oven"), "utf8"), ovenFixture("sample-oven"));
     assert.equal(JSON.parse(readFileSync(join(current, "oven.json"), "utf8")).forkedFrom.ovenId, "source-oven");
     assert.equal(readdirSync(join(ovensDir, "sample-oven")).filter((name) => name.startsWith("rev-")).length, 2);
+    assert.deepEqual(readOvenEvents(context.repo, { ovenIds: ["sample-oven"] }).map((event) => event.payload.action), [
+      "created",
+      "updated",
+    ]);
   } finally { context.cleanup(); }
 });
 

@@ -9,7 +9,6 @@ import {
   normalizeOvenEvent,
   OVEN_EVENT_MAX_DISCOVERY_SCANS,
   OVEN_EVENT_MAX_BYTES,
-  OVEN_EVENT_MAX_SEQUENCE_SCANS,
   publishOvenEvent,
   readOvenEvents,
 } from "./oven-events.mjs";
@@ -82,7 +81,11 @@ test("Oven event reader filters Ovens and ignores corrupt or noncanonical files"
   const broken = join(eventRoot, "records", `${brokenId}.json`);
   writeFileSync(broken, "{");
   writeFileSync(join(eventRoot, "sequence", "000000000002.idx"), `${brokenId}\n`);
-  writeFileSync(join(eventRoot, "sequence.txt"), "2\n");
+  writeFileSync(join(eventRoot, "state.json"), `${JSON.stringify({
+    schema: "burnlist-oven-event-stream@1",
+    baseSequence: 1,
+    committedSequence: 2,
+  })}\n`);
   const warnings = [];
   assert.deepEqual(readOvenEvents(repo, { ovenIds: ["other-oven"], onInvalid: (error) => warnings.push(error.message) }), [second.event]);
   assert.equal(warnings.length, 0);
@@ -112,59 +115,62 @@ test("Oven event size validation includes the exact newline written to disk", (t
   assert.equal(statSync(exact.path).size, OVEN_EVENT_MAX_BYTES);
   assert.deepEqual(readOvenEvents(repo), [exact.event]);
 
-  const counter = join(dirname(dirname(exact.path)), "sequence.txt");
+  const state = join(dirname(dirname(exact.path)), "state.json");
   assert.throws(
     () => publishOvenEvent(repo, input({ cursor: "too-large", payload: { ...large, tail: "x".repeat(tailLength + 1) } })),
     /larger than 32768 bytes after sequencing/u,
   );
-  assert.equal(readFileSync(counter, "utf8"), "1\n");
+  assert.equal(JSON.parse(readFileSync(state, "utf8")).committedSequence, 1);
 });
 
-test("Oven event sequence recovery ignores corrupt records but propagates containment failures", (t) => {
-  const root = fixture(t);
-  const repo = join(root, "repo");
-  const outside = join(root, "outside-counter");
-  mkdirSync(repo);
-  writeFileSync(outside, "1\n");
-  const first = publishOvenEvent(repo, input({ cursor: "run-1" }));
-  const eventRoot = dirname(dirname(first.path));
-  rmSync(join(eventRoot, "sequence.txt"));
-  writeFileSync(join(eventRoot, "records", `oe1-${"e".repeat(64)}.json`), "{");
-  const second = publishOvenEvent(repo, input({ cursor: "run-2" }));
-  assert.equal(second.event.sequence, 2);
+for (const boundary of ["afterPendingWrite", "afterRecordWrite", "afterIndexWrite", "afterCommitWrite"]) {
+  test(`Oven event retry recovers an interrupted ${boundary} publication without exposing an uncommitted tail`, (t) => {
+    const repo = fixture(t);
+    assert.throws(() => publishOvenEvent(repo, input(), {
+      hooks: { [boundary]() { throw new Error(`injected ${boundary}`); } },
+    }), new RegExp(`injected ${boundary}`, "u"));
+    const visibleBeforeRetry = readOvenEvents(repo);
+    assert.equal(visibleBeforeRetry.length, boundary === "afterCommitWrite" ? 1 : 0);
 
-  rmSync(join(eventRoot, "sequence.txt"));
-  symlinkSync(outside, join(eventRoot, "sequence.txt"));
-  assert.throws(() => publishOvenEvent(repo, input({ cursor: "run-3" })), /escapes/u);
-  rmSync(join(eventRoot, "sequence.txt"));
-  writeFileSync(join(eventRoot, "sequence.txt"), "2\n");
-  assert.deepEqual(readOvenEvents(repo).map((event) => event.sequence), [1, 2]);
-});
+    const retry = publishOvenEvent(repo, input({ occurredAt: "2026-07-21T12:01:00.000Z" }));
+    assert.equal(retry.event.sequence, 1);
+    assert.deepEqual(readOvenEvents(repo).map((event) => event.sequence), [1]);
+  });
+}
 
-test("Oven event sequence recovery bounds record-directory scans", (t) => {
+test("Oven event retention checkpoints bound replay and signal an explicit reset", (t) => {
   const repo = fixture(t);
-  const first = publishOvenEvent(repo, input());
-  const eventRoot = dirname(dirname(first.path));
-  const recordsDir = join(eventRoot, "records");
-  rmSync(join(eventRoot, "sequence.txt"));
-  for (let index = 0; index <= OVEN_EVENT_MAX_SEQUENCE_SCANS; index += 1) {
-    writeFileSync(join(recordsDir, `pad-${index}.txt`), "x");
-  }
-  assert.throws(
-    () => publishOvenEvent(repo, input({ cursor: "after" })),
-    /scan limit|recovery exceeded/u,
-  );
-  assert.equal(existsSync(join(eventRoot, "sequence.txt")), false);
+  publishOvenEvent(repo, input({ cursor: "run-1" }), { retentionLimit: 2 });
+  publishOvenEvent(repo, input({ cursor: "run-2" }), { retentionLimit: 2 });
+  publishOvenEvent(repo, input({ cursor: "run-3" }), { retentionLimit: 2 });
+  const resets = [];
+  const retained = readOvenEvents(repo, { onReset: (error) => resets.push(error.reset) });
+  assert.deepEqual(retained.map((event) => event.sequence), [2, 3]);
+  assert.deepEqual(resets, [{
+    ovenId: "future-oven",
+    reason: "retention-gap",
+    requestedSequence: 0,
+    baseSequence: 2,
+    committedSequence: 3,
+  }]);
+  const eventRoot = join(repo, ".local", "burnlist", "events", "future-oven");
+  assert.equal(existsSync(join(eventRoot, "sequence", "000000000001.idx")), false);
 });
 
-test("Oven event counter-only crash gaps remain consumed reservations", (t) => {
+test("persisted stream state avoids record-directory recovery scans beyond the old ceiling", (t) => {
   const repo = fixture(t);
-  const first = publishOvenEvent(repo, input({ cursor: "run-1" }));
-  const eventRoot = dirname(dirname(first.path));
-  writeFileSync(join(eventRoot, "sequence.txt"), "3\n");
-  const next = publishOvenEvent(repo, input({ cursor: "run-after-crash" }));
-  assert.equal(next.event.sequence, 4);
-  assert.deepEqual(readOvenEvents(repo).map((event) => event.sequence), [1, 4]);
+  const eventRoot = join(repo, ".local", "burnlist", "events", "future-oven");
+  mkdirSync(join(eventRoot, "records"), { recursive: true });
+  mkdirSync(join(eventRoot, "sequence"), { recursive: true });
+  writeFileSync(join(eventRoot, "state.json"), `${JSON.stringify({
+    schema: "burnlist-oven-event-stream@1",
+    baseSequence: 4_097,
+    committedSequence: 4_096,
+  })}\n`);
+  for (let index = 0; index < 4_097; index += 1) writeFileSync(join(eventRoot, "records", `pad-${index}.txt`), "x");
+  const next = publishOvenEvent(repo, input({ cursor: "after-old-ceiling" }));
+  assert.equal(next.event.sequence, 4_097);
+  assert.deepEqual(readOvenEvents(repo, { afterSequences: { "future-oven": 4_096 } }), [next.event]);
 });
 
 test("Oven event reads bound cursor and stream-directory discovery work", (t) => {

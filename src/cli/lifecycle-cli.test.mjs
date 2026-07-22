@@ -266,7 +266,13 @@ test("burn removes an active item, appends its ledger entry, and can check the r
     assert.equal(burned.includes("- [ ] B1 | Inspect lifecycle output"), false);
     assert.match(burned, /- B1 \| \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2} \| Inspect lifecycle output/u);
     assert.match(output, /Burnlist check passed: 0 active, 1 completed\./u);
-    const [event] = readOvenEvents(context.repo, { ovenIds: ["checklist"] });
+    const events = readOvenEvents(context.repo, { ovenIds: ["checklist"] });
+    const event = events.find((item) => item.kind === "item-burned");
+    assert.deepEqual(events.filter((item) => item.kind === "lifecycle-changed").map((item) => item.payload), [
+      { from: "none", to: "draft" },
+      { from: "draft", to: "ready" },
+      { from: "ready", to: "inprogress" },
+    ]);
     assert.equal(event.kind, "item-burned");
     assert.equal(event.subjectId, result.id);
     assert.deepEqual(event.payload, {
@@ -404,6 +410,14 @@ test("full lifecycle from a linked worktree uses the primary repository", { skip
     run(context, "close", result.id);
     assert.equal(existsSync(lifecycleFolder(primary, "completed", result.id)), true);
     assert.equal(existsSync(lifecycleFolder(linked, "completed", result.id)), false);
+    assert.deepEqual(readOvenEvents(primary, { ovenIds: ["checklist"] })
+      .filter((event) => event.kind === "lifecycle-changed")
+      .map((event) => event.payload), [
+      { from: "none", to: "draft" },
+      { from: "draft", to: "ready" },
+      { from: "ready", to: "inprogress" },
+      { from: "inprogress", to: "completed" },
+    ]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
