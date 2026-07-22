@@ -1,3 +1,5 @@
+// Five-key pins predate runtimeCompatibility and always represent the v1 runtime.
+export const LEGACY_OVEN_RUNTIME_COMPATIBILITY = "burnlist-oven-runtime@1";
 export const OVEN_RUNTIME_COMPATIBILITY = "burnlist-oven-runtime@1";
 
 const compatibilityPattern = /^burnlist-oven-runtime@[1-9][0-9]*$/u;

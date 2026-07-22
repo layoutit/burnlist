@@ -3,6 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { ovenId, normalizeOvenPackage, ovenRevision } from "../ovens/oven-contract.mjs";
 import {
   assertSupportedOvenRuntime,
+  LEGACY_OVEN_RUNTIME_COMPATIBILITY,
   OVEN_RUNTIME_COMPATIBILITY,
 } from "../ovens/oven-runtime-compatibility.mjs";
 import { atomicDirectory, readTextFileWithLimit, withOvenPackageLock } from "./fs-safe.mjs";
@@ -149,8 +150,11 @@ function validatePin(pin, pkg) {
     || typeof pin.pinnedAt !== "string" || new Date(pin.pinnedAt).toISOString() !== pin.pinnedAt) {
     throw new Error(`Vendored Oven ${pkg.id} pin does not match its source.`);
   }
+  const declaredCompatibility = legacy
+    ? LEGACY_OVEN_RUNTIME_COMPATIBILITY
+    : pin.runtimeCompatibility;
   const runtimeCompatibility = assertSupportedOvenRuntime(
-    pin.runtimeCompatibility ?? OVEN_RUNTIME_COMPATIBILITY,
+    declaredCompatibility,
     `Vendored Oven ${pkg.id} runtimeCompatibility`,
   );
   return { ...pin, runtimeCompatibility };

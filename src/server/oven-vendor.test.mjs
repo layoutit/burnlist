@@ -15,7 +15,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { ovenRevision } from "../ovens/oven-contract.mjs";
-import { OVEN_RUNTIME_COMPATIBILITY } from "../ovens/oven-runtime-compatibility.mjs";
+import {
+  LEGACY_OVEN_RUNTIME_COMPATIBILITY,
+  OVEN_RUNTIME_COMPATIBILITY,
+} from "../ovens/oven-runtime-compatibility.mjs";
 import {
   OVEN_PIN_MAX_BYTES,
   readVendoredOven,
@@ -109,6 +112,22 @@ test("vendored reads refuse packages for a different runtime contract", () => {
   } finally { context.cleanup(); }
 });
 
+test("vendored reads reject a null runtime contract in a current pin", () => {
+  const context = fixture();
+  const pkg = source("sample-oven", "1.0.0", "Null runtime");
+  try {
+    writeVendoredOven(context.repoRoot, pkg);
+    const pinPath = join(vendoredOvenPath(context.repoRoot, pkg.id), "pin.json");
+    const pin = JSON.parse(readFileSync(pinPath, "utf8"));
+    pin.runtimeCompatibility = null;
+    writeFileSync(pinPath, `${JSON.stringify(pin, null, 2)}\n`);
+    assert.throws(
+      () => readVendoredOven(context.repoRoot, pkg.id),
+      /must be a Burnlist Oven runtime contract/u,
+    );
+  } finally { context.cleanup(); }
+});
+
 test("vendored reads normalize a valid legacy five-key pin without rewriting it", () => {
   const context = fixture();
   const pkg = source("sample-oven", "1.0.0", "Legacy compatible");
@@ -120,7 +139,8 @@ test("vendored reads normalize a valid legacy five-key pin without rewriting it"
     writeFileSync(pinPath, `${JSON.stringify(legacyPin, null, 2)}\n`);
 
     const saved = readVendoredOven(context.repoRoot, pkg.id);
-    assert.deepEqual(saved.pin, { ...legacyPin, runtimeCompatibility: OVEN_RUNTIME_COMPATIBILITY });
+    assert.equal(LEGACY_OVEN_RUNTIME_COMPATIBILITY, "burnlist-oven-runtime@1");
+    assert.deepEqual(saved.pin, { ...legacyPin, runtimeCompatibility: LEGACY_OVEN_RUNTIME_COMPATIBILITY });
     assert.equal(Object.hasOwn(JSON.parse(readFileSync(pinPath, "utf8")), "runtimeCompatibility"), false,
       "a read-only compatibility normalization does not mutate the committed pin");
   } finally { context.cleanup(); }
