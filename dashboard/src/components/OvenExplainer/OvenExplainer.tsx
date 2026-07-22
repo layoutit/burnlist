@@ -14,9 +14,9 @@ type OvenCatalogEntry = {
   description: string;
   builtIn: boolean;
   repoKey: string | null;
+  dataInput: "json-payload" | "producer-managed";
   label: string;
   href: string;
-  adoptCommand: string;
   agentInstructions: string;
 };
 type OvenIr = ComponentProps<typeof OvenRuntime>["ir"];

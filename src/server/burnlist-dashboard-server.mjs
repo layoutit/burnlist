@@ -597,6 +597,7 @@ function findOven(id, selectedKey = null) {
 }
 
 function ovenSummary(oven) {
+  const dataInput = getOvenHandler(oven.id)?.dataInput ?? genericJsonHandler.dataInput;
   return {
     id: oven.id,
     contract: oven.ir.contract,
@@ -605,6 +606,7 @@ function ovenSummary(oven) {
     description: oven.description,
     builtIn: oven.builtIn,
     repoKey: oven.repoKey,
+    dataInput,
     ovenRevision: oven.ovenRevision,
     ...(oven.forkedFrom ? { forkedFrom: oven.forkedFrom } : {}),
   };

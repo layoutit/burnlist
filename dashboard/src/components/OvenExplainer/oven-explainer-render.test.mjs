@@ -24,10 +24,10 @@ const entry = {
   description: "Shows widget progress.",
   builtIn: true,
   repoKey: null,
+  dataInput: "json-payload",
   label: "widget-oven@0.1.0",
   href: "/ovens/widget-oven",
-  adoptCommand: "burnlist oven adopt widget-oven",
-  agentInstructions: "Use the Widget Oven Oven (widget-oven@0.1.0).\nIts data must satisfy the checklist-progress@1 contract.\nAdopt the Oven before preparing its data:\nburnlist oven adopt widget-oven\nProduce the required data, then bind it to the target path:\nburnlist oven bind widget-oven <path>",
+  agentInstructions: "Use the Widget Oven Oven (widget-oven@0.1.0).\nIts data must satisfy the checklist-progress@1 contract.\nInstall the shipped Oven in the target repository:\nburnlist oven use widget-oven\nProduce the required JSON data, then set it:\nburnlist oven set widget-oven <path>",
 };
 const sample = { widget: { name: "Sprockets", count: 42 } };
 
@@ -60,7 +60,7 @@ test("an Oven explainer renders catalog details and its sample-data demo", { tim
     assert.match(markup, /widget-oven@0\.0*1\.0/u);
     assert.match(markup, /checklist-progress@1/u);
     assert.match(markup, /Tell your agent/iu);
-    assert.match(markup, /burnlist oven adopt widget-oven/u);
+    assert.match(markup, /burnlist oven use widget-oven/u);
     assert.match(markup, /Demo \(sample data\)/iu);
     assert.match(markup, /Sprockets/u);
     assert.match(markup, />42</u);

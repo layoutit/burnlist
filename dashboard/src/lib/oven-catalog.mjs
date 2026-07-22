@@ -1,13 +1,20 @@
 function agentInstructions(oven) {
   const label = `${oven.id}@${oven.version}`;
-  return [
+  const instructions = [
     `Use the ${oven.name} Oven (${label}).`,
     `Its data must satisfy the ${oven.contract} contract.`,
-    "Adopt the Oven before preparing its data:",
-    `burnlist oven adopt ${oven.id}`,
-    "Produce the required data, then bind it to the target path:",
-    `burnlist oven bind ${oven.id} <path>`,
-  ].join("\n");
+  ];
+  if (oven.builtIn && oven.repoKey == null) {
+    instructions.push("Install the shipped Oven in the target repository:", `burnlist oven use ${oven.id}`);
+  } else {
+    instructions.push("This Oven is already available in its repository.");
+  }
+  if (oven.dataInput === "json-payload") {
+    instructions.push("Produce the required JSON data, then set it:", `burnlist oven set ${oven.id} <path>`);
+  } else {
+    instructions.push("Its data is producer-managed; publish it with the Oven's producer workflow.");
+  }
+  return instructions.join("\n");
 }
 
 function compareOvens(left, right) {
@@ -27,9 +34,9 @@ export function buildOvenCatalog(ovens) {
         description: oven.description,
         builtIn: oven.builtIn,
         repoKey: oven.repoKey,
+        dataInput: oven.dataInput,
         label: `${oven.id}@${oven.version}`,
         href: `/ovens/${encodeURIComponent(oven.id)}${repoQuery}`,
-        adoptCommand: `burnlist oven adopt ${oven.id}`,
         agentInstructions: agentInstructions(oven),
       };
     })

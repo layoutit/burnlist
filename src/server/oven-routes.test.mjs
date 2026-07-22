@@ -176,13 +176,16 @@ test("custom Ovens are identified by repository while built-ins remain global", 
     const shared = catalog.ovens.filter((oven) => oven.id === "shared");
     assert.equal(shared.length, 2);
     assert.equal(new Set(shared.map((oven) => oven.repoKey)).size, 2);
+    assert.ok(shared.every((oven) => oven.dataInput === "json-payload"));
     assert.deepEqual(
       Object.keys(shared[0]).sort(),
-      ["builtIn", "contract", "description", "id", "name", "ovenRevision", "repoKey", "version"],
+      ["builtIn", "contract", "dataInput", "description", "id", "name", "ovenRevision", "repoKey", "version"],
     );
     assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").contract, "checklist-progress@1");
     assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").repoKey, null);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "checklist").dataInput, "json-payload");
     assert.equal(catalog.ovens.find((oven) => oven.id === "differential-testing").repoKey, null);
+    assert.equal(catalog.ovens.find((oven) => oven.id === "streaming-diff").dataInput, "producer-managed");
 
     const [first, second] = shared;
     const firstOven = await httpGet(baseUrl, `/api/ovens/shared?repoKey=${first.repoKey}`);

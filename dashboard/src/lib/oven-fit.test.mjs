@@ -4,7 +4,7 @@ import { BURNLIST_DATA_CONTRACT, fittingOvens } from "./oven-fit.mjs";
 
 test("fittingOvens selects contract-compatible Ovens in the burnlist repository scope", () => {
   const ovens = [
-    { id: "checklist", contract: "checklist-progress@1", repoKey: null, builtIn: true },
+    { id: "checklist", name: "Global Checklist", version: "1.0.0", contract: "checklist-progress@1", repoKey: null, builtIn: true },
     { id: "differential-testing", contract: "burnlist-differential-testing-data@1", repoKey: null, builtIn: true },
     { id: "visual-parity", contract: "burnlist-visual-parity-data@1", repoKey: null, builtIn: true },
     { id: "streaming-diff", contract: "burnlist-streaming-diff-data@2", repoKey: null, builtIn: true },
@@ -21,4 +21,20 @@ test("fittingOvens selects contract-compatible Ovens in the burnlist repository 
   for (const id of ["differential-testing", "performance-tracing", "visual-parity", "streaming-diff", "model-lab", "other-repo-checklist"]) {
     assert.equal(selectedIds.has(id), false);
   }
+});
+
+test("fittingOvens uses the repository-scoped Oven for a duplicate id without changing lens order", () => {
+  const ovens = [
+    { id: "checklist", name: "Global Checklist", contract: BURNLIST_DATA_CONTRACT, repoKey: null, builtIn: true },
+    { id: "release-readiness", name: "Release readiness", contract: BURNLIST_DATA_CONTRACT, repoKey: "abc123", builtIn: false },
+    { id: "checklist", name: "Vendored Checklist", contract: BURNLIST_DATA_CONTRACT, repoKey: "abc123", builtIn: true },
+    { id: "other-repo", name: "Other repo", contract: BURNLIST_DATA_CONTRACT, repoKey: "zzz999", builtIn: false },
+  ];
+
+  const lenses = fittingOvens(ovens, BURNLIST_DATA_CONTRACT, { repoKey: "abc123" });
+
+  assert.deepEqual(lenses.map(({ id }) => id), ["checklist", "release-readiness"]);
+  assert.equal(lenses[0].name, "Vendored Checklist");
+  assert.equal(lenses[0].repoKey, "abc123");
+  assert.equal(lenses[1].name, "Release readiness");
 });
