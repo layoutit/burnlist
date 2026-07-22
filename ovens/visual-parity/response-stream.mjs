@@ -10,12 +10,22 @@ export function streamVisualParityResponse(req, res, segments, {
   let segmentOffset = 0;
   let closed = false;
   let waitingDrain = false;
-  const timeout = timers.setTimeout(abort, timeoutMs);
+  let stallTimeout = null;
+
+  function clearStallTimeout() {
+    if (stallTimeout === null) return;
+    timers.clearTimeout(stallTimeout);
+    stallTimeout = null;
+  }
+  function armStallTimeout() {
+    clearStallTimeout();
+    stallTimeout = timers.setTimeout(abort, timeoutMs);
+  }
 
   function cleanup() {
     if (closed) return;
     closed = true;
-    timers.clearTimeout(timeout);
+    clearStallTimeout();
     res.off?.("drain", onDrain);
     res.off?.("close", cleanup);
     res.off?.("error", cleanup);
@@ -29,6 +39,7 @@ export function streamVisualParityResponse(req, res, segments, {
   }
   function onDrain() {
     waitingDrain = false;
+    clearStallTimeout();
     pump();
   }
   function pump() {
@@ -43,6 +54,7 @@ export function streamVisualParityResponse(req, res, segments, {
           if (!res.write(chunk)) {
             waitingDrain = true;
             res.once("drain", onDrain);
+            armStallTimeout();
             return;
           }
         }

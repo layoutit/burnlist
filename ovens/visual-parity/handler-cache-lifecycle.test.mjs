@@ -53,22 +53,50 @@ class ResponseRecorder extends EventEmitter {
 
 function timerHarness() {
   const active = new Map();
+  const deadlines = new Map();
   let nextId = 0;
+  let now = 0;
   return {
     active,
     timers: {
-      setTimeout(callback) {
+      setTimeout(callback, delay = 0) {
         const id = nextId;
         nextId += 1;
         active.set(id, callback);
+        deadlines.set(id, now + delay);
         return id;
       },
       clearTimeout(id) {
         active.delete(id);
+        deadlines.delete(id);
       },
     },
+    advanceBy(delay) {
+      const target = now + delay;
+      while (true) {
+        let dueId = null;
+        let dueAt = Number.POSITIVE_INFINITY;
+        for (const [id, deadline] of deadlines) {
+          if (deadline <= target && deadline < dueAt) {
+            dueId = id;
+            dueAt = deadline;
+          }
+        }
+        if (dueId === null) break;
+        now = dueAt;
+        const callback = active.get(dueId);
+        active.delete(dueId);
+        deadlines.delete(dueId);
+        callback();
+      }
+      now = target;
+    },
     fireAll() {
-      for (const callback of [...active.values()]) callback();
+      for (const [id, callback] of [...active]) {
+        if (!active.delete(id)) continue;
+        deadlines.delete(id);
+        callback();
+      }
     },
   };
 }
@@ -80,11 +108,21 @@ function bindings(path, root) {
 function context(path, cache, ovenDataBindings, {
   maxOvenDataBytes = 1024 * 1024,
   res = new ResponseRecorder(),
+  responseTimeoutMs,
   responseTimers,
 } = {}) {
   const req = new EventEmitter();
   req.headers = {};
-  return { bindingPath: path, cache, ovenDataBindings, maxOvenDataBytes, req, res, responseTimers };
+  return {
+    bindingPath: path,
+    cache,
+    ovenDataBindings,
+    maxOvenDataBytes,
+    req,
+    res,
+    responseTimeoutMs,
+    responseTimers,
+  };
 }
 
 function cacheState(cache) {
@@ -188,6 +226,40 @@ test("Visual Parity aborts stalled responses at the active stream count and time
     }
     assert.equal(state.activeResponses, 0);
     assert.equal(state.activeResponseBytes, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Visual Parity renews the stalled-response timeout after each drain", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-visual-progress-timeout-"));
+  const path = join(root, "visual-parity.json");
+  const cache = new Map();
+  const timers = timerHarness();
+  const res = new ResponseRecorder({ writeResult: false });
+  const timeoutMs = 30;
+  try {
+    await writeFile(path, payload("progress", 150_000));
+    visualParityHandler.serveData(context(path, cache, bindings(path, root), {
+      res,
+      responseTimeoutMs: timeoutMs,
+      responseTimers: timers.timers,
+    }));
+
+    let drains = 0;
+    while (!res.ended && drains < 20) {
+      timers.advanceBy(timeoutMs - 1);
+      assert.equal(res.destroyed, false);
+      assert.equal(timers.active.size, 1);
+      res.emit("drain");
+      drains += 1;
+    }
+
+    assert.ok(drains > 1);
+    assert.equal(res.ended, true);
+    assert.equal(res.destroyed, false);
+    assert.equal(timers.active.size, 0);
+    assert.equal(cacheState(cache).activeResponses, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
