@@ -136,3 +136,14 @@ test("HybridFieldList reads telemetry from a cross-realm Map", () => {
   });
   assertDomEquivalent(actual, expected, "cross-realm Map");
 });
+
+test("HybridFieldList uses an ARIA-compatible interactive row host", () => {
+  const payload = differentialTestingPayload();
+  const actual = renderToStaticMarkup(createElement(HybridFieldList, {
+    fields: payload.fields.slice(0, 1),
+    chartMode: "delta",
+  }));
+
+  assert.match(actual, /<div class="hybrid-row [^"]+"[^>]+role="button"[^>]+tabindex="0"/u);
+  assert.doesNotMatch(actual, /<section class="hybrid-row/u);
+});

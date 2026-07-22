@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { Button } from "@layout";
+import "./CopyButton.css";
 
 export function CopyButton({ text }: { text: string }) {
   const [isCopied, setIsCopied] = useState(false);
@@ -21,15 +23,17 @@ export function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button
+    <Button
       aria-label={isCopied ? "Instructions copied" : "Copy instructions"}
       className="copy-btn oven-catalog-copy-button"
       onClick={() => void copy()}
+      size="xs"
       title={isCopied ? "Copied" : "Copy instructions"}
       type="button"
+      variant="outline"
     >
       {isCopied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
       <span>{isCopied ? "Copied" : "Copy"}</span>
-    </button>
+    </Button>
   );
 }

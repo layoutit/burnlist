@@ -327,8 +327,8 @@ body.driving-parity-view .dashboard-header {
 .driving-parity-view #burnlist-detail .differential-overview-head:not(:has(#differential-overview-time)):not(:has(.differential-refresh-status)) {
   display: none;
 }
-#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: rgba(163,172,183,.55); font: 14px/1.2 var(--dashboard-title-font); }
-#differential-overview-time .sep { color: rgba(163,172,183,.55); }
+#differential-overview-time { display: inline-flex; align-items: baseline; gap: 4px; color: var(--muted); font: 14px/1.2 var(--dashboard-title-font); }
+#differential-overview-time .sep { color: var(--muted); }
 .differential-overview-meta { display: inline-flex; align-items: baseline; gap: 8px; }
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip,
 .shell.driving-parity-view #burnlist-detail .driving-parity-kpi-strip.has-burns {
@@ -388,7 +388,7 @@ body.driving-parity-view .dashboard-header {
 .driving-parity-view #burnlist-detail .driving-parity-kpi-strip {
   --driving-parity-kpi-red: #ef4444;
   --driving-parity-kpi-green: #61d394;
-  --driving-parity-kpi-red-label: var(--red-muted);
+  --driving-parity-kpi-red-label: var(--red);
   --driving-parity-kpi-green-label: rgba(97,211,148,.78);
   height: 68px;
   margin: 0;
@@ -486,7 +486,7 @@ body.driving-parity-view .dashboard-header {
 }
 .differential-refresh-status {
   flex: 0 0 auto;
-  color: rgba(168,168,168,.6);
+  color: var(--muted);
   font-size: 12px;
 }
 .differential-refresh-status.failed {
@@ -1276,6 +1276,10 @@ code { color: #e8e8e8; background: #2a2a2a; padding: 1px 5px; border-radius: 4px
   content-visibility: auto;
 }
 .driving-parity-view .hybrid-row:last-child { margin-bottom: 0; }
+.driving-parity-view .hybrid-row:focus-visible {
+  outline: 2px solid var(--active);
+  outline-offset: 2px;
+}
 .driving-parity-view .hybrid-cell {
   min-width: 0;
   display: flex;
@@ -1316,7 +1320,7 @@ code { color: #e8e8e8; background: #2a2a2a; padding: 1px 5px; border-radius: 4px
   line-height: 1.25;
 }
 .driving-parity-view .hybrid-row.pass .hybrid-status { color: var(--green); }
-.driving-parity-view .hybrid-row.fail .hybrid-status { color: var(--red-muted); }
+.driving-parity-view .hybrid-row.fail .hybrid-status { color: var(--red); }
 .driving-parity-view .hybrid-metric {
   flex-direction: column;
   align-items: flex-end;

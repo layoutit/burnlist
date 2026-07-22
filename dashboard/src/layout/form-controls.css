@@ -1,0 +1,68 @@
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(232, 232, 232, .1);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .25);
+  color: var(--foreground);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.ui-input,
+.ui-select { min-height: 36px; padding: 8px 12px; }
+.ui-select { cursor: pointer; }
+.ui-textarea { min-height: 96px; padding: 8px 12px; line-height: 1.5; resize: vertical; }
+.ui-input::placeholder,
+.ui-textarea::placeholder { color: rgba(168, 168, 168, .74); }
+
+.ui-input:focus-visible,
+.ui-select:focus-visible,
+.ui-textarea:focus-visible {
+  border-color: rgba(90, 162, 255, .6);
+  box-shadow: 0 0 0 2px rgba(90, 162, 255, .15);
+}
+
+.ui-input[aria-invalid="true"],
+.ui-select[aria-invalid="true"],
+.ui-textarea[aria-invalid="true"] { border-color: rgba(239, 68, 68, .7); }
+
+.ui-input:disabled,
+.ui-select:disabled,
+.ui-textarea:disabled { cursor: default; opacity: .5; }
+
+.ui-checkbox {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1px solid var(--input);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--done);
+  cursor: pointer;
+  place-items: center;
+  transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+
+.ui-checkbox:hover { border-color: #3a3a3a; }
+.ui-checkbox[data-state="checked"],
+.ui-checkbox[data-state="indeterminate"] { border-color: var(--done); background: var(--card); }
+.ui-checkbox:focus-visible { outline: 2px solid rgba(90, 162, 255, .62); outline-offset: 2px; }
+.ui-checkbox:disabled { cursor: default; opacity: .5; }
+.ui-checkbox-indicator { display: grid; place-items: center; }
+.ui-checkbox-indicator svg { width: 14px; height: 14px; grid-area: 1 / 1; stroke-width: 2.5; }
+.ui-checkbox-indeterminate { display: none; }
+.ui-checkbox[data-state="indeterminate"] .ui-checkbox-check { display: none; }
+.ui-checkbox[data-state="indeterminate"] .ui-checkbox-indeterminate { display: block; }
+
+.ui-field-group { display: grid; gap: 16px; }
+.ui-field { display: grid; gap: 6px; }
+.ui-field-label { color: var(--muted-foreground); font-size: 12px; }
+.ui-field-description,
+.ui-field-error { margin: 0; font-size: 12px; line-height: 1.45; }
+.ui-field-description { color: var(--muted-foreground); }
+.ui-field-error { color: #f87171; }

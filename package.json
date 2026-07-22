@@ -30,6 +30,8 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
+    "storybook": "storybook dev -p 6006 -c dashboard/.storybook --no-open",
+    "build:storybook": "storybook build -c dashboard/.storybook -o .local/storybook",
     "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/handler.test.mjs ovens/differential-testing/engine/query-projection-cache.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
     "test:model-lab": "node --test ovens/model-lab/engine/model-lab-contract.test.mjs ovens/model-lab/engine/model-lab-handler.test.mjs",
     "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
@@ -47,12 +49,16 @@
   "devDependencies": {
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@storybook/addon-a11y": "^10.5.3",
+    "@storybook/addon-docs": "^10.5.3",
+    "@storybook/react-vite": "^10.5.3",
     "@vitejs/plugin-react": "^4.3.4",
     "esbuild": "^0.25.12",
     "lucide-react": "^0.468.0",
     "radix-ui": "^1.6.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "storybook": "^10.5.3",
     "vite": "^6.1.0"
   }
 }

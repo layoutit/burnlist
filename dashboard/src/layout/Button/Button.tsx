@@ -35,7 +35,7 @@ function buttonVariants({
   return joinClasses(
     "ui-button",
     `ui-button--${variant}`,
-    `ui-button--${size}`,
+    `ui-button--size-${size}`,
     className,
   )
 }

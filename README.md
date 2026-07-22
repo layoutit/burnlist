@@ -152,9 +152,14 @@ Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Ov
 
 From a source checkout:
 
+Burnlist's CLI, server, and dashboard support Node.js 18 or newer. The Storybook
+10 development commands require Node.js 20.19+ or 22.12+.
+
 ```sh
 npm install
 npm run build:dashboard
+npm run storybook
+npm run build:storybook
 npm run test:differential-testing
 npm run verify
 npm run verify:clean

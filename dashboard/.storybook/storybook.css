@@ -1,0 +1,185 @@
+.sb-show-main,
+.sbdocs-wrapper {
+  background: var(--background) !important;
+  color: var(--foreground);
+}
+
+.sbdocs-preview,
+.docs-story {
+  border-color: var(--border) !important;
+  background: var(--background) !important;
+  box-shadow: none !important;
+}
+
+.docs-story > div,
+.docs-story .innerZoomElementWrapper,
+.docs-story .innerZoomElementWrapper > div,
+.docs-story .sb-story {
+  width: 100%;
+  max-width: 100%;
+}
+
+.docs-story .sb-story { margin-inline: 0; }
+
+.storybook-flow {
+  display: grid;
+  width: min(100%, 760px);
+  gap: 24px;
+}
+
+.storybook-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.storybook-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.storybook-label {
+  margin: 0;
+  color: var(--muted-foreground);
+  font: 12px/1.35 var(--dashboard-font);
+}
+
+.storybook-card-demo {
+  width: min(100%, 420px);
+}
+
+.storybook-card-copy {
+  margin: 0;
+  color: var(--foreground);
+  line-height: 1.55;
+}
+
+.storybook-card-footer {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.storybook-oven-pattern.shell.driving-parity-view {
+  width: min(calc(100% - 32px), 1200px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 0 28px;
+}
+
+.storybook-top-card-pattern .detail-meta-footer { display: none; }
+.storybook-field-list-pattern { min-width: 0; }
+
+.storybook-progress-demo {
+  width: min(100%, 440px);
+}
+
+.storybook-progress-line {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.storybook-progress-value {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.storybook-separator-demo {
+  display: flex;
+  align-items: center;
+  width: min(100%, 440px);
+  height: 72px;
+  color: var(--muted-foreground);
+}
+
+.storybook-separator-demo[data-orientation="horizontal"] {
+  display: grid;
+  height: auto;
+  gap: 16px;
+}
+
+.storybook-separator-demo[data-orientation="vertical"] { gap: 20px; }
+.storybook-separator-demo[data-orientation="vertical"] .ui-separator { height: 40px; }
+
+.storybook-tabs-demo {
+  width: min(100%, 560px);
+}
+
+.storybook-tabs-panel {
+  min-height: 112px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.storybook-tabs-panel p { margin: 0; }
+
+.storybook-foundations {
+  display: grid;
+  width: min(100%, 880px);
+  gap: 32px;
+}
+
+.storybook-foundations h2 {
+  margin: 0 0 12px;
+  font: 18px/1.2 var(--dashboard-title-font);
+}
+
+.storybook-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.storybook-swatch {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.storybook-swatch-color { height: 72px; background: var(--swatch); }
+.storybook-swatch-copy { display: grid; gap: 2px; padding: 10px 12px; }
+.storybook-swatch-name { font-family: var(--dashboard-title-font); }
+.storybook-swatch-value { color: var(--muted-foreground); font-size: 12px; }
+
+.storybook-type-sample {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.storybook-type-sample:first-of-type { border-top: 0; }
+.storybook-type-title { font: 22px/1.2 var(--dashboard-title-font); }
+.storybook-type-data { font: 14px/1.45 var(--dashboard-font); }
+.storybook-type-meta { color: var(--muted-foreground); font-size: 12px; }
+
+.storybook-alert-demo,
+.storybook-control-demo,
+.storybook-form-demo,
+.storybook-pattern-demo { width: min(100%, 480px); }
+
+.storybook-form-demo { display: grid; gap: 18px; }
+
+.storybook-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: var(--dashboard-title-font);
+  font-size: 13px;
+}
+
+.storybook-checkbox-row:has(.ui-checkbox:disabled) { cursor: default; opacity: .7; }
+.storybook-skeleton-title { width: 42%; height: 20px; }
+.storybook-skeleton-copy { width: 72%; height: 12px; }
+.storybook-skeleton-row { width: 100%; height: 14px; }
+.storybook-skeleton-row-short { width: 64%; }
+.storybook-table-demo { width: min(100%, 760px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }

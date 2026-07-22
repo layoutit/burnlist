@@ -1,0 +1,4 @@
+.dashboard-error { gap: 0; padding: 20px 0; border-color: rgba(239, 68, 68, .35); background: rgba(239, 68, 68, .1); color: var(--destructive-foreground); }
+.dashboard-error-content { display: flex; gap: 12px; padding: 0 20px; }
+.dashboard-error-icon { width: 20px; height: 20px; flex: 0 0 auto; }
+.dashboard-error-message { margin: 0; font-size: 14px; }

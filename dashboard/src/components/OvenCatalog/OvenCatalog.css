@@ -30,9 +30,3 @@
 @media (max-width: 760px) {
   .oven-catalog-meta { grid-template-columns: 1fr; }
 }
-
-.copy-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted-foreground); cursor: pointer; }
-.copy-btn:hover { border-color: #3a3a3a; background: var(--accent); color: var(--foreground); }
-.copy-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.copy-btn svg { width: 14px; height: 14px; }
-.copy-btn span { font: 12px/1 var(--dashboard-title-font); }

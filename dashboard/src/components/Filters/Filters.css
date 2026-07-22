@@ -1,0 +1,4 @@
+.dashboard-filters.ui-toggle-group { flex: 0 0 auto; gap: 4px; padding: 0; border: 0; background: transparent; }
+.dashboard-filters .ui-toggle-group-item { position: relative; min-height: 30px; padding: 6px 8px; border-radius: 6px; background: transparent; font-size: 14px; }
+.dashboard-filters .ui-toggle-group-item[data-state="on"] { background: transparent; }
+.dashboard-filters .ui-toggle-group-item[data-state="on"]::after { content: ""; position: absolute; right: 0; bottom: -5px; left: 0; height: 2px; background: var(--foreground); }

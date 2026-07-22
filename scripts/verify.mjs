@@ -299,7 +299,8 @@ assertSourceIncludes("dashboard/src/App.tsx", '<BurnlistTable showStatus={filter
 assertSourceExcludes("dashboard/src/components/ProjectGroup/ProjectGroup.tsx", "<table", "Dashboard project groups still repeat the table header.");
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", "rowSpan={projectRowSpan}", "Dashboard project grouping is not represented in its flat table.");
 assertSourceIncludes("dashboard/src/components/ProjectGroup/BurnlistRow.tsx", '<Badge data-oven={entry.ovenId}', "Dashboard Oven labels do not use the shared Badge primitive.");
-assertSourceIncludes("dashboard/src/components/Filters/Filters.tsx", '<TabsList aria-label="Burnlist lifecycle" variant="line">', "Dashboard lifecycle filters do not use the shared line Tabs primitive.");
+assertSourceIncludes("dashboard/src/components/Filters/Filters.tsx", "ToggleGroup, ToggleGroupItem", "Dashboard lifecycle filters do not use the shared Toggle Group primitive.");
+assertSourceIncludes("dashboard/src/components/Filters/Filters.tsx", 'aria-label="Burnlist lifecycle"', "Dashboard lifecycle filters are missing their accessible label.");
 assertSourceIncludes("bin/burnlist.mjs", "--oven-data <id=path>", "Burnlist CLI is missing read-only Oven data binding help.");
 assertSourceIncludes("bin/burnlist.mjs", "oven <list|view|use|set|bind", "Top-level help is missing the Oven use/set flow.");
 assertSourceIncludes("src/cli/oven-cli.mjs", "burnlist oven use <id> [--repo <path>] [--force]", "Oven help is missing use syntax.");

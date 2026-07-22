@@ -48,7 +48,7 @@ export function HybridFieldList({
   return <div className="hybrid-list">
     {fields.map((field, index) => {
       const isExpanded = expanded.has(field.id);
-      return <section
+      return <div
         key={field.id}
         className={`hybrid-row ${nonPass(field) ? "fail" : "pass"}${isExpanded ? " expanded" : ""}`}
         data-row-expand-key={field.id}
@@ -66,7 +66,7 @@ export function HybridFieldList({
         <HybridField field={field} />
         <HybridMetric field={field} telemetry={telemetryForField(telemetryByField, field.id)} />
         <div className="hybrid-chart"><FieldMiniChart field={field} showFrameLabels={index === 0} chartMode={chartMode} /></div>
-      </section>;
+      </div>;
     })}
   </div>;
 }

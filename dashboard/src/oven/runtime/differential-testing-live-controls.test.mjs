@@ -35,7 +35,7 @@ function markupFor(OvenRuntime, ir, dtAdapt, envelope) {
 }
 
 function assertRenderedPage(markup, rows, status) {
-  assert.equal(markup.match(/<section class="hybrid-row\b/gu)?.length ?? 0, rows);
+  assert.equal(markup.match(/<div class="hybrid-row\b/gu)?.length ?? 0, rows);
   assert.match(markup, new RegExp(status.replace("/", "\\/"), "u"));
 }
 

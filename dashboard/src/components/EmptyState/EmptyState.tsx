@@ -1,4 +1,5 @@
 import { CircleDotDashed } from "lucide-react";
+import "./EmptyState.css";
 
 export function EmptyState({ title, detail, icon: Icon = CircleDotDashed }: { title: string; detail: string; icon?: typeof CircleDotDashed }) {
   return (
