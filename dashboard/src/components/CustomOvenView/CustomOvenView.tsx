@@ -14,6 +14,13 @@ function unwrapPayload(raw: unknown) {
   return raw && typeof raw === "object" && "payload" in raw ? (raw as { payload: unknown }).payload : raw;
 }
 
+export function CustomOvenRuntime({ burnlistId, loaded }: { burnlistId?: string; loaded: LoadedOven }) {
+  if (burnlistId) {
+    return <><LensSwitcher /><OvenRuntime ir={{ ...loaded.ir, refreshSeconds: undefined }} payload={loaded.payload} /></>;
+  }
+  return <OvenRuntime ir={loaded.ir} initialPayload={loaded.payload} adapt={unwrapPayload} />;
+}
+
 export function CustomOvenView() {
   const selection = customOvenSelection();
   const [loaded, setLoaded] = useState<LoadedOven | null>(null);
@@ -53,6 +60,5 @@ export function CustomOvenView() {
 
   if (error) return <DashboardError message={error} />;
   if (!loaded) return <EmptyState title="Loading Oven" detail="Reading the Oven view and its bound data." />;
-  const runtime = <OvenRuntime ir={selection?.burnlistId ? { ...loaded.ir, refreshSeconds: undefined } : loaded.ir} payload={loaded.payload} adapt={selection?.burnlistId ? undefined : unwrapPayload} />;
-  return selection?.burnlistId ? <><LensSwitcher />{runtime}</> : runtime;
+  return <CustomOvenRuntime burnlistId={selection?.burnlistId} loaded={loaded} />;
 }

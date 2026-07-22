@@ -11,6 +11,7 @@ import { Box } from "../Box/Box";
 import { LogTable } from "../LogTable";
 import { formatRegistry } from "../OvenView/registries";
 import { buildLogTableProps } from "./log-table-adapter";
+import { ModelLabView, type ModelLabPayload } from "../ModelLabView";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
@@ -56,6 +57,7 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
     })}</>;
   }
   if (node.kind === "each") return <>{(node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
+  if (node.kind === "model-lab-view") return <ModelLabView payload={resolvePointer(state.payload, String(attrs(node).source ?? "/")) as ModelLabPayload} />;
   if (node.kind === "log-table") return <LogTable {...buildLogTableProps(node, state.payload, { resolvePointer, formatRegistry })} />;
   if (["checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) return <ChecklistWidgetAdapter node={node} payload={state.payload} />;
   if (["mode-toggle", "domain-tabs", "field-toolbar", "pagination"].includes(node.kind)) return <ControlAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;

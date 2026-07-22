@@ -1,10 +1,9 @@
 import { useMemo } from "react";
-import { useVisualParityData } from "@hooks";
+import { useVisualParityData, type ResolvedOvenIr } from "@hooks";
 import { adaptVisualParity } from "@lib/visual-parity-oven-adapter";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
-import ovenIr from "../../../../ovens/visual-parity/visual-parity.ir.json";
 
-export function VisualParityPage() {
+export function VisualParityPage({ ir }: { ir: ResolvedOvenIr }) {
   const { payload, error, loading } = useVisualParityData();
   const ovenPayload = useMemo(() => payload ? adaptVisualParity(payload) : null, [payload]);
 
@@ -12,5 +11,5 @@ export function VisualParityPage() {
   if (error && !payload) return <div className="visual-parity-state is-error">{error}</div>;
   if (!payload || !payload.domains.length) return <div className="visual-parity-state">Visual Parity has no retained domains.</div>;
 
-  return <OvenRuntime ir={ovenIr} payload={ovenPayload!} />;
+  return <OvenRuntime ir={ir} payload={ovenPayload!} />;
 }

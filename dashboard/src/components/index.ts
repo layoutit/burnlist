@@ -9,6 +9,7 @@ export { FILTERS, Filters } from "./Filters";
 export { LensSwitcher } from "./LensSwitcher";
 export { ModelLabPage } from "./ModelLab";
 export { OvenCatalog } from "./OvenCatalog";
+export { OvenDefinition } from "./OvenDefinition";
 export { OvenExplainer } from "./OvenExplainer";
 export { BurnlistTable, ProjectGroup } from "./ProjectGroup";
 export { StreamingDiff } from "./StreamingDiff";

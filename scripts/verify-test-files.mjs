@@ -1,6 +1,7 @@
 export const verificationTestFiles = [
   "dashboard/src/lib/oven-fit.test.mjs",
   "dashboard/src/lib/oven-catalog.test.mjs",
+  "dashboard/src/lib/oven-definition.test.mjs",
   "dashboard/src/lib/route-model.test.mjs",
   "src/server/dashboard-routes.test.mjs",
   "src/server/oven-event-routes.test.mjs",
@@ -76,6 +77,7 @@ export const verificationTestFiles = [
   "src/server/repo-map.test.mjs",
   "src/server/repo-state.test.mjs",
   "dashboard/src/components/ProjectGroup/BurnlistRow.test.mjs",
+  "dashboard/src/components/ModelLab/ModelLab.test.mjs",
   "dashboard/src/components/CustomOvenView/custom-oven-render.test.mjs",
   "dashboard/src/components/ChecklistDashboard/ChecklistDashboard.test.mjs",
   "dashboard/src/components/ChecklistDashboard/checklist-dom-golden.test.mjs",

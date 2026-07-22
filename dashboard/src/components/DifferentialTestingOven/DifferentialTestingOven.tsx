@@ -1,10 +1,9 @@
 import { useEffect, type ReactNode } from "react";
+import type { ResolvedOvenIr } from "@hooks";
 import { adaptPerformanceTracingReport } from "@lib";
 import { adaptDifferentialTesting, type DifferentialTestingData } from "../../lib/differential-testing-adapter";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
 import { withDifferentialTestingEnvelope } from "@/oven/runtime/oven-payload-metadata";
-import differentialTestingIr from "../../../../ovens/differential-testing/differential-testing.ir.json";
-import performanceTracingIr from "../../../../ovens/performance-tracing/performance-tracing.ir.json";
 
 type ResponseEnvelope = { payload: unknown; fieldPage?: unknown; frameDeltaMetrics?: unknown };
 
@@ -33,10 +32,10 @@ function DifferentialTestingShell({ children, performanceTracing = false }: { ch
   return <div className={`shell driving-parity-view${performanceTracing ? " performance-tracing-oven" : ""}`}>{children}</div>;
 }
 
-export function DifferentialTestingOvenPage() {
-  return <DifferentialTestingShell><OvenRuntime ir={differentialTestingIr} adapt={dtAdapt} /></DifferentialTestingShell>;
+export function DifferentialTestingOvenPage({ ir }: { ir: ResolvedOvenIr }) {
+  return <DifferentialTestingShell><OvenRuntime ir={ir} adapt={dtAdapt} /></DifferentialTestingShell>;
 }
 
-export function PerformanceTracingOvenPage() {
-  return <DifferentialTestingShell performanceTracing><OvenRuntime ir={performanceTracingIr} adapt={ptAdapt} /></DifferentialTestingShell>;
+export function PerformanceTracingOvenPage({ ir }: { ir: ResolvedOvenIr }) {
+  return <DifferentialTestingShell performanceTracing><OvenRuntime ir={ir} adapt={ptAdapt} /></DifferentialTestingShell>;
 }
