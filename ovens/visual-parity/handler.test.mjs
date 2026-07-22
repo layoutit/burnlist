@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { renameSync } from "node:fs";
+import { renameSync, statSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { visualParityFixture } from "../../dashboard/src/components/VisualParity/VisualParity.fixture.mjs";
 import { httpGet, withServer } from "../../src/server/dashboard-routes-fixtures.mjs";
-import { readTextFileWithLimit } from "../../src/server/fs-safe.mjs";
+import { readTextFileWithIdentity } from "../../src/server/fs-safe.mjs";
 import { repoKey } from "../../src/server/registry.mjs";
 import {
   readStableVisualParitySource,
@@ -93,7 +93,8 @@ function handlerContext(path, cache, headers = {}, {
 }
 
 function cacheState(cache) {
-  const states = [...cache.values()].filter((entry) => entry?.entries instanceof Map);
+  const states = [...cache.values()].filter((entry) => entry?.responses instanceof Map
+    && entry?.summaries instanceof Map);
   assert.equal(states.length, 1);
   return states[0];
 }
@@ -102,6 +103,15 @@ function markedSource(marker, padding = 0) {
   const payload = threeFramePayload();
   payload.comparisons[0].label = `${marker}${"x".repeat(padding)}`;
   return JSON.stringify(payload);
+}
+
+function identity(path) {
+  const stat = statSync(path);
+  return { dev: stat.dev, ino: stat.ino, size: stat.size, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs };
+}
+
+function dashboardContext(cache, ovenDataBindings, maxOvenDataBytes = 1024 * 1024) {
+  return { cache, ovenDataBindings, maxOvenDataBytes, discoveredRepos: () => [] };
 }
 
 test("Visual Parity caches one validated source and invalidates it when the file changes", async () => {
@@ -116,13 +126,13 @@ test("Visual Parity caches one validated source and invalidates it when the file
     assert.equal(JSON.parse(initial.res.body).validated, true);
     const initialEtag = initial.res.headers.etag;
     const state = cacheState(cache);
-    const cached = state.entries.get(path);
+    const cached = state.responses.get(path);
 
     const unchanged = handlerContext(path, cache, { "if-none-match": initialEtag });
     visualParityHandler.serveData(unchanged);
     assert.equal(unchanged.res.status, 304);
     assert.equal(unchanged.res.body, "");
-    assert.equal(state.entries.get(path), cached);
+    assert.equal(state.responses.get(path), cached);
 
     const wildcard = handlerContext(path, cache, { "if-none-match": "*" });
     visualParityHandler.serveData(wildcard);
@@ -143,13 +153,13 @@ test("Visual Parity caches one validated source and invalidates it when the file
     assert.equal(changed.res.status, 200);
     assert.notEqual(changed.res.headers.etag, initialEtag);
     assert.equal(JSON.parse(changed.res.body).payload.comparisons[0].label, "Updated fixture frame zero");
-    assert.notEqual(state.entries.get(path), cached);
+    assert.notEqual(state.responses.get(path), cached);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
-test("Visual Parity retries an atomic replacement before assigning file identity", async () => {
+test("Visual Parity binds an atomic replacement to the descriptor that supplied its bytes", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-visual-identity-"));
   const path = join(root, "visual-parity.json");
   const replacement = join(root, "replacement.json");
@@ -163,10 +173,10 @@ test("Visual Parity retries an atomic replacement before assigning file identity
       readSource(...args) {
         if (reads === 0) renameSync(replacement, path);
         reads += 1;
-        return readTextFileWithLimit(...args);
+        return readTextFileWithIdentity(...args);
       },
     });
-    assert.equal(reads, 2);
+    assert.equal(reads, 1);
     assert.equal(stable.source, after);
     assert.equal(JSON.parse(stable.source).comparisons[0].label, "new-value");
   } finally {
@@ -174,38 +184,79 @@ test("Visual Parity retries an atomic replacement before assigning file identity
   }
 });
 
-test("Visual Parity bounds count and bytes and prunes paths absent from current bindings", async () => {
+test("Visual Parity rejects ABA bytes whose descriptor identity differs from the final path", async () => {
+  const root = await mkdtemp(join(tmpdir(), "burnlist-visual-aba-"));
+  const path = join(root, "visual-parity.json");
+  const swapped = join(root, "swapped.json");
+  const sourceA = markedSource("path-a");
+  const sourceB = markedSource("descriptor-b");
+  try {
+    await writeFile(path, sourceA);
+    await writeFile(swapped, sourceB);
+    let reads = 0;
+    const stable = readStableVisualParitySource(path, 1024 * 1024, {
+      readSource() {
+        reads += 1;
+        return reads === 1
+          ? { text: sourceB, identity: identity(swapped) }
+          : { text: sourceA, identity: identity(path) };
+      },
+    });
+    assert.equal(reads, 2);
+    assert.equal(stable.source, sourceA);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Visual Parity keeps every summary hot while bounding bodies and pruning absent bindings", async () => {
   const root = await mkdtemp(join(tmpdir(), "burnlist-visual-cache-"));
   try {
     const countPaths = Array.from({ length: VISUAL_PARITY_CACHE_MAX_ENTRIES + 1 }, (_, index) =>
       join(root, `count-${index}.json`));
     await Promise.all(countPaths.map((path, index) => writeFile(path, markedSource(`count-${index}`))));
-    const countBindings = new Map([["visual-parity", countPaths.map((path) => ({ path }))]]);
+    const countBindings = new Map([["visual-parity", countPaths.map((path) =>
+      ({ path, repoKey: null, repoRoot: root }))]]);
     const countCache = new Map();
+    assert.equal(visualParityHandler.dashboardEntries(dashboardContext(countCache, countBindings)).length,
+      countPaths.length);
+    const countState = cacheState(countCache);
+    const hotSummaries = new Map(countState.summaries);
+    assert.equal(countState.summaries.size, countPaths.length);
+    assert.equal(countState.responses.size, 0);
+    visualParityHandler.dashboardEntries(dashboardContext(countCache, countBindings));
+    for (const [path, summary] of hotSummaries) assert.equal(countState.summaries.get(path), summary);
+
     for (const path of countPaths) {
       visualParityHandler.serveData(handlerContext(path, countCache, {}, {
         maxOvenDataBytes: 1024 * 1024,
         ovenDataBindings: countBindings,
       }));
     }
-    const countState = cacheState(countCache);
-    assert.equal(countState.entries.size, VISUAL_PARITY_CACHE_MAX_ENTRIES);
-    assert.equal(countState.entries.has(countPaths[0]), false);
-    assert.equal(countState.entries.has(countPaths.at(-1)), true);
+    assert.equal(countState.responses.size, VISUAL_PARITY_CACHE_MAX_ENTRIES);
+    assert.equal(countState.responses.has(countPaths[0]), false);
+    assert.equal(countState.responses.has(countPaths.at(-1)), true);
+    const responseOrder = [...countState.responses.keys()];
+    const servedSummaries = new Map(countState.summaries);
+    visualParityHandler.dashboardEntries(dashboardContext(countCache, countBindings));
+    assert.deepEqual([...countState.responses.keys()], responseOrder);
+    for (const [path, summary] of servedSummaries) assert.equal(countState.summaries.get(path), summary);
 
-    countBindings.set("visual-parity", [{ path: countPaths.at(-1) }]);
+    countBindings.set("visual-parity", [{ path: countPaths.at(-1), repoKey: null, repoRoot: root }]);
     visualParityHandler.serveData(handlerContext(countPaths.at(-1), countCache, {}, {
       maxOvenDataBytes: 1024 * 1024,
       ovenDataBindings: countBindings,
     }));
-    assert.deepEqual([...countState.entries.keys()], [countPaths.at(-1)]);
+    assert.deepEqual([...countState.responses.keys()], [countPaths.at(-1)]);
+    assert.deepEqual([...countState.summaries.keys()], [countPaths.at(-1)]);
 
     const bytePaths = Array.from({ length: 3 }, (_, index) => join(root, `byte-${index}.json`));
     const byteSources = bytePaths.map((_, index) => markedSource(`byte-${index}`, 40_000));
     await Promise.all(bytePaths.map((path, index) => writeFile(path, byteSources[index])));
     assert.equal(new Set(byteSources.map((source) => Buffer.byteLength(source))).size, 1);
     const maxOvenDataBytes = Buffer.byteLength(byteSources[0]);
-    const byteBindings = new Map([["visual-parity", bytePaths.map((path) => ({ path }))]]);
+    const byteBindings = new Map([["visual-parity", bytePaths.map((path) =>
+      ({ path, repoKey: null, repoRoot: root }))]]);
     const byteCache = new Map();
     for (const path of bytePaths) {
       visualParityHandler.serveData(handlerContext(path, byteCache, {}, {
@@ -214,9 +265,13 @@ test("Visual Parity bounds count and bytes and prunes paths absent from current 
       }));
     }
     const byteState = cacheState(byteCache);
-    assert.equal(byteState.entries.size, 2);
-    assert.equal(byteState.entries.has(bytePaths[0]), false);
-    assert.ok(byteState.totalBytes <= maxOvenDataBytes * 2);
+    assert.equal(byteState.responses.size, 2);
+    assert.equal(byteState.summaries.size, 3);
+    assert.equal(byteState.responses.has(bytePaths[0]), false);
+    assert.ok(byteState.responseBytes <= maxOvenDataBytes * 2);
+    const byteResponseOrder = [...byteState.responses.keys()];
+    visualParityHandler.dashboardEntries(dashboardContext(byteCache, byteBindings, maxOvenDataBytes));
+    assert.deepEqual([...byteState.responses.keys()], byteResponseOrder);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

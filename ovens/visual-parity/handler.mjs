@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import { lstatSync } from "node:fs";
 import { basename } from "node:path";
 import { OVEN_DATA_INPUT, registerOvenHandler } from "../../src/ovens/oven-registry.mjs";
-import { readTextFileWithLimit, safeStat } from "../../src/server/fs-safe.mjs";
+import { readTextFileWithIdentity } from "../../src/server/fs-safe.mjs";
 import { assertVisualParityData } from "./contract.mjs";
 
 export const VISUAL_PARITY_CACHE_MAX_ENTRIES = 8;
@@ -40,29 +41,41 @@ function visualParitySummary(payload, stat) {
   };
 }
 
-function fileSnapshot(bindingPath, statPath = safeStat) {
+function safeLstat(path) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+
+function versionSignature(bindingPath, identity) {
+  return [bindingPath, identity.dev, identity.ino, identity.size, identity.mtimeMs, identity.ctimeMs].join("\0");
+}
+
+function fileSnapshot(bindingPath, statPath = safeLstat) {
   const stat = statPath(bindingPath);
-  if (!stat?.isFile()) return null;
+  if (!stat?.isFile() || stat.isSymbolicLink?.()) return null;
   return {
     stat,
-    signature: [bindingPath, stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs].join("\0"),
+    signature: versionSignature(bindingPath, stat),
   };
 }
 
 export function readStableVisualParitySource(bindingPath, maxBytes, {
-  readSource = readTextFileWithLimit,
-  statPath = safeStat,
+  readSource = readTextFileWithIdentity,
+  statPath = safeLstat,
 } = {}) {
   for (let attempt = 0; attempt < DATA_READ_ATTEMPTS; attempt += 1) {
     const before = fileSnapshot(bindingPath, statPath);
     if (!before) throw new Error("configured Visual Parity data is missing");
     try {
-      const source = readSource(bindingPath, maxBytes, "Visual Parity Oven data");
+      const { text: source, identity } = readSource(bindingPath, maxBytes, "Visual Parity Oven data");
       const after = fileSnapshot(bindingPath, statPath);
-      if (after?.signature === before.signature) return { source, ...after };
+      if (after?.signature === versionSignature(bindingPath, identity)) return { source, ...after };
     } catch (error) {
       const after = fileSnapshot(bindingPath, statPath);
-      if (after?.signature === before.signature) throw error;
+      if (error?.code !== "ESTALE" && after?.signature === before.signature) throw error;
     }
   }
   throw Object.assign(new Error("configured Visual Parity data changed while it was read"), { code: "ESTALE" });
@@ -70,18 +83,19 @@ export function readStableVisualParitySource(bindingPath, maxBytes, {
 
 function responseCache(ctx) {
   let state = ctx.cache.get(DATA_CACHE_KEY);
-  if (!state || !(state.entries instanceof Map) || !Number.isSafeInteger(state.totalBytes)) {
-    state = { entries: new Map(), totalBytes: 0 };
+  if (!state || !(state.responses instanceof Map) || !(state.summaries instanceof Map)
+    || !Number.isSafeInteger(state.responseBytes)) {
+    state = { responses: new Map(), summaries: new Map(), responseBytes: 0 };
     ctx.cache.set(DATA_CACHE_KEY, state);
   }
   return state;
 }
 
-function removeCachedPath(state, path) {
-  const cached = state.entries.get(path);
+function removeCachedResponse(state, path) {
+  const cached = state.responses.get(path);
   if (!cached) return;
-  state.entries.delete(path);
-  state.totalBytes -= cached.sourceBytes;
+  state.responses.delete(path);
+  state.responseBytes -= cached.sourceBytes;
 }
 
 function cacheByteLimit(ctx) {
@@ -92,8 +106,8 @@ function cacheByteLimit(ctx) {
 }
 
 function enforceCacheLimits(state, maxBytes) {
-  while (state.entries.size > VISUAL_PARITY_CACHE_MAX_ENTRIES || state.totalBytes > maxBytes) {
-    removeCachedPath(state, state.entries.keys().next().value);
+  while (state.responses.size > VISUAL_PARITY_CACHE_MAX_ENTRIES || state.responseBytes > maxBytes) {
+    removeCachedResponse(state, state.responses.keys().next().value);
   }
 }
 
@@ -102,8 +116,11 @@ function prepareResponseCache(ctx) {
   const bindings = ctx.ovenDataBindings?.get?.("visual-parity");
   if (Array.isArray(bindings)) {
     const activePaths = new Set(bindings.map((binding) => binding.path));
-    for (const path of state.entries.keys()) {
-      if (!activePaths.has(path)) removeCachedPath(state, path);
+    for (const path of state.responses.keys()) {
+      if (!activePaths.has(path)) removeCachedResponse(state, path);
+    }
+    for (const path of state.summaries.keys()) {
+      if (!activePaths.has(path)) state.summaries.delete(path);
     }
   }
   enforceCacheLimits(state, cacheByteLimit(ctx));
@@ -114,23 +131,47 @@ function responsePrefix(bindingPath) {
   return Buffer.from(`${JSON.stringify({ ovenId: "visual-parity", path: bindingPath }).slice(0, -1)},"payload":`);
 }
 
-function visualParityDataCache(ctx, bindingPath, state) {
-  const observed = fileSnapshot(bindingPath);
-  if (!observed) throw new Error("configured Visual Parity data is missing");
-  const cached = state.entries.get(bindingPath);
-  if (cached?.signature === observed.signature) {
-    state.entries.delete(bindingPath);
-    state.entries.set(bindingPath, cached);
-    return cached;
-  }
-  removeCachedPath(state, bindingPath);
+function readValidatedVisualParityData(ctx, bindingPath) {
   const { source, stat, signature } = readStableVisualParitySource(bindingPath, ctx.maxOvenDataBytes);
   const payload = JSON.parse(source);
   validateVisualParityRuntimeData(payload);
-  const sourceBuffer = Buffer.from(source);
+  return { source, signature, summary: visualParitySummary(payload, stat) };
+}
+
+function cacheSummary(state, bindingPath, data) {
+  const cached = { signature: data.signature, summary: data.summary };
+  state.summaries.set(bindingPath, cached);
+  return cached.summary;
+}
+
+function visualParitySummaryCache(ctx, bindingPath, state) {
+  const observed = fileSnapshot(bindingPath);
+  if (!observed) throw new Error("configured Visual Parity data is missing");
+  const cached = state.summaries.get(bindingPath);
+  if (cached?.signature === observed.signature) {
+    return cached.summary;
+  }
+  state.summaries.delete(bindingPath);
+  removeCachedResponse(state, bindingPath);
+  return cacheSummary(state, bindingPath, readValidatedVisualParityData(ctx, bindingPath));
+}
+
+function visualParityDataCache(ctx, bindingPath, state) {
+  const observed = fileSnapshot(bindingPath);
+  if (!observed) throw new Error("configured Visual Parity data is missing");
+  const cached = state.responses.get(bindingPath);
+  if (cached?.signature === observed.signature) {
+    state.responses.delete(bindingPath);
+    state.responses.set(bindingPath, cached);
+    return cached;
+  }
+  removeCachedResponse(state, bindingPath);
+  const data = readValidatedVisualParityData(ctx, bindingPath);
+  cacheSummary(state, bindingPath, data);
+  const sourceBuffer = Buffer.from(data.source);
   const prefix = responsePrefix(bindingPath);
   const result = {
-    signature,
+    signature: data.signature,
     prefix,
     source: sourceBuffer,
     suffix: RESPONSE_SUFFIX,
@@ -138,13 +179,11 @@ function visualParityDataCache(ctx, bindingPath, state) {
     responseBytes: prefix.length + sourceBuffer.length + RESPONSE_SUFFIX.length,
     etag: `W/"vp-${createHash("sha256")
       .update(prefix).update(sourceBuffer).update(RESPONSE_SUFFIX).digest("hex")}"`,
-    readPath: bindingPath,
-    summary: visualParitySummary(payload, stat),
   };
   const maxBytes = cacheByteLimit(ctx);
   if (result.sourceBytes <= maxBytes) {
-    state.entries.set(bindingPath, result);
-    state.totalBytes += result.sourceBytes;
+    state.responses.set(bindingPath, result);
+    state.responseBytes += result.sourceBytes;
     enforceCacheLimits(state, maxBytes);
   }
   return result;
@@ -258,7 +297,7 @@ export const visualParityHandler = Object.freeze({
     const state = prepareResponseCache(ctx);
     return (ctx.ovenDataBindings.get("visual-parity") ?? []).map((binding) => {
       try {
-        const { summary } = visualParityDataCache(ctx, binding.path, state);
+        const summary = visualParitySummaryCache(ctx, binding.path, state);
         const repo = binding.repoKey === null ? "visual-parity"
           : ctx.discoveredRepos().find((entry) => entry.repoKey === binding.repoKey)?.name
             ?? basename(binding.repoRoot);

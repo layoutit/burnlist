@@ -15,7 +15,7 @@ import {
 import { join } from "node:path";
 import { assertOvenPackageFileLimits } from "./oven-storage.mjs";
 
-export { readTextFileWithLimit } from "./fs-bounded-read.mjs";
+export { readTextFileWithIdentity, readTextFileWithLimit } from "./fs-bounded-read.mjs";
 export { ovenPackageLockRoot, withLock, withOvenPackageLock } from "./oven-package-lock.mjs";
 
 export const OVEN_REV_GRACE_MS = 60_000;
