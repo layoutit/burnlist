@@ -168,11 +168,13 @@ npm run tui
 
 The TUI reads the dashboard URL from `~/.burnlist/server.json`; pass an explicit
 URL with `npm run tui -- --server http://127.0.0.1:4510`. Screen layouts are
-declarative `.glyph` documents under `tui/screens/`. A standalone executable with
-the OpenTUI native renderer and glyphcss source embedded is produced by
-`npm run build:tui`.
+declarative `.glyph` documents under `tui/screens/`. A standalone executable
+with the OpenTUI native renderer and glyphcss source embedded is produced by
+`npm run build:tui`. Once built, open it through the regular CLI with
+`burnlist -i`; pass an explicit dashboard with
+`burnlist -i --server http://127.0.0.1:4510`.
 
-Use up/down and `enter` to navigate Burnlists and their items. `o` opens the
+Use up/down to navigate Burnlists and inspect their items. `o` opens the
 global generic Oven catalog; installed repository-specific Ovens remain scoped
 to their Burnlists. In a Burnlist, `[` and `]` move between compatible Oven
 lenses. `q` always goes back, and `escape` goes back from nested views or exits

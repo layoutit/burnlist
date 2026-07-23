@@ -34,6 +34,12 @@ function printSkillUsage(command) {
 }
 
 async function main() {
+if (args.includes("-i") || args.includes("--interactive")) {
+  const { runInteractiveCli } = await import("../src/cli/interactive-cli.mjs");
+  process.exitCode = runInteractiveCli({ args, packageRoot });
+  return;
+}
+
 if (args[0] === "install" || args[0] === "uninstall") {
   if (args.includes("--help") || args.includes("-h")) {
     printSkillUsage(args[0]);
@@ -88,6 +94,7 @@ if (!["oven", "hooks"].includes(args[0]) && (args.includes("--help") || args.inc
 
 Usage:
   burnlist [--port <port>] [--scan-root <repo[,repo...]>]
+  burnlist -i [--server <url>]
   burnlist --plan <burnlist.md> --check
   burnlist --plan <burnlist.md> --digest
   burnlist --close-completed [--scan-root <repo[,repo...]>]
@@ -113,6 +120,7 @@ Usage:
   burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 
 Options:
+  -i, --interactive     Open the interactive terminal UI.
   --auto-port           Try the next available loopback port.
   --host <host>         Bind host; loopback is required by default.
   --state-dir <path>    Override ignored dashboard observer state.
