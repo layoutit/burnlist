@@ -453,6 +453,7 @@ for (const entry of officialOvenCatalog.entries) {
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
+run(process.execPath, ["scripts/audit-console-oven-behavior.mjs", "--check"]);
 run(process.execPath, ["--test", ...verificationTestFiles]);
 for (const file of verificationSerialTestFiles) run(process.execPath, ["--test", file]);
 run(process.execPath, ["dashboard/src/oven/test-support/run-oven-tests.mjs"]);
