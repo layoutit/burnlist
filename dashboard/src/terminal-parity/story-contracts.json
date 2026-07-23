@@ -337,6 +337,25 @@
       ]
     },
     {
+      "id": "dashboard/src/components/TerminalFrame/TerminalFrame.stories.tsx#GlyphcssFixture",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "GlyphcssFixture",
+            "sourceFingerprint": "548219d1c51253e7e5445ece9e5600f08e1353d6f690834f83712d83a924f46d",
+            "arg.viewport": "42",
+            "arg.interaction": "initial",
+            "arg.animation": "t0",
+            "arg.motion": "full",
+            "selection": "initial",
+            "content": "component:TerminalFramePreview"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/layout/Alert/Alert.stories.tsx#Playground",
       "states": [
         {

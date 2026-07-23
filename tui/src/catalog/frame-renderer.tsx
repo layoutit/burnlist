@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { createTestRenderer, ManualClock } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { act } from "react";
-import { FIXTURE_ID, FixtureFlame, fixtureSource } from "./fixture-flame";
+import { FIXTURE_ID, FixtureFlame } from "./fixture-flame";
+import { glyphFixture } from "./glyph-fixture";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame, type TerminalFrameIndex } from "./frame-contract";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -46,7 +47,7 @@ function capture(setup: Awaited<ReturnType<typeof createTestRenderer>>, recorded
   const text = recorded.frame.split("\n").map((line) => line.trimEnd());
   return { schema: FRAME_SCHEMA, fixture: FIXTURE_ID, checkpoint, viewport: { width: buffer.width, height: buffer.height }, semanticText: text, cells: cellsFromFrame(recorded.frame, buffer.width, buffer.height, recorded.buffers || {}), renderer: provenance, fixtureSha256 };
 }
-async function render(width: number, checkpoint: string, reducedMotion: boolean, key = false, provenance: TerminalFrame["renderer"], fixtureSha256 = sha(fixtureSource), advance = 240): Promise<TerminalFrame> {
+async function render(width: number, checkpoint: string, reducedMotion: boolean, key: string | null, provenance: TerminalFrame["renderer"], fixtureSha256: string, advance: number): Promise<TerminalFrame> {
   const clock = new ManualClock(), setup = await createTestRenderer({ width, height: 12, clock, targetFps: 60, useThread: false });
   const rootNode = createRoot(setup.renderer); let recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } } | undefined;
   const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
@@ -56,13 +57,13 @@ async function render(width: number, checkpoint: string, reducedMotion: boolean,
   try {
     await act(async () => { flushSync(() => rootNode.render(<FixtureFlame reducedMotion={reducedMotion} clock={clock} />)); });
     await setup.renderOnce();
-    if (key) { await act(async () => { setup.mockInput.pressArrow("right"); await Promise.resolve(); }); await setup.renderOnce(); }
+    if (key === "right") { await act(async () => { setup.mockInput.pressArrow("right"); await Promise.resolve(); }); await setup.renderOnce(); }
     if (!reducedMotion && advance) { await act(async () => { clock.advance(advance); }); await setup.renderOnce(); }
     if (!recorded) throw new Error("terminal story frames: OpenTUI produced no raw frame"); return capture(setup, recorded, checkpoint, fixtureSha256, provenance);
   } finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment; }
 }
 export async function buildFrames(): Promise<Record<string, string>> {
-  const inputs = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/fixture-flame.tsx", "tui/src/catalog/frame-renderer.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"];
+  const inputs = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/catalog/frame-renderer.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"];
   const source = await Promise.all(inputs.map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`));
   const sourceSha256 = sha(source.join("\n"));
   const lock = JSON.parse(await readFile(resolve(root, "tui/package-lock.json"), "utf8"));
@@ -71,9 +72,8 @@ export async function buildFrames(): Promise<Record<string, string>> {
   if (Bun.version !== bunPackage.version) fail(`Bun runtime ${Bun.version} does not match pinned ${bunPackage.version}`);
   const packageNames = ["@opentui/core", "@opentui/react", "glyphcss", "@glyphcss/core", "@glyphcss/effects"] as const;
   const provenance: RendererProvenance = { sourceSha256, bun: { runtimeVersion: Bun.version, packageVersion: bunPackage.version, integrity: bunPackage.integrity }, packages: Object.fromEntries(packageNames.map((name) => [name, packageRecord(name)])) };
-  const frames = [
-    await render(42, "t0", false, false, provenance, sourceSha256, 0), await render(42, "t240", false, false, provenance, sourceSha256, 240), await render(42, "keyboard-right", false, true, provenance, sourceSha256), await render(42, "reduced-t0", true, false, provenance, sourceSha256, 0), await render(42, "reduced-t240", true, false, provenance, sourceSha256, 240), await render(64, "t0", false, false, provenance, sourceSha256, 0),
-  ];
+  const frames = [];
+  for (const state of glyphFixture.states) for (const width of state.viewports) frames.push(await render(width, state.checkpoint, state.reducedMotion, state.key, provenance, sourceSha256, state.advanceMs));
   return Object.fromEntries(frames.map((frame) => { const text = stable(frame); return [frameName(frame, text), text]; }));
 }
 async function desired() {
