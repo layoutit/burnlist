@@ -22,7 +22,7 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
       {activity?.tone === "info" ? <LoadingStar label="Refreshing" /> : activity ? <text fg={palette.red}>{activity.message}</text> : null}
     </box>;
   }
-  return <box height={5} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.line} backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
+  return <box height={3} flexDirection="row" alignItems="center" backgroundColor={chrome.header} paddingLeft={2} paddingRight={2}>
     <BrandMark />
     <box width={12} paddingLeft={1}><text fg={palette.soft}>Burnlist</text></box>
     <box flexGrow={1} alignItems="center"><text fg={palette.muted}>{center ? fitText(center, 48).trimEnd() : ""}</text></box>
@@ -53,7 +53,7 @@ export function DetailSummary({ burnlist, progress, fireWidth, fireHeight, fps, 
     ?? "";
   const actualFireWidth = compact ? Math.min(9, fireWidth) : fireWidth;
   const actualFireHeight = compact ? Math.min(5, fireHeight) : fireHeight;
-  return <box flexDirection={compact ? "row" : "column"} padding={2} gap={compact ? 3 : 1}>
+  return <box flexDirection={compact ? "row" : "column"} padding={compact ? 1 : 2} gap={compact ? 2 : 1}>
     <box flexGrow={1} flexDirection="column">
       <text fg={palette.dim}>{`${burnlist.repo}  /  ${burnlist.id}`}</text>
       <text fg={palette.foreground}>{burnlist.title}</text>

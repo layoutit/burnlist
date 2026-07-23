@@ -1,17 +1,11 @@
 import { detailItems, visualParityPayload } from "./detail-items";
 import { compactTime, fitText, palette, visibleWindow } from "./theme";
-import { useTerminalChrome } from "./terminal-chrome";
 import { TableCell, TableLine } from "./table-view";
 import type { BurnlistSummary, DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
 
-function Stat({ label, value, tone = palette.foreground }: { label: string; value: string; tone?: string }) {
-  return <box flexGrow={1} flexDirection="column" paddingLeft={1}><text fg={palette.dim}>{label.toUpperCase()}</text><text fg={tone}>{value}</text></box>;
-}
-
 function OvenHeader({ active, lenses }: { active: OvenSummary | null; lenses: OvenSummary[] }) {
-  const chrome = useTerminalChrome();
-  return <box height={4} flexDirection="column" border={["bottom"]} borderColor={chrome.line}>
-    <box height={2} flexDirection="row" alignItems="center" gap={2}>
+  return <box height={3} flexDirection="column" paddingLeft={1}>
+    <box height={1} flexDirection="row" alignItems="center" gap={2}>
       <text fg={palette.foreground}>{active?.name ?? "Oven"}</text><text fg={palette.dim}>{active?.contract ?? "No Oven selected"}</text>
     </box>
     <box height={1} flexDirection="row" gap={2}>
@@ -46,19 +40,19 @@ function ItemRows({ items, selected, height }: { items: DetailItem[]; selected: 
 }
 
 function ChecklistOven({ progress, items, selected, height }: { progress: ProgressSnapshot | null; items: DetailItem[]; selected: number; height: number }) {
-  const chrome = useTerminalChrome();
   if (!progress) return <box paddingTop={2}><text fg={palette.dim}>Checklist data is unavailable.</text></box>;
   return <box flexDirection="column" flexGrow={1}>
-    <box height={4} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.faintLine}>
-      <Stat label="Progress" value={`${progress.percent}%`} tone={palette.green} /><Stat label="Done" value={String(progress.done)} /><Stat label="Remaining" value={String(progress.remaining)} /><Stat label="Warnings" value={String(progress.warnings?.length ?? 0)} tone={progress.warnings?.length ? palette.amber : palette.muted} />
+    <box height={2} flexDirection="row" alignItems="center" paddingLeft={1} gap={2}>
+      <text fg={palette.green}>{`${progress.percent}%`}</text>
+      <text fg={palette.muted}>{`${progress.done} done · ${progress.remaining} remaining`}</text>
+      {progress.warnings?.length ? <text fg={palette.amber}>{`${progress.warnings.length} warnings`}</text> : null}
     </box>
-    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Burnlist items</text><text fg={palette.dim}>↑/↓ inspect</text></box>
-    <ItemRows items={items} selected={selected} height={Math.max(1, height - 7)} />
+    <box height={2} paddingLeft={1} flexDirection="row" alignItems="center" gap={2}><text fg={palette.foreground}>Items</text><text fg={palette.dim}>↑/↓ inspect</text></box>
+    <ItemRows items={items} selected={selected} height={Math.max(1, height - 4)} />
   </box>;
 }
 
 function VisualParityOven({ data, items, selected, height }: { data: OvenDataSnapshot | null; items: DetailItem[]; selected: number; height: number }) {
-  const chrome = useTerminalChrome();
   const payload = visualParityPayload(data);
   if (!payload) return <box paddingTop={2}><text fg={palette.dim}>Visual Parity data is unavailable.</text></box>;
   const domain = payload.domains.find((entry) => entry.qualification === "target") ?? payload.domains[0]!;
@@ -66,9 +60,9 @@ function VisualParityOven({ data, items, selected, height }: { data: OvenDataSna
   const passed = rows.filter((entry) => entry.status === "pass").length;
   const qualified = payload.comparisons.every((comparison) => comparison.status === "pass");
   return <box flexDirection="column" flexGrow={1}>
-    <box height={3} flexDirection="row" alignItems="center" gap={2} border={["bottom"]} borderColor={chrome.faintLine}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
-    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Current comparison state</text><text fg={palette.dim}>↑/↓ compare frames</text></box>
-    <ItemRows items={items} selected={selected} height={Math.max(1, height - 6)} />
+    <box height={2} flexDirection="row" alignItems="center" paddingLeft={1} gap={2}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
+    <box height={2} paddingLeft={1} flexDirection="row" alignItems="center" gap={2}><text fg={palette.foreground}>Frames</text><text fg={palette.dim}>↑/↓ compare</text></box>
+    <ItemRows items={items} selected={selected} height={Math.max(1, height - 4)} />
   </box>;
 }
 
@@ -89,7 +83,7 @@ export function OvenPane({ active, lenses, progress, data, burnlist, height, ite
 }) {
   const items = detailItems(active, progress, data);
   const selected = Math.max(0, Math.min(itemIndex, Math.max(0, items.length - 1)));
-  const bodyHeight = Math.max(1, height - 4);
+  const bodyHeight = Math.max(1, height - 3);
   return <box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
     <OvenHeader active={active} lenses={lenses} />
     {active?.contract === "checklist-progress@1"

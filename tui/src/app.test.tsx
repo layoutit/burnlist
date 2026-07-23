@@ -72,7 +72,7 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("Burnlist items") && frame.includes("Current item"));
+    await setup.waitForFrame((frame) => frame.includes("Items") && frame.includes("Current item"));
     setup.mockInput.pressArrow("down");
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();

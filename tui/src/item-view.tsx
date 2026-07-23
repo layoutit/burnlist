@@ -1,14 +1,12 @@
 import { GlyphImage } from "./glyph-image";
 import { visualParityPayload } from "./detail-items";
 import { compactTime, fitText, palette } from "./theme";
-import { useTerminalChrome } from "./terminal-chrome";
 import type { DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
 
 function ChecklistItem({ item, width }: { item: DetailItem; width: number }) {
-  const chrome = useTerminalChrome();
   const fields = Object.entries(item.fields ?? {});
-  return <box flexGrow={1} flexDirection="column" padding={2} gap={1}>
-    <box height={3} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.line}>
+  return <box flexGrow={1} flexDirection="column" padding={1} gap={1}>
+    <box height={2} flexDirection="row" alignItems="center">
       <box width={14}><text fg={item.kind === "active" ? palette.green : palette.blue}>{item.status}</text></box>
       <box flexGrow={1}><text fg={palette.foreground}>{item.id}</text></box>
       {item.latest ? <text fg={palette.amber}>LATEST</text> : null}
@@ -16,7 +14,7 @@ function ChecklistItem({ item, width }: { item: DetailItem; width: number }) {
     <text fg={palette.foreground}>{item.title}</text>
     {item.completedAt ? <text fg={palette.dim}>{`Completed ${compactTime(item.completedAt)} · ${item.completedAt}`}</text> : null}
     {fields.length ? <box paddingTop={1}><text fg={palette.dim}>ITEM FIELDS</text></box> : null}
-    {fields.map(([label, value]) => <box key={label} flexDirection="column" border={["bottom"]} borderColor={chrome.faintLine} paddingBottom={1}>
+    {fields.map(([label, value]) => <box key={label} flexDirection="column" paddingBottom={1}>
       <text fg={palette.blue}>{label.toUpperCase()}</text>
       <text fg={palette.muted}>{fitText(value, Math.max(24, width - 8)).trimEnd()}</text>
     </box>)}
@@ -35,7 +33,6 @@ function VisualFrame({ item, data, domainIndex, width, height }: {
   width: number;
   height: number;
 }) {
-  const chrome = useTerminalChrome();
   const payload = visualParityPayload(data);
   const comparison = payload?.comparisons[item.comparisonIndex ?? -1];
   const domain = payload?.domains[domainIndex] ?? payload?.domains.find((entry) => entry.qualification === "target") ?? payload?.domains[0];
@@ -45,7 +42,7 @@ function VisualFrame({ item, data, domainIndex, width, height }: {
   const imageHeight = Math.max(3, height - 13);
   const images = [result.reference, result.candidate, result.diff];
   return <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1}>
-    <box height={3} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.line} gap={2}>
+    <box height={2} flexDirection="row" alignItems="center" gap={2}>
       <text fg={result.status === "pass" ? palette.green : palette.red}>{result.status.toUpperCase()}</text>
       <text fg={palette.foreground}>{`${item.id} · ${comparison.label}`}</text>
       {item.latest ? <text fg={palette.amber}>LATEST</text> : null}

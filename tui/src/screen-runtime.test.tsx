@@ -143,7 +143,7 @@ describe("dashboard-shaped .glyph runtime", () => {
       screen: parsed(burnlistSource), progress, selectedBurnlist: checklistBurnlist,
       activeOven: ovens[0]!, ovenLenses: [ovens[0]!], itemIndex: 1,
     }));
-    expect(frame).toContain("Burnlist items");
+    expect(frame).toContain("Items");
     expect(frame).toContain("Render item detail");
     expect(frame).toContain("Render the fire");
     expect(frame).toContain("LATEST");
