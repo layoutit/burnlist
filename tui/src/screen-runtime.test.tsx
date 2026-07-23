@@ -169,6 +169,36 @@ describe("dashboard-shaped .glyph runtime", () => {
     busy.root.unmount();
   });
 
+  test("clips a long detail table above the footer", async () => {
+    const longProgress: ProgressSnapshot = {
+      ...progress,
+      total: 20,
+      done: 0,
+      remaining: 20,
+      percent: 0,
+      active: Array.from({ length: 20 }, (_, index) => ({
+        id: `task-${String(index).padStart(2, "0")}`,
+        title: `Task ${String(index).padStart(2, "0")}`,
+      })),
+      completed: [],
+    };
+    const { frame, root } = await renderFrame(100, 32, props({
+      screen: parsed(burnlistSource),
+      progress: longProgress,
+      selectedBurnlist: checklistBurnlist,
+      activeOven: ovens[0]!,
+      ovenLenses: [ovens[0]!],
+      itemIndex: 19,
+    }));
+    const lines = frame.split("\n");
+    const selectedRow = lines.findIndex((line) => line.includes("task-19"));
+    const footerRow = lines.findIndex((line) => line.includes("↑/↓:inspect"));
+    expect(selectedRow).toBeGreaterThan(-1);
+    expect(selectedRow).toBeLessThan(footerRow);
+    expect(lines[footerRow]).not.toContain("task-");
+    root.unmount();
+  });
+
   test("renders the selected Checklist item's complete detail", async () => {
     const items = detailItems(ovens[0]!, progress, null);
     const { frame, root } = await renderFrame(110, 34, props({

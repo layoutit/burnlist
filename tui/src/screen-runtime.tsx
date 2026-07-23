@@ -51,11 +51,15 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summary = node.children.find((child) => child.kind === "detail-summary");
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
-  return <box flexGrow={1} flexDirection={collapsed ? "column" : "row"}>
+  const contentHeight = Math.max(1, height - 7);
+  const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
+  return <box flexGrow={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : summaryWidth}
-      height={collapsed ? Math.max(12, Math.floor(height * 0.55)) : "100%"}
+      height={collapsed ? sidebarHeight : "100%"}
       flexShrink={0}
+      minHeight={0}
+      overflow="hidden"
       border={collapsed ? ["bottom"] : ["right"]}
       borderColor={chrome.line}
       flexDirection="column"
@@ -76,11 +80,11 @@ function DetailSplit({ node, props, width, height, chrome }: {
         progress={props.progress}
         data={props.ovenData}
         burnlist={props.selectedBurnlist}
-        height={collapsed ? Math.floor(height * 0.55) - 8 : height - 15}
+        height={Math.max(1, sidebarHeight - 8)}
         itemIndex={props.itemIndex}
       />
     </box>
-    <box flexGrow={1} minWidth={0}>
+    <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden">
       <ItemDetail
         item={props.selectedItem}
         oven={props.activeOven}
@@ -88,7 +92,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         data={props.ovenData}
         domainIndex={props.domainIndex}
         width={collapsed ? width : width - summaryWidth}
-        height={collapsed ? Math.max(8, Math.ceil(height * 0.45) - 7) : height - 7}
+        height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
       />
     </box>
   </box>;
@@ -154,7 +158,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
 function ScreenSurface(props: ScreenRuntimeProps) {
   const { width, height } = useTerminalDimensions();
   const chrome = useTerminalChrome();
-  return <box width="100%" height="100%" flexDirection="column" backgroundColor={chrome.background}>
+  return <box width="100%" height="100%" flexDirection="column" overflow="hidden" backgroundColor={chrome.background}>
     {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome))}
   </box>;
 }

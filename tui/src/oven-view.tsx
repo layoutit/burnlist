@@ -24,7 +24,7 @@ function OvenHeader({ active, lenses }: { active: OvenSummary | null; lenses: Ov
 function ItemRows({ items, selected, height }: { items: DetailItem[]; selected: number; height: number }) {
   const window = visibleWindow(items, selected, Math.max(2, height - 1));
   if (!items.length) return <text fg={palette.dim}>No navigable items are available.</text>;
-  return <box flexGrow={1} flexDirection="column">
+  return <box flexGrow={1} flexDirection="column" minHeight={0} overflow="hidden">
     <TableLine header>
       <TableCell width={9} color={palette.dim}>STATE</TableCell>
       <TableCell width={9} color={palette.dim}>ID</TableCell>
@@ -53,7 +53,7 @@ function ChecklistOven({ progress, items, selected, height }: { progress: Progre
       <Stat label="Progress" value={`${progress.percent}%`} tone={palette.green} /><Stat label="Done" value={String(progress.done)} /><Stat label="Remaining" value={String(progress.remaining)} /><Stat label="Warnings" value={String(progress.warnings?.length ?? 0)} tone={progress.warnings?.length ? palette.amber : palette.muted} />
     </box>
     <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Burnlist items</text><text fg={palette.dim}>↑/↓ inspect</text></box>
-    <ItemRows items={items} selected={selected} height={height - 11} />
+    <ItemRows items={items} selected={selected} height={Math.max(1, height - 7)} />
   </box>;
 }
 
@@ -68,7 +68,7 @@ function VisualParityOven({ data, items, selected, height }: { data: OvenDataSna
   return <box flexDirection="column" flexGrow={1}>
     <box height={3} flexDirection="row" alignItems="center" gap={2} border={["bottom"]} borderColor={chrome.faintLine}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
     <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Current comparison state</text><text fg={palette.dim}>↑/↓ compare frames</text></box>
-    <ItemRows items={items} selected={selected} height={height - 9} />
+    <ItemRows items={items} selected={selected} height={Math.max(1, height - 6)} />
   </box>;
 }
 
@@ -89,5 +89,13 @@ export function OvenPane({ active, lenses, progress, data, burnlist, height, ite
 }) {
   const items = detailItems(active, progress, data);
   const selected = Math.max(0, Math.min(itemIndex, Math.max(0, items.length - 1)));
-  return <box flexDirection="column" flexGrow={1}><OvenHeader active={active} lenses={lenses} />{active?.contract === "checklist-progress@1" ? <ChecklistOven progress={progress} items={items} selected={selected} height={height} /> : active?.id === "visual-parity" ? <VisualParityOven data={data} items={items} selected={selected} height={height} /> : <GenericOven active={active} burnlist={burnlist} data={data} />}</box>;
+  const bodyHeight = Math.max(1, height - 4);
+  return <box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
+    <OvenHeader active={active} lenses={lenses} />
+    {active?.contract === "checklist-progress@1"
+      ? <ChecklistOven progress={progress} items={items} selected={selected} height={bodyHeight} />
+      : active?.id === "visual-parity"
+        ? <VisualParityOven data={data} items={items} selected={selected} height={bodyHeight} />
+        : <GenericOven active={active} burnlist={burnlist} data={data} />}
+  </box>;
 }
