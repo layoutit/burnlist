@@ -11,7 +11,7 @@ const meta = {
     animation: { control: "select", options: ["t0", "t240"] },
     motion: { control: "select", options: ["full", "reduced"] },
   },
-  parameters: { layout: "fullscreen" },
+  parameters: { layout: "fullscreen", terminalParityOwner: "terminal-frame" },
 } satisfies Meta<typeof TerminalFramePreview>;
 
 export default meta;

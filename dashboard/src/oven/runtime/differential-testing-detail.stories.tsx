@@ -16,7 +16,7 @@ import { DifferentialTestingDetail } from "./differential-testing-detail";
 const meta = {
   title: "Patterns/TopCard",
   component: DifferentialTestingDetail,
-  parameters: { layout: "fullscreen" },
+  parameters: { layout: "fullscreen", terminalParityOwner: "oven:differential-testing" },
 } satisfies Meta<typeof DifferentialTestingDetail>;
 
 export default meta;
