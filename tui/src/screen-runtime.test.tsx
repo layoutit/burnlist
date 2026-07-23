@@ -104,6 +104,19 @@ describe("dashboard-shaped .glyph runtime", () => {
     root.unmount();
   });
 
+  test("keeps landing headings, project labels, and values on one shared grid", async () => {
+    const { frame, root } = await renderFrame(200, 42, props());
+    const lines = frame.split("\n");
+    const columns = lines.find((line) => line.includes("BURNLIST") && line.includes("OVEN"))!;
+    const project = lines.find((line) => line.includes("demo") && line.includes("2 Burnlists"))!;
+    const row = lines.find((line) => line.includes("Terminal UI") && line.includes("Checklist"))!;
+    expect(project.indexOf("demo")).toBe(columns.indexOf("BURNLIST"));
+    expect(row.indexOf("Terminal UI")).toBe(columns.indexOf("BURNLIST"));
+    expect(row.indexOf("Checklist")).toBe(columns.indexOf("OVEN"));
+    expect(lines[0]).toContain("⟁ Burnlist   2 Burnlists · 1 project · LIVE");
+    root.unmount();
+  });
+
   test("opens a generic-only Oven catalog", async () => {
     const { frame, root } = await renderFrame(120, 34, props({ screen: parsed(ovensSource), focusId: "ovens" }));
     expect(frame).toContain("Oven catalog");

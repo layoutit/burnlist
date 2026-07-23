@@ -12,4 +12,12 @@ describe("glyphcss fire frame", () => {
     expect(later.char.join("")).not.toBe(first.char.join(""));
     expect(later.color.some((color) => color?.startsWith("#"))).toBe(true);
   });
+
+  test("keeps a readable flame silhouette while its glyph energy animates", () => {
+    const frame = createFireFrameRenderer(12, 7)(0.4);
+    const rows = Array.from({ length: 7 }, (_, row) => frame.char.slice(row * 12, (row + 1) * 12));
+    const occupied = rows.map((row) => row.filter((glyph) => glyph !== " ").length);
+    expect(occupied.at(-1)).toBeGreaterThan(occupied[0]!);
+    expect(occupied.reduce((total, count) => total + count, 0)).toBeGreaterThan(35);
+  });
 });

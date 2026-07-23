@@ -39,7 +39,7 @@ function baseFire(cols: number, rows: number): CellGrid {
     color: "#ff481f",
   });
   const camera = createGlyphOrthographicCamera({ rotX: 0, rotY: -90, zoom: 2 });
-  return rasterizeToCells(buildRasterizeContext({
+  const grid = rasterizeToCells(buildRasterizeContext({
     camera,
     grid: { cols, rows, cellAspect: 2 },
     polygons,
@@ -50,6 +50,30 @@ function baseFire(cols: number, rows: number): CellGrid {
     ambientLight: { color: "#ff8a2b", intensity: 0.7 },
     directionalLight: { color: "#fff0b3", direction: [-0.4, -0.8, 0.5], intensity: 1 },
   }));
+  const shade = grid.shade!;
+  const worldPosition = grid.worldPosition!;
+  const normal = grid.normal!;
+  for (let row = 0; row < rows; row += 1) {
+    const y = 1 - row / Math.max(1, rows - 1);
+    const halfWidth = 0.08 + 0.43 * Math.pow(1 - y, 0.58);
+    const center = 0.5 + Math.sin(y * 8.2) * 0.035;
+    for (let col = 0; col < cols; col += 1) {
+      const index = row * cols + col;
+      const x = (col + 0.5) / cols;
+      const inside = Math.abs(x - center) <= halfWidth;
+      grid.char[index] = inside ? "@" : " ";
+      grid.color[index] = inside ? "#ff6a24" : null;
+      grid.depth[index] = inside ? 0 : Number.POSITIVE_INFINITY;
+      shade[index] = inside ? 1 : 0;
+      worldPosition[index * 3] = col;
+      worldPosition[index * 3 + 1] = row;
+      worldPosition[index * 3 + 2] = 0;
+      normal[index * 3] = 0;
+      normal[index * 3 + 1] = 0;
+      normal[index * 3 + 2] = 1;
+    }
+  }
+  return grid;
 }
 
 function fireParams(time: number): Record<string, string | number | boolean> {
@@ -72,12 +96,12 @@ function fireParams(time: number): Record<string, string | number | boolean> {
     amp2: 0.7,
     amp3: 0,
     combine: "add",
-    gain: 1.8,
-    bias: 0.04,
-    scale: 2.4,
-    glyphs: "    .:;+=xX#%@",
-    color: "#ff3214",
-    colorB: "#ffe56b",
+    gain: 2.6,
+    bias: 0.38,
+    scale: 1.8,
+    glyphs: "  .:;+=xX#%@",
+    color: "#ff3b16",
+    colorB: "#ffd95a",
     gradient: 1,
     lit: 0.35,
   };
@@ -133,15 +157,16 @@ export function createFireFrameRenderer(cols = 20, rows = 12) {
       for (let col = 0; col < cols; col += 1) {
         const index = row * cols + col;
         if (baseCoverage[index] <= 0) continue;
-        const visible = output.coverage[index] >= 1
-          || output.coverage[index] > coverageThreshold(col, row);
-        if (!visible) {
-          frame.char[index] = " ";
-          frame.color[index] = null;
+        const energized = output.coverage[index] >= 1
+          || output.coverage[index] > coverageThreshold(col, row) * 0.28;
+        if (!energized) {
+          frame.char[index] = ".";
           continue;
         }
         const channels = output.channels[index]!;
-        if (channels & GlyphEffectOutputChannel.Glyph) frame.char[index] = output.glyph[index]!;
+        if (channels & GlyphEffectOutputChannel.Glyph) {
+          frame.char[index] = output.glyph[index] === " " ? "." : output.glyph[index]!;
+        }
         if (channels & GlyphEffectOutputChannel.Color) frame.color[index] = unpackColor(output.color[index]!);
       }
     }

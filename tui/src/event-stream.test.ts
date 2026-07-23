@@ -22,7 +22,7 @@ describe("dashboard event stream", () => {
     ].join("");
     let invalidations = 0;
     const stop = observeDashboardEvents("http://example.test", {
-      fetchImpl: (async () => new Response(payload, { headers: { "content-type": "text/event-stream" } })) as typeof fetch,
+      fetchImpl: (async () => new Response(payload, { headers: { "content-type": "text/event-stream" } })) as unknown as typeof fetch,
       onInvalidate: () => { invalidations += 1; },
       retryMs: 10_000,
       coalesceMs: 1,

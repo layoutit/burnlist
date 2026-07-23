@@ -6,7 +6,15 @@ import type { BurnlistSummary, ProgressSnapshot } from "./types";
 
 export function BrandHeader({ center, subtitle, compact = false }: { center?: string | null; subtitle: string; compact?: boolean }) {
   const chrome = useTerminalChrome();
-  return <box height={compact ? 1 : 5} flexDirection="row" alignItems="center" border={compact ? [] : ["bottom"]} borderColor={chrome.line} backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
+  if (compact) {
+    return <box height={1} flexDirection="row" alignItems="center" backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
+      <BrandMark />
+      <text fg={palette.soft}>Burnlist</text>
+      <box width={3} />
+      <text fg={palette.dim}>{subtitle}</text>
+    </box>;
+  }
+  return <box height={5} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.line} backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
     <BrandMark />
     <box width={12} paddingLeft={1}><text fg={palette.soft}>Burnlist</text></box>
     <box flexGrow={1} alignItems="center"><text fg={palette.muted}>{center ? fitText(center, 48).trimEnd() : ""}</text></box>
