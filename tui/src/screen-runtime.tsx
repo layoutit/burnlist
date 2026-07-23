@@ -51,9 +51,9 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summary = node.children.find((child) => child.kind === "detail-summary");
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
-  const contentHeight = Math.max(1, height - 5);
+  const contentHeight = Math.max(1, height - 3);
   const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
-  return <box flexGrow={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
+  return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : summaryWidth}
       height={collapsed ? sidebarHeight : "100%"}
@@ -64,7 +64,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
       borderColor={chrome.line}
       flexDirection="column"
     >
-      <box height={6}>
+      <box height={5}>
         <DetailSummary
           burnlist={props.selectedBurnlist}
           progress={props.progress}
@@ -80,7 +80,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         progress={props.progress}
         data={props.ovenData}
         burnlist={props.selectedBurnlist}
-        height={Math.max(1, sidebarHeight - 6)}
+        height={Math.max(1, sidebarHeight - 5)}
         itemIndex={props.itemIndex}
       />
     </box>
@@ -143,11 +143,11 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "detail-split":
       return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
     case "oven-detail":
-      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 5} />;
+      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} />;
     case "item-detail":
-      return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 5} />;
+      return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 3} />;
     case "footer":
-      return <box key={key} height={2} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
+      return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
         <text fg={palette.dim}>{String(node.attributes.hints)}</text>
       </box>;
     default:

@@ -182,21 +182,23 @@ describe("dashboard-shaped .glyph runtime", () => {
       })),
       completed: [],
     };
-    const { frame, root } = await renderFrame(100, 32, props({
-      screen: parsed(burnlistSource),
-      progress: longProgress,
-      selectedBurnlist: checklistBurnlist,
-      activeOven: ovens[0]!,
-      ovenLenses: [ovens[0]!],
-      itemIndex: 19,
-    }));
-    const lines = frame.split("\n");
-    const selectedRow = lines.findIndex((line) => line.includes("task-19"));
-    const footerRow = lines.findIndex((line) => line.includes("↑/↓:inspect"));
-    expect(selectedRow).toBeGreaterThan(-1);
-    expect(selectedRow).toBeLessThan(footerRow);
-    expect(lines[footerRow]).not.toContain("task-");
-    root.unmount();
+    for (const height of [26, 32, 40, 60]) {
+      const { frame, root } = await renderFrame(100, height, props({
+        screen: parsed(burnlistSource),
+        progress: longProgress,
+        selectedBurnlist: checklistBurnlist,
+        activeOven: ovens[0]!,
+        ovenLenses: [ovens[0]!],
+        itemIndex: 19,
+      }));
+      const lines = frame.split("\n");
+      const selectedRow = lines.findIndex((line) => line.includes("task-19"));
+      const footerRow = lines.findIndex((line) => line.includes("↑/↓:inspect"));
+      expect(selectedRow).toBeGreaterThan(-1);
+      expect(selectedRow).toBeLessThan(footerRow);
+      expect(lines[footerRow]).not.toContain("task-");
+      root.unmount();
+    }
   });
 
   test("renders the selected Checklist item's complete detail", async () => {
