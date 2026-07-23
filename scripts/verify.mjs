@@ -98,6 +98,8 @@ const sourceScanExcludes = [
   "notes/burnlists/",
   "output/",
   "research/",
+  "tui/dist/",
+  "tui/node_modules/",
   "website/node_modules/",
   "website/dist/",
   "website/.astro/",

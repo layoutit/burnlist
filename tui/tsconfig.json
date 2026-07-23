@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@glyphcss/core": [
+        "../../../glyphcss/packages/core/src/index.ts",
+        "node_modules/@glyphcss/core"
+      ],
+      "@glyphcss/effects": [
+        "../../../glyphcss/packages/effects/src/index.ts",
+        "node_modules/@glyphcss/effects"
+      ],
+      "glyphcss": [
+        "../../../glyphcss/packages/glyphcss/src/index.ts",
+        "node_modules/glyphcss"
+      ]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"]
+}

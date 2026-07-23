@@ -148,6 +148,36 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 
+## Terminal UI
+
+The experimental terminal observer lives in `tui/`. Its landing page is a
+responsive full-width Burnlist list. Burnlist detail exposes navigable active
+and completed items, marks the latest completion, and opens item-specific Oven
+views. OpenTUI React owns layout and input; glyphcss from the adjacent
+`../../glyphcss` checkout renders the animated fire and effects. Visual Parity
+PNGs use OpenTUI's native 2×2 RGBA supersampler, producing four independently
+sampled pixels per terminal cell with Unicode quadrant blocks. Backgrounds
+remain transparent and dividers adapt to the host terminal palette, including
+VS Code themes.
+Start the dashboard first, then run:
+
+```sh
+npm --prefix tui install
+npm run tui
+```
+
+The TUI reads the dashboard URL from `~/.burnlist/server.json`; pass an explicit
+URL with `npm run tui -- --server http://127.0.0.1:4510`. Screen layouts are
+declarative `.glyph` documents under `tui/screens/`. A standalone executable with
+the OpenTUI native renderer and glyphcss source embedded is produced by
+`npm run build:tui`.
+
+Use up/down and `enter` to navigate Burnlists and their items. `o` opens the
+global generic Oven catalog; installed repository-specific Ovens remain scoped
+to their Burnlists. In a Burnlist, `[` and `]` move between compatible Oven
+lenses. `q` always goes back, and `escape` goes back from nested views or exits
+only from the main landing page. `r` refreshes the current data.
+
 ## Build and Verify
 
 From a source checkout:
@@ -158,9 +188,11 @@ Burnlist's CLI, server, and dashboard support Node.js 18 or newer. The Storybook
 ```sh
 npm install
 npm run build:dashboard
+npm run build:tui
 npm run storybook
 npm run build:storybook
 npm run test:differential-testing
+npm run test:tui
 npm run verify
 npm run verify:clean
 npm run verify:package
