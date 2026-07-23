@@ -149,7 +149,24 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("LATEST");
     expect(frame).toContain("50%");
     expect(frame).toMatch(/[.:;+=xX#%@]/u);
+    const lines = frame.split("\n");
+    const columns = lines.find((line) => line.includes("STATE") && line.includes("UPDATED"))!;
+    const active = lines.find((line) => line.includes("ACTIVE") && line.includes("ui-03"))!;
+    expect(active.indexOf("ACTIVE")).toBe(columns.indexOf("STATE"));
+    expect(active.indexOf("ui-03")).toBe(columns.indexOf("ID"));
     root.unmount();
+  });
+
+  test("shows refresh activity without moving screen content", async () => {
+    const idle = await renderFrame(120, 36, props());
+    const busy = await renderFrame(120, 36, props({ notice: { message: "Refreshing Burnlist data…", tone: "info" } }));
+    const idleLines = idle.frame.split("\n");
+    const busyLines = busy.frame.split("\n");
+    expect(busyLines[0]).toContain("Refreshing");
+    expect(busyLines.findIndex((line) => line.includes("Terminal UI"))).toBe(idleLines.findIndex((line) => line.includes("Terminal UI")));
+    expect(busyLines.findIndex((line) => line.includes("↑/↓:navigate"))).toBe(idleLines.findIndex((line) => line.includes("↑/↓:navigate")));
+    idle.root.unmount();
+    busy.root.unmount();
   });
 
   test("renders the selected Checklist item's complete detail", async () => {

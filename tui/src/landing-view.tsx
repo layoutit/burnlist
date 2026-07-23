@@ -1,7 +1,7 @@
 import type { BurnlistSummary, LandingSnapshot, OvenSummary } from "./types";
 import { groupBurnlists } from "./landing-groups";
 import { compactTime, fitText, palette, progressLabel, visibleWindow } from "./theme";
-import { useTerminalChrome } from "./terminal-chrome";
+import { TableCell, TableGroup, TableLine } from "./table-view";
 
 interface ListProps<T> {
   entries: T[];
@@ -10,17 +10,6 @@ interface ListProps<T> {
   maxRows: number;
   terminalWidth: number;
   empty: string;
-}
-
-function Cell({ children, width, grow = 0, color = palette.muted }: {
-  children: string;
-  width?: number;
-  grow?: number;
-  color?: string;
-}) {
-  return <box width={width} flexGrow={grow} flexShrink={width ? 0 : 1} paddingLeft={1}>
-    <text fg={color}>{children}</text>
-  </box>;
 }
 
 function BurnlistColumns({ width, header, entry }: { width: number; header?: boolean; entry?: BurnlistSummary }) {
@@ -34,16 +23,15 @@ function BurnlistColumns({ width, header, entry }: { width: number; header?: boo
   const titleWidth = Math.max(12, width - fixed);
   const tone = header ? palette.dim : palette.muted;
   return <box flexDirection="row" flexGrow={1}>
-    <Cell grow={1} color={header ? tone : palette.foreground}>{fitText(header ? "" : entry?.title, titleWidth)}</Cell>
-    {ovenWidth ? <Cell width={ovenWidth} color={header ? tone : palette.soft}>{fitText(header ? "OVEN" : entry?.ovenName, ovenWidth - 1)}</Cell> : null}
-    {statusWidth ? <Cell width={statusWidth} color={header ? tone : entry?.statusLabel === "Blocked" ? palette.red : entry?.status === "active" ? palette.green : palette.muted}>{fitText(header ? "STATUS" : entry?.statusLabel, statusWidth - 1)}</Cell> : null}
-    <Cell width={progressWidth} color={header ? tone : palette.muted}>{fitText(header ? "PROGRESS" : entry ? progressLabel(entry.done, entry.total, entry.percent, entry.progressLabel) : "", progressWidth - 1)}</Cell>
-    {updatedWidth ? <Cell width={updatedWidth} color={tone}>{fitText(header ? "UPDATED" : compactTime(entry?.updatedAt ?? null), updatedWidth - 1)}</Cell> : null}
+    <TableCell grow={1} color={header ? tone : palette.foreground}>{fitText(header ? "" : entry?.title, titleWidth)}</TableCell>
+    {ovenWidth ? <TableCell width={ovenWidth} color={header ? tone : palette.soft}>{header ? "OVEN" : entry?.ovenName ?? ""}</TableCell> : null}
+    {statusWidth ? <TableCell width={statusWidth} color={header ? tone : entry?.statusLabel === "Blocked" ? palette.red : entry?.status === "active" ? palette.green : palette.muted}>{header ? "STATUS" : entry?.statusLabel ?? ""}</TableCell> : null}
+    <TableCell width={progressWidth} color={header ? tone : palette.muted}>{header ? "PROGRESS" : entry ? progressLabel(entry.done, entry.total, entry.percent, entry.progressLabel) : ""}</TableCell>
+    {updatedWidth ? <TableCell width={updatedWidth} color={tone}>{header ? "UPDATED" : compactTime(entry?.updatedAt ?? null)}</TableCell> : null}
   </box>;
 }
 
 export function BurnlistList({ landing, selected, focused, maxRows, terminalWidth, empty }: Omit<ListProps<BurnlistSummary>, "entries"> & { landing: LandingSnapshot }) {
-  const chrome = useTerminalChrome();
   const entries = groupBurnlists(landing).flatMap((group) => group.entries);
   let itemRows = maxRows;
   let window = visibleWindow(entries, selected, itemRows);
@@ -55,22 +43,17 @@ export function BurnlistList({ landing, selected, focused, maxRows, terminalWidt
   const groups = groupBurnlists({ ...landing, burnlists: window.items });
   if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{empty}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
-    <box height={1} backgroundColor={chrome.header} paddingLeft={2}>
-      <box width={1} />
+    <TableLine header>
       <BurnlistColumns width={terminalWidth - 3} header />
-    </box>
+    </TableLine>
     {groups.map((group) => <box key={group.key} flexDirection="column">
-      <box height={1} paddingLeft={3} backgroundColor={chrome.background} flexDirection="row">
-        <text fg={palette.blue}>{group.label}</text>
-        <text fg={palette.dim}>{`  ·  ${group.entries.length} ${group.entries.length === 1 ? "Burnlist" : "Burnlists"}`}</text>
-      </box>
+      <TableGroup name={group.label} count={group.entries.length} noun="Burnlist" />
       {group.entries.map((entry) => {
         const index = entries.indexOf(entry);
         const active = focused && index === selected;
-        return <box key={`${entry.repoKey ?? entry.repo}:${entry.id}:${entry.ovenId}`} height={1} flexDirection="row" paddingLeft={1} backgroundColor={active ? chrome.surface : chrome.background}>
-          <box width={1}><text fg={active ? palette.blue : chrome.background}>{active ? "▎" : " "}</text></box>
+        return <TableLine key={`${entry.repoKey ?? entry.repo}:${entry.id}:${entry.ovenId}`} selected={active}>
           <BurnlistColumns width={terminalWidth - 3} entry={entry} />
-        </box>;
+        </TableLine>;
       })}
     </box>)}
   </box>;
@@ -85,30 +68,27 @@ function OvenColumns({ width, header, entry }: { width: number; header?: boolean
   const contractWidth = wide ? 34 : medium ? 30 : 0;
   const tone = header ? palette.dim : palette.muted;
   return <box flexDirection="row" flexGrow={1}>
-    <Cell width={nameWidth} color={header ? tone : palette.foreground}>{fitText(header ? "OVEN" : entry?.name, nameWidth - 1)}</Cell>
-    {scopeWidth ? <Cell width={scopeWidth} color={tone}>{fitText(header ? "SCOPE" : entry?.builtIn ? "Built-in" : "Project", scopeWidth - 1)}</Cell> : null}
-    {contractWidth ? <Cell width={contractWidth} color={header ? tone : palette.soft}>{fitText(header ? "CONTRACT" : entry?.contract, contractWidth - 1)}</Cell> : null}
-    {inputWidth ? <Cell width={inputWidth} color={tone}>{fitText(header ? "INPUT" : entry?.dataInput, inputWidth - 1)}</Cell> : null}
-    <Cell grow={1} color={tone}>{fitText(header ? "DESCRIPTION" : entry?.description, Math.max(10, width - nameWidth - scopeWidth - contractWidth - inputWidth - 6))}</Cell>
+    <TableCell width={nameWidth} color={header ? tone : palette.foreground}>{header ? "OVEN" : entry?.name ?? ""}</TableCell>
+    {scopeWidth ? <TableCell width={scopeWidth} color={tone}>{header ? "SCOPE" : entry?.builtIn ? "Built-in" : "Project"}</TableCell> : null}
+    {contractWidth ? <TableCell width={contractWidth} color={header ? tone : palette.soft}>{header ? "CONTRACT" : entry?.contract ?? ""}</TableCell> : null}
+    {inputWidth ? <TableCell width={inputWidth} color={tone}>{header ? "INPUT" : entry?.dataInput ?? ""}</TableCell> : null}
+    <TableCell grow={1} color={tone}>{fitText(header ? "DESCRIPTION" : entry?.description, Math.max(10, width - nameWidth - scopeWidth - contractWidth - inputWidth - 6))}</TableCell>
   </box>;
 }
 
 export function OvenList({ entries, selected, focused, maxRows, terminalWidth, empty }: ListProps<OvenSummary>) {
-  const chrome = useTerminalChrome();
   const window = visibleWindow(entries, selected, maxRows);
   if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{empty}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
-    <box height={2} border={["bottom"]} borderColor={chrome.line} paddingLeft={1}>
-      <box width={1} />
+    <TableLine header>
       <OvenColumns width={terminalWidth - 3} header />
-    </box>
+    </TableLine>
     {window.items.map((entry, offset) => {
       const index = window.start + offset;
       const active = focused && index === selected;
-      return <box key={`${entry.repoKey ?? "built-in"}:${entry.id}`} height={2} flexDirection="row" border={["bottom"]} borderColor={chrome.faintLine} backgroundColor={active ? chrome.surface : chrome.background}>
-        <text fg={active ? palette.blue : chrome.background}>{active ? "▎" : " "}</text>
+      return <TableLine key={`${entry.repoKey ?? "built-in"}:${entry.id}`} selected={active}>
         <OvenColumns width={terminalWidth - 2} entry={entry} />
-      </box>;
+      </TableLine>;
     })}
   </box>;
 }

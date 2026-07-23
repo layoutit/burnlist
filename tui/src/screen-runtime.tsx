@@ -107,7 +107,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       const subtitle = props.screen.id === "home"
         ? `${props.landing.burnlists.length} Burnlists · ${props.landing.projects.length} ${props.landing.projects.length === 1 ? "project" : "projects"} · ${props.streamStatus === "live" ? "LIVE" : "SYNC"}`
         : String(node.attributes.subtitle);
-      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} />;
+      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} activity={props.notice} />;
     }
     case "section-heading":
       return <LandingSectionHeading
@@ -155,7 +155,6 @@ function ScreenSurface(props: ScreenRuntimeProps) {
   const { width, height } = useTerminalDimensions();
   const chrome = useTerminalChrome();
   return <box width="100%" height="100%" flexDirection="column" backgroundColor={chrome.background}>
-    {props.notice ? <box height={1} paddingLeft={2}><text fg={props.notice.tone === "error" ? palette.red : palette.amber}>{props.notice.message}</text></box> : null}
     {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome))}
   </box>;
 }

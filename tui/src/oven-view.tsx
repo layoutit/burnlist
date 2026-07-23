@@ -1,6 +1,7 @@
 import { detailItems, visualParityPayload } from "./detail-items";
 import { compactTime, fitText, palette, visibleWindow } from "./theme";
 import { useTerminalChrome } from "./terminal-chrome";
+import { TableCell, TableLine } from "./table-view";
 import type { BurnlistSummary, DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
 
 function Stat({ label, value, tone = palette.foreground }: { label: string; value: string; tone?: string }) {
@@ -21,21 +22,25 @@ function OvenHeader({ active, lenses }: { active: OvenSummary | null; lenses: Ov
 }
 
 function ItemRows({ items, selected, height }: { items: DetailItem[]; selected: number; height: number }) {
-  const chrome = useTerminalChrome();
-  const window = visibleWindow(items, selected, Math.max(2, Math.floor(height / 2)));
+  const window = visibleWindow(items, selected, Math.max(2, height - 1));
   if (!items.length) return <text fg={palette.dim}>No navigable items are available.</text>;
   return <box flexGrow={1} flexDirection="column">
+    <TableLine header>
+      <TableCell width={9} color={palette.dim}>STATE</TableCell>
+      <TableCell width={9} color={palette.dim}>ID</TableCell>
+      <TableCell grow={1} color={palette.dim}>ITEM</TableCell>
+      <TableCell width={8} color={palette.dim}>UPDATED</TableCell>
+    </TableLine>
     {window.items.map((item, offset) => {
       const index = window.start + offset;
       const active = index === selected;
       const statusTone = item.status === "ACTIVE" || item.status === "PASS" ? palette.green : item.status === "FAIL" ? palette.red : palette.blue;
-      return <box key={item.key} height={2} flexDirection="row" border={["bottom"]} borderColor={chrome.faintLine} backgroundColor={active ? chrome.surface : chrome.background}>
-        <text fg={active ? palette.blue : chrome.background}>{active ? "▎" : " "}</text>
-        <box width={10} paddingLeft={1}><text fg={statusTone}>{fitText(item.status, 8)}</text></box>
-        <box width={12}><text fg={palette.soft}>{fitText(item.id, 11)}</text></box>
-        <box flexGrow={1}><text fg={active ? palette.foreground : palette.muted}>{fitText(item.title, 44).trimEnd()}</text></box>
-        {item.latest ? <box width={10}><text fg={palette.amber}>LATEST</text></box> : item.completedAt ? <box width={10}><text fg={palette.dim}>{compactTime(item.completedAt)}</text></box> : null}
-      </box>;
+      return <TableLine key={item.key} selected={active}>
+        <TableCell width={9} color={statusTone}>{item.status}</TableCell>
+        <TableCell width={9} color={palette.soft}>{item.id}</TableCell>
+        <TableCell grow={1} color={active ? palette.foreground : palette.muted}>{fitText(item.title, 44).trimEnd()}</TableCell>
+        <TableCell width={8} color={item.latest ? palette.amber : palette.dim}>{item.latest ? "LATEST" : item.completedAt ? compactTime(item.completedAt) : ""}</TableCell>
+      </TableLine>;
     })}
   </box>;
 }
