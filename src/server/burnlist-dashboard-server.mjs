@@ -54,6 +54,8 @@ import {
 } from "./oven-storage.mjs";
 import { createOvenProjectionCoordinator } from "./oven-projection-coordinator.mjs";
 import { createOfficialOvenDiscovery } from "./official-oven-discovery.mjs";
+import { createModelLabTerminalProtocol, serveModelLabTerminalProtocol } from "./model-lab-terminal-protocol.mjs";
+import { readJsonRequest } from "./read-json-request.mjs";
 import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
 import {
   LIFECYCLES,
@@ -149,6 +151,7 @@ const launchRepoRoot = realpathSync(umbrellaRoot);
 const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-dir")) : null;
 const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
+const modelLabTerminalProtocol = createModelLabTerminalProtocol({ writeToken });
 const repoMapCache = new Map();
 const ovenHandlerCaches = new Map();
 const REPO_MAP_CACHE_MS = 2_000;
@@ -880,32 +883,6 @@ function readBurnRun(id) {
   return null;
 }
 
-async function readJsonRequest(req) {
-  if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
-    const error = new Error("Content-Type must be application/json.");
-    error.status = 415;
-    throw error;
-  }
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > 262144) {
-      const error = new Error("Request body is too large.");
-      error.status = 413;
-      throw error;
-    }
-    chunks.push(chunk);
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  } catch {
-    const error = new Error("Request body must be valid JSON.");
-    error.status = 400;
-    throw error;
-  }
-}
-
 function assertWriteRequest(req) {
   const fetchSite = String(req.headers["sec-fetch-site"] ?? "");
   if (fetchSite && !["same-origin", "none"].includes(fetchSite)) {
@@ -1222,6 +1199,11 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
+    const modelLabProtocolResponse = await serveModelLabTerminalProtocol({
+      req, res, url, protocol: modelLabTerminalProtocol, readJson: readJsonRequest, json,
+      assertControllerWrite: assertWriteRequest,
+    });
+    if (modelLabProtocolResponse !== false) return;
     const dashboardAsset = dashboardAssetPath(url.pathname);
     if (dashboardAsset) {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
