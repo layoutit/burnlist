@@ -143,7 +143,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "item-detail":
       return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 7} />;
     case "footer":
-      return <box key={key} height={2} border={["top"]} borderColor={chrome.line} paddingLeft={2} alignItems="center">
+      return <box key={key} height={2} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
         <text fg={palette.dim}>{String(node.attributes.hints)}</text>
       </box>;
     default:

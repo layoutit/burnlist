@@ -34,7 +34,7 @@ function BurnlistColumns({ width, header, entry }: { width: number; header?: boo
   const titleWidth = Math.max(12, width - fixed);
   const tone = header ? palette.dim : palette.muted;
   return <box flexDirection="row" flexGrow={1}>
-    <Cell grow={1} color={header ? tone : palette.foreground}>{fitText(header ? "BURNLIST" : entry?.title, titleWidth)}</Cell>
+    <Cell grow={1} color={header ? tone : palette.foreground}>{fitText(header ? "" : entry?.title, titleWidth)}</Cell>
     {ovenWidth ? <Cell width={ovenWidth} color={header ? tone : palette.soft}>{fitText(header ? "OVEN" : entry?.ovenName, ovenWidth - 1)}</Cell> : null}
     {statusWidth ? <Cell width={statusWidth} color={header ? tone : entry?.statusLabel === "Blocked" ? palette.red : entry?.status === "active" ? palette.green : palette.muted}>{fitText(header ? "STATUS" : entry?.statusLabel, statusWidth - 1)}</Cell> : null}
     <Cell width={progressWidth} color={header ? tone : palette.muted}>{fitText(header ? "PROGRESS" : entry ? progressLabel(entry.done, entry.total, entry.percent, entry.progressLabel) : "", progressWidth - 1)}</Cell>

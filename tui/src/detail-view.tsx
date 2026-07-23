@@ -7,7 +7,7 @@ import type { BurnlistSummary, ProgressSnapshot } from "./types";
 export function BrandHeader({ center, subtitle, compact = false }: { center?: string | null; subtitle: string; compact?: boolean }) {
   const chrome = useTerminalChrome();
   if (compact) {
-    return <box height={1} flexDirection="row" alignItems="center" backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
+    return <box height={1} flexDirection="row" alignItems="center" backgroundColor={chrome.header} paddingLeft={2} paddingRight={2}>
       <BrandMark />
       <text fg={palette.soft}>Burnlist</text>
       <box width={3} />

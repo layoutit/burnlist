@@ -107,13 +107,17 @@ describe("dashboard-shaped .glyph runtime", () => {
   test("keeps landing headings, project labels, and values on one shared grid", async () => {
     const { frame, root } = await renderFrame(200, 42, props());
     const lines = frame.split("\n");
-    const columns = lines.find((line) => line.includes("BURNLIST") && line.includes("OVEN"))!;
+    const columns = lines.find((line) => line.includes("OVEN") && line.includes("STATUS"))!;
     const project = lines.find((line) => line.includes("demo") && line.includes("2 Burnlists"))!;
     const row = lines.find((line) => line.includes("Terminal UI") && line.includes("Checklist"))!;
-    expect(project.indexOf("demo")).toBe(columns.indexOf("BURNLIST"));
-    expect(row.indexOf("Terminal UI")).toBe(columns.indexOf("BURNLIST"));
+    expect(project.indexOf("demo")).toBe(3);
+    expect(row.indexOf("Terminal UI")).toBe(3);
     expect(row.indexOf("Checklist")).toBe(columns.indexOf("OVEN"));
+    expect(lines[0].indexOf("⟁")).toBe(3);
     expect(lines[0]).toContain("⟁ Burnlist   2 Burnlists · 1 project · LIVE");
+    expect(columns).not.toContain("BURNLIST");
+    const footer = lines.find((line) => line.includes("↑/↓:navigate"))!;
+    expect(footer.indexOf("↑")).toBe(3);
     root.unmount();
   });
 
@@ -128,7 +132,7 @@ describe("dashboard-shaped .glyph runtime", () => {
 
   test("hides secondary Burnlist fields at compact widths", async () => {
     const { frame, root } = await renderFrame(70, 30, props());
-    expect(frame).toContain("BURNLIST");
+    expect(frame).toContain("Burnlist");
     expect(frame).toContain("PROGRESS");
     expect(frame).not.toContain("UPDATED");
     root.unmount();
