@@ -4,9 +4,9 @@ import { compactTime, fitText, palette, progressLabel } from "./theme";
 import { useTerminalChrome } from "./terminal-chrome";
 import type { BurnlistSummary, ProgressSnapshot } from "./types";
 
-export function BrandHeader({ center, subtitle }: { center?: string | null; subtitle: string }) {
+export function BrandHeader({ center, subtitle, compact = false }: { center?: string | null; subtitle: string; compact?: boolean }) {
   const chrome = useTerminalChrome();
-  return <box height={5} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.line} backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
+  return <box height={compact ? 1 : 5} flexDirection="row" alignItems="center" border={compact ? [] : ["bottom"]} borderColor={chrome.line} backgroundColor={chrome.header} paddingLeft={1} paddingRight={2}>
     <BrandMark />
     <box width={12} paddingLeft={1}><text fg={palette.soft}>Burnlist</text></box>
     <box flexGrow={1} alignItems="center"><text fg={palette.muted}>{center ? fitText(center, 48).trimEnd() : ""}</text></box>

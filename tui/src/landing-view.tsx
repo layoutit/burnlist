@@ -1,4 +1,5 @@
 import type { BurnlistSummary, LandingSnapshot, OvenSummary } from "./types";
+import { groupBurnlists } from "./landing-groups";
 import { compactTime, fitText, palette, progressLabel, visibleWindow } from "./theme";
 import { useTerminalChrome } from "./terminal-chrome";
 
@@ -25,17 +26,14 @@ function Cell({ children, width, grow = 0, color = palette.muted }: {
 function BurnlistColumns({ width, header, entry }: { width: number; header?: boolean; entry?: BurnlistSummary }) {
   const wide = width >= 112;
   const medium = width >= 82;
-  const compact = width >= 58;
-  const projectWidth = wide ? 16 : medium ? 15 : compact ? 13 : 0;
   const ovenWidth = wide ? 20 : medium ? 18 : 0;
   const statusWidth = wide ? 12 : 0;
   const progressWidth = wide ? 18 : medium ? 16 : 13;
   const updatedWidth = wide ? 14 : 0;
-  const fixed = projectWidth + ovenWidth + statusWidth + progressWidth + updatedWidth + 7;
+  const fixed = ovenWidth + statusWidth + progressWidth + updatedWidth + 6;
   const titleWidth = Math.max(12, width - fixed);
   const tone = header ? palette.dim : palette.muted;
   return <box flexDirection="row" flexGrow={1}>
-    {projectWidth ? <Cell width={projectWidth} color={tone}>{fitText(header ? "PROJECT" : entry?.repo, projectWidth - 1)}</Cell> : null}
     <Cell grow={1} color={header ? tone : palette.foreground}>{fitText(header ? "BURNLIST" : entry?.title, titleWidth)}</Cell>
     {ovenWidth ? <Cell width={ovenWidth} color={header ? tone : palette.soft}>{fitText(header ? "OVEN" : entry?.ovenName, ovenWidth - 1)}</Cell> : null}
     {statusWidth ? <Cell width={statusWidth} color={header ? tone : entry?.statusLabel === "Blocked" ? palette.red : entry?.status === "active" ? palette.green : palette.muted}>{fitText(header ? "STATUS" : entry?.statusLabel, statusWidth - 1)}</Cell> : null}
@@ -44,23 +42,36 @@ function BurnlistColumns({ width, header, entry }: { width: number; header?: boo
   </box>;
 }
 
-export function BurnlistList({ entries, selected, focused, maxRows, terminalWidth, empty }: ListProps<BurnlistSummary>) {
+export function BurnlistList({ landing, selected, focused, maxRows, terminalWidth, empty }: Omit<ListProps<BurnlistSummary>, "entries"> & { landing: LandingSnapshot }) {
   const chrome = useTerminalChrome();
-  const window = visibleWindow(entries, selected, maxRows);
+  const entries = groupBurnlists(landing).flatMap((group) => group.entries);
+  let itemRows = maxRows;
+  let window = visibleWindow(entries, selected, itemRows);
+  for (let pass = 0; pass < 3; pass += 1) {
+    const headingRows = groupBurnlists({ ...landing, burnlists: window.items }).length;
+    itemRows = Math.max(1, maxRows - headingRows);
+    window = visibleWindow(entries, selected, itemRows);
+  }
+  const groups = groupBurnlists({ ...landing, burnlists: window.items });
   if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{empty}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
-    <box height={2} border={["bottom"]} borderColor={chrome.line} paddingLeft={1}>
+    <box height={1} backgroundColor={chrome.header} paddingLeft={1}>
       <box width={1} />
       <BurnlistColumns width={terminalWidth - 3} header />
     </box>
-    {window.items.map((entry, offset) => {
-      const index = window.start + offset;
-      const active = focused && index === selected;
-      return <box key={`${entry.repoKey ?? entry.repo}:${entry.id}:${entry.ovenId}`} height={2} flexDirection="row" border={["bottom"]} borderColor={chrome.faintLine} backgroundColor={active ? chrome.surface : chrome.background}>
-        <text fg={active ? palette.blue : chrome.background}>{active ? "▎" : " "}</text>
-        <BurnlistColumns width={terminalWidth - 2} entry={entry} />
-      </box>;
-    })}
+    {groups.map((group) => <box key={group.key} flexDirection="column">
+      <box height={1} paddingLeft={2} backgroundColor={chrome.background}>
+        <text fg={palette.blue}>{`${group.label}  ${group.entries.length}`}</text>
+      </box>
+      {group.entries.map((entry) => {
+        const index = entries.indexOf(entry);
+        const active = focused && index === selected;
+        return <box key={`${entry.repoKey ?? entry.repo}:${entry.id}:${entry.ovenId}`} height={1} flexDirection="row" paddingLeft={1} backgroundColor={active ? chrome.surface : chrome.background}>
+          <box width={1}><text fg={active ? palette.blue : chrome.background}>{active ? "▎" : " "}</text></box>
+          <BurnlistColumns width={terminalWidth - 3} entry={entry} />
+        </box>;
+      })}
+    </box>)}
   </box>;
 }
 

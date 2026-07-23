@@ -17,6 +17,7 @@ import type {
   OvenSummary,
   ProgressSnapshot,
 } from "./types";
+import type { StreamStatus } from "./event-stream";
 
 export interface ScreenRuntimeProps {
   screen: GlyphScreen;
@@ -32,6 +33,7 @@ export interface ScreenRuntimeProps {
   domainIndex: number;
   focusId: string;
   selections: Record<string, number>;
+  streamStatus: StreamStatus;
   notice?: { message: string; tone: "error" | "info" } | null;
 }
 
@@ -48,33 +50,45 @@ function DetailSplit({ node, props, width, height, chrome }: {
 }) {
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summary = node.children.find((child) => child.kind === "detail-summary");
-  const summaryWidth = Number(node.attributes.summaryWidth ?? 40);
+  const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
   return <box flexGrow={1} flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : summaryWidth}
-      height={collapsed ? 10 : "100%"}
+      height={collapsed ? Math.max(12, Math.floor(height * 0.55)) : "100%"}
       flexShrink={0}
       border={collapsed ? ["bottom"] : ["right"]}
       borderColor={chrome.line}
+      flexDirection="column"
     >
-      <DetailSummary
-        burnlist={props.selectedBurnlist}
-        progress={props.progress}
-        fireWidth={Number(summary?.attributes.fireWidth ?? 12)}
-        fireHeight={Number(summary?.attributes.fireHeight ?? 7)}
-        fps={Number(summary?.attributes.fps ?? 12)}
-        compact={collapsed}
-      />
-    </box>
-    <box flexGrow={1} minWidth={0} paddingLeft={2} paddingRight={2}>
+      <box height={8} border={["bottom"]} borderColor={chrome.faintLine}>
+        <DetailSummary
+          burnlist={props.selectedBurnlist}
+          progress={props.progress}
+          fireWidth={Number(summary?.attributes.fireWidth ?? 12)}
+          fireHeight={Number(summary?.attributes.fireHeight ?? 7)}
+          fps={Number(summary?.attributes.fps ?? 12)}
+          compact
+        />
+      </box>
       <OvenPane
         active={props.activeOven}
         lenses={props.ovenLenses}
         progress={props.progress}
         data={props.ovenData}
         burnlist={props.selectedBurnlist}
-        height={collapsed ? height - 17 : height - 7}
+        height={collapsed ? Math.floor(height * 0.55) - 8 : height - 15}
         itemIndex={props.itemIndex}
+      />
+    </box>
+    <box flexGrow={1} minWidth={0}>
+      <ItemDetail
+        item={props.selectedItem}
+        oven={props.activeOven}
+        progress={props.progress}
+        data={props.ovenData}
+        domainIndex={props.domainIndex}
+        width={collapsed ? width : width - summaryWidth}
+        height={collapsed ? Math.max(8, Math.ceil(height * 0.45) - 7) : height - 7}
       />
     </box>
   </box>;
@@ -89,7 +103,11 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       const center = props.screen.id === "item" ? props.selectedItem?.title
         : props.screen.id === "oven" ? props.ovenDetail?.name ?? props.activeOven?.name
           : props.screen.id === "burnlist" ? props.selectedBurnlist?.title : null;
-      return <BrandHeader key={key} center={center} subtitle={String(node.attributes.subtitle)} />;
+      const compact = props.screen.id === "home";
+      const subtitle = props.screen.id === "home"
+        ? `${props.landing.burnlists.length} Burnlists · ${props.landing.projects.length} ${props.landing.projects.length === 1 ? "project" : "projects"} · ${props.streamStatus === "live" ? "LIVE" : "SYNC"}`
+        : String(node.attributes.subtitle);
+      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} />;
     }
     case "section-heading":
       return <LandingSectionHeading
@@ -101,10 +119,10 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "burnlist-list":
       return <BurnlistList
         key={key}
-        entries={props.landing.burnlists}
+        landing={props.landing}
         selected={props.selections.burnlists ?? 0}
         focused={props.focusId === "burnlists"}
-        maxRows={rows}
+        maxRows={Math.max(2, height - 4)}
         terminalWidth={width}
         empty={String(node.attributes.empty ?? "No Burnlists")}
       />;

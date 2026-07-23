@@ -1,6 +1,5 @@
 <screen id="home" title="Burnlist" version="1">
   <brand-header title="Burnlist" subtitle="Observer" />
-  <section-heading id="burnlists-heading" title="Burnlists" source="burnlists" />
   <burnlist-list id="burnlists" source="burnlists" empty="No Burnlists discovered" flex="1" />
   <footer hints="↑/↓:navigate · enter:open · o:Oven catalog · r:refresh · esc:exit" />
 </screen>

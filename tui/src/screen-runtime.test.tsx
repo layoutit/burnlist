@@ -78,7 +78,7 @@ function props(overrides: Partial<ScreenRuntimeProps> = {}): ScreenRuntimeProps 
   return {
     screen: parsed(homeSource), landing, progress: null, selectedBurnlist: null, activeOven: null,
     ovenDetail: null, ovenLenses: [], ovenData: null, selectedItem: null, itemIndex: 0, domainIndex: 0,
-    focusId: "burnlists", selections: { burnlists: 0, ovens: 0 }, ...overrides,
+    focusId: "burnlists", selections: { burnlists: 0, ovens: 0 }, streamStatus: "live", ...overrides,
   };
 }
 

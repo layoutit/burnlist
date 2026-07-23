@@ -74,13 +74,9 @@ describe("TUI navigation stack", () => {
     await setup.flush();
     await setup.waitForFrame((frame) => frame.includes("Burnlist items") && frame.includes("Current item"));
     setup.mockInput.pressArrow("down");
-    await setup.flush();
-    await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
     await setup.waitForFrame((frame) => frame.includes("COMPLETION DETAIL") && frame.includes("Navigation foundation done."));
-    await key(setup, "q");
-    await setup.waitForFrame((frame) => frame.includes("Burnlist items"));
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("o:Oven catalog"));
 

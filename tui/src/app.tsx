@@ -1,5 +1,5 @@
 import { useKeyboard } from "@opentui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { compileGlyph, type GlyphScreen } from "../../src/glyph/glyph-compile.mjs";
 import burnlistSource from "../screens/burnlist.glyph" with { type: "text" };
 import homeSource from "../screens/home.glyph" with { type: "text" };
@@ -8,6 +8,8 @@ import ovenSource from "../screens/oven.glyph" with { type: "text" };
 import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { createDataClient } from "./data-client";
 import { detailItems, visualParityPayload } from "./detail-items";
+import { observeDashboardEvents, type StreamStatus } from "./event-stream";
+import { orderedBurnlists } from "./landing-groups";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
 import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, OvenSummary, ProgressSnapshot } from "./types";
@@ -43,8 +45,10 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [domainIndex, setDomainIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
   const view = navigation.at(-1) ?? "home";
   const catalog = useMemo(() => genericOvens(landing.ovens), [landing.ovens]);
+  const burnlists = useMemo(() => orderedBurnlists(landing), [landing]);
   const lenses = useMemo(() => selectedBurnlist ? ovenLenses(selectedBurnlist, landing.ovens) : [], [landing.ovens, selectedBurnlist]);
   const items = useMemo(() => detailItems(activeOven, progress, ovenData), [activeOven, ovenData, progress]);
   const safeItemIndex = Math.max(0, Math.min(itemIndex, Math.max(0, items.length - 1)));
@@ -114,6 +118,17 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if ((view === "burnlist" || view === "item") && selectedBurnlist) void loadBurnlist(selectedBurnlist, activeOven, false);
     if (view === "oven" && activeOven) void loadCatalogOven(activeOven);
   }, [activeOven, loadBurnlist, loadCatalogOven, loadLanding, selectedBurnlist, view]);
+  const refreshRef = useRef(refresh);
+  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  useEffect(() => observeDashboardEvents(client.base, {
+    onInvalidate: () => refreshRef.current(),
+    onStatus: setStreamStatus,
+  }), [client.base]);
+  useEffect(() => {
+    const timer = setInterval(() => refreshRef.current(), 30_000);
+    timer.unref?.();
+    return () => clearInterval(timer);
+  }, []);
 
   const openBurnlist = useCallback((burnlist: BurnlistSummary) => {
     const oven = associatedOven(burnlist, landing.ovens);
@@ -161,10 +176,10 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "home") {
-      if (key.name === "up") return moveList("burnlists", landing.burnlists.length, -1);
-      if (key.name === "down") return moveList("burnlists", landing.burnlists.length, 1);
+      if (key.name === "up") return moveList("burnlists", burnlists.length, -1);
+      if (key.name === "down") return moveList("burnlists", burnlists.length, 1);
       if (key.name === "return" || key.name === "enter") {
-        const burnlist = landing.burnlists[Math.min(selections.burnlists ?? 0, landing.burnlists.length - 1)];
+        const burnlist = burnlists[Math.min(selections.burnlists ?? 0, burnlists.length - 1)];
         if (burnlist) openBurnlist(burnlist);
       }
       return;
@@ -181,7 +196,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (view === "burnlist") {
       if (key.name === "up") return moveItem(-1);
       if (key.name === "down") return moveItem(1);
-      if ((key.name === "return" || key.name === "enter") && selectedItem) return pushView("item");
       if (key.sequence === "[") return cycleLens(-1);
       if (key.sequence === "]") return cycleLens(1);
       return;
@@ -211,6 +225,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     domainIndex={domainIndex}
     focusId={view === "ovens" ? "ovens" : view === "home" ? "burnlists" : "items"}
     selections={selections}
+    streamStatus={streamStatus}
     notice={notice}
   />;
 }

@@ -47,7 +47,7 @@ function ChecklistOven({ progress, items, selected, height }: { progress: Progre
     <box height={4} flexDirection="row" alignItems="center" border={["bottom"]} borderColor={chrome.faintLine}>
       <Stat label="Progress" value={`${progress.percent}%`} tone={palette.green} /><Stat label="Done" value={String(progress.done)} /><Stat label="Remaining" value={String(progress.remaining)} /><Stat label="Warnings" value={String(progress.warnings?.length ?? 0)} tone={progress.warnings?.length ? palette.amber : palette.muted} />
     </box>
-    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Burnlist items</text><text fg={palette.dim}>↑/↓ navigate · enter inspect</text></box>
+    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Burnlist items</text><text fg={palette.dim}>↑/↓ inspect</text></box>
     <ItemRows items={items} selected={selected} height={height - 11} />
   </box>;
 }
@@ -62,7 +62,7 @@ function VisualParityOven({ data, items, selected, height }: { data: OvenDataSna
   const qualified = payload.comparisons.every((comparison) => comparison.status === "pass");
   return <box flexDirection="column" flexGrow={1}>
     <box height={3} flexDirection="row" alignItems="center" gap={2} border={["bottom"]} borderColor={chrome.faintLine}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
-    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Frame comparisons</text><text fg={palette.dim}>↑/↓ navigate · enter inspect images</text></box>
+    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Current parity state</text><text fg={palette.dim}>↑/↓ compare frames</text></box>
     <ItemRows items={items} selected={selected} height={height - 9} />
   </box>;
 }
