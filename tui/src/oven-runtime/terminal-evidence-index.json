@@ -1,5 +1,72 @@
 {
   "schema": "burnlist-terminal-evidence-index@1",
   "generator": "burnlist-b6-offscreen@1",
-  "records": []
+  "records": [
+    {
+      "recordId": "glyphcss-interactive-flame:42x12:keyboard-right",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.keyboard-right.f1bcbeb67b1ba24c.json",
+      "artifactSha256": "f1bcbeb67b1ba24c99efd59edfeda7ee852d01093e084fceb51046c4f3b7f2b9",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 42,
+        "height": 12
+      },
+      "checkpoint": "keyboard-right"
+    },
+    {
+      "recordId": "glyphcss-interactive-flame:42x12:reduced-t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t0.0e4250af1d160e5e.json",
+      "artifactSha256": "0e4250af1d160e5e294bdcfd5acd8e8a3db146986eb113d9b03adecea758a81c",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 42,
+        "height": 12
+      },
+      "checkpoint": "reduced-t0"
+    },
+    {
+      "recordId": "glyphcss-interactive-flame:42x12:reduced-t240",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t240.691b6f0f029f2b82.json",
+      "artifactSha256": "691b6f0f029f2b821b32a77ccc857ae42e6423af0d169ca3fd30568981ba0de5",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 42,
+        "height": 12
+      },
+      "checkpoint": "reduced-t240"
+    },
+    {
+      "recordId": "glyphcss-interactive-flame:42x12:t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t0.0ce9e28ce8270758.json",
+      "artifactSha256": "0ce9e28ce8270758d3a639bd75e55181d5d017e1339e75d6b8cb0f66ee1c28e4",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 42,
+        "height": 12
+      },
+      "checkpoint": "t0"
+    },
+    {
+      "recordId": "glyphcss-interactive-flame:42x12:t240",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t240.bfd0e26b4f5f38aa.json",
+      "artifactSha256": "bfd0e26b4f5f38aae5505bca3c18cee05dc71c71ce7c60fa93d74879caf9b777",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 42,
+        "height": 12
+      },
+      "checkpoint": "t240"
+    },
+    {
+      "recordId": "glyphcss-interactive-flame:64x12:t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.64x12.t0.041b30f032397b99.json",
+      "artifactSha256": "041b30f032397b9962e618e4948670689c5374060d43c903648c13007e104688",
+      "sourceSha256": "e7e2bf0a3acc595d10a1e78fa88963927846c9e5ff1c606cf7c43c07f201f14a",
+      "viewport": {
+        "width": 64,
+        "height": 12
+      },
+      "checkpoint": "t0"
+    }
+  ]
 }

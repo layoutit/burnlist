@@ -37,6 +37,8 @@
     "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
     "test:visual-parity": "node --test ovens/visual-parity/contract.test.mjs ovens/visual-parity/handler.test.mjs ovens/visual-parity/handler-cache-lifecycle.test.mjs",
     "test:tui": "npm --prefix tui test",
+    "generate:terminal-story-frames": "npm --prefix tui run generate:story-frames",
+    "check:terminal-story-frames": "npm --prefix tui run check:story-frames",
     "tui": "npm --prefix tui run dev --",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",

@@ -23,8 +23,8 @@ test("source union is finite, classifies FILTERS as data, and records all source
 });
 
 test("B6 evidence schema is tracked but cannot alter B1 canonical coverage", async () => {
-  const index = JSON.parse(await readFile(join(root, "tui/src/oven-runtime/terminal-evidence-index.json"), "utf8")); assert.deepEqual(index, { schema: "burnlist-terminal-evidence-index@1", generator: "burnlist-b6-offscreen@1", records: [] });
-  await withFixture(async (target) => { await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"records": []', '"records": [{"recordId":"fabricated","artifactSha256":"deadbeef"}]'); await replace(target, "tui/src/oven-runtime/capability-registry.ts", "export const TERMINAL_OVEN_CAPABILITIES: readonly TerminalCapabilityClaim[] = Object.freeze([]);", 'export const TERMINAL_OVEN_CAPABILITIES: readonly TerminalCapabilityClaim[] = Object.freeze([{ sourceFamilyId: "grammar:element:box", implementationExport: "tui/src/app.tsx#App", fixtureIds: [], atomMappings: [] }]);'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); });
+  const index = JSON.parse(await readFile(join(root, "tui/src/oven-runtime/terminal-evidence-index.json"), "utf8")); assert.equal(index.schema, "burnlist-terminal-evidence-index@1"); assert.equal(index.generator, "burnlist-b6-offscreen@1"); assert.equal(index.records.length, 6); assert.ok(index.records.every((record) => record.artifactPath.startsWith("dashboard/src/generated/terminal-frames/") && /^[a-f0-9]{64}$/u.test(record.artifactSha256)));
+  await withFixture(async (target) => { await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"checkpoint": "t0"', '"checkpoint": "fabricated"'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); });
 });
 
 test("stateful Storybook sources have finite source-dependent action matrices", async () => {

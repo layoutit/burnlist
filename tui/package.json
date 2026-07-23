@@ -8,6 +8,8 @@
     "dev": "bun src/main.tsx",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
+    "generate:story-frames": "bun src/catalog/frame-renderer.tsx --write",
+    "check:story-frames": "bun src/catalog/frame-renderer.tsx --check",
     "verify": "bun run typecheck && bun test && bun run build"
   },
   "dependencies": {},
