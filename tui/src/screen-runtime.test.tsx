@@ -114,7 +114,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(row.indexOf("Terminal UI")).toBe(3);
     expect(row.indexOf("Checklist")).toBe(columns.indexOf("OVEN"));
     expect(lines[0].indexOf("⟁")).toBe(3);
-    expect(lines[0]).toContain("⟁ Burnlist   2 Burnlists · 1 project · LIVE");
+    expect(lines[0]).toContain("⟁ Burnlist 2 Burnlists · 1 project · LIVE");
     expect(columns).not.toContain("BURNLIST");
     const footer = lines.find((line) => line.includes("↑/↓:navigate"))!;
     expect(footer.indexOf("↑")).toBe(3);
@@ -197,6 +197,36 @@ describe("dashboard-shaped .glyph runtime", () => {
       expect(selectedRow).toBeGreaterThan(-1);
       expect(selectedRow).toBeLessThan(footerRow);
       expect(lines[footerRow]).not.toContain("task-");
+      root.unmount();
+    }
+  });
+
+  test("ellipsizes long detail chrome without wrapping or colliding", async () => {
+    const longBurnlist = {
+      ...checklistBurnlist,
+      repo: "a-project-name-that-is-far-too-long-for-the-sidebar",
+      id: "a-burnlist-identifier-that-cannot-fit",
+      title: "A deliberately enormous Burnlist title that must never run into the animated fire",
+      ovenName: "An exceptionally verbose Oven display name",
+    };
+    const longOven = {
+      ...ovens[0]!,
+      name: "An exceptionally verbose Oven display name",
+      contract: "an-exceptionally-verbose-contract-name@999",
+    };
+    for (const width of [70, 88, 100, 120]) {
+      const { frame, root } = await renderFrame(width, 32, props({
+        screen: parsed(burnlistSource),
+        progress,
+        selectedBurnlist: longBurnlist,
+        activeOven: longOven,
+        ovenLenses: [longOven, { ...ovens[1]!, name: "Another Oven lens with a very long name" }],
+      }));
+      const lines = frame.split("\n");
+      expect(lines[0]).toContain("…");
+      expect(lines.filter((line) => line.includes("deliberately enormous")).length).toBeLessThanOrEqual(2);
+      expect(lines.filter((line) => line.includes("exceptionally verbose")).length).toBeLessThanOrEqual(3);
+      expect(lines.at(-2)).toContain("↑/↓:inspect");
       root.unmount();
     }
   });

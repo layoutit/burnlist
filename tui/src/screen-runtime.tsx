@@ -72,6 +72,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
           fireHeight={Number(summary?.attributes.fireHeight ?? 7)}
           fps={Number(summary?.attributes.fps ?? 12)}
           compact
+          width={collapsed ? width : summaryWidth}
         />
       </box>
       <OvenPane
@@ -81,6 +82,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         data={props.ovenData}
         burnlist={props.selectedBurnlist}
         height={Math.max(1, sidebarHeight - 5)}
+        width={collapsed ? width : summaryWidth}
         itemIndex={props.itemIndex}
       />
     </box>
