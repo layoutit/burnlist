@@ -62,7 +62,7 @@ function VisualParityOven({ data, items, selected, height }: { data: OvenDataSna
   const qualified = payload.comparisons.every((comparison) => comparison.status === "pass");
   return <box flexDirection="column" flexGrow={1}>
     <box height={3} flexDirection="row" alignItems="center" gap={2} border={["bottom"]} borderColor={chrome.faintLine}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
-    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Current parity state</text><text fg={palette.dim}>↑/↓ compare frames</text></box>
+    <box height={3} paddingTop={1} flexDirection="row" gap={2}><text fg={palette.foreground}>Current comparison state</text><text fg={palette.dim}>↑/↓ compare frames</text></box>
     <ItemRows items={items} selected={selected} height={height - 9} />
   </box>;
 }
