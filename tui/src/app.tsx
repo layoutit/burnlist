@@ -9,8 +9,11 @@ import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { createDataClient, DataClientError } from "./data-client";
 import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import { detailItems, visualParityPayload } from "./detail-items";
+import { officialOvenFixture } from "./catalog/official-oven-fixtures";
+import { applyVerifiedModelLabFrame, createModelLabClient } from "./catalog/model-lab-controller";
 import { eventInvalidatesScope, observeDashboardEvents, type OvenEvent, type StreamStatus } from "./event-stream";
 import { definitionChangeInvalidates } from "./oven-runtime/definition-adapter";
+import { terminalKeyboardAction, terminalSearchControl } from "./oven-runtime/keyboard-runtime";
 import { initialLiveSnapshot, isMissingSnapshotStatus, reduceLiveSnapshot, terminalServerQuery, type LiveSnapshot } from "./oven-runtime/live-snapshot";
 import { initTerminalRuntime, reduceTerminalRuntime, type TerminalRuntimeAction, type TerminalRuntimeState } from "./oven-runtime/state-runtime";
 import { orderedBurnlists } from "./landing-groups";
@@ -62,6 +65,10 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   }, []);
   const view = navigation.at(-1) ?? "home";
   const catalog = useMemo(() => genericOvens(landing.ovens), [landing.ovens]);
+  const modelLabClient = useMemo(() => {
+    if (!landing.writeToken) return null;
+    try { return createModelLabClient({ endpoint: serverUrl, token: landing.writeToken }); } catch { return null; }
+  }, [landing.writeToken, serverUrl]);
   const burnlists = useMemo(() => orderedBurnlists(landing), [landing]);
   const lenses = useMemo(() => selectedBurnlist ? ovenLenses(selectedBurnlist, landing.ovens) : [], [landing.ovens, selectedBurnlist]);
   const streamingSession = streamingNavigation?.page === "session" ? streamingNavigation.session : null; const activeStreamingData = useMemo(() => { const identity = (ovenData?.payload as { identity?: { logicalRepoKey?: string; worktreeKey?: string; session?: string } } | undefined)?.identity; return streamingSession && identity?.logicalRepoKey === streamingSession.identity.logicalRepoKey && identity.worktreeKey === streamingSession.identity.worktreeKey && identity.session === streamingSession.identity.session ? ovenData : null; }, [ovenData, streamingSession?.href]); const displayData = streamingSession ? activeStreamingData : ovenData;
@@ -171,10 +178,23 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     setActiveLive((current) => sameSelection ? reduceLiveSnapshot(current, "loading") : reduceLiveSnapshot(initialLiveSnapshot<true>(), "loading"));
     setError(null);
     setActiveOven(oven);
-    if (!sameSelection) setOvenDetail(null);
+    if (!sameSelection) {
+      setOvenDetail(null);
+      setOvenData(null);
+      terminalRuntimeRef.current = null;
+      setTerminalState(null);
+    }
     try {
       const detail = await client.ovenResult(oven.id, oven.repoKey, request.signal);
-      if (request.owns()) { setOvenDetail(detail.data); setActiveLive((current) => reduceLiveSnapshot(current, detail.outcome, true)); }
+      if (request.owns()) {
+        const fixture = officialOvenFixture(oven.id);
+        setOvenDetail(detail.data);
+        if (fixture) {
+          setOvenData({ ovenId: oven.id, payload: fixture.payload, validated: true });
+          acceptTerminalPayload(detail.data, fixture.payload, JSON.stringify(["catalog", oven.repoKey, oven.id, detail.data.ovenRevision]));
+        }
+        setActiveLive((current) => reduceLiveSnapshot(current, detail.outcome, true));
+      }
     } catch (cause) {
       if (request.owns()) {
         const message = cause instanceof Error ? cause.message : String(cause);
@@ -186,7 +206,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     } finally {
       if (request.owns()) setLoading(false);
     }
-  }, [activeOven?.id, activeOven?.repoKey, beginOvenRequest, client]);
+  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client]);
   useEffect(() => { void loadLanding(); }, [loadLanding]);
   useEffect(() => () => ovenRequest.current.controller?.abort(), []);
   useEffect(() => {
@@ -241,10 +261,9 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   }, [landing.ovens, loadBurnlist, pushView]);
   const openCatalogOven = useCallback((oven: OvenSummary) => {
     pushView("oven");
-    if (oven.id !== "streaming-diff") { setStreamingNavigation(null); void loadCatalogOven(oven); return; }
-    setStreamingNavigation(initStreamingDiffNavigation("oven-list"));
-    void Promise.all([loadCatalogOven(oven), loadStreamingFeeds(client, streamingRepositories(landing.projects, oven.repoKey))]).then(([, feeds]) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsLoaded", feeds }) : state)).catch((cause) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsFailed", message: cause instanceof Error ? cause.message : String(cause) }) : state));
-  }, [client, landing.projects, loadCatalogOven, pushView]);
+    setStreamingNavigation(null);
+    void loadCatalogOven(oven);
+  }, [loadCatalogOven, pushView]);
   const moveList = useCallback((id: "burnlists" | "ovens", length: number, direction: -1 | 1) => {
     if (!length) return;
     setSelections((current) => {
@@ -261,24 +280,44 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     const current = Math.max(0, lenses.findIndex((oven) => oven.id === activeOven?.id));
     void loadBurnlist(selectedBurnlist, lenses[(current + direction + lenses.length) % lenses.length]!, true);
   }, [activeOven?.id, lenses, loadBurnlist, selectedBurnlist]);
-  const cycleDomain = useCallback((direction: -1 | 1) => {
-    const count = visualParityPayload(ovenData)?.domains.length ?? 0;
-    if (count > 1) setDomainIndex((current) => {
-      const next = (current + direction + count) % count;
-      const domain = visualParityPayload(ovenData)?.domains[next]?.id;
-      const control = (ovenDetail?.ir as unknown as TerminalOvenIR | undefined)?.controls.find((item) => item.kind === "domain-tabs");
-      if (domain && control?.id) dispatchTerminalAction({ type: "domainSelected", id: control.id, value: domain });
-      domainIdRef.current = domain ?? null;
-      return next;
-    });
-  }, [dispatchTerminalAction, ovenData, ovenDetail]);
-  const pageTerminalCollection = useCallback((direction: -1 | 1) => {
-    const ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
-    const state = terminalRuntimeRef.current?.state;
-    const collection = ir?.collections.find((item) => state?.collections[item.id]?.serverPage && (item.paging === "server" || item.paging === "auto"));
-    if (collection) dispatchTerminalAction({ type: direction > 0 ? "pageNext" : "pagePrevious", collectionId: collection.id });
+  const dispatchRuntimeKey = useCallback((key: string) => {
+    const prior = terminalRuntimeRef.current, ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
+    if (!prior || !ir) return false;
+    const action = terminalKeyboardAction(key, ir, prior.state);
+    if (!action) return false;
+    dispatchTerminalAction(action);
+    return true;
   }, [dispatchTerminalAction, ovenDetail]);
-  const terminalControl = useCallback((kind: string) => (ovenDetail?.ir as unknown as TerminalOvenIR | undefined)?.controls.find((item) => item.kind === kind), [ovenDetail]);
+  const selectModelLabFrame = useCallback((direction: -1 | 1) => {
+    const prior = terminalRuntimeRef.current, detail = ovenDetail, ir = detail?.ir as unknown as TerminalOvenIR | undefined;
+    if (!prior || !detail || !ir?.requirements.components.includes("model-lab-view")) return false;
+    const payload = prior.state.payload as any, frame = payload?.terminal?.frame, count = Number(frame?.count), current = Number(frame?.index);
+    if (!Number.isSafeInteger(count) || count < 1 || !Number.isSafeInteger(current)) return true;
+    const next = (current + direction + count) % count;
+    const apply = (verified: Readonly<{ index: number; id: string; count: number }>) => {
+      const updated = applyVerifiedModelLabFrame(payload, verified) as JsonValue;
+      setOvenData({ ovenId: activeOven?.id ?? detail.id, payload: updated, validated: true });
+      acceptTerminalPayload(detail, updated, prior.scope);
+    };
+    const sessionId = payload?.terminal?.sessionId;
+    if (selectedBurnlist && modelLabClient && typeof sessionId === "string") {
+      void modelLabClient.select({ sessionId, requestId: `tui-frame-${next}-${Date.now()}`, frameIndex: next }).then((result) => {
+        if (result.status === "ready" && result.frame) apply(result.frame);
+      });
+    } else {
+      apply({ index: next, id: `frame-${next}`, count });
+    }
+    return true;
+  }, [acceptTerminalPayload, activeOven?.id, modelLabClient, ovenDetail, selectedBurnlist]);
+  const openLiveFeeds = useCallback(() => {
+    const ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
+    if (!ir?.requirements.components.includes("diff-card") || !activeOven) return false;
+    setStreamingNavigation(initStreamingDiffNavigation("oven-list"));
+    void loadStreamingFeeds(client, streamingRepositories(landing.projects, activeOven.repoKey))
+      .then((feeds) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsLoaded", feeds }) : state))
+      .catch((cause) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsFailed", message: cause instanceof Error ? cause.message : String(cause) }) : state));
+    return true;
+  }, [activeOven, client, landing.projects, ovenDetail]);
   useKeyboard((key) => {
     if (key.name === "q") { if (view === "oven" && streamingNavigation?.page === "session") return setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "back" }) : state); return back(); }
     if (key.name === "escape") return navigation.length <= 1 ? shutdown() : back();
@@ -294,6 +333,13 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (key.name === "o") {
       if (view === "oven") return back();
       if (view !== "ovens") pushView("ovens");
+      return;
+    }
+    if (searchControlId && (view === "burnlist" || view === "oven")) {
+      if (key.name === "return" || key.name === "enter") return setSearchControlId(null);
+      const value = terminalRuntimeRef.current?.state.controls[searchControlId];
+      if (key.name === "backspace") return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: typeof value === "string" ? value.slice(0, -1) : "" });
+      if (key.name && key.name.length === 1) return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: `${typeof value === "string" ? value : ""}${key.name}` });
       return;
     }
     if (view === "home") {
@@ -328,55 +374,35 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       if (key.name === "return" || key.name === "enter") { const file = card?.files?.[current.selectedFile] as { path?: string } | undefined; if (file?.path && card?.revId) return setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "fileToggled", key: `${card.revId}:${file.path}` }) : state); }
       return;
     }
-    if (view === "burnlist") {
-      if (searchControlId) {
-        if (key.name === "escape" || key.name === "return" || key.name === "enter") return setSearchControlId(null);
-        const value = terminalRuntimeRef.current?.state.controls[searchControlId];
-        if (key.name === "backspace") return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: typeof value === "string" ? value.slice(0, -1) : "" });
-        if (key.name && key.name.length === 1) return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: `${typeof value === "string" ? value : ""}${key.name}` });
+    if (view === "oven") {
+      if (key.name === "l" && openLiveFeeds()) return;
+      if ((key.name === "left" || key.name === "right") && selectModelLabFrame(key.name === "left" ? -1 : 1)) return;
+      if (key.name === "x") {
+        const control = ovenDetail ? terminalSearchControl(ovenDetail.ir as unknown as TerminalOvenIR) : null;
+        if (control) setSearchControlId(control.id);
         return;
       }
-      if (key.name === "up") return moveItem(-1);
-      if (key.name === "down") return moveItem(1);
+      dispatchRuntimeKey(key.name ?? key.sequence ?? "");
+      return;
+    }
+    if (view === "burnlist") {
+      if (key.name === "up" && items.length) return moveItem(-1);
+      if (key.name === "down" && items.length) return moveItem(1);
+      if ((key.name === "return" || key.name === "enter") && selectedItem) return pushView("item");
       if (key.sequence === "[") return cycleLens(-1);
       if (key.sequence === "]") return cycleLens(1);
-      if (key.name === "n") return pageTerminalCollection(1);
-      if (key.name === "p") return pageTerminalCollection(-1);
-      if (key.name === "z") {
-        const ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
-        const collection = ir?.collections.find((item) => terminalRuntimeRef.current?.state.collections[item.id]?.serverPage);
-        const current = collection && terminalRuntimeRef.current?.state.collections[collection.id];
-        const find = (nodes: readonly any[]): any[] => nodes.flatMap((node) => [node, ...find(node.children ?? [])]);
-        const pagination = ir && find(ir.root).find((node) => node.kind === "pagination" && node.attributes.collectionFrom === collection?.id);
-        const sizes = String(pagination?.attributes.pageSizes ?? "").split(" ").map(Number).filter((size) => Number.isSafeInteger(size) && size > 0);
-        if (collection && current && sizes.length) dispatchTerminalAction({ type: "pageSizeChanged", collectionId: collection.id, pageSize: sizes[(sizes.indexOf(current.pageSize) + 1 + sizes.length) % sizes.length]! });
+      if ((key.name === "left" || key.name === "right") && selectModelLabFrame(key.name === "left" ? -1 : 1)) return;
+      if (key.name === "x") {
+        const control = ovenDetail ? terminalSearchControl(ovenDetail.ir as unknown as TerminalOvenIR) : null;
+        if (control) setSearchControlId(control.id);
         return;
       }
-      if (key.name === "x") { const control = terminalControl("search"); if (control) setSearchControlId(control.id); return; }
-      if (key.name === "f" || key.name === "s") {
-        const control = terminalControl(key.name === "f" ? "filter-toggle" : "sort-toggle");
-        const current = control && terminalRuntimeRef.current?.state.controls[control.id];
-        if (control) dispatchTerminalAction({ type: "toggleChanged", id: control.id, active: current !== true });
-        return;
-      }
-      if (key.name === "m") {
-        const control = terminalControl("mode-toggle");
-        if (control) {
-          const walk = (nodes: readonly any[]): any[] => nodes.flatMap((node) => [node, ...walk(node.children ?? [])]);
-          const values = walk((ovenDetail?.ir as unknown as TerminalOvenIR).root).flatMap((node) => node.kind === "mode-toggle" && node.attributes.id === control.id ? node.children.map((child: any) => String(child.attributes.value ?? "")) : []);
-          const current = String(terminalRuntimeRef.current?.state.controls[control.id] ?? "");
-          const next = values[(values.indexOf(current) + 1 + values.length) % values.length];
-          if (next) dispatchTerminalAction({ type: "modeSelected", id: control.id, value: next });
-        }
-        return;
-      }
+      dispatchRuntimeKey(key.name ?? key.sequence ?? "");
       return;
     }
     if (view === "item") {
       if (key.name === "up") return moveItem(-1);
       if (key.name === "down") return moveItem(1);
-      if (key.name === "left") return cycleDomain(-1);
-      if (key.name === "right") return cycleDomain(1);
     }
   });
   const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const }

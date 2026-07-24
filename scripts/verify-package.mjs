@@ -74,6 +74,7 @@ const required = [
   "ovens/visual-parity/contract.mjs",
   "ovens/visual-parity/handler.mjs",
   "dashboard/dist/index.html",
+  process.platform === "win32" ? "tui/dist/burnlist-tui.exe" : "tui/dist/burnlist-tui",
 ];
 
 for (const path of required) {
@@ -121,6 +122,11 @@ for (const path of files.keys()) {
 const bin = files.get("bin/burnlist.mjs");
 if ((bin.mode & 0o111) === 0) {
   console.error("npm package CLI is not executable.");
+  process.exit(1);
+}
+const tui = files.get(process.platform === "win32" ? "tui/dist/burnlist-tui.exe" : "tui/dist/burnlist-tui");
+if (process.platform !== "win32" && (tui.mode & 0o111) === 0) {
+  console.error("npm package terminal UI is not executable.");
   process.exit(1);
 }
 

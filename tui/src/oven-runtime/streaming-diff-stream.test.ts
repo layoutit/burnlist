@@ -24,6 +24,7 @@ test("stopping during a pending read ignores late reset/card bytes", async () =>
   const body = new ReadableStream<Uint8Array>({ start(controller) { writer = controller; } });
   const stop = observeStreamingDiffCards({ base: "http://t", selection: { repoKey: "repo", worktreeKey: "work", session: "late" }, cards: [], fetchImpl: (async () => new Response(body)) as unknown as typeof fetch, onCards: () => { cards += 1; }, onError: () => { errors += 1; }, retryMs: 1 });
   await new Promise((resolve) => setTimeout(resolve, 0)); stop();
-  writer.enqueue(new TextEncoder().encode(`event: reset\ndata: {"type":"reset"}\n\nid: x\ndata: ${JSON.stringify(card("late"))}\n\n`)); writer.close();
+  // stop cancels the reader, so a late producer cannot retain or deliver bytes.
+  expect(() => writer.enqueue(new TextEncoder().encode(`event: reset\ndata: {"type":"reset"}\n\nid: x\ndata: ${JSON.stringify(card("late"))}\n\n`))).toThrow();
   await new Promise((resolve) => setTimeout(resolve, 5)); expect([cards, errors]).toEqual([0, 0]);
 });

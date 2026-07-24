@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
@@ -7,6 +8,12 @@ import { CatalogOvenDetail } from "../catalog-view";
 import { ItemDetail } from "../item-view";
 import { detailItems } from "../detail-items";
 import { TerminalList } from "../oven-runtime/components/list-components";
+import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
+import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
+import { admitTerminalOven } from "../oven-runtime/terminal-contract";
+import { visualParityFixture } from "./visual-parity-fixture";
+// @ts-expect-error Production compiler remains JavaScript.
+import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
 import { TableGroup } from "../table-view";
 import stringWidth from "string-width";
 import { fitText } from "../theme";
@@ -86,7 +93,7 @@ describe("terminal injection boundary", () => {
     const oven = { id: bad, name: bad, description: bad, version: bad, contract: bad, builtIn: false, repoKey: null, dataInput: "json-payload", instructions: `# heading\n${bad}`, oven: "", ovenRevision: bad, ir: { schema: "burnlist-oven-ir@1", id: bad, version: bad, contract: bad, theme: "x", root: [] } } as never;
     const item = { key: bad, kind: "active", id: bad, title: bad, status: bad, latest: false, fields: { [bad]: bad }, detail: bad, completedAt: bad } as never;
     try {
-      flushSync(() => root.render(<box width={64} height={26} flexDirection="column" overflow="hidden"><box height={12}><CatalogOvenDetail summary={oven} detail={oven} height={12} width={64} /></box><box height={8}><ItemDetail item={item} oven={{ contract: "checklist-progress@1" } as never} progress={{} as never} data={null} domainIndex={0} width={64} height={8} /></box><box height={4}><TerminalList model={{ columns: [{ id: bad, label: bad }], rows: [{ id: bad, cells: { [bad]: bad } }], width: 64, height: 4 }} /></box><box height={2} border={["top"]}><text>footer-sentinel</text></box></box>));
+      flushSync(() => root.render(<box width={64} height={26} flexDirection="column" overflow="hidden"><box height={12}><CatalogOvenDetail summary={oven} detail={oven} height={12} width={64} /></box><box height={8}><ItemDetail item={item} width={64} /></box><box height={4}><TerminalList model={{ columns: [{ id: bad, label: bad }], rows: [{ id: bad, cells: { [bad]: bad } }], width: 64, height: 4 }} /></box><box height={2} border={["top"]}><text>footer-sentinel</text></box></box>));
       await setup.renderOnce();
       const lines = setup.captureCharFrame().split("\n");
       expect(lines.join("")).not.toMatch(forbidden);
@@ -125,11 +132,15 @@ describe("terminal injection boundary", () => {
   });
 
   test("hostile Visual Parity frames are safe at narrow and wide widths", async () => {
-    const bad = `${hostile} visual-sentinel`, payload = { schema: "burnlist-visual-parity-data@1", domains: [{ id: bad, label: bad, qualification: "target", tolerance: { rationale: bad } }], comparisons: [{ id: bad, label: bad, frame: 1, status: bad, domains: { [bad]: { label: bad, status: bad, reference: { label: bad, src: null, width: "wide" }, candidate: { label: bad, src: null, height: "tall" }, diff: { label: bad, src: null, width: "bad", height: "bad" }, difference: { changedPixels: bad, ratio: bad, meanAbsoluteDelta: bad, maximumAbsoluteDelta: bad } } } }] } as never;
+    const bad = `${hostile} visual-sentinel`, source = readFileSync(new URL("../../../ovens/visual-parity/visual-parity.oven", import.meta.url), "utf8"), compiled = compileOven(source);
+    if (!compiled.ok) throw new Error("Visual Parity fixture did not compile.");
+    const payload = structuredClone(visualParityFixture.payload) as any;
+    payload.domains[0].label = bad; payload.byDomain.desktop.note.rationale = bad; payload.byDomain.desktop.frames[0].label = bad;
     for (const width of [24, 64]) {
       const setup = await createTestRenderer({ width, height: 16, useThread: false }), root = createRoot(setup.renderer);
       try {
-        flushSync(() => root.render(<box width={width} height={16} flexDirection="column" overflow="hidden"><box height={14} overflow="hidden"><ItemDetail item={{ key: bad, kind: "visual-frame", id: bad, title: bad, status: bad, latest: false, comparisonIndex: 0 }} oven={null} progress={null} data={{ payload } as never} domainIndex={0} width={width} height={14} /></box><box height={2} border={["top"]}><text>footer-sentinel</text></box></box>));
+        const result = admitTerminalOven(compiled.ir, { status: "ready", payload }, { viewport: { width, height: 16 } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+        flushSync(() => root.render(<TerminalOvenViewport result={result} footer="footer-sentinel" />));
         await setup.renderOnce();
         const lines = setup.captureCharFrame().split("\n");
         expect(lines.slice(0, -2).join("")).not.toMatch(forbidden);
@@ -145,7 +156,7 @@ describe("terminal injection boundary", () => {
     const progress = { active: [{ id: bad, title: [bad], fields: { [bad]: { nested: bad }, array: [bad] } }, null, []], completed: [{ id: bad, title: bad, completedAt: bad, detail: {} }, { id: 7, title: null, completedAt: [], detail: [bad] }, { id: false, title: 3, completedAt: 4, detail: 5 }] } as never;
     const items = detailItems(oven, progress, null), setup = await createTestRenderer({ width: 32, height: 14, useThread: false }), root = createRoot(setup.renderer);
     try {
-      flushSync(() => root.render(<box width={32} height={14} flexDirection="column" overflow="hidden"><box height={12} overflow="hidden">{items.map((item) => <ItemDetail key={item.key} item={item} oven={oven} progress={progress} data={null} domainIndex={0} width={32} height={4} />)}</box><box height={2} border={["top"]}><text>footer-sentinel</text></box></box>));
+      flushSync(() => root.render(<box width={32} height={14} flexDirection="column" overflow="hidden"><box height={12} overflow="hidden">{items.map((item) => <ItemDetail key={item.key} item={item} width={32} />)}</box><box height={2} border={["top"]}><text>footer-sentinel</text></box></box>));
       await setup.renderOnce();
       const lines = setup.captureCharFrame().split("\n");
       expect(lines.slice(0, -2).join("")).not.toMatch(forbidden);

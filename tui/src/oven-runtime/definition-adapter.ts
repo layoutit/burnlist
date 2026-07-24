@@ -1,4 +1,6 @@
-import { isJsonValue, validateTerminalOvenIR, type JsonValue, type TerminalOvenIR } from "./terminal-contract";
+import { inspectJsonBudget } from "./resource-budget";
+import { TERMINAL_RESOURCE_LIMITS } from "./resource-limits";
+import { validateTerminalOvenIR, type JsonValue, type TerminalOvenIR } from "./terminal-contract";
 import type { OvenPackageDetail } from "../types";
 
 export type OvenScope = Readonly<{ ovenId: string; repoKey: string | null }>;
@@ -53,10 +55,14 @@ export function ovenDataPath(scope: OvenScope, query?: OvenQuery): string {
 /** Validates the JSON API envelope before terminal IR admission. */
 export function adaptOvenDefinition(value: unknown, scope: OvenScope): OvenDefinition {
   ovenScopeKey(scope);
+  const resource = inspectJsonBudget(value, { prefix: "PAYLOAD", nodes: TERMINAL_RESOURCE_LIMITS.payloadNodes, depth: TERMINAL_RESOURCE_LIMITS.payloadDepth, stringBytes: TERMINAL_RESOURCE_LIMITS.payloadStringBytes, textBytes: TERMINAL_RESOURCE_LIMITS.payloadTextBytes });
+  if (resource) throw new Error(`Oven ${scope.ovenId} returned an invalid runtime definition: ${resource.message}`);
   const oven = record(record(value)?.oven), ir = record(oven?.ir);
-  if (!oven || !ir || !isJsonValue(ir) || ir.id !== scope.ovenId || !Array.isArray(ir.root) || !Array.isArray(ir.controls) || !Array.isArray(ir.collections)) {
+  if (!oven || !ir || ir.id !== scope.ovenId || !Array.isArray(ir.root) || !Array.isArray(ir.controls) || !Array.isArray(ir.collections)) {
     throw new Error(`Oven ${scope.ovenId} returned an invalid runtime definition.`);
   }
+  const diagnostics = validateTerminalOvenIR(ir);
+  if (diagnostics.length) throw new Error(`Oven ${scope.ovenId} returned an invalid runtime definition: ${diagnostics[0]!.message}`);
   if (!scopeText(oven.repoKey) || !revision(oven.ovenRevision)) throw new Error(`Oven ${scope.ovenId} returned an invalid definition scope or revision.`);
   if (oven.repoKey !== null && oven.repoKey !== scope.repoKey) throw new Error(`Oven ${scope.ovenId} resolved outside its requested repository scope.`);
   const fields = ["id", "name", "description", "version", "contract", "dataInput", "instructions", "oven"] as const;
@@ -64,8 +70,6 @@ export function adaptOvenDefinition(value: unknown, scope: OvenScope): OvenDefin
     throw new Error(`Oven ${scope.ovenId} returned an invalid package detail.`);
   }
   const freshIr = cloned(ir as unknown as JsonValue) as unknown as TerminalOvenIR;
-  const diagnostics = validateTerminalOvenIR(freshIr);
-  if (diagnostics.length) throw new Error(`Oven ${scope.ovenId} returned an invalid runtime definition: ${diagnostics[0]!.message}`);
   const detail: OvenPackageDetail = Object.freeze({
     id: oven.id as string, name: oven.name as string, description: oven.description as string, version: oven.version as string,
     contract: oven.contract as string, builtIn: oven.builtIn as boolean, repoKey: oven.repoKey as string | null,

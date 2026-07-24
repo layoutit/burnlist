@@ -22,6 +22,7 @@
     "skills/",
     "ovens/",
     "dashboard/dist/",
+    "tui/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
     "!**/*.test.mjs",
@@ -43,11 +44,12 @@
     "check:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --check",
     "tui": "npm --prefix tui run dev --",
     "catalog:tui": "npm --prefix tui run catalog --",
+    "build:catalog:tui": "npm --prefix tui run build:catalog",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "test:global-install": "node scripts/smoke-global-install.mjs",
-    "prepack": "npm run build:dashboard && npm run verify",
+    "prepack": "npm run build:dashboard && npm run build:tui && npm run verify",
     "postinstall": "node scripts/register-skills.mjs"
   },
   "engines": {

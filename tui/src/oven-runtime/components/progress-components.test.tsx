@@ -29,11 +29,11 @@ async function frame(result: TerminalRenderResult) {
   try { flushSync(() => root.render(<TerminalOvenViewport result={result} />)); await setup.renderOnce(); return setup.captureCharFrame(); } finally { root.unmount(); setup.renderer.destroy(); }
 }
 
-test("full official Checklist admission fails closed on not-yet-implemented composite roots", () => {
+test("full official Checklist admission uses the implemented composite roots", () => {
   const source = readFileSync(new URL("../../../../ovens/checklist/checklist.oven", import.meta.url), "utf8"), ir = compiled(source, "ovens/checklist/checklist.oven");
   const result = admitted(ir, checklistPayload, 60, 20);
-  expect(result.status).toBe("unsupported");
-  expect(result.diagnostics[0]?.message).toContain("checklist-ledger");
+  expect(result.status).toBe("ready");
+  expect(result.diagnostics).toEqual([]);
   const officialKpis = kpiStripModel(ir.root[0]!, checklistPayload, 120);
   expect(officialKpis.items.map((item) => item.heading)).toEqual(["Current", "Progress", "Elapsed", "Avg pace", "Time left"]);
   expect(officialKpis.items[1]).toMatchObject({ value: "4 · 7 (57%)" });

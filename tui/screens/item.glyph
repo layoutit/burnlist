@@ -1,5 +1,5 @@
 <screen id="item" title="Item" version="1">
   <brand-header title="Burnlist" subtitle="Item detail" />
   <item-detail source="item" />
-  <footer hints="↑/↓:previous/next · ←/→:domain · o:catalog · q/esc:back" />
+  <footer hints="↑/↓:previous/next · o:catalog · q/esc:back" />
 </screen>

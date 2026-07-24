@@ -17,7 +17,7 @@ test("catalog exposes wide, narrow, animated, and reduced-motion chiminea previe
   const root = createRoot(setup.renderer);
   flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   await setup.waitForFrame((frame) => frame.includes("Terminal catalog"));
-  for (let index = 0; index < 12; index += 1) await press(setup, "ARROW_DOWN");
+  for (let index = 0; index < 14; index += 1) await press(setup, "ARROW_DOWN");
   await press(setup, "RETURN");
   await setup.waitForFrame((frame) => frame.includes("Oven fire") && frame.includes("glyphcss flame · animated") && frame.includes("╭────╮"));
   await press(setup, "v");

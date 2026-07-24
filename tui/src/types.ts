@@ -128,7 +128,7 @@ export interface VisualParityImage {
 
 export interface DetailItem {
   key: string;
-  kind: "active" | "completed" | "visual-frame";
+  kind: "active" | "completed";
   id: string;
   title: string;
   status: string;
@@ -136,7 +136,6 @@ export interface DetailItem {
   fields?: Record<string, string>;
   detail?: string;
   completedAt?: string;
-  comparisonIndex?: number;
 }
 
 export interface OvenDataSnapshot {
@@ -151,4 +150,5 @@ export interface LandingSnapshot {
   burnlists: BurnlistSummary[];
   ovens: OvenSummary[];
   generatedAt: string;
+  writeToken?: string;
 }

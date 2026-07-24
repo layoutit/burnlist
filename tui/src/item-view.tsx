@@ -1,8 +1,6 @@
-import { GlyphImage } from "./glyph-image";
-import { visualParityPayload } from "./detail-items";
 import { compactTime, fitText } from "./theme";
 import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
-import type { DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
+import type { DetailItem } from "./types";
 
 function ChecklistItem({ item, width, palette }: { item: DetailItem; width: number; palette: TerminalPalette }) {
   const fields = Object.entries(item.fields ?? {});
@@ -27,58 +25,11 @@ function ChecklistItem({ item, width, palette }: { item: DetailItem; width: numb
   </box>;
 }
 
-function VisualFrame({ item, data, domainIndex, width, height, palette }: {
-  item: DetailItem;
-  data: OvenDataSnapshot | null;
-  domainIndex: number;
-  width: number;
-  height: number;
-  palette: TerminalPalette;
-}) {
-  const payload = visualParityPayload(data);
-  const comparison = payload?.comparisons[item.comparisonIndex ?? -1];
-  const domain = payload?.domains[domainIndex] ?? payload?.domains.find((entry) => entry.qualification === "target") ?? payload?.domains[0];
-  const result = comparison && domain ? comparison.domains[domain.id] : null;
-  if (!comparison || !domain || !result) return <box padding={2}><text fg={palette.dim}>Frame detail is unavailable.</text></box>;
-  const imageWidth = Math.max(8, Math.floor((width - 10) / 3));
-  const imageHeight = Math.max(3, height - 13);
-  const images = [result.reference, result.candidate, result.diff];
-  return <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={2} paddingTop={1}>
-    <box height={2} flexDirection="row" alignItems="center" gap={2}>
-      <text fg={result.status === "pass" ? palette.green : palette.red}>{fitText(result.status.toUpperCase(), 8).trimEnd()}</text>
-      <text fg={palette.foreground}>{fitText(`${item.id} · ${comparison.label}`, Math.max(1, width - 8)).trimEnd()}</text>
-      {item.latest ? <text fg={palette.amber}>LATEST</text> : null}
-    </box>
-    <box height={3} flexDirection="row" alignItems="center" gap={3}>
-      <text fg={palette.blue}>{fitText(`${domain.label} · ${domain.qualification}`, Math.max(1, width - 8)).trimEnd()}</text>
-      <text fg={palette.muted}>{fitText(`${result.difference.changedPixels} changed pixels · ${(result.difference.ratio * 100).toFixed(2)}%`, Math.max(1, width - 8)).trimEnd()}</text>
-      <text fg={palette.dim}>{fitText(`mean Δ ${result.difference.meanAbsoluteDelta.toFixed(2)} · max Δ ${result.difference.maximumAbsoluteDelta.toFixed(2)}`, Math.max(1, width - 8)).trimEnd()}</text>
-    </box>
-    <box height={2}><text fg={palette.dim}>{fitText(domain.tolerance?.rationale ?? "Exact zero tolerance.", Math.max(1, width - 8)).trimEnd()}</text></box>
-    <box flexGrow={1} flexDirection="row" gap={2}>
-      {images.map((image, index) => <box key={index} width={imageWidth} flexDirection="column" alignItems="center">
-        <box height={2}><text fg={palette.soft}>{fitText(image.label, imageWidth).trimEnd()}</text></box>
-        <box width={imageWidth} height={imageHeight} alignItems="center" justifyContent="center">
-          <GlyphImage source={image.src} width={imageWidth} height={imageHeight} />
-        </box>
-        <text fg={palette.dim}>{fitText(`${image.width}×${image.height}`, imageWidth).trimEnd()}</text>
-      </box>)}
-    </box>
-  </box>;
-}
-
-export function ItemDetail({ item, oven, progress, data, domainIndex, width, height }: {
+export function ItemDetail({ item, width }: {
   item: DetailItem | null;
-  oven: OvenSummary | null;
-  progress: ProgressSnapshot | null;
-  data: OvenDataSnapshot | null;
-  domainIndex: number;
   width: number;
-  height: number;
 }) {
   const palette = useTerminalPalette();
   if (!item) return <box padding={2}><text fg={palette.dim}>No item is selected.</text></box>;
-  if (item.kind === "visual-frame") return <VisualFrame item={item} data={data} domainIndex={domainIndex} width={width} height={height} palette={palette} />;
-  if (oven?.contract === "checklist-progress@1" && progress) return <ChecklistItem item={item} width={width} palette={palette} />;
-  return <box padding={2}><text fg={palette.dim}>This Oven has no item renderer.</text></box>;
+  return <ChecklistItem item={item} width={width} palette={palette} />;
 }

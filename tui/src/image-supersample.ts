@@ -1,4 +1,5 @@
 import type { RgbaImage } from "./png-glyph";
+import { TERMINAL_RESOURCE_LIMITS } from "./oven-runtime/resource-limits";
 
 export interface SupersampledFrame {
   cols: number;
@@ -9,14 +10,19 @@ export interface SupersampledFrame {
 }
 
 function fittedCells(image: RgbaImage, maxWidth: number, maxHeight: number): { cols: number; rows: number } {
-  const widthLimit = Math.max(1, Math.floor(maxWidth));
-  const heightLimit = Math.max(1, Math.floor(maxHeight));
+  const widthLimit = Math.max(1, Number.isFinite(maxWidth) ? Math.floor(maxWidth) : 1);
+  const heightLimit = Math.max(1, Number.isFinite(maxHeight) ? Math.floor(maxHeight) : 1);
   const cellAspectRatio = 0.5;
   let cols = widthLimit;
   let rows = Math.max(1, Math.round((image.height / image.width) * cols * cellAspectRatio));
   if (rows > heightLimit) {
     rows = heightLimit;
     cols = Math.max(1, Math.min(widthLimit, Math.round((rows / cellAspectRatio) * image.width / image.height)));
+  }
+  if (cols > Math.floor(TERMINAL_RESOURCE_LIMITS.imageCells / rows)) {
+    const scale = Math.sqrt(TERMINAL_RESOURCE_LIMITS.imageCells / (cols * rows));
+    cols = Math.max(1, Math.floor(cols * scale));
+    rows = Math.max(1, Math.min(rows, Math.floor(TERMINAL_RESOURCE_LIMITS.imageCells / cols)));
   }
   return { cols, rows };
 }
@@ -38,6 +44,7 @@ function bilinear(image: RgbaImage, x: number, y: number, offset: number): numbe
 }
 
 export function supersampleImage(image: RgbaImage, maxWidth: number, maxHeight: number): SupersampledFrame {
+  if (!Number.isSafeInteger(image.width) || !Number.isSafeInteger(image.height) || image.width < 1 || image.height < 1 || image.width > TERMINAL_RESOURCE_LIMITS.pngDimension || image.height > TERMINAL_RESOURCE_LIMITS.pngDimension || image.width > Math.floor(TERMINAL_RESOURCE_LIMITS.pngRgbaBytes / 4 / image.height) || image.pixels.length !== image.width * image.height * 4) throw new Error("Image pixels are outside the terminal limit.");
   const { cols, rows } = fittedCells(image, maxWidth, maxHeight);
   const pixelWidth = cols * 2;
   const pixelHeight = rows * 2;

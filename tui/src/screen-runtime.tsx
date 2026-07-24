@@ -1,11 +1,10 @@
-import { useTerminalDimensions } from "@opentui/react";
 import type { GlyphNode, GlyphScreen } from "../../src/glyph/glyph-compile.mjs";
-import { CatalogOvenDetail } from "./catalog-view";
+import { CatalogOvenDetail, CatalogOvenRuntime } from "./catalog-view";
 import { BrandHeader, DetailSummary } from "./detail-view";
 import { ItemDetail } from "./item-view";
 import { BurnlistList, LandingSectionHeading, OvenList } from "./landing-view";
 import { genericOvens } from "./oven-fit";
-import { OvenPane } from "./oven-view";
+import { officialOvenFixture } from "./catalog/official-oven-fixtures";
 import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
 import { TerminalStreamingFeedList } from "./oven-runtime/components/streaming-diff-components";
 import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
@@ -13,6 +12,7 @@ import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { fitText } from "./theme";
 import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
+import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
 import type {
   BurnlistSummary,
   DetailItem,
@@ -84,31 +84,15 @@ function DetailSplit({ node, props, width, height, chrome }: {
           width={collapsed ? width : summaryWidth}
         />
       </box>
-      {runtime?.status === "ready" ? <TerminalOvenViewport
+      {runtime ? <TerminalOvenViewport
         result={runtime}
         footer="q:back"
-      /> : <>
-      {runtime ? <box height={2} overflow="hidden"><text fg={palette.dim}>{fitText(`LEGACY FALLBACK · ${runtime.diagnostics.at(-1)?.message ?? runtime.status}`, Math.max(1, width - 6)).trimEnd()}</text></box> : null}
-      <OvenPane
-        active={props.activeOven}
-        lenses={props.ovenLenses}
-        progress={props.progress}
-        data={props.ovenData}
-        burnlist={props.selectedBurnlist}
-        height={Math.max(1, sidebarHeight - 5)}
-        width={collapsed ? width : summaryWidth}
-        itemIndex={props.itemIndex}
-      /></>}
+      /> : <box padding={2} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", Math.max(1, width - 6)).trimEnd()}</text></box>}
     </box>
     <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden">
       <ItemDetail
         item={props.selectedItem}
-        oven={props.activeOven}
-        progress={props.progress}
-        data={props.ovenData}
-        domainIndex={props.domainIndex}
         width={collapsed ? width : width - summaryWidth}
-        height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
       />
     </box>
   </box>;
@@ -166,9 +150,10 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
     case "oven-detail":
       if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 3} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 4} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 3} />;
+      if (props.ovenRuntime) return <CatalogOvenRuntime key={key} summary={props.activeOven} detail={props.ovenDetail} result={props.ovenRuntime} height={height - 3} width={width} footer={officialOvenFixture(props.activeOven?.id)?.footer ?? "q:back"} />;
       return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} width={width} />;
     case "item-detail":
-      return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 3} />;
+      return <ItemDetail key={key} item={props.selectedItem} width={width} />;
     case "footer":
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
         <text fg={palette.dim}>{fitText(String(node.attributes.hints), Math.max(1, width - 6)).trimEnd()}</text>
@@ -179,7 +164,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
 }
 
 function ScreenSurface(props: ScreenRuntimeProps) {
-  const { width, height } = useTerminalDimensions();
+  const { width, height } = useCoalescedTerminalDimensions();
   const chrome = useTerminalChrome();
   const palette = useTerminalPalette();
   return <box width="100%" height="100%" flexDirection="column" overflow="hidden" backgroundColor={chrome.background}>

@@ -29,7 +29,7 @@ test("compiled status bindings format safely and reserve activity geometry", () 
   expect(statusActivityText(running, 14)).toHaveLength(14);
   expect(statusActivityText({ ...running, activity: "failed", activityText: "Update failed" }, 8)).toBe("! Updat…");
   expect(statusSurfaceModel(compiled.ir.root[2], { note: {}, isTarget: true, rationale: "Exact target." })).toMatchObject({ title: "Qualifying target", note: "Exact target." });
-  expect(statusSurfaceModel(emptyCompiled.ir.root[0], {})).toMatchObject({ title: "Run overview", empty: "No Differential Testing scenarios" });
+  expect(statusSurfaceModel(emptyCompiled.ir.root[0], {})).toMatchObject({ title: "Run overview", empty: "No Run overview scenarios" });
 });
 
 test("compiled viewport bounds text and keeps footer clear in normal/loading/error/empty states", async () => {
@@ -45,7 +45,7 @@ test("compiled viewport bounds text and keeps footer clear in normal/loading/err
     expect(lines.slice(-2).join("\n")).toContain("q:back");
     expect(lines.slice(0, -2).join("\n")).toContain("Run overview");
     if (checkpoint === "error") expect(lines.join("\n")).toContain("Update failed");
-    if (checkpoint === "empty") expect(lines.join("\n")).toContain("No Differential");
+    if (checkpoint === "empty") expect(lines.join("\n")).toContain("No Run overview");
     app.unmount(); setup.renderer.destroy();
   }
 });

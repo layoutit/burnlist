@@ -1,3 +1,5 @@
+import { TERMINAL_RESOURCE_LIMITS } from "./oven-runtime/resource-limits";
+
 export type StreamStatus = "connecting" | "live" | "fallback";
 
 export interface OvenEvent {
@@ -37,7 +39,12 @@ export function isDashboardInvalidation(event: OvenEvent): boolean {
       || (event.kind === "lifecycle-changed" && event.phase === "complete"));
 }
 
-export function parseSseFrames(buffer: string): {
+/**
+ * Splits complete SSE records without handing an over-limit record to a JSON
+ * parser.  Callers still bound the incomplete remainder: a peer can otherwise
+ * omit the terminating blank line forever.
+ */
+export function parseSseFrames(buffer: string, maxFrameBytes = TERMINAL_RESOURCE_LIMITS.sseFrameBytes): {
   frames: Array<{ event: string; data: string; id?: string }>;
   remainder: string;
 } {
@@ -45,6 +52,7 @@ export function parseSseFrames(buffer: string): {
   const chunks = normalized.split("\n\n");
   const remainder = chunks.pop() ?? "";
   const frames = chunks.flatMap((chunk) => {
+    if (new TextEncoder().encode(chunk).byteLength > maxFrameBytes) return [];
     let event = "message", id: string | undefined;
     const data: string[] = [];
     for (const line of chunk.split("\n")) {
@@ -63,8 +71,10 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
   const coalesceMs = options.coalesceMs ?? 25;
   let stopped = false;
   let controller: AbortController | null = null;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let retry: ReturnType<typeof setTimeout> | null = null;
   let coalesce: ReturnType<typeof setTimeout> | null = null;
+  let connecting = false;
   let pendingInvalidations: Array<OvenEvent | undefined> = [];
   const resetCovers = (reset: OvenEvent, event: OvenEvent) => (reset.ovenId === undefined || reset.ovenId === event.ovenId) && (reset.repoKey === undefined || (reset.repoKey ?? null) === (event.repoKey ?? null));
 
@@ -76,7 +86,13 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
     } else if (pendingInvalidations.some((entry) => entry === undefined || entry?.kind === "__reset" && resetCovers(entry, event))) {
       // A reset is a global reconciliation barrier for this complete burst.
     }
-    else if (!pendingInvalidations.some((entry) => entry && entry.ovenId === event.ovenId && (entry.repoKey ?? null) === (event.repoKey ?? null) && entry.kind === event.kind && entry.phase === event.phase)) pendingInvalidations.push(event);
+    else if (!pendingInvalidations.some((entry) => entry && entry.ovenId === event.ovenId && (entry.repoKey ?? null) === (event.repoKey ?? null) && entry.kind === event.kind && entry.phase === event.phase)) {
+      // Losing event granularity is safe only when it becomes a complete
+      // reconciliation. Never retain an attacker-controlled event backlog.
+      pendingInvalidations = pendingInvalidations.length >= TERMINAL_RESOURCE_LIMITS.pendingInvalidations
+        ? [undefined]
+        : [...pendingInvalidations, event];
+    }
     if (coalesce) return;
     coalesce = setTimeout(() => {
       coalesce = null;
@@ -88,7 +104,8 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
   };
 
   const connect = async () => {
-    if (stopped) return;
+    if (stopped || connecting) return;
+    connecting = true;
     options.onStatus?.("connecting");
     controller = new AbortController();
     try {
@@ -99,13 +116,20 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
       });
       if (!response.ok || !response.body) throw new Error(`Event stream returned ${response.status}`);
       options.onStatus?.("live");
-      const reader = response.body.getReader();
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let pending = "";
       while (!stopped) {
         const { done, value } = await reader.read();
         if (done) break;
         pending += decoder.decode(value, { stream: true });
+        if (new TextEncoder().encode(pending).byteLength > TERMINAL_RESOURCE_LIMITS.sseRemainderBytes) {
+          // A malformed/infinite record cannot safely be completed. Reconcile
+          // all views and discard it rather than retaining arbitrary text.
+          pending = "";
+          invalidate();
+          continue;
+        }
         const parsed = parseSseFrames(pending);
         pending = parsed.remainder;
         for (const frame of parsed.frames) {
@@ -134,8 +158,11 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
     } catch {
       if (stopped) return;
       options.onStatus?.("fallback");
-      retry = setTimeout(() => void connect(), retryMs);
+      if (!retry) retry = setTimeout(() => { retry = null; void connect(); }, retryMs);
       retry.unref?.();
+    } finally {
+      connecting = false;
+      reader = null;
     }
   };
 
@@ -143,6 +170,7 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
   return () => {
     stopped = true;
     controller?.abort();
+    void reader?.cancel().catch(() => {});
     if (retry) clearTimeout(retry);
     if (coalesce) clearTimeout(coalesce);
     pendingInvalidations = [];

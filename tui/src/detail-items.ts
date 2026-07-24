@@ -49,26 +49,11 @@ function checklistItems(progress: ProgressSnapshot): DetailItem[] {
   ];
 }
 
-function visualItems(payload: VisualParityPayload): DetailItem[] {
-  const last = payload.comparisons.length - 1;
-  return payload.comparisons.map((comparison, comparisonIndex) => ({
-    key: `frame:${comparison.id}`,
-    kind: "visual-frame" as const,
-    id: `frame ${comparison.frame}`,
-    title: comparison.label,
-    status: comparison.status.toUpperCase(),
-    latest: comparisonIndex === last,
-    comparisonIndex,
-  }));
-}
-
 export function detailItems(
   oven: OvenSummary | null,
   progress: ProgressSnapshot | null,
-  data: OvenDataSnapshot | null,
+  _data: OvenDataSnapshot | null,
 ): DetailItem[] {
   if (oven?.contract === "checklist-progress@1" && progress) return checklistItems(progress);
-  const payload = visualParityPayload(data);
-  if (oven?.id === "visual-parity" && payload) return visualItems(payload);
   return [];
 }

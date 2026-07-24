@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { compileGlyph } from "../../src/glyph/glyph-compile.mjs";
+// @ts-expect-error Production compiler intentionally remains JavaScript.
+import { compileOven } from "../../src/ovens/dsl/oven-compile.mjs";
+import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import burnlistSource from "../screens/burnlist.glyph" with { type: "text" };
 import homeSource from "../screens/home.glyph" with { type: "text" };
 import itemSource from "../screens/item.glyph" with { type: "text" };
@@ -10,7 +13,7 @@ import ovenSource from "../screens/oven.glyph" with { type: "text" };
 import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { detailItems } from "./detail-items";
 import { ScreenRuntime, type ScreenRuntimeProps } from "./screen-runtime";
-import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
+import type { BurnlistSummary, LandingSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
 import { admitTerminalOven } from "./oven-runtime/terminal-contract";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components/terminal-capabilities";
 import { streamingDiffFixture } from "./catalog/streaming-diff-fixture";
@@ -51,21 +54,18 @@ const progress: ProgressSnapshot = {
     { id: "ui-02", title: "Render the fire", completedAt: "2026-07-23T09:00:00Z", detail: "Animated with glyphcss." },
   ],
 };
-const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAAAAAAAAAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3AAAAAAAAAABJRU5EAAAAAA==";
-const image = (label: string) => ({ label, src: png, width: 2, height: 2 });
-const visualData: OvenDataSnapshot = {
-  ovenId: "visual-parity",
-  payload: {
-    schema: "burnlist-visual-parity-data@1",
-    differentialTesting: { scenarioCatalog: { selectedScenarioId: "main", scenarios: [{ id: "main", label: "Dashboard", frameCount: 2 }] } },
-    domains: [{ id: "target", label: "Target", isolation: "render-pass", qualification: "target", tolerance: { rationale: "Exact render boundary." } }],
-    comparisons: [0, 1].map((frame) => ({
-      id: `f${frame}`, label: frame ? "Detail" : "Landing", frame, status: "pass",
-      domains: { target: { label: "Target", status: "pass", reference: image("Reference"), candidate: image("Candidate"), diff: image("Diff"), difference: { changedPixels: 0, totalPixels: 4, ratio: 0, meanAbsoluteDelta: 0, maximumAbsoluteDelta: 0 } } },
-    })),
-  },
-  validated: true,
-};
+const checklistSource = readFileSync(new URL("../../ovens/checklist/checklist.oven", import.meta.url), "utf8");
+const compiledChecklist = compileOven(checklistSource);
+if (!compiledChecklist.ok) throw new Error("Checklist fixture did not compile.");
+function checklistRuntime(value: ProgressSnapshot, width = 52, height = 26) {
+  const payload = adaptChecklist({
+    ...value,
+    history: value.history ?? [],
+    active: value.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
+    completed: value.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
+  });
+  return admitTerminalOven(compiledChecklist.ir, { status: "ready", payload }, { viewport: { width, height } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+}
 const ovenDetail: OvenPackageDetail = {
   ...ovens[1]!, instructions: "# Visual Parity\n\nCompare trusted reference and candidate frames.\n\n## Data Shape\n\nRead-only JSON payload.",
   oven: "<oven />", ovenRevision: `o1-sha256:${"a".repeat(64)}`,
@@ -143,21 +143,18 @@ describe("dashboard-shaped .glyph runtime", () => {
   });
 
   test("renders navigable Checklist items and marks the latest completion", async () => {
+    const items = detailItems(ovens[0]!, progress, null);
     const { frame, root } = await renderFrame(120, 36, props({
       screen: parsed(burnlistSource), progress, selectedBurnlist: checklistBurnlist,
-      activeOven: ovens[0]!, ovenLenses: [ovens[0]!], itemIndex: 1,
+      activeOven: ovens[0]!, ovenLenses: [ovens[0]!], itemIndex: 1, selectedItem: items[1]!,
+      ovenRuntime: checklistRuntime(progress),
     }));
-    expect(frame).toContain("Items");
-    expect(frame).toContain("Render item detail");
+    expect(frame).toContain("Current");
+    expect(frame).toContain("Build shell");
     expect(frame).toContain("Render the fire");
     expect(frame).toContain("LATEST");
     expect(frame).toContain("50%");
     expect(frame).toMatch(/[.:;+=xX#%@]/u);
-    const lines = frame.split("\n");
-    const columns = lines.find((line) => line.includes("STATE") && line.includes("UPDATED"))!;
-    const active = lines.find((line) => line.includes("ACTIVE") && line.includes("ui-03"))!;
-    expect(active.indexOf("ACTIVE")).toBe(columns.indexOf("STATE"));
-    expect(active.indexOf("ui-03")).toBe(columns.indexOf("ID"));
     root.unmount();
   });
 
@@ -194,6 +191,8 @@ describe("dashboard-shaped .glyph runtime", () => {
         activeOven: ovens[0]!,
         ovenLenses: [ovens[0]!],
         itemIndex: 19,
+        selectedItem: detailItems(ovens[0]!, longProgress, null)[19]!,
+        ovenRuntime: checklistRuntime(longProgress),
       }));
       const lines = frame.split("\n");
       const selectedRow = lines.findIndex((line) => line.includes("task-19"));
@@ -245,21 +244,6 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("LATEST");
     expect(frame).toContain("COMPLETION DETAIL");
     expect(frame).toContain("Animated with glyphcss.");
-    root.unmount();
-  });
-
-  test("renders a Visual Parity frame as supersampled image triplets", async () => {
-    const items = detailItems(ovens[1]!, null, visualData);
-    const { frame, root } = await renderFrame(120, 34, props({
-      screen: parsed(itemSource), selectedBurnlist: visualBurnlist, activeOven: ovens[1]!,
-      ovenData: visualData, selectedItem: items[1]!, itemIndex: 1,
-    }));
-    expect(frame).toContain("Reference");
-    expect(frame).toContain("Candidate");
-    expect(frame).toContain("Diff");
-    expect(frame).toContain("LATEST");
-    expect(frame).toContain("2×2");
-    expect(frame).toMatch(/[▗▖▄▝▐▞▟▘▚▌▙▀▜▛█]/u);
     root.unmount();
   });
 

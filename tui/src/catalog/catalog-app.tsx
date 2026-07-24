@@ -9,6 +9,7 @@ import statusEmptySource from "./status-empty-fixture.oven" with { type: "text" 
 import visualParitySource from "../../../ovens/visual-parity/visual-parity.oven" with { type: "text" };
 import streamingDiffSource from "../../../ovens/streaming-diff/streaming-diff.oven" with { type: "text" };
 import differentialSource from "../../../ovens/differential-testing/differential-testing.oven" with { type: "text" };
+import performanceTracingSource from "../../../ovens/performance-tracing/performance-tracing.oven" with { type: "text" };
 import checklistSource from "../../../ovens/checklist/checklist.oven" with { type: "text" };
 import modelLabSource from "../../../ovens/model-lab/model-lab.oven" with { type: "text" };
 import { FixtureFlame } from "./fixture-flame";
@@ -27,8 +28,11 @@ import { statusFixtureCheckpoints, statusFixtureStates } from "./status-fixture"
 import { visualParityFixture } from "./visual-parity-fixture";
 import { streamingDiffFixture, streamingFeedFixture } from "./streaming-diff-fixture";
 import { differentialFixture } from "./differential-fixture";
+import { performanceTracingFixture } from "./performance-tracing-fixture";
+import { generalComponentsFixture } from "./general-components-fixture";
+import { GeneralComponentsSurface } from "./general-components-surface";
 import { checklistFixture } from "./checklist-fixture";
-import { modelLabFixture } from "./model-lab-fixture";
+import { modelLabFixture, verifiedModelLabFrame } from "./model-lab-fixture";
 import { applyVerifiedModelLabFrame, type ModelLabClient } from "./model-lab-controller";
 import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
@@ -38,7 +42,7 @@ import { useTerminalPalette } from "../terminal-accessibility";
 import { useTerminalChrome } from "../terminal-chrome";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab" | "chiminea";
+type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab" | "performance-tracing" | "general-components" | "chiminea";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
@@ -53,6 +57,8 @@ const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; de
   { id: "differential-testing", label: "Differential Testing", detail: "compiled KPI, chart, log, and field drill-down", checkpoints: differentialFixture.checkpoints },
   { id: "checklist", label: "Checklist", detail: "shared progress, ledger, and event detail", checkpoints: checklistFixture.checkpoints },
   { id: "model-lab", label: "Model Lab", detail: "producer readiness and retained frame evidence", checkpoints: modelLabFixture.checkpoints },
+  { id: "performance-tracing", label: "Performance Tracing", detail: "compiled budgets, progress, log, and diagnostics", checkpoints: performanceTracingFixture.checkpoints },
+  { id: "general-components", label: generalComponentsFixture.title, detail: generalComponentsFixture.detail, checkpoints: generalComponentsFixture.checkpoints },
   { id: "chiminea", label: chimineaFixture.title, detail: chimineaFixture.detail, checkpoints: chimineaFixture.checkpoints },
 ];
 const progressPayloads = [
@@ -72,6 +78,7 @@ const statusEmptyOven = compile(statusEmptySource, "tui/src/catalog/status-empty
 const visualParityOven = compile(visualParitySource, "ovens/visual-parity/visual-parity.oven");
 const streamingDiffOven = compile(streamingDiffSource, "ovens/streaming-diff/streaming-diff.oven");
 const differentialOven = compile(differentialSource, "ovens/differential-testing/differential-testing.oven");
+const performanceTracingOven = compile(performanceTracingSource, "ovens/performance-tracing/performance-tracing.oven");
 const checklistOven = compile(checklistSource, "ovens/checklist/checklist.oven");
 const modelLabOven = compile(modelLabSource, "ovens/model-lab/model-lab.oven");
 const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
@@ -90,9 +97,10 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   const [streamingExpanded, setStreamingExpanded] = useState(false);
   const [streamingNavigation, setStreamingNavigation] = useState(() => initStreamingDiffNavigation("streaming-feeds"));
   const [differentialState, setDifferentialState] = useState(() => initTerminalRuntime(differentialOven, differentialFixture.payload));
+  const [performanceTracingState, setPerformanceTracingState] = useState(() => initTerminalRuntime(performanceTracingOven, performanceTracingFixture.payload as JsonValue));
   const [checklistState, setChecklistState] = useState(() => initTerminalRuntime(checklistOven, checklistFixture.active));
   const [modelLabState, setModelLabState] = useState(() => initTerminalRuntime(modelLabOven, modelLabFixture.ready));
-  const [modelLabPayload, setModelLabPayload] = useState(modelLabFixture.ready);
+  const [modelLabPayload, setModelLabPayload] = useState<any>(modelLabFixture.ready);
   const fixture = catalogFixtures[selected]!;
   const previewWidth = mode === "wide" ? 72 : 36;
   const previewHeight = mode === "wide" ? 16 : 14;
@@ -108,6 +116,10 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   const differentialFields = "fields" in differentialPayload && Array.isArray(differentialPayload.fields) ? differentialPayload.fields : [];
   const differentialKey = differentialFields.find((field: { id: string }) => differentialState.expandedKeys.includes(`field-view:${field.id}`))?.id;
   const differentialResult = useMemo(() => admitTerminalOven(differentialOven, { status: "ready", payload: differentialPayload }, { viewport: { width: previewWidth, height: previewHeight }, controls: differentialState.controls, expandedKeys: differentialState.expandedKeys }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [differentialPayload, differentialState, previewHeight, previewWidth]);
+  const performancePayload = stateName === "empty" ? performanceTracingFixture.empty : stateName === "failed-budget" ? performanceTracingFixture.failedBudget : performanceTracingFixture.payload;
+  const performanceFields = Array.isArray((performancePayload as any).fields) ? (performancePayload as any).fields as Array<{ id: string }> : [];
+  const performanceKey = performanceFields.find((field) => performanceTracingState.expandedKeys.includes(`field-view:${field.id}`))?.id;
+  const performanceResult = useMemo(() => admitTerminalOven(performanceTracingOven, { status: "ready", payload: performancePayload }, { viewport: { width: previewWidth, height: previewHeight }, controls: performanceTracingState.controls, expandedKeys: performanceTracingState.expandedKeys }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [performancePayload, performanceTracingState, previewHeight, previewWidth]);
   const checklistPayload = stateName === "completed" ? checklistFixture.completed : stateName === "long-list" ? checklistFixture.longList : checklistFixture.active;
   const checklistEventPath = componentRootPath(checklistOven.root, previewWidth, "checklist-event-cards", checklistPayload, checklistState.controls);
   const checklistFocusIds = checklistEventPath && checklistState.focusId === checklistEventPath ? [checklistEventPath] : [];
@@ -126,7 +138,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
     if (page === "catalog") {
       if (pressed === "up") move(-1);
       else if (pressed === "down") move(1);
-      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setStreamingNavigation(reduceStreamingDiffNavigation(initStreamingDiffNavigation("streaming-feeds"), { type: "feedsLoaded", feeds: streamingFeedFixture.feeds })); setDifferentialState(initTerminalRuntime(differentialOven, differentialFixture.payload)); setChecklistState(initTerminalRuntime(checklistOven, checklistFixture.active)); setModelLabState(initTerminalRuntime(modelLabOven, modelLabFixture.ready)); setModelLabPayload(modelLabFixture.ready); setControlsState(controlsInitialState()); setPage("preview"); }
+      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setStreamingNavigation(reduceStreamingDiffNavigation(initStreamingDiffNavigation("streaming-feeds"), { type: "feedsLoaded", feeds: streamingFeedFixture.feeds })); setDifferentialState(initTerminalRuntime(differentialOven, differentialFixture.payload)); setPerformanceTracingState(initTerminalRuntime(performanceTracingOven, performanceTracingFixture.payload as JsonValue)); setChecklistState(initTerminalRuntime(checklistOven, checklistFixture.active)); setModelLabState(initTerminalRuntime(modelLabOven, modelLabFixture.ready)); setModelLabPayload(modelLabFixture.ready); setControlsState(controlsInitialState()); setPage("preview"); }
       return;
     }
     if (fixture.id === "lists") {
@@ -164,9 +176,17 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
       else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
       return;
     }
-    if (fixture.id === "differential-testing") { if (pressed === "return" || pressed === "enter") { const field = differentialKey ?? differentialFields[0]?.id; if (field) setDifferentialState((state) => reduceTerminalRuntime(state, { type: "toggleExpanded", key: `field-view:${field}` }, differentialOven)); } else if (pressed === "c") setDifferentialState((state) => reduceTerminalRuntime(state, { type: "modeSelected", id: "progress-mode", value: state.controls["progress-mode"] === "delta" ? "progress" : state.controls["progress-mode"] === "progress" ? "failed" : "delta" }, differentialOven)); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "left" || pressed === "right") nextCheckpoint(); return; }
+    if (fixture.id === "differential-testing" || fixture.id === "performance-tracing") {
+      const performance = fixture.id === "performance-tracing", field = performance ? performanceKey ?? performanceFields[0]?.id : differentialKey ?? differentialFields[0]?.id;
+      const oven = performance ? performanceTracingOven : differentialOven, update = performance ? setPerformanceTracingState : setDifferentialState;
+      if ((pressed === "return" || pressed === "enter") && field) update((state) => reduceTerminalRuntime(state, { type: "toggleExpanded", key: `field-view:${field}` }, oven));
+      else if (pressed === "c") update((state) => reduceTerminalRuntime(state, { type: "modeSelected", id: "progress-mode", value: state.controls["progress-mode"] === "delta" ? "progress" : state.controls["progress-mode"] === "progress" ? "failed" : "delta" }, oven));
+      else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
+      else if (pressed === "left" || pressed === "right") nextCheckpoint();
+      return;
+    }
     if (fixture.id === "checklist") { if (pressed === "return" || pressed === "enter") setChecklistState((state) => { const expanded = state.expandedKeys.includes("checklist-event-cards:latest"), next = reduceTerminalRuntime(state, { type: "toggleExpanded", key: "checklist-event-cards:latest" }, checklistOven); return { ...next, ...(expanded || !checklistEventPath ? { focusId: undefined } : { focusId: checklistEventPath }) }; }); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "left" || pressed === "right") nextCheckpoint(); return; }
-    if (fixture.id === "model-lab") { if (pressed === "left" || pressed === "right") { const next = (modelLabPayload.terminal.frame.index + (pressed === "right" ? 1 : -1) + modelLabPayload.terminal.frame.count) % modelLabPayload.terminal.frame.count, client = modelLabClient; if (client) void client.select({ sessionId: modelLabPayload.terminal.sessionId, requestId: `catalog-frame-${next}`, frameIndex: next }).then((result) => { if (result.status === "ready" && result.frame) setModelLabPayload(applyVerifiedModelLabFrame(modelLabPayload, result.frame) as typeof modelLabPayload); }); } else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "c") nextCheckpoint(); return; }
+    if (fixture.id === "model-lab") { if (pressed === "left" || pressed === "right") { const next = (modelLabPayload.terminal.frame.index + (pressed === "right" ? 1 : -1) + modelLabPayload.terminal.frame.count) % modelLabPayload.terminal.frame.count, client = modelLabClient; if (client) void client.select({ sessionId: modelLabPayload.terminal.sessionId, requestId: `catalog-frame-${next}`, frameIndex: next }).then((result) => { if (result.status === "ready" && result.frame) setModelLabPayload(applyVerifiedModelLabFrame(modelLabPayload, result.frame) as typeof modelLabPayload); }); else setModelLabPayload(verifiedModelLabFrame(modelLabPayload, next)); } else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "c") nextCheckpoint(); return; }
     if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
     else if (pressed === "left" || pressed === "right") nextCheckpoint();
     else if (pressed === "c" || pressed === "s" || pressed === "tab") nextCheckpoint();
@@ -189,12 +209,14 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
         {fixture.id === "streaming-feeds" && streamingNavigation.page === "feeds" ? <TerminalStreamingFeedList payload={{ ...streamingFeedFixture, ...(streamingNavigation.feedStatus === "loading" ? { loading: true } : streamingNavigation.feedStatus === "error" ? { error: streamingNavigation.sessionError } : {}) }} selectedFeed={streamingNavigation.selectedFeed} width={previewWidth} height={previewHeight} /> : null}
         {fixture.id === "streaming-feeds" && streamingNavigation.page === "session" ? <TerminalOvenViewport result={streamingSessionResult} footer="" /> : null}
         {fixture.id === "differential-testing" ? <TerminalOvenViewport result={differentialResult} footer="" /> : null}
+        {fixture.id === "performance-tracing" ? <TerminalOvenViewport result={performanceResult} footer="" /> : null}
         {fixture.id === "checklist" ? <TerminalOvenViewport result={checklistResult} footer="" /> : null}
         {fixture.id === "model-lab" ? <TerminalOvenViewport result={modelLabResult} footer="" /> : null}
+        {fixture.id === "general-components" ? <GeneralComponentsSurface checkpoint={stateName as typeof generalComponentsFixture.checkpoints[number]} width={previewWidth} /> : null}
         {fixture.id === "chiminea" ? <FixtureChiminea reducedMotion={stateName === "reduced-motion"} clock={clock} /> : null}
       </box>
     </box>
-    <CatalogFooter text={fixture.id === "differential-testing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "checklist" ? "←/→:state · enter:latest detail · v:view · q:back" : fixture.id === "model-lab" ? modelLabClient ? "←/→:request frame · c:state · v:view · q:back" : "frame controller unavailable · c:state · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "streaming-feeds" ? streamingNavigation.page === "feeds" ? "↑/↓:feed · enter:open · r:refresh · q:back" : "↑/↓:file · enter:expand · r:refresh · q:feeds" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
+    <CatalogFooter text={fixture.id === "differential-testing" || fixture.id === "performance-tracing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "checklist" ? "←/→:state · enter:latest detail · v:view · q:back" : fixture.id === "model-lab" ? modelLabClient ? "←/→:request frame · c:state · v:view · q:back" : "←/→:fixture frame · c:state · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "streaming-feeds" ? streamingNavigation.page === "feeds" ? "↑/↓:feed · enter:open · r:refresh · q:back" : "↑/↓:file · enter:expand · r:refresh · q:feeds" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
   </box>;
 }
 

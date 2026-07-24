@@ -4,7 +4,7 @@ import { resolveOvenPointer } from "./value-runtime";
 import { collectionDescriptor, collectionDescriptors, serverPage } from "./ir-descriptor";
 
 export type TerminalRuntimeState = Readonly<TerminalState & { payload?: JsonValue; payloadRevision: number }>;
-export type TerminalRuntimeAction = Readonly<{ type: "payloadAccepted"; payload: JsonValue } | { type: "modeSelected" | "queryChanged" | "domainSelected"; id: string; value: string } | { type: "toggleChanged"; id: string; active: boolean } | { type: "pagePrevious" | "pageNext"; collectionId: string } | { type: "pageSizeChanged"; collectionId: string; pageSize: number } | { type: "toggleExpanded"; key: string } | { type: "focusNext" | "focusPrevious" } | { type: "focusSet"; id: string }>;
+export type TerminalRuntimeAction = Readonly<{ type: "payloadAccepted"; payload: JsonValue } | { type: "modeSelected" | "queryChanged" | "domainSelected"; id: string; value: string } | { type: "toggleChanged"; id: string; active: boolean } | { type: "pagePrevious" | "pageNext"; collectionId: string } | { type: "pageSizeChanged"; collectionId: string; pageSize: number } | { type: "selectionMoved"; collectionId: string; direction: -1 | 1 } | { type: "toggleExpanded"; key: string } | { type: "focusNext" | "focusPrevious" } | { type: "focusSet"; id: string }>;
 const clamp = (value: number, count: number) => Math.max(0, Math.min(value, count - 1));
 const controls = (ir: TerminalOvenIR, id: string) => ir.controls.find((item) => item.id === id);
 const modeValues = (ir: TerminalOvenIR, id: string): string[] => {
@@ -45,6 +45,14 @@ export function reduceTerminalRuntime(state: TerminalRuntimeState, action: Termi
   if (action.type === "focusNext" || action.type === "focusPrevious") { if (!focusableIds.length) return { ...state, focusId: undefined }; const old = Math.max(0, focusableIds.indexOf(state.focusId ?? focusableIds[0])); return { ...state, focusId: focusableIds[clamp(old + (action.type === "focusNext" ? 1 : -1), focusableIds.length)] }; }
   if (action.type === "focusSet") return focusableIds.includes(action.id) ? { ...state, focusId: action.id } : state;
   if (action.type === "toggleExpanded") return action.key ? { ...state, expandedKeys: state.expandedKeys.includes(action.key) ? state.expandedKeys.filter((key) => key !== action.key) : [...state.expandedKeys, action.key] } : state;
+  if (action.type === "selectionMoved") {
+    const descriptor = collectionDescriptor(ir, action.collectionId), collection = descriptor && state.collections[action.collectionId];
+    if (!descriptor || !collection) return state;
+    const page = selectTerminalCollection(ir, state.payload, state.controls, descriptor, collection), keys = page.itemKeys.filter((key): key is string => typeof key === "string");
+    if (!keys.length) return state;
+    const current = Math.max(0, keys.indexOf(state.selections[action.collectionId] ?? keys[0]!));
+    return { ...state, selections: { ...state.selections, [action.collectionId]: keys[(current + action.direction + keys.length) % keys.length]! } };
+  }
   if (action.type === "pagePrevious" || action.type === "pageNext" || action.type === "pageSizeChanged") { const descriptor = collectionDescriptor(ir, action.collectionId), current = descriptor && state.collections[action.collectionId]; if (!current) return state; const pageSize = action.type === "pageSizeChanged" ? action.pageSize : current.pageSize; if (!Number.isSafeInteger(pageSize) || pageSize < 1) return state; return { ...state, collections: { ...state.collections, [action.collectionId]: { ...current, pageIndex: action.type === "pagePrevious" ? Math.max(0, current.pageIndex - 1) : action.type === "pageNext" ? current.pageIndex + 1 : 0, pageSize } } }; }
   if (action.type !== "modeSelected" && action.type !== "queryChanged" && action.type !== "domainSelected" && action.type !== "toggleChanged") return state;
   const item = controls(ir, action.id); if (!item) return state;

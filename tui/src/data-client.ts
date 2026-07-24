@@ -1,6 +1,8 @@
 import type { LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
 import { adaptOvenDefinition, ovenDataPath, ovenDefinitionPath, type OvenQuery, type OvenScope } from "./oven-runtime/definition-adapter";
 import { adaptStreamingDiff } from "../../dashboard/src/lib/streaming-diff-oven-adapter";
+import { ResourceBudgetError, readBoundedJson } from "./oven-runtime/resource-budget";
+import { TERMINAL_RESOURCE_LIMITS } from "./oven-runtime/resource-limits";
 // @ts-expect-error Console feed mapper is the canonical route/filter boundary.
 import { mapStreamingDiffFeeds } from "../../dashboard/src/lib/streaming-diff.mjs";
 
@@ -20,7 +22,7 @@ export class DataClientError extends Error {
   constructor(message: string, readonly status?: number) { super(message); this.name = "DataClientError"; }
 }
 
-async function getJsonResult<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal): Promise<SnapshotFetch<T>> {
+async function getJsonResult<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal, maximumBytes = TERMINAL_RESOURCE_LIMITS.httpJsonBytes): Promise<SnapshotFetch<T>> {
   const cached = cache.get(path);
   const response = await fetch(`${base}${path}`, {
     headers: { accept: "application/json", ...(cached ? { "If-None-Match": cached.etag } : {}) },
@@ -30,7 +32,12 @@ async function getJsonResult<T>(base: string, path: string, cache: Map<string, C
     if (!cached) throw new DataClientError("Burnlist server returned 304 before an initial snapshot.", 304);
     return { data: cloneJson(cached.body as T), outcome: "unchanged" };
   }
-  const body = await response.json().catch(() => null) as { error?: string } | null;
+  let body: { error?: string } | null;
+  try { body = await readBoundedJson(response, maximumBytes) as { error?: string }; }
+  catch (error) {
+    if (error instanceof ResourceBudgetError) throw new DataClientError(error.message, response.status);
+    body = null;
+  }
   if (!response.ok) {
     if (response.status === 404 || response.status === 410) cache.delete(path);
     throw new DataClientError(body?.error ?? `Burnlist server returned ${response.status}.`, response.status);
@@ -54,13 +61,14 @@ export function createDataClient(input: string) {
       const [projectPayload, burnlistPayload, ovenPayload] = await Promise.all([
         getJson<{ generatedAt: string; projects: LandingSnapshot["projects"] }>(base, "/api/projects", cache, signal),
         getJson<{ generatedAt: string; burnlists: LandingSnapshot["burnlists"] }>(base, "/api/burnlists", cache, signal),
-        getJson<{ ovens: LandingSnapshot["ovens"] }>(base, "/api/ovens", cache, signal),
+        getJson<{ ovens: LandingSnapshot["ovens"]; writeToken?: string }>(base, "/api/ovens", cache, signal),
       ]);
       return {
         projects: projectPayload.projects,
         burnlists: burnlistPayload.burnlists,
         ovens: ovenPayload.ovens,
         generatedAt: burnlistPayload.generatedAt ?? projectPayload.generatedAt,
+        ...(typeof ovenPayload.writeToken === "string" ? { writeToken: ovenPayload.writeToken } : {}),
       };
     },
     progress(planPath: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
@@ -86,13 +94,13 @@ export function createDataClient(input: string) {
     },
     async oven(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<OvenPackageDetail> {
       const scope: OvenScope = { ovenId, repoKey };
-      const response = await getJson<unknown>(base, ovenDefinitionPath(scope), cache, signal);
+      const response = (await getJsonResult<unknown>(base, ovenDefinitionPath(scope), cache, signal, TERMINAL_RESOURCE_LIMITS.definitionBytes)).data;
       const definition = adaptOvenDefinition(response, scope);
       return definition.detail;
     },
     async ovenResult(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<SnapshotFetch<OvenPackageDetail>> {
       const scope: OvenScope = { ovenId, repoKey };
-      const response = await getJsonResult<unknown>(base, ovenDefinitionPath(scope), cache, signal);
+      const response = await getJsonResult<unknown>(base, ovenDefinitionPath(scope), cache, signal, TERMINAL_RESOURCE_LIMITS.definitionBytes);
       return { data: adaptOvenDefinition(response.data, scope).detail, outcome: response.outcome };
     },
   });

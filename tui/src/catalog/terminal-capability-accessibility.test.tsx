@@ -34,7 +34,7 @@ async function capturedItem(accessibility: TerminalAccessibility) {
   try {
     flushSync(() => root.render(
       <TerminalAccessibilityProvider value={accessibility}>
-        <ItemDetail item={{ key: "active:B1", kind: "active", id: "B1", title: "Keyboard reachable", status: "ACTIVE", latest: false, fields: { state: "ready" } }} oven={{ contract: "checklist-progress@1" } as never} progress={{} as never} data={null} domainIndex={0} width={48} height={8} />
+        <ItemDetail item={{ key: "active:B1", kind: "active", id: "B1", title: "Keyboard reachable", status: "ACTIVE", latest: false, fields: { state: "ready" } }} width={48} />
       </TerminalAccessibilityProvider>,
     ));
     await setup.renderOnce();

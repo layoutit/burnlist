@@ -1,9 +1,9 @@
 import { BrandMark } from "./brand-mark";
 import { GlyphFire } from "./glyph-fire";
-import { useTerminalDimensions } from "@opentui/react";
 import { compactTime, fitText, progressLabel } from "./theme";
 import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
+import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
 import type { BurnlistSummary, ProgressSnapshot } from "./types";
 
 export function BrandHeader({ center, subtitle, compact = false, activity }: {
@@ -14,7 +14,7 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
 }) {
   const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
-  const { width } = useTerminalDimensions();
+  const { width } = useCoalescedTerminalDimensions();
   const right = activity?.tone === "info" ? "✦ Refreshing" : activity?.message ?? (center ? subtitle : "");
   const innerWidth = Math.max(0, width - 4);
   const leftWidth = Math.min(12, innerWidth);

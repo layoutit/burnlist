@@ -15,6 +15,7 @@ import {
   GlyphFieldSynthEffect,
   defaultGlyphEffectParams,
 } from "@glyphcss/effects";
+import { assertGlyphGridSize, assertGlyphPolygonCount } from "./glyph-frame-bounds";
 
 const bayer4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5] as const;
 
@@ -31,6 +32,7 @@ function coverageThreshold(col: number, row: number): number {
 }
 
 function baseFire(cols: number, rows: number): CellGrid {
+  assertGlyphPolygonCount(20);
   const polygons = conePolygons({
     center: [0, 0, 0],
     radius: 68,
@@ -108,6 +110,7 @@ function fireParams(time: number): Record<string, string | number | boolean> {
 }
 
 export function createFireFrameRenderer(cols = 20, rows = 12) {
+  ({ cols, rows } = assertGlyphGridSize(cols, rows));
   const baseGrid = baseFire(cols, rows);
   const length = cols * rows;
   const baseCoverage = Float32Array.from(baseGrid.depth, (depth) => Number.isFinite(depth) ? 1 : 0);

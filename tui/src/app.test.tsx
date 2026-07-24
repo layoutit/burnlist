@@ -78,7 +78,7 @@ async function key(setup: Awaited<ReturnType<typeof createTestRenderer>>, value:
 }
 
 describe("TUI navigation stack", () => {
-  test("turns a render-time required binding failure into an explicit legacy fallback", async () => {
+  test("turns a render-time required binding failure into an explicit generic-runtime diagnostic", async () => {
     installGenericRuntimeApi(true);
     const setup = await createTestRenderer({ width: 110, height: 34 });
     renderers.push(setup.renderer);
@@ -86,7 +86,8 @@ describe("TUI navigation stack", () => {
     flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
     await setup.waitForFrame((frame) => frame.includes("Demo Burnlist"));
     await setup.mockInput.pressKeys(["RETURN"]);
-    await setup.waitForFrame((frame) => frame.includes("LEGACY FALLBACK") && frame.includes("/absent/value") && frame.includes("Items"));
+    await setup.waitForFrame((frame) => frame.includes("Missing required oven binding source") && frame.includes("/absent/value") && frame.includes("Current item"));
+    expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     root.unmount();
   });
 
@@ -117,7 +118,7 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 60));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("GENERIC") && frame.includes("DECLARED VIEW"));
+    await setup.waitForFrame((frame) => frame.includes("COMPILED") && frame.includes("Completion") && frame.includes("enter:latest detail"));
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("Oven catalog"));
     await key(setup, "q");
@@ -128,6 +129,10 @@ describe("TUI navigation stack", () => {
     await setup.flush();
     await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("Completion 1/2"));
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
+    await key(setup, "RETURN");
+    await setup.waitForFrame((frame) => frame.includes("Finish navigation.") && frame.includes("previous/next"));
+    await key(setup, "q");
+    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("enter:item"));
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("o:Oven catalog"));
 

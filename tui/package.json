@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "bun build src/main.tsx --compile --minify --outfile dist/burnlist-tui",
+    "build:catalog": "bun build src/catalog/main.tsx --compile --minify --outfile dist/burnlist-tui-catalog",
     "dev": "bun src/main.tsx",
     "catalog": "bun src/catalog/main.tsx",
     "test": "bun test",

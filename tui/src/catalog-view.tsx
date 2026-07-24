@@ -1,6 +1,8 @@
 import { fitText } from "./theme";
 import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
+import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
+import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import type { OvenPackageDetail, OvenSummary } from "./types";
 
 function prose(markdown: string): string[] {
@@ -50,5 +52,39 @@ export function CatalogOvenDetail({ summary, detail, height, width }: {
     </box> : null}
     <box paddingTop={1}><text fg={palette.foreground}>Instructions</text></box>
     {paragraphs.length ? paragraphs.map((line, index) => <text key={index} fg={palette.muted}>{fitText(line, contentWidth).trimEnd()}</text>) : <text fg={palette.dim}>Loading Oven package…</text>}
+  </box>;
+}
+
+export function CatalogOvenRuntime({ summary, detail, result, height, width, footer }: {
+  summary: OvenSummary | null;
+  detail: OvenPackageDetail | null;
+  result: TerminalRenderResult;
+  height: number;
+  width: number;
+  footer: string;
+}) {
+  const palette = useTerminalPalette();
+  const chrome = useTerminalChrome();
+  const oven = detail ?? summary;
+  const contentWidth = Math.max(1, width - 6);
+  const runtime = prepareTerminalComponentResult({
+    ...result,
+    state: {
+      ...result.state,
+      viewport: { width: contentWidth, height: Math.max(6, height - 7) },
+    },
+  });
+  return <box height={height} minHeight={0} flexDirection="column" paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden">
+    <box height={4} flexShrink={0} flexDirection="column" border={["bottom"]} borderColor={chrome.line}>
+      <box height={1} flexDirection="row" justifyContent="space-between">
+        <text fg={palette.foreground}>{fitText(oven?.name ?? "Oven", Math.max(1, contentWidth - 12)).trimEnd()}</text>
+        <text fg={runtime.status === "ready" ? palette.green : palette.amber}>{runtime.status === "ready" ? "COMPILED" : runtime.status.toUpperCase()}</text>
+      </box>
+      <text fg={palette.dim}>{fitText(`${oven?.id ?? "unknown"}@${oven?.version ?? "—"} · ${oven?.contract ?? "unknown contract"}`, contentWidth).trimEnd()}</text>
+      <text fg={palette.muted}>{fitText(oven?.description ?? "", contentWidth).trimEnd()}</text>
+    </box>
+    <box flexGrow={1} minHeight={0} paddingTop={1} overflow="hidden">
+      <TerminalOvenViewport result={runtime} footer={footer} />
+    </box>
   </box>;
 }
