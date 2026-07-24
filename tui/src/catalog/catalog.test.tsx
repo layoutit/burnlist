@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { CatalogApp } from "./catalog-app";
+import { createModelLabClient } from "./model-lab-controller";
 
 const renderers: Array<{ destroy(): void }> = [];
 afterEach(() => { while (renderers.length) renderers.pop()?.destroy(); });
@@ -77,4 +78,12 @@ test("catalog scrolls the reducer-expanded Checklist detail into its real wide a
   await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Current") && !frame.includes("Outcome:"));
   await press(setup, "v"); await setup.waitForFrame((frame) => frame.includes("narrow")); await press(setup, "RETURN");
   await setup.waitForFrame((frame) => frame.includes("Outcome:")); const frame = setup.captureCharFrame(); assertFrameFits(frame, 82); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
+});
+
+test("catalog selects a Model Lab retained frame in its real preview", async () => {
+  const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
+  const sessionId = "a".repeat(32), calls: Array<[string, any]> = [], fetch = async (url: string, init: any = {}) => { calls.push([url, init]); const commandCount = calls.filter(([path]) => path.endsWith("/commands")).length; return new Response(JSON.stringify(url.includes("/state?") ? { schema: "burnlist-model-lab-terminal@1", status: "ready", sessionId, generation: 1, state: { frame: { index: 3, id: "frame-3", count: 8 } } } : { schema: "burnlist-model-lab-terminal@1", sessionId, requestId: "catalog-frame-3", frameIndex: 3, status: commandCount === 1 ? "pending" : "complete", result: commandCount === 1 ? undefined : { ok: true, frameIndex: 3 } }), { status: 200 }); }, client = createModelLabClient({ endpoint: "http://127.0.0.1:9999", token: "controller-token", fetch });
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} modelLabClient={client} />));
+  for (let index = 0; index < 11; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("MODEL LAB") && frame.includes("Frame 2/7")); await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("Frame 3/7 frame-3")); expect(calls.map(([url]) => url)).toEqual(["http://127.0.0.1:9999/api/model-lab-terminal/commands", "http://127.0.0.1:9999/api/model-lab-terminal/commands", `http://127.0.0.1:9999/api/model-lab-terminal/state?sessionId=${sessionId}`]); expect(calls[0]![1].headers["x-burnlist-token"]).toBe("controller-token"); assertFrameFits(setup.captureCharFrame(), 82); root.unmount();
 });

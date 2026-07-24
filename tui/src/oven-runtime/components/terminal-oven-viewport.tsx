@@ -9,6 +9,7 @@ import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles
 import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
 import { TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
 import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
+import { TerminalModelLabView } from "./model-lab-components";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
@@ -29,6 +30,7 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
   "checklist-ledger": TerminalChecklistLedger,
   "checklist-burn-panel": TerminalChecklistBurnPanel,
   "checklist-event-cards": TerminalChecklistEventCards,
+  "model-lab-view": TerminalModelLabView,
 });
 
 /** Evaluates every component root before React paint and converts failures to state. */

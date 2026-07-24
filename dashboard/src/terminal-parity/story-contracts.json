@@ -84800,6 +84800,52 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/ModelLabTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-animation-symbol-animation-framecount-f-guards-present",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "f453309d54dfb574da901e1d44fe34a4d83ba209f4cba88164065ee591dab4ad",
+            "arg.checkpoint": "ready",
+            "arg.viewport": "78",
+            "selection": "· animation.symbol · animation.frameCount f",
+            "content": "component:PairedModelLab",
+            "guards": "present"
+          },
+          "guardBindings": {
+            "select:Source animation | · animation.symbol · animation.frameCount f": true
+          },
+          "actions": [
+            {
+              "id": "select:Source animation | · animation.symbol · animation.frameCount f",
+              "expectedConsoleOutcome": "Select option · animation.symbol · animation.frameCount f; the visible result is · animation.symbol · animation.frameCount f.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for select:Source animation | · animation.symbol · animation.frameCount f."
+              }
+            }
+          ]
+        },
+        {
+          "id": "state-animation-symbol-animation-framecount-f-guards-absent",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "f453309d54dfb574da901e1d44fe34a4d83ba209f4cba88164065ee591dab4ad",
+            "arg.checkpoint": "ready",
+            "arg.viewport": "78",
+            "selection": "· animation.symbol · animation.frameCount f",
+            "content": "component:PairedModelLab",
+            "guards": "absent"
+          },
+          "guardBindings": {
+            "select:Source animation | · animation.symbol · animation.frameCount f": false
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/PerformanceTracingTerminal.stories.tsx#Paired",
       "states": [
         {
