@@ -11,7 +11,7 @@ const digest = (text: string) => createHash("sha256").update(text).digest("hex")
 
 test("Storybook consumes every indexed content-addressed frame without changing cells", async () => {
   const index = JSON.parse(await readFile(resolve(generated, "index.json"), "utf8"));
-  const entries = index.entries as FrameEntry[];
+  const entries = (index.entries as Array<FrameEntry & { fixture: string }>).filter((entry) => entry.fixture === glyphFixture.id);
   const expected = glyphFixture.states.flatMap((state) => state.viewports.map((viewport) => `${viewport}:${state.checkpoint}`)).sort();
   expect(entries.map((entry) => `${entry.viewport.width}:${entry.checkpoint}`).sort()).toEqual(expected);
   for (const entry of entries) {

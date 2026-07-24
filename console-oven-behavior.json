@@ -135,6 +135,7 @@
       "dashboard/src/hooks/useOvenDefinition.ts"
     ],
     "shared": [
+      "src/ovens/oven-progress-metrics.mjs",
       "src/ovens/oven-value-runtime.mjs"
     ],
     "grammar": "src/ovens/dsl/oven-grammar.mjs",
@@ -193,7 +194,7 @@
       },
       {
         "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "fingerprint": "f32a419601e1ed44ffa6fe96bb31f77705f589747a30862b37f3c2652f76609c"
+        "fingerprint": "748aa34c044356e7ade884e51ab51318c8ddfc95cfda51049566628d5910baa7"
       },
       {
         "path": "dashboard/src/oven/BurnDonut/index.ts",
@@ -469,7 +470,7 @@
       },
       {
         "path": "dashboard/src/oven/ProgressDonut/ProgressDonut.tsx",
-        "fingerprint": "ab6e04d877646b08f76e064cf7ded4f3fc5e90de7b6a2c5cae1a28e14a6452cd"
+        "fingerprint": "c13a9b0eabf5e95d5554e19bab18adc8af1c6ae140faaea9e14b50e03d306d39"
       },
       {
         "path": "dashboard/src/oven/RefreshStatusChip/index.ts",
@@ -509,7 +510,7 @@
       },
       {
         "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "fingerprint": "6991094805648624987f18ce3e8701b6ded8a7528616a7f60280f43ba0b30f5c"
+        "fingerprint": "62995721632cb5e0c52bf19597b40d9fda1efd2f2257d6c08388c89e5363f272"
       },
       {
         "path": "dashboard/src/oven/runtime/oven-live-data.ts",
@@ -653,7 +654,11 @@
       },
       {
         "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
-        "fingerprint": "19e4f2c24ac4c99ce4a82ae6aeb76273bcb91787ad9af8c18695c726b911016c"
+        "fingerprint": "b80eb0c8500c74beeb8f2114f29354f715e62c6d5ad3fc4d1e051796eeb40d68"
+      },
+      {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "fingerprint": "0dc62c7dbae41c505c8b729f1307450757c1467b23048078af977554e7e64f0d"
       },
       {
         "path": "src/ovens/oven-value-runtime.mjs",
@@ -4196,146 +4201,6 @@
         "predicate": "total",
         "nodeKinds": [],
         "fingerprint": "3229d03df831863670adea8084af3fbc439cd4d0f4742fa79df3dcb220801b8c"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts:IfStatement:081d329c021cf978",
-      "fingerprint": "081d329c021cf978c85dac1c1f6fdec9f069c75016ad0fbccd915e8d0ba0c7c5",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "node": "IfStatement",
-        "predicate": "entry.result === \"blocked\" || entry.result === \"reverted\"",
-        "nodeKinds": [],
-        "fingerprint": "081d329c021cf978c85dac1c1f6fdec9f069c75016ad0fbccd915e8d0ba0c7c5"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts:IfStatement:31dfc77ccfe7a5e9",
-      "fingerprint": "31dfc77ccfe7a5e9aac2d614328ec78eb859c7206de28ffb7842aeee0d689cc7",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "node": "IfStatement",
-        "predicate": "entry.result === \"improved\" || entry.result === \"pass\"",
-        "nodeKinds": [],
-        "fingerprint": "31dfc77ccfe7a5e9aac2d614328ec78eb859c7206de28ffb7842aeee0d689cc7"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts:IfStatement:7f93b395e0f96319",
-      "fingerprint": "7f93b395e0f96319db6bab236d7bd5a01ae28ce0329688933aea21cac5d6c14c",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "node": "IfStatement",
-        "predicate": "entry.result === \"worsened\"",
-        "nodeKinds": [],
-        "fingerprint": "7f93b395e0f96319db6bab236d7bd5a01ae28ce0329688933aea21cac5d6c14c"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts:LogicalExpression:034083ddfdba8eb3",
-      "fingerprint": "034083ddfdba8eb3b38f581378d3d0ae14171cec5c248801148a89b7286c2864",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "node": "LogicalExpression",
-        "predicate": "entry.result === \"blocked\" || entry.result === \"reverted\"",
-        "nodeKinds": [],
-        "fingerprint": "034083ddfdba8eb3b38f581378d3d0ae14171cec5c248801148a89b7286c2864"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts:LogicalExpression:d06077bb180c560b",
-      "fingerprint": "d06077bb180c560b256fbb8903c988f32a53210f05f2c135974cbfc77b1bedde",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutCounts",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutCounts",
-        "node": "LogicalExpression",
-        "predicate": "entry.result === \"improved\" || entry.result === \"pass\"",
-        "nodeKinds": [],
-        "fingerprint": "d06077bb180c560b256fbb8903c988f32a53210f05f2c135974cbfc77b1bedde"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutGroups:ConditionalExpression:1a3e7e64438ee7d1",
-      "fingerprint": "1a3e7e64438ee7d1638e97a8bcb037a4bf28cd0b62642bd3d3b8c9adb4b9e049",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutGroups",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutGroups",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutGroups",
-        "node": "ConditionalExpression",
-        "predicate": "active.length > 1",
-        "nodeKinds": [],
-        "fingerprint": "1a3e7e64438ee7d1638e97a8bcb037a4bf28cd0b62642bd3d3b8c9adb4b9e049"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutGroups:ConditionalExpression:6a79c4de3d4ead93",
-      "fingerprint": "6a79c4de3d4ead93f9b411691480b401e65810f610023df8456ef33dbe1f2317",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:burnDonutGroups",
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutGroups",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
-        "export": "burnDonutGroups",
-        "node": "ConditionalExpression",
-        "predicate": "name === \"unchanged\"",
-        "nodeKinds": [],
-        "fingerprint": "6a79c4de3d4ead93f9b411691480b401e65810f610023df8456ef33dbe1f2317"
       }
     },
     {
@@ -28980,6 +28845,26 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:36d2b0293b89d1d7",
+      "fingerprint": "36d2b0293b89d1d7e59409968ab5d6366c8ab6f8345f7d21eab8c8f1bbc3ce70",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "ConditionalExpression",
+        "predicate": "typeof source === \"string\"",
+        "nodeKinds": [],
+        "fingerprint": "36d2b0293b89d1d7e59409968ab5d6366c8ab6f8345f7d21eab8c8f1bbc3ce70"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:393a64412af1bf6c",
       "fingerprint": "393a64412af1bf6c0014fe23f87531dc537118a67517b3454099d5492afd6b74",
       "classification": "validated-ir",
@@ -29060,6 +28945,26 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:807a26f2639274ba",
+      "fingerprint": "807a26f2639274baaa2bb458c21ae161fc30e46c07c97a8c4e96ee55675a76fb",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "ConditionalExpression",
+        "predicate": "fallback !== undefined",
+        "nodeKinds": [],
+        "fingerprint": "807a26f2639274baaa2bb458c21ae161fc30e46c07c97a8c4e96ee55675a76fb"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:85dbfbf0ea07a844",
       "fingerprint": "85dbfbf0ea07a84421e887ee0e0c0593bdfc9f2e46e161c003518347c3702833",
       "classification": "validated-ir",
@@ -29117,26 +29022,6 @@
         "predicate": "typeof attrs.variant === \"string\"",
         "nodeKinds": [],
         "fingerprint": "a4d63157cf3ab3e8139c563f133abc60ea01f9f887144e13e1fff6f58b65235d"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:a5203e62f9dbb673",
-      "fingerprint": "a5203e62f9dbb6739148b407d2c48b8c56b57fd47a1d699f4f3d1c6c129ebf38",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "ConditionalExpression",
-        "predicate": "typeof source === \"string\"",
-        "nodeKinds": [],
-        "fingerprint": "a5203e62f9dbb6739148b407d2c48b8c56b57fd47a1d699f4f3d1c6c129ebf38"
       }
     },
     {
@@ -29222,26 +29107,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:b8573fdcb26dadb6",
-      "fingerprint": "b8573fdcb26dadb67ba95245b0c4184b508708844ecb8e83d610f81898796588",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "ConditionalExpression",
-        "predicate": "typeof child.attributes.format === \"string\"",
-        "nodeKinds": [],
-        "fingerprint": "b8573fdcb26dadb67ba95245b0c4184b508708844ecb8e83d610f81898796588"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:c0193d3a5d7612a0",
       "fingerprint": "c0193d3a5d7612a0a985e27fa80628649199020101af6c6c13421c0476c6d8fc",
       "classification": "validated-ir",
@@ -29259,6 +29124,26 @@
         "predicate": "Object.keys(bind).length",
         "nodeKinds": [],
         "fingerprint": "c0193d3a5d7612a0a985e27fa80628649199020101af6c6c13421c0476c6d8fc"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:ConditionalExpression:caf2d9c37fac738d",
+      "fingerprint": "caf2d9c37fac738dfb2d4b33340ff6972bbd447fb6a0f33768fcb939b2c43dbc",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "ConditionalExpression",
+        "predicate": "optional === true",
+        "nodeKinds": [],
+        "fingerprint": "caf2d9c37fac738dfb2d4b33340ff6972bbd447fb6a0f33768fcb939b2c43dbc"
       }
     },
     {
@@ -29426,28 +29311,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:0ba262935fded9ce",
-      "fingerprint": "0ba262935fded9ce4eccdbf3ceda1b4cae939a0e853e9a94b3827a7eded44441",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"kpi-item\"",
-        "nodeKinds": [
-          "kpi-item"
-        ],
-        "fingerprint": "0ba262935fded9ce4eccdbf3ceda1b4cae939a0e853e9a94b3827a7eded44441"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:0ca4cc9617a9103e",
       "fingerprint": "0ca4cc9617a9103efb0b67f5d3fca6d03545e407bfd96d07cca422b034136da7",
       "classification": "validated-ir",
@@ -29467,50 +29330,6 @@
           "progress-value"
         ],
         "fingerprint": "0ca4cc9617a9103efb0b67f5d3fca6d03545e407bfd96d07cca422b034136da7"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:0e5dd3f9091996fd",
-      "fingerprint": "0e5dd3f9091996fd111d847dcf5f28a35b5af413e53690427405601df9363e0e",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"frame-delta-chart\"",
-        "nodeKinds": [
-          "frame-delta-chart"
-        ],
-        "fingerprint": "0e5dd3f9091996fd111d847dcf5f28a35b5af413e53690427405601df9363e0e"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:14b5a786506eb027",
-      "fingerprint": "14b5a786506eb027016a6c4011545dd88456bba6720bec9dc5731794591b8f23",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"burn-donut\"",
-        "nodeKinds": [
-          "burn-donut"
-        ],
-        "fingerprint": "14b5a786506eb027016a6c4011545dd88456bba6720bec9dc5731794591b8f23"
       }
     },
     {
@@ -29688,8 +29507,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:365ab2fdb39bf0b8",
-      "fingerprint": "365ab2fdb39bf0b8e131ce3767ccda07ab30a9ef4379dbded4d67ce8ddf39776",
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:33310ef0aa708598",
+      "fingerprint": "33310ef0aa70859863c5c046706b86ae7531daa5cb7ad4075a7210a7c149164d",
       "classification": "validated-ir",
       "semanticOwner": {
         "ownerType": "generic-lowerer",
@@ -29702,11 +29521,11 @@
         "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
         "export": "module",
         "node": "IfStatement",
-        "predicate": "child.kind === \"text\" && typeof slot === \"string\" && typeof child.attributes.source === \"string\"",
+        "predicate": "node.kind === \"waffle-metric\"",
         "nodeKinds": [
-          "text"
+          "waffle-metric"
         ],
-        "fingerprint": "365ab2fdb39bf0b8e131ce3767ccda07ab30a9ef4379dbded4d67ce8ddf39776"
+        "fingerprint": "33310ef0aa70859863c5c046706b86ae7531daa5cb7ad4075a7210a7c149164d"
       }
     },
     {
@@ -29834,6 +29653,28 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:437845007141ef03",
+      "fingerprint": "437845007141ef03bd144e988a294cce7f59454dba02459daf1c5ecd1fdd8b54",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"progress-chart\"",
+        "nodeKinds": [
+          "progress-chart"
+        ],
+        "fingerprint": "437845007141ef03bd144e988a294cce7f59454dba02459daf1c5ecd1fdd8b54"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:44da8e01fb10b6d0",
       "fingerprint": "44da8e01fb10b6d0412b9d5fbe9fedd8d8631f5dcc9b44151e5ed00c3377b604",
       "classification": "validated-ir",
@@ -29934,6 +29775,28 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:51d63a48eb79dc33",
+      "fingerprint": "51d63a48eb79dc3318d7503de36cc865456d0b863fe0c62c4312ee84d6a59681",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"burn-donut\"",
+        "nodeKinds": [
+          "burn-donut"
+        ],
+        "fingerprint": "51d63a48eb79dc3318d7503de36cc865456d0b863fe0c62c4312ee84d6a59681"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:5990299e04138d4a",
       "fingerprint": "5990299e04138d4aed009631ee8135657adb3e822aa406c646bcd61037e601c5",
       "classification": "validated-ir",
@@ -29953,6 +29816,28 @@
           "feed-list"
         ],
         "fingerprint": "5990299e04138d4aed009631ee8135657adb3e822aa406c646bcd61037e601c5"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:640ff2ab80c2ff65",
+      "fingerprint": "640ff2ab80c2ff6568302e773f5edee01083d0d2867115574972458d3ab4337d",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"file-diff\"",
+        "nodeKinds": [
+          "file-diff"
+        ],
+        "fingerprint": "640ff2ab80c2ff6568302e773f5edee01083d0d2867115574972458d3ab4337d"
       }
     },
     {
@@ -30000,28 +29885,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:668624b10016d6f4",
-      "fingerprint": "668624b10016d6f4b876106aaf36519b88acec0f09bef3d1ad3a8a023a35cfba",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"differential-kpi-strip\"",
-        "nodeKinds": [
-          "differential-kpi-strip"
-        ],
-        "fingerprint": "668624b10016d6f4b876106aaf36519b88acec0f09bef3d1ad3a8a023a35cfba"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:66e574c3a7592c9a",
       "fingerprint": "66e574c3a7592c9a50af101e95791958bcc2d424d4f4aaef2fe7d0c203a1ee17",
       "classification": "validated-ir",
@@ -30042,8 +29905,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:6b41741e096d74c3",
-      "fingerprint": "6b41741e096d74c373d5bb6942a43989854cd71beded483a38c4c81aa92943ea",
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:69ce12e285eaa93b",
+      "fingerprint": "69ce12e285eaa93b777008532e2620fdf0e314ebcd9022b20a67f23219585c80",
       "classification": "validated-ir",
       "semanticOwner": {
         "ownerType": "generic-lowerer",
@@ -30056,11 +29919,11 @@
         "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
         "export": "module",
         "node": "IfStatement",
-        "predicate": "node.kind === \"progress-chart\"",
+        "predicate": "node.kind === \"kpi-item\"",
         "nodeKinds": [
-          "progress-chart"
+          "kpi-item"
         ],
-        "fingerprint": "6b41741e096d74c373d5bb6942a43989854cd71beded483a38c4c81aa92943ea"
+        "fingerprint": "69ce12e285eaa93b777008532e2620fdf0e314ebcd9022b20a67f23219585c80"
       }
     },
     {
@@ -30107,28 +29970,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:771b60b6ffaf2eac",
-      "fingerprint": "771b60b6ffaf2eac35271f77693d34a2e7e6a329ea71115e8d706bc6dc18c50a",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"diff-card\"",
-        "nodeKinds": [
-          "diff-card"
-        ],
-        "fingerprint": "771b60b6ffaf2eac35271f77693d34a2e7e6a329ea71115e8d706bc6dc18c50a"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:779727dfb38d3d5a",
       "fingerprint": "779727dfb38d3d5a8a5cbc4483c3bf203a0e2acab320f341288c808674edc182",
       "classification": "validated-ir",
@@ -30148,6 +29989,28 @@
           "text"
         ],
         "fingerprint": "779727dfb38d3d5a8a5cbc4483c3bf203a0e2acab320f341288c808674edc182"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:7b429cd766e2d044",
+      "fingerprint": "7b429cd766e2d044bd1e291cf21d52261a4df3c7ca59a3035c143526e45f3d56",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"frame-delta-chart\"",
+        "nodeKinds": [
+          "frame-delta-chart"
+        ],
+        "fingerprint": "7b429cd766e2d044bd1e291cf21d52261a4df3c7ca59a3035c143526e45f3d56"
       }
     },
     {
@@ -30188,6 +30051,28 @@
         "predicate": "value !== undefined",
         "nodeKinds": [],
         "fingerprint": "7dfacccff3e172226e74ce97bf13470e5579e3e2a36e4da674854564d5528cca"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:8375d11861ab61e3",
+      "fingerprint": "8375d11861ab61e359372acd55e6ecfe6a6a79fecd35e0f41436fc57a486d2fb",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "child.kind === \"text\" && typeof slot === \"string\" && typeof child.attributes.source === \"string\"",
+        "nodeKinds": [
+          "text"
+        ],
+        "fingerprint": "8375d11861ab61e359372acd55e6ecfe6a6a79fecd35e0f41436fc57a486d2fb"
       }
     },
     {
@@ -30233,52 +30118,6 @@
           "kpi-item"
         ],
         "fingerprint": "8f50ade21dacbdb197531f25b21abdfe1bb246f3ccf8601a07e22b14a1ed23f3"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:90359c68ef8c0777",
-      "fingerprint": "90359c68ef8c0777733e87b1d0f77102719dd245ce6ef604d8903b8097ca670e",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"section-header\"",
-        "nodeKinds": [
-          "section-header"
-        ],
-        "fingerprint": "90359c68ef8c0777733e87b1d0f77102719dd245ce6ef604d8903b8097ca670e"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:91e6171c6cc3a340",
-      "fingerprint": "91e6171c6cc3a340a07441993eff429f3fec9ff4eeb119407fa3f39764896b11",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "[\"checklist-burn-panel\", \"checklist-ledger\", \"checklist-event-cards\"].includes(node.kind)",
-        "nodeKinds": [
-          "checklist-burn-panel",
-          "checklist-event-cards",
-          "checklist-ledger"
-        ],
-        "fingerprint": "91e6171c6cc3a340a07441993eff429f3fec9ff4eeb119407fa3f39764896b11"
       }
     },
     {
@@ -30342,8 +30181,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:97fd9dbd8fb43878",
-      "fingerprint": "97fd9dbd8fb43878be3be136541fc87de84994b2b6536166d1fac89b19512253",
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:94c7c5750fe7d431",
+      "fingerprint": "94c7c5750fe7d431d9c7eb52b6cdb5b6888574baefeff20fdcd1ea497035cd1f",
       "classification": "validated-ir",
       "semanticOwner": {
         "ownerType": "generic-lowerer",
@@ -30360,7 +30199,97 @@
         "nodeKinds": [
           "differential-log-table"
         ],
-        "fingerprint": "97fd9dbd8fb43878be3be136541fc87de84994b2b6536166d1fac89b19512253"
+        "fingerprint": "94c7c5750fe7d431d9c7eb52b6cdb5b6888574baefeff20fdcd1ea497035cd1f"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:9877bad8b371d076",
+      "fingerprint": "9877bad8b371d0767c9428b51cedf67fe961c2479a56b4c4ac37a31ca2e1f6a7",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"section-header\"",
+        "nodeKinds": [
+          "section-header"
+        ],
+        "fingerprint": "9877bad8b371d0767c9428b51cedf67fe961c2479a56b4c4ac37a31ca2e1f6a7"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:9a13645f7ae6c18b",
+      "fingerprint": "9a13645f7ae6c18b9bd56d709f7ad38aec6b8fda89eb909319914a48d9be9aa0",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"progress-donut\"",
+        "nodeKinds": [
+          "progress-donut"
+        ],
+        "fingerprint": "9a13645f7ae6c18b9bd56d709f7ad38aec6b8fda89eb909319914a48d9be9aa0"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:9bb3970d515a2e96",
+      "fingerprint": "9bb3970d515a2e96c0796ffce180636efad4ae7f1193b1eb3b43e2893a640c00",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"differential-kpi-strip\"",
+        "nodeKinds": [
+          "differential-kpi-strip"
+        ],
+        "fingerprint": "9bb3970d515a2e96c0796ffce180636efad4ae7f1193b1eb3b43e2893a640c00"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:a53d23e370714496",
+      "fingerprint": "a53d23e370714496550b52c66fa162946f0dc28eb24e02d12c844bc2e494c787",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "[\"checklist-burn-panel\", \"checklist-ledger\", \"checklist-event-cards\"].includes(node.kind)",
+        "nodeKinds": [
+          "checklist-burn-panel",
+          "checklist-event-cards",
+          "checklist-ledger"
+        ],
+        "fingerprint": "a53d23e370714496550b52c66fa162946f0dc28eb24e02d12c844bc2e494c787"
       }
     },
     {
@@ -30431,28 +30360,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:aa2c17217865f75e",
-      "fingerprint": "aa2c17217865f75efc1814dcf2d3c5d5008e97e4a89ac2a6de1764969547f029",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"file-diff\"",
-        "nodeKinds": [
-          "file-diff"
-        ],
-        "fingerprint": "aa2c17217865f75efc1814dcf2d3c5d5008e97e4a89ac2a6de1764969547f029"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:aa4b0b4ad2f64752",
       "fingerprint": "aa4b0b4ad2f647526e30c7e35864c9bae28fcb8b2ebd6951b9316daa5b83bf47",
       "classification": "validated-ir",
@@ -30495,28 +30402,6 @@
           "progress-value"
         ],
         "fingerprint": "adc4cd10a754f5b84451a2219e05f655f941e936591e7df0dc6b88c6272481aa"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:ba0aed5794ca1c7d",
-      "fingerprint": "ba0aed5794ca1c7d8a799d09cf998bc37006f450070426b12eafad7831c891b5",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"waffle-metric\"",
-        "nodeKinds": [
-          "waffle-metric"
-        ],
-        "fingerprint": "ba0aed5794ca1c7d8a799d09cf998bc37006f450070426b12eafad7831c891b5"
       }
     },
     {
@@ -30662,6 +30547,28 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:e5146037c6fc9ad1",
+      "fingerprint": "e5146037c6fc9ad1b0a04412271be1d65bb9a08cfbaf2d8b4d8de7e4e5ef6203",
+      "classification": "validated-ir",
+      "semanticOwner": {
+        "ownerType": "generic-lowerer",
+        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"diff-card\"",
+        "nodeKinds": [
+          "diff-card"
+        ],
+        "fingerprint": "e5146037c6fc9ad1b0a04412271be1d65bb9a08cfbaf2d8b4d8de7e4e5ef6203"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:e7e11ec9074d2643",
       "fingerprint": "e7e11ec9074d2643406bef11989538ea878a6e15b08cde12244edcad455be317",
       "classification": "validated-ir",
@@ -30681,28 +30588,6 @@
           "streaming-diff-heading"
         ],
         "fingerprint": "e7e11ec9074d2643406bef11989538ea878a6e15b08cde12244edcad455be317"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/lower-oven-ir.ts:module:IfStatement:f46a9744133e4f01",
-      "fingerprint": "f46a9744133e4f01005e62e3e9d1b525cf2d773b2ff8d09d052403fd49805f6f",
-      "classification": "validated-ir",
-      "semanticOwner": {
-        "ownerType": "generic-lowerer",
-        "ownerTarget": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/lower-oven-ir.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"progress-donut\"",
-        "nodeKinds": [
-          "progress-donut"
-        ],
-        "fingerprint": "f46a9744133e4f01005e62e3e9d1b525cf2d773b2ff8d09d052403fd49805f6f"
       }
     },
     {
@@ -41147,83 +41032,343 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData:ConditionalExpression:06f8a2151ffe52d9",
-      "fingerprint": "06f8a2151ffe52d9103fd08a8ab64702203ca6b948e9f44f29feedd566858a9d",
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:allocateBurnCells:ConditionalExpression:8ab29f0f1cbd967d",
+      "fingerprint": "8ab29f0f1cbd967da9bf488470481b4a9d2f3137ed88311e44eb512d5ab804f0",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData",
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:allocateBurnCells",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "node": "ConditionalExpression",
+        "predicate": "cells >= groups.length",
+        "nodeKinds": [],
+        "fingerprint": "8ab29f0f1cbd967da9bf488470481b4a9d2f3137ed88311e44eb512d5ab804f0"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:allocateBurnCells:ConditionalExpression:955b3cde46946d77",
+      "fingerprint": "955b3cde46946d77b473f9f9e18603f956c3a16285444c8fcd47ce3836ebe61e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:allocateBurnCells",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "node": "ConditionalExpression",
+        "predicate": "demandTotal",
+        "nodeKinds": [],
+        "fingerprint": "955b3cde46946d77b473f9f9e18603f956c3a16285444c8fcd47ce3836ebe61e"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:allocateBurnCells:IfStatement:d4d2972a2e1590ad",
+      "fingerprint": "d4d2972a2e1590ade3dcb7ba7a0e965226c67c9580484fbf01e0aa49d0e91466",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:allocateBurnCells",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "node": "IfStatement",
+        "predicate": "!groups.length",
+        "nodeKinds": [],
+        "fingerprint": "d4d2972a2e1590ade3dcb7ba7a0e965226c67c9580484fbf01e0aa49d0e91466"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:allocateBurnCells:LogicalExpression:17023e562e13f282",
+      "fingerprint": "17023e562e13f2826a3ebe5ae44dcec47920e6e30d12f4aed365de84a9b75275",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:allocateBurnCells",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "node": "LogicalExpression",
+        "predicate": "Number(width) || 0",
+        "nodeKinds": [],
+        "fingerprint": "17023e562e13f2826a3ebe5ae44dcec47920e6e30d12f4aed365de84a9b75275"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:allocateBurnCells:LogicalExpression:a4b43420f8e54ed4",
+      "fingerprint": "a4b43420f8e54ed4a42b101f173ee19ad4f71ac740addcd09262bd178fb6bce9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:allocateBurnCells",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "allocateBurnCells",
+        "node": "LogicalExpression",
+        "predicate": "(right.quota % 1) - (left.quota % 1) || left.index - right.index",
+        "nodeKinds": [],
+        "fingerprint": "a4b43420f8e54ed4a42b101f173ee19ad4f71ac740addcd09262bd178fb6bce9"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutCounts:IfStatement:9869c768677e7e36",
+      "fingerprint": "9869c768677e7e368a531ef9e1bb926c3bb804d23743fd57eb507b36a91d9234",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutCounts",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "node": "IfStatement",
+        "predicate": "entry?.result === \"improved\" || entry?.result === \"pass\"",
+        "nodeKinds": [],
+        "fingerprint": "9869c768677e7e368a531ef9e1bb926c3bb804d23743fd57eb507b36a91d9234"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutCounts:IfStatement:ae96e8537dde1da9",
+      "fingerprint": "ae96e8537dde1da9eccb38d24a6d28911f76a66e45bdd732d321ef166c702658",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutCounts",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "node": "IfStatement",
+        "predicate": "entry?.result === \"worsened\"",
+        "nodeKinds": [],
+        "fingerprint": "ae96e8537dde1da9eccb38d24a6d28911f76a66e45bdd732d321ef166c702658"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutCounts:IfStatement:d92635962a9aebb9",
+      "fingerprint": "d92635962a9aebb9b0ac05714afd52f2f79da3dc544756258867f72d2564b756",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutCounts",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "node": "IfStatement",
+        "predicate": "entry?.result === \"blocked\" || entry?.result === \"reverted\"",
+        "nodeKinds": [],
+        "fingerprint": "d92635962a9aebb9b0ac05714afd52f2f79da3dc544756258867f72d2564b756"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutCounts:LogicalExpression:07cda2d4ccb06ca0",
+      "fingerprint": "07cda2d4ccb06ca0b6d8f69dd5ee0d22038c247584234cbdcf586c493c3f11b7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutCounts",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "node": "LogicalExpression",
+        "predicate": "entry?.result === \"blocked\" || entry?.result === \"reverted\"",
+        "nodeKinds": [],
+        "fingerprint": "07cda2d4ccb06ca0b6d8f69dd5ee0d22038c247584234cbdcf586c493c3f11b7"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutCounts:LogicalExpression:71039810b5fbcffa",
+      "fingerprint": "71039810b5fbcffa9fe31426cc2182ada1b998b4159ca8c1bfbc7cf5c6f17464",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutCounts",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutCounts",
+        "node": "LogicalExpression",
+        "predicate": "entry?.result === \"improved\" || entry?.result === \"pass\"",
+        "nodeKinds": [],
+        "fingerprint": "71039810b5fbcffa9fe31426cc2182ada1b998b4159ca8c1bfbc7cf5c6f17464"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutGroups:ConditionalExpression:1a3e7e64438ee7d1",
+      "fingerprint": "1a3e7e64438ee7d1638e97a8bcb037a4bf28cd0b62642bd3d3b8c9adb4b9e049",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutGroups",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutGroups",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutGroups",
+        "node": "ConditionalExpression",
+        "predicate": "active.length > 1",
+        "nodeKinds": [],
+        "fingerprint": "1a3e7e64438ee7d1638e97a8bcb037a4bf28cd0b62642bd3d3b8c9adb4b9e049"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:burnDonutGroups:ConditionalExpression:6a79c4de3d4ead93",
+      "fingerprint": "6a79c4de3d4ead93f9b411691480b401e65810f610023df8456ef33dbe1f2317",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:burnDonutGroups",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutGroups",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "burnDonutGroups",
+        "node": "ConditionalExpression",
+        "predicate": "name === \"unchanged\"",
+        "nodeKinds": [],
+        "fingerprint": "6a79c4de3d4ead93f9b411691480b401e65810f610023df8456ef33dbe1f2317"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:clampProgressPercent:ConditionalExpression:4b632ebfa0dd42af",
+      "fingerprint": "4b632ebfa0dd42aff593fa7864a117bed4db222a3089bb12b03a6e8aef895586",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:clampProgressPercent",
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "clampProgressPercent",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "src/ovens/oven-progress-metrics.mjs",
+        "export": "clampProgressPercent",
+        "node": "ConditionalExpression",
+        "predicate": "Number.isFinite(parsed)",
+        "nodeKinds": [],
+        "fingerprint": "4b632ebfa0dd42aff593fa7864a117bed4db222a3089bb12b03a6e8aef895586"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:waffleMetricData:ConditionalExpression:3f14f314517f0a43",
+      "fingerprint": "3f14f314517f0a439605b9777021c4943723455857b5e530fc6a0fe849915ff1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:waffleMetricData",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "version": "burnlist-console-oven-behavior@1"
       },
       "source": {
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "node": "ConditionalExpression",
-        "predicate": "metric.total",
+        "predicate": "metric?.total",
         "nodeKinds": [],
-        "fingerprint": "06f8a2151ffe52d9103fd08a8ab64702203ca6b948e9f44f29feedd566858a9d"
+        "fingerprint": "3f14f314517f0a439605b9777021c4943723455857b5e530fc6a0fe849915ff1"
       }
     },
     {
-      "id": "branch:dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData:ConditionalExpression:4dcf65f8c337d704",
-      "fingerprint": "4dcf65f8c337d70416bbdf3fb71fcc971bb7a2e557c6db39c7aef3ad205b3c25",
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:waffleMetricData:ConditionalExpression:a8725fa89fa485f4",
+      "fingerprint": "a8725fa89fa485f4a23342be3b3af4187ae390a99f3922a518ca386d9d8e214b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData",
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:waffleMetricData",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "version": "burnlist-console-oven-behavior@1"
       },
       "source": {
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "node": "ConditionalExpression",
-        "predicate": "metric.total",
+        "predicate": "metric?.total",
         "nodeKinds": [],
-        "fingerprint": "4dcf65f8c337d70416bbdf3fb71fcc971bb7a2e557c6db39c7aef3ad205b3c25"
+        "fingerprint": "a8725fa89fa485f4a23342be3b3af4187ae390a99f3922a518ca386d9d8e214b"
       }
     },
     {
-      "id": "branch:dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData:LogicalExpression:155c115dc9fdcf13",
-      "fingerprint": "155c115dc9fdcf13153abc85c5797881ca226adaafd17a8a1a814c75b2128251",
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:waffleMetricData:LogicalExpression:7d550781a9e01812",
+      "fingerprint": "7d550781a9e018121fa5ac07b23f0dd1b91d6193276e5a3027c7e76289abf4db",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData",
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:waffleMetricData",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "version": "burnlist-console-oven-behavior@1"
       },
       "source": {
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "node": "LogicalExpression",
-        "predicate": "metric.failed || 0",
+        "predicate": "metric?.failed || 0",
         "nodeKinds": [],
-        "fingerprint": "155c115dc9fdcf13153abc85c5797881ca226adaafd17a8a1a814c75b2128251"
+        "fingerprint": "7d550781a9e018121fa5ac07b23f0dd1b91d6193276e5a3027c7e76289abf4db"
       }
     },
     {
-      "id": "branch:dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData:LogicalExpression:e688c18f04ffc6c3",
-      "fingerprint": "e688c18f04ffc6c38c514ccd37399b9b2bf9c8fdf27a6c90c2ad15f328c46790",
+      "id": "branch:src/ovens/oven-progress-metrics.mjs:waffleMetricData:LogicalExpression:ce97b1a9a8417845",
+      "fingerprint": "ce97b1a9a8417845ecc8088a13df9d5294fa9df35f0144e62c7be8f3c6030a17",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx:waffleMetricData",
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "ownerTarget": "src/ovens/oven-progress-metrics.mjs:waffleMetricData",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "version": "burnlist-console-oven-behavior@1"
       },
       "source": {
-        "path": "dashboard/src/oven/WaffleMetric/WaffleMetric.tsx",
+        "path": "src/ovens/oven-progress-metrics.mjs",
         "export": "waffleMetricData",
         "node": "LogicalExpression",
-        "predicate": "metric.blocked || 0",
+        "predicate": "metric?.blocked || 0",
         "nodeKinds": [],
-        "fingerprint": "e688c18f04ffc6c38c514ccd37399b9b2bf9c8fdf27a6c90c2ad15f328c46790"
+        "fingerprint": "ce97b1a9a8417845ecc8088a13df9d5294fa9df35f0144e62c7be8f3c6030a17"
       }
     },
     {

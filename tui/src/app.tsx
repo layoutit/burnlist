@@ -7,11 +7,14 @@ import itemSource from "../screens/item.glyph" with { type: "text" };
 import ovenSource from "../screens/oven.glyph" with { type: "text" };
 import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { createDataClient } from "./data-client";
+import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import { detailItems, visualParityPayload } from "./detail-items";
 import { observeDashboardEvents, type StreamStatus } from "./event-stream";
 import { orderedBurnlists } from "./landing-groups";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
+import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "./oven-runtime/terminal-contract";
+import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components";
 import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, OvenSummary, ProgressSnapshot } from "./types";
 
 const emptyLanding: LandingSnapshot = { projects: [], burnlists: [], ovens: [], generatedAt: "" };
@@ -46,6 +49,13 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
+  const ovenRequest = useRef<{ generation: number; controller: AbortController | null }>({ generation: 0, controller: null });
+  const beginOvenRequest = useCallback(() => {
+    ovenRequest.current.controller?.abort();
+    const controller = new AbortController(), generation = ovenRequest.current.generation + 1;
+    ovenRequest.current = { generation, controller };
+    return { signal: controller.signal, owns: () => ovenRequest.current.generation === generation && !controller.signal.aborted };
+  }, []);
   const view = navigation.at(-1) ?? "home";
   const catalog = useMemo(() => genericOvens(landing.ovens), [landing.ovens]);
   const burnlists = useMemo(() => orderedBurnlists(landing), [landing]);
@@ -53,6 +63,17 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const items = useMemo(() => detailItems(activeOven, progress, ovenData), [activeOven, ovenData, progress]);
   const safeItemIndex = Math.max(0, Math.min(itemIndex, Math.max(0, items.length - 1)));
   const selectedItem = items[safeItemIndex] ?? null;
+  const ovenRuntime = useMemo(() => {
+    if (!ovenDetail) return null;
+    const payload = activeOven?.contract === "checklist-progress@1" && progress ? adaptChecklist({
+      ...progress,
+      history: progress.history ?? [],
+      active: progress.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
+      completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
+    }) : ovenData?.payload;
+    if (payload === undefined) return null;
+    return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  }, [activeOven?.contract, ovenData?.payload, ovenDetail, progress]);
 
   const pushView = useCallback((next: View) => {
     setNavigation((current) => current.at(-1) === next ? current : [...current, next]);
@@ -72,6 +93,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   }, [client]);
 
   const loadBurnlist = useCallback(async (burnlist: BurnlistSummary, oven: OvenSummary | null, resetItem: boolean) => {
+    const request = beginOvenRequest();
     setLoading(true);
     setError(null);
     setActiveOven(oven);
@@ -82,36 +104,44 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     try {
       if (oven?.contract === "checklist-progress@1") {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
-        setProgress(await client.progress(burnlist.planPath));
+        const [nextProgress, detail] = await Promise.all([client.progress(burnlist.planPath, request.signal), client.oven(oven.id, request.signal)]);
+        if (!request.owns()) return;
+        setProgress(nextProgress);
+        setOvenDetail(detail);
         setDomainIndex(0);
       } else if (oven) {
-        const snapshot = await client.ovenData(oven.id, burnlist.repoKey);
+        const [snapshot, detail] = await Promise.all([client.ovenData(oven.id, burnlist.repoKey, request.signal), client.oven(oven.id, request.signal)]);
+        if (!request.owns()) return;
         setOvenData(snapshot);
+        setOvenDetail(detail);
         const payload = visualParityPayload(snapshot);
         setDomainIndex(Math.max(0, payload?.domains.findIndex((domain) => domain.qualification === "target") ?? 0));
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (request.owns()) setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setLoading(false);
+      if (request.owns()) setLoading(false);
     }
-  }, [client]);
+  }, [beginOvenRequest, client]);
 
   const loadCatalogOven = useCallback(async (oven: OvenSummary) => {
+    const request = beginOvenRequest();
     setLoading(true);
     setError(null);
     setActiveOven(oven);
     setOvenDetail(null);
     try {
-      setOvenDetail(await client.oven(oven.id));
+      const detail = await client.oven(oven.id, request.signal);
+      if (request.owns()) setOvenDetail(detail);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      if (request.owns()) setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
-      setLoading(false);
+      if (request.owns()) setLoading(false);
     }
-  }, [client]);
+  }, [beginOvenRequest, client]);
 
   useEffect(() => { void loadLanding(); }, [loadLanding]);
+  useEffect(() => () => ovenRequest.current.controller?.abort(), []);
 
   const refresh = useCallback(() => {
     void loadLanding();
@@ -227,5 +257,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     selections={selections}
     streamStatus={streamStatus}
     notice={notice}
+    ovenRuntime={ovenRuntime}
   />;
 }

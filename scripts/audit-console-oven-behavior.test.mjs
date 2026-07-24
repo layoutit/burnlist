@@ -10,7 +10,7 @@ import { auditConsoleOvenBehavior, policyFor, SCHEMA, validateInventory } from "
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function fixture() {
   const temp = await mkdtemp(join(tmpdir(), "burnlist-console-oven-"));
-  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "src/ovens/oven-value-runtime.mjs"), join(temp, "src/ovens/oven-value-runtime.mjs")), cp(join(root, "console-oven-behavior-policy.json"), join(temp, "console-oven-behavior-policy.json"))]);
+  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "src/ovens/oven-value-runtime.mjs"), join(temp, "src/ovens/oven-value-runtime.mjs")), cp(join(root, "src/ovens/oven-progress-metrics.mjs"), join(temp, "src/ovens/oven-progress-metrics.mjs")), cp(join(root, "console-oven-behavior-policy.json"), join(temp, "console-oven-behavior-policy.json"))]);
   return temp;
 }
 async function mutate(root, path, before, after) {
@@ -75,7 +75,8 @@ test("official Oven fixtures cannot influence the source inventory", async () =>
 
 test("shared evaluator decisions are authoritative and policy-owned", async () => withFixture(async (temp) => {
   const before = await auditConsoleOvenBehavior(temp, { compare: false });
-  assert.deepEqual(before.authoritativeSources.shared, ["src/ovens/oven-value-runtime.mjs"]);
+  assert.deepEqual(before.authoritativeSources.shared, ["src/ovens/oven-progress-metrics.mjs", "src/ovens/oven-value-runtime.mjs"]);
+  assert.ok(before.behaviors.some((row) => row.source.path === "src/ovens/oven-progress-metrics.mjs"));
   const owned = before.behaviors.filter((row) => row.source.path === "src/ovens/oven-value-runtime.mjs");
   assert.ok(owned.length > 0);
   assert.ok(owned.every((row) => row.classification === "closed-shared-adapter" && row.semanticOwner.ownerTarget === `${row.source.path}:${row.source.export}`));

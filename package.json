@@ -39,6 +39,8 @@
     "test:tui": "npm --prefix tui test",
     "generate:terminal-story-frames": "npm --prefix tui run generate:story-frames",
     "check:terminal-story-frames": "npm --prefix tui run check:story-frames",
+    "generate:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --write",
+    "check:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --check",
     "tui": "npm --prefix tui run dev --",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",

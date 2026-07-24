@@ -6,6 +6,8 @@ import { ItemDetail } from "./item-view";
 import { BurnlistList, LandingSectionHeading, OvenList } from "./landing-view";
 import { genericOvens } from "./oven-fit";
 import { OvenPane } from "./oven-view";
+import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
+import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { palette } from "./theme";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
 import type {
@@ -35,6 +37,7 @@ export interface ScreenRuntimeProps {
   selections: Record<string, number>;
   streamStatus: StreamStatus;
   notice?: { message: string; tone: "error" | "info" } | null;
+  ovenRuntime?: TerminalRenderResult | null;
 }
 
 function listRows(height: number): number {
@@ -53,6 +56,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
   const contentHeight = Math.max(1, height - 3);
   const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
+  const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: collapsed ? width : summaryWidth, height: Math.max(1, sidebarHeight - 5) } } }) : null;
   return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : summaryWidth}
@@ -75,6 +79,11 @@ function DetailSplit({ node, props, width, height, chrome }: {
           width={collapsed ? width : summaryWidth}
         />
       </box>
+      {runtime?.status === "ready" ? <TerminalOvenViewport
+        result={runtime}
+        footer="q:back"
+      /> : <>
+      {runtime ? <box height={2} overflow="hidden"><text fg={palette.dim}>{`LEGACY FALLBACK · ${runtime.diagnostics.at(-1)?.message ?? runtime.status}`}</text></box> : null}
       <OvenPane
         active={props.activeOven}
         lenses={props.ovenLenses}
@@ -84,7 +93,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         height={Math.max(1, sidebarHeight - 5)}
         width={collapsed ? width : summaryWidth}
         itemIndex={props.itemIndex}
-      />
+      /></>}
     </box>
     <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden">
       <ItemDetail

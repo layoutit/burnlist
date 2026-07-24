@@ -79,4 +79,91 @@ export const TERMINAL_OVEN_CAPABILITIES: readonly TerminalCapabilityClaim[] = Ob
   fixtureIds: ["structural-layout"],
   atomMappings: [{ atomId: "compiled:element:icon", evidence: { recordId: "structural-layout:compiled:element:icon", target: "atom:compiled:element:icon" } }],
   },
+  {
+  sourceFamilyId: "grammar:element:kpi-strip",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiStrip",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:kpi-strip", evidence: { recordId: "progress-components:grammar:element:kpi-strip", target: "atom:grammar:element:kpi-strip" } }],
+  }, {
+  sourceFamilyId: "compiled:element:kpi-strip",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiStrip",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:kpi-strip", evidence: { recordId: "progress-components:compiled:element:kpi-strip", target: "atom:compiled:element:kpi-strip" } }],
+  }, {
+  sourceFamilyId: "grammar:element:kpi-item",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiItem",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:kpi-item", evidence: { recordId: "progress-components:grammar:element:kpi-item", target: "atom:grammar:element:kpi-item" } }],
+  }, {
+  sourceFamilyId: "compiled:element:kpi-item",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiItem",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:kpi-item", evidence: { recordId: "progress-components:compiled:element:kpi-item", target: "atom:compiled:element:kpi-item" } }],
+  }, {
+  sourceFamilyId: "grammar:element:progress-donut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:progress-donut", evidence: { recordId: "progress-components:grammar:element:progress-donut", target: "atom:grammar:element:progress-donut" } }],
+  }, {
+  sourceFamilyId: "compiled:element:progress-donut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:progress-donut", evidence: { recordId: "progress-components:compiled:element:progress-donut", target: "atom:compiled:element:progress-donut" } }],
+  }, {
+  sourceFamilyId: "grammar:element:burn-donut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:burn-donut", evidence: { recordId: "progress-components:grammar:element:burn-donut", target: "atom:grammar:element:burn-donut" } }],
+  }, {
+  sourceFamilyId: "compiled:element:burn-donut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:burn-donut", evidence: { recordId: "progress-components:compiled:element:burn-donut", target: "atom:compiled:element:burn-donut" } }],
+  }, {
+  sourceFamilyId: "grammar:element:waffle-metric",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:waffle-metric", evidence: { recordId: "progress-components:grammar:element:waffle-metric", target: "atom:grammar:element:waffle-metric" } }],
+  }, {
+  sourceFamilyId: "compiled:element:waffle-metric",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:waffle-metric", evidence: { recordId: "progress-components:compiled:element:waffle-metric", target: "atom:compiled:element:waffle-metric" } }],
+  }, {
+  sourceFamilyId: "grammar:element:progress-value",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#checklistProgressValue",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "grammar:element:progress-value", evidence: { recordId: "progress-components:grammar:element:progress-value", target: "atom:grammar:element:progress-value" } }],
+  }, {
+  sourceFamilyId: "compiled:element:progress-value",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#checklistProgressValue",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "compiled:element:progress-value", evidence: { recordId: "progress-components:compiled:element:progress-value", target: "atom:compiled:element:progress-value" } }],
+  },
+  {
+  sourceFamilyId: "public:dashboard/src/oven/index.ts#BurnDonut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "public:dashboard/src/oven/index.ts#BurnDonut", evidence: { recordId: "progress-components:public:dashboard/src/oven/index.ts#BurnDonut", target: "atom:public:dashboard/src/oven/index.ts#BurnDonut" } }],
+  }, {
+  sourceFamilyId: "public:dashboard/src/oven/index.ts#ProgressDonut",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "public:dashboard/src/oven/index.ts#ProgressDonut", evidence: { recordId: "progress-components:public:dashboard/src/oven/index.ts#ProgressDonut", target: "atom:public:dashboard/src/oven/index.ts#ProgressDonut" } }],
+  }, {
+  sourceFamilyId: "public:dashboard/src/oven/index.ts#WaffleMetric",
+  implementationExport: "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "public:dashboard/src/oven/index.ts#WaffleMetric", evidence: { recordId: "progress-components:public:dashboard/src/oven/index.ts#WaffleMetric", target: "atom:public:dashboard/src/oven/index.ts#WaffleMetric" } }],
+  }, {
+  sourceFamilyId: "public:dashboard/src/oven/index.ts#KpiItem",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiItem",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "public:dashboard/src/oven/index.ts#KpiItem", evidence: { recordId: "progress-components:public:dashboard/src/oven/index.ts#KpiItem", target: "atom:public:dashboard/src/oven/index.ts#KpiItem" } }],
+  }, {
+  sourceFamilyId: "public:dashboard/src/oven/index.ts#KpiStrip",
+  implementationExport: "tui/src/oven-runtime/components/progress-components.tsx#TerminalKpiStrip",
+  fixtureIds: ["progress-components"],
+  atomMappings: [{ atomId: "public:dashboard/src/oven/index.ts#KpiStrip", evidence: { recordId: "progress-components:public:dashboard/src/oven/index.ts#KpiStrip", target: "atom:public:dashboard/src/oven/index.ts#KpiStrip" } }],
+  },
 ]);
