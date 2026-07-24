@@ -12,6 +12,8 @@ import differentialSource from "../../../ovens/differential-testing/differential
 import checklistSource from "../../../ovens/checklist/checklist.oven" with { type: "text" };
 import modelLabSource from "../../../ovens/model-lab/model-lab.oven" with { type: "text" };
 import { FixtureFlame } from "./fixture-flame";
+import { FixtureChiminea } from "./fixture-chiminea";
+import { chimineaFixture } from "./chiminea-fixture";
 import { glyphFixture } from "./glyph-fixture";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
@@ -33,7 +35,7 @@ import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/te
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab";
+type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab" | "chiminea";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
@@ -48,6 +50,7 @@ const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; de
   { id: "differential-testing", label: "Differential Testing", detail: "compiled KPI, chart, log, and field drill-down", checkpoints: differentialFixture.checkpoints },
   { id: "checklist", label: "Checklist", detail: "shared progress, ledger, and event detail", checkpoints: checklistFixture.checkpoints },
   { id: "model-lab", label: "Model Lab", detail: "producer readiness and retained frame evidence", checkpoints: modelLabFixture.checkpoints },
+  { id: "chiminea", label: chimineaFixture.title, detail: chimineaFixture.detail, checkpoints: chimineaFixture.checkpoints },
 ];
 const progressPayloads = [
   { percent: 57, done: 4, total: 7, burns: [{ result: "pass" }, { result: "worsened" }, { result: "blocked" }], metric: { total: 8, failed: 2 }, required: "ready" },
@@ -167,6 +170,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
         {fixture.id === "differential-testing" ? <TerminalOvenViewport result={differentialResult} footer="" /> : null}
         {fixture.id === "checklist" ? <TerminalOvenViewport result={checklistResult} footer="" /> : null}
         {fixture.id === "model-lab" ? <TerminalOvenViewport result={modelLabResult} footer="" /> : null}
+        {fixture.id === "chiminea" ? <FixtureChiminea reducedMotion={stateName === "reduced-motion"} clock={clock} /> : null}
       </box>
     </box>
     <CatalogFooter text={fixture.id === "differential-testing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "checklist" ? "←/→:state · enter:latest detail · v:view · q:back" : fixture.id === "model-lab" ? modelLabClient ? "←/→:request frame · c:state · v:view · q:back" : "frame controller unavailable · c:state · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
