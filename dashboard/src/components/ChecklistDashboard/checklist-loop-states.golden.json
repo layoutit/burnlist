@@ -1,0 +1,10 @@
+[
+  { "checkpoint": "paused", "domBytes": 12171, "domSha256": "46388c6ac8e544fbf4b511f0178c2d0adfbc8cc41c6a37375cce7e7b0f4b20c8" },
+  { "checkpoint": "failed", "domBytes": 12171, "domSha256": "de66441d38526255a307f54d4eead2c5d0e0d3d2f58d70a0a00e0f8614ee26b0" },
+  { "checkpoint": "stopped", "domBytes": 12173, "domSha256": "e306f86ff9bbcc7294e6b9bc3df3987989f796bd947d789f4d1edddca83efa9f" },
+  { "checkpoint": "needs-human", "domBytes": 12195, "domSha256": "8a25e97a8f6fee72f336ab4ecbc859964d0b4ff664e63e32efba0e57a83d31c5" },
+  { "checkpoint": "exhausted", "domBytes": 12191, "domSha256": "46df3aa30b14a0086f8299895e69fad120e6564bf65b2119cac652b6ec793c10" },
+  { "checkpoint": "stale", "domBytes": 12191, "domSha256": "afc4e0cebcd3a7f3bb1fad8d32ae733b9d2bc9c2a0a9910bc1ad37ff39fc82f9" },
+  { "checkpoint": "corrupt", "domBytes": 12195, "domSha256": "b6540a7baf33695218d768a9183c89b13c237f677ef825888270ce80598f23aa" },
+  { "checkpoint": "completed", "domBytes": 12177, "domSha256": "27ef2ca6d8357bd24166c1954220e3f7c75f60361e574f16806a72fa3b9d2ace" }
+]

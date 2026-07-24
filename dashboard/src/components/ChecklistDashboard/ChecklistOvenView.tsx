@@ -3,6 +3,7 @@ import type { ResolvedOvenIr } from "@hooks";
 import type { ChecklistProgressData } from "@lib";
 import { adaptChecklist } from "@lib/checklist-adapter";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
+import { LoopRunPanel } from "./ChecklistDashboard";
 import "./ChecklistDashboard.css";
 
 export function ChecklistOvenView({ data, ir }: { data: ChecklistProgressData; ir: ResolvedOvenIr }) {
@@ -11,5 +12,5 @@ export function ChecklistOvenView({ data, ir }: { data: ChecklistProgressData; i
     document.body.classList.add("driving-parity-view", "checklist-detail-view");
     return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
   }, []);
-  return <OvenRuntime ir={ir} payload={payload} />;
+  return <><LoopRunPanel data={data} /><OvenRuntime ir={ir} payload={payload} /></>;
 }

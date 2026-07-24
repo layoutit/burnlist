@@ -94,10 +94,56 @@ export function EventCardList({ data }: { data: ChecklistProgressData }) {
   })}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></section>;
 }
 
+export function LoopRunPanel({ data }: { data: ChecklistProgressData }) {
+  const run = data.loopRun;
+  if (!run) return data.loopProjectionDiagnostic ? <section className="panel checklist-loop-run" aria-label="Loop run diagnostic" role="alert">
+    <div className="work-panel-head"><div className="work-panel-title">Loop Run</div><span className="checklist-loop-state">Corrupt projection</span></div>
+    <p className="checklist-loop-result">{data.loopProjectionMessage || "The Loop projection is corrupt. Progress remains available while the dashboard waits for a verified projection."}</p>
+  </section> : null;
+  const stateLabel: Record<string, string> = {
+    paused: "Paused", failed: "Failed", stopped: "Stopped", "needs-human": "Needs human review",
+    "budget-exhausted": "Budget exhausted", corrupt: "Corrupt projection", stale: "Stale projection", converged: "Converged", completed: "Completed",
+  };
+  const state = run.diagnostic === "corrupt" ? "Corrupt projection" : run.diagnostic === "stale" ? "Stale projection" : stateLabel[run.state] ?? run.state;
+  const budget = run.budget;
+  const nodeById = new Map(run.graph.nodes.map((node) => [node.id, node]));
+  const orderedEdges = [...run.graph.edges].sort((left, right) => {
+    const stage = (edge: typeof left) => edge.from === "implement" ? 0 : edge.from === "verify" ? 1 : edge.from === "review" ? 2 : edge.from === "converged" ? 3 : 4;
+    return stage(left) - stage(right) || left.from.localeCompare(right.from) || left.on.localeCompare(right.on);
+  });
+  const roleResults = [
+    ["Maker", run.latestMaker], ["Check", run.latestCheck], ["Reviewer", run.latestReviewer],
+  ] as const;
+  return <section className="panel checklist-loop-run" aria-label="Loop run">
+    <div className="work-panel-head"><div className="work-panel-title">Loop Run</div>
+      <span className="checklist-loop-state" aria-label={`Loop state: ${state}`}>{state}</span></div>
+    <p className="checklist-loop-identity"><strong>{run.loopId}</strong>{run.loopRevision && <code>{run.loopRevision}</code>} <time dateTime={new Date(run.createdAt).toISOString()}>started {new Date(run.createdAt).toLocaleString()}</time> <time dateTime={new Date(run.updatedAt).toISOString()}>updated {new Date(run.updatedAt).toLocaleString()}</time></p>
+    <div className="checklist-loop-current"><strong>Current</strong> {run.currentNode} · attempt {run.attempt} · cycle {run.cycle}</div>
+    <dl className="checklist-loop-budget" aria-label="Loop budget">
+      <div><dt>Elapsed</dt><dd>{formatDuration(budget.elapsedMilliseconds)}</dd></div>
+      <div><dt>Rounds</dt><dd>{budget.counters.rounds}/{budget.limits.maxRounds}</dd></div>
+      <div><dt>Agent runs</dt><dd>{budget.counters.agentRuns}/{budget.limits.maxAgentRuns}</dd></div>
+      <div><dt>Checks</dt><dd>{budget.counters.checkRuns}/{budget.limits.maxCheckRuns}</dd></div>
+      <div><dt>Transitions</dt><dd>{budget.counters.transitions}/{budget.limits.maxTransitions}</dd></div>
+    </dl>
+    <ol className="checklist-loop-graph" aria-label="Loop nodes">{run.graph.nodes.map((node) =>
+      <li aria-current={node.id === run.currentNode ? "step" : undefined} className={node.id === run.currentNode ? "current" : ""} key={node.id}>
+        <span>{node.id}</span><small>{node.kind}</small>
+      </li>)}</ol>
+    <ol className="checklist-loop-edges" aria-label="Loop graph edges">{orderedEdges.map((edge) =>
+      <li key={`${edge.from}:${edge.on}:${edge.to}`}><strong>{nodeById.get(edge.from)?.id ?? edge.from}</strong> <span>—{edge.on}→</span> <strong>{nodeById.get(edge.to)?.id ?? edge.to}</strong></li>)}</ol>
+    {roleResults.some(([, result]) => result) && <dl className="checklist-loop-results" aria-label="Latest role evidence">{roleResults.map(([role, result]) => result &&
+      <div key={role}><dt>{role}</dt><dd>{result.summary} <time dateTime={new Date(result.at).toISOString()}>{new Date(result.at).toLocaleString()}</time>{result.candidateId && <small>candidate {result.candidateId}</small>}</dd></div>)}</dl>}
+    {run.latestResult && <p className="checklist-loop-result"><strong>Latest</strong> {run.latestResult.kind} · {run.latestResult.summary}</p>}
+    <ol className="checklist-loop-transitions">{run.transitions.map((transition) =>
+      <li key={transition.sequence}>{transition.from} <span>—{transition.outcome}→</span> {transition.to}</li>)}</ol>
+  </section>;
+}
+
 export function ChecklistDashboard({ data }: { data: ChecklistProgressData }) {
   useEffect(() => {
     document.body.classList.add("driving-parity-view", "checklist-detail-view");
     return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
   }, []);
-  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><EventCardList data={data} /></main></div>;
+  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><LoopRunPanel data={data} /><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><EventCardList data={data} /></main></div>;
 }

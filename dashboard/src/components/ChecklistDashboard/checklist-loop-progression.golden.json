@@ -1,0 +1,7 @@
+[
+  { "checkpoint": "implement/1/reject", "projectionBytes": 1855, "projectionSha256": "bb919c8828f97eb63e5c6e29b2eb73736e3a24e476ea13190d39ac4fc329fd3c", "domBytes": 12119, "domSha256": "70d9d519964b9f9b292bf02bed768355e95eb126b6ba254cd7562ba3825855ab" },
+  { "checkpoint": "implement/2/reject", "projectionBytes": 1855, "projectionSha256": "9c623f1ccf612c9921f93c031ac4c7757892d2eda3feb46c34dfbd6347957b94", "domBytes": 12119, "domSha256": "cd341ac15a227617969bdb3e66cd9d23fef58075f6c31e26b35b78efdae49270" },
+  { "checkpoint": "review/2/approve", "projectionBytes": 1990, "projectionSha256": "318079e10fef419d1985aa704b8c5bb77791161a57b6771dc6d5cde5e005ddea", "domBytes": 12214, "domSha256": "beb873ef0164fe58e3b635a3082dcebb2f191882ea8992b6aa71c32283154683" },
+  { "checkpoint": "converged/1/approve", "projectionBytes": 2062, "projectionSha256": "1a2c67ec6c1645b46c690d0531a32b68b679191531f6fa6a5cf333f66ffcf967", "domBytes": 12267, "domSha256": "7427a07760115ac129912c66dcb03fd619051b7fa5d69e08f352a1c99a9251a5" },
+  { "checkpoint": "completed/1/approve", "projectionBytes": 2133, "projectionSha256": "c48da3b51874c7daba7669a4ded690445d89b9eb1b7b311f061b60472f54cc07", "domBytes": 12321, "domSha256": "1ff2c2747b11031e8c3d89fbf9ad15d87bfe5f292c57161123685fd62ca0f83b" }
+]

@@ -6,6 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { build } from "esbuild";
 import { checklistFixture as data } from "./ChecklistDashboard.fixture.mjs";
+import { runM4ProgressFixture } from "../../../../src/loops/run/run-test-fixtures.mjs";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const stylesheetPath = new URL("./ChecklistDashboard.css", import.meta.url).pathname;
@@ -19,14 +20,17 @@ test("checklist progress owns its workspace height instead of inheriting the dif
 
 test("checklist detail renders the split progress surface and event card list", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".checklist-dashboard-test-"));
+  let repoRoot;
   try {
+    repoRoot = await mkdtemp(join(process.cwd(), ".m5-loop-ui-"));
     const outputPath = join(outputDir, "ChecklistDashboard.mjs");
     await build({
       entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
       alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18",
     });
-    const { ChecklistDashboard, checklistEventDetailFields } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
+    const { ChecklistDashboard, LoopRunPanel, checklistEventDetailFields } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
     const markup = renderToStaticMarkup(createElement(ChecklistDashboard, { data }));
+    assert.equal(markup, renderToStaticMarkup(createElement(ChecklistDashboard, { data: { ...data, loopRun: null } })));
 
     assert.match(markup, /aria-label="Burnlist progress KPIs"/u);
     assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current"/u);
@@ -68,7 +72,75 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);
     assert.doesNotMatch(markup, /Burnlist detail view/u);
     assert.doesNotMatch(markup, /Repo Graph/u);
+
+    const { snapshots } = await runM4ProgressFixture({
+      repoRoot,
+      outcomes: ["complete", "pass", "reject", "complete", "pass", "approve"],
+    });
+    for (const projection of snapshots) {
+      const stage = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: projection } }));
+      assert.match(stage, new RegExp(`<strong>Current</strong> ${projection.currentNode} · attempt ${projection.attempt} · cycle ${projection.cycle}`, "u"));
+      assert.match(stage, /aria-label="Loop graph edges"/u);
+      assert.match(stage, /<strong>implement<\/strong> <span>—complete→<\/span> <strong>verify<\/strong>/u);
+      assert.match(stage, /aria-current="step"/u);
+      if (projection.latestResult) assert.match(stage, new RegExp(`<strong>Latest</strong> ${projection.latestResult.kind} · ${projection.latestResult.summary}`, "u"));
+      if (projection.currentNode === "implement" && projection.attempt === 2) assert.match(stage, /review <span>—reject→<\/span> implement/u);
+      if (projection.currentNode === "converged") assert.match(stage, /review <span>—approve→<\/span> converged/u);
+      if (projection.currentNode === "completed") assert.match(stage, /converged <span>—pass→<\/span> completed/u);
+    }
+    const evidence = renderToStaticMarkup(createElement(LoopRunPanel, { data: {
+      ...data,
+      loopRun: {
+        ...snapshots.at(-1),
+        latestMaker: { summary: "candidate prepared", at: Date.parse("2026-07-15T11:40:00Z"), candidateId: "candidate-1" },
+        latestCheck: { summary: "verify passed", at: Date.parse("2026-07-15T11:45:00Z"), candidateId: "candidate-1" },
+        latestReviewer: { summary: "approved", at: Date.parse("2026-07-15T11:50:00Z"), candidateId: "candidate-1" },
+      },
+    } }));
+    assert.match(evidence, /aria-label="Latest role evidence"/u);
+    assert.match(evidence, /<dt>Maker<\/dt><dd>candidate prepared/u);
+    assert.match(evidence, /<dt>Check<\/dt><dd>verify passed/u);
+    assert.match(evidence, /<dt>Reviewer<\/dt><dd>approved/u);
+    assert.match(evidence, /candidate candidate-1/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
+    if (repoRoot) await rm(repoRoot, { force: true, recursive: true });
   }
+});
+
+test("Loop panel exposes every terminal and observer diagnostic state accessibly", async () => {
+  const outputDir = await mkdtemp(join(process.cwd(), ".m7-loop-state-ui-"));
+  const repoRoot = await mkdtemp(join(process.cwd(), ".m7-loop-state-run-"));
+  try {
+    const outputPath = join(outputDir, "ChecklistDashboard.mjs");
+    await build({ entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node", alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18" });
+    const { LoopRunPanel } = await import(`${new URL(`file://${outputPath}`).href}?states=${Date.now()}`);
+    const { final } = await runM4ProgressFixture({ repoRoot, outcomes: ["complete", "pass", "reject", "complete", "pass", "approve"] });
+    const labels = { paused: "Paused", failed: "Failed", stopped: "Stopped", "needs-human": "Needs human review", "budget-exhausted": "Budget exhausted", converged: "Converged", completed: "Completed", corrupt: "Corrupt projection", stale: "Stale projection" };
+    for (const [state, label] of Object.entries(labels)) {
+      const projection = { ...final, state };
+      const markup = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: state === "stale" ? { ...projection, diagnostic: "stale" } : projection } }));
+      assert.match(markup, new RegExp(`aria-label="Loop state: ${label}"`, "u"));
+      assert.match(markup, /aria-label="Loop budget"/u);
+    }
+  } finally {
+    await rm(outputDir, { force: true, recursive: true });
+    await rm(repoRoot, { force: true, recursive: true });
+  }
+});
+
+test("Loop panel exposes a real unreachable-projection diagnostic without fabricating a Run", async () => {
+  const outputDir = await mkdtemp(join(process.cwd(), ".m12-loop-diagnostic-"));
+  try {
+    const outputPath = join(outputDir, "ChecklistDashboard.mjs");
+    await build({ entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node", alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18" });
+    const { LoopRunPanel } = await import(`${new URL(`file://${outputPath}`).href}?diagnostic=${Date.now()}`);
+    const markup = renderToStaticMarkup(createElement(LoopRunPanel, { data: {
+      ...data, loopProjectionDiagnostic: "corrupt", loopProjectionMessage: "Loop projection is unavailable; retaining the last verified projection.", loopRun: null,
+    } }));
+    assert.match(markup, /aria-label="Loop run diagnostic"/u);
+    assert.match(markup, /role="alert"/u);
+    assert.match(markup, /Corrupt projection/u);
+    assert.doesNotMatch(markup, /Current<\/strong>/u);
+  } finally { await rm(outputDir, { force: true, recursive: true }); }
 });

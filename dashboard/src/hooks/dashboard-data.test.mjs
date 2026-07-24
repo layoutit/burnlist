@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createOvenSnapshotClient } from "../lib/oven-event-client.mjs";
-import { dashboardProgressSnapshotConfig, dashboardProjectsSnapshotConfig } from "./dashboard-data.mjs";
+import { dashboardLoopProjectionSnapshotConfig, dashboardProgressSnapshotConfig, dashboardProjectsSnapshotConfig } from "./dashboard-data.mjs";
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-function response(body, status = 200) {
+function response(body, status = 200, etag = null) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: { get: () => null },
+    headers: { get: (name) => name.toLowerCase() === "etag" ? etag : null },
     async json() { return body; },
   };
 }
@@ -133,5 +133,72 @@ test("landing projections share matching invalidations and the manual-write fall
   assert.equal(projects.error, "");
   assert.equal(progress.error, "");
   assert.equal(sources.length, 1);
+  client.stop();
+});
+
+test("loop projection uses its dedicated snapshot URL and coalesces conditional event/reset refreshes", async () => {
+  const timers = fakeTimers(), sources = [], calls = [], states = [];
+  const selected = { repoKey: "aaaaaaaaaaaa", id: "260722-001" };
+  const config = dashboardLoopProjectionSnapshotConfig(true, selected);
+  assert.equal(config.makeUrl(), "/api/loop-projection?repoKey=aaaaaaaaaaaa&id=260722-001");
+  assert.deepEqual(config.events, [{ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }]);
+  const client = createOvenSnapshotClient({
+    timers, focusTarget: null,
+    eventSourceFactory(url) { const source = new FakeEventSource(url); sources.push(source); return source; },
+    async fetchImpl(url, options = {}) {
+      if (isEventBaseline(url)) return response({ cursor: "oev1-loop" });
+      calls.push({ url, headers: options.headers ?? null });
+      return calls.length === 1 ? response({ loopRun: { revision: "sha256:first" } }, 200, '"loop-v1"') : response(null, 304, '"loop-v1"');
+    },
+  });
+  client.start();
+  client.subscribe(descriptor(config), (state) => states.push(state));
+  await settle();
+  assert.deepEqual(calls, [{ url: config.makeUrl(), headers: null }]);
+
+  const changed = { repoKey: selected.repoKey, ovenId: "checklist", subjectId: "item:260722-001#M7", kind: "loop-projection-changed", phase: "complete" };
+  sources[0].publish(changed);
+  sources[0].publish(changed);
+  timers.flush();
+  await settle();
+  assert.equal(calls.length, 2, "two invalidations share one refetch");
+  assert.deepEqual(calls[1].headers, { "If-None-Match": '"loop-v1"' });
+  assert.equal(states.at(-1).outcome, "unchanged", "304 retains the canonical loop snapshot");
+
+  sources[0].reset({ repoKey: selected.repoKey, ovenId: "checklist", reason: "retention-gap" });
+  timers.flush();
+  await settle();
+  assert.equal(calls.length, 3, "a matching retention gap resets the loop snapshot");
+  assert.deepEqual(calls[2].headers, { "If-None-Match": '"loop-v1"' });
+  client.stop();
+});
+
+test("a corrupt dedicated Loop projection retains the last good snapshot", async () => {
+  const timers = fakeTimers(), sources = [], states = [];
+  const selected = { repoKey: "aaaaaaaaaaaa", id: "260722-001" };
+  const config = dashboardLoopProjectionSnapshotConfig(true, selected);
+  let requests = 0;
+  const client = createOvenSnapshotClient({
+    timers, focusTarget: null,
+    eventSourceFactory(url) { const source = new FakeEventSource(url); sources.push(source); return source; },
+    async fetchImpl(url) {
+      if (isEventBaseline(url)) return response({ cursor: "oev1-corrupt" });
+      requests += 1;
+      return requests === 1
+        ? response({ loopRun: { revision: "sha256:verified" } }, 200, '"loop-v1"')
+        : response({ error: "Loop projection is unavailable; retaining the last verified projection." }, 409);
+    },
+  });
+  client.start();
+  client.subscribe(descriptor(config), (state) => states.push(state));
+  await settle();
+  sources[0].publish({ repoKey: selected.repoKey, ovenId: "checklist", subjectId: "item:260722-001#M7", kind: "loop-projection-changed", phase: "complete" });
+  timers.flush();
+  await settle();
+  const state = states.at(-1);
+  assert.equal(state.outcome, "rejected");
+  assert.deepEqual(state.data, { revision: "sha256:verified" });
+  assert.equal(state.error, "Loop projection is unavailable; retaining the last verified projection.");
+  assert.equal(state.stale, true);
   client.stop();
 });
