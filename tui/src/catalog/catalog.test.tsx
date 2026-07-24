@@ -48,3 +48,12 @@ test("catalog uses left/right keys to switch the compiled Visual Parity IR domai
   await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("Frame 8") && frame.includes("[mobile]"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
 });
+
+test("catalog Enter expands the compiled Streaming Diff hunk without leaking redacted content", async () => {
+  const setup = await createTestRenderer({ width: 48, height: 18, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 7; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Session run-42") && frame.includes("enter:expand"));
+  expect(setup.captureCharFrame()).not.toContain("+new"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("+new")); const frame = setup.captureCharFrame(); expect(frame).not.toContain("DO NOT SHOW"); assertFrameFits(frame, 48); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
+});

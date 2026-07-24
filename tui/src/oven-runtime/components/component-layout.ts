@@ -12,6 +12,8 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
     const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(7, Math.min(12, Math.floor(width / 7)));
     return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: rows }, row), source: node.source };
   }
+  if (node.kind === "streaming-diff-heading") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
+  if (node.kind === "diff-card") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(5, Math.min(14, Math.floor(width / 4))) }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item").length;
   const metadata = node.attributes.title || node.attributes.ariaLabel ? 1 : 0;
@@ -23,7 +25,7 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
 export function projectComponentLayout(nodes: readonly TerminalNode[], width: number): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
   const roots: ComponentRoot[] = [];
   const visit = (node: TerminalNode, path: string): TerminalNode => {
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "verdict-header", "metric-tiles", "frame-card", "domain-tabs"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
+    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };

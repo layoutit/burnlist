@@ -11,12 +11,14 @@ import { glyphFixture } from "./glyph-fixture";
 import { listFixture, listFixtureStates, listPreviewRows } from "./list-fixture";
 import { statusFixtureStates } from "./status-fixture";
 import { visualParityFixture } from "./visual-parity-fixture";
+import { streamingDiffFixture } from "./streaming-diff-fixture";
 import { controlsCheckpoint, controlsFixture } from "../oven-runtime/controls/controls-fixture";
 import { ControlsSurface } from "../oven-runtime/controls/controls-surface";
 // @ts-expect-error Production DSL remains JavaScript by design.
 import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
 import { TerminalList } from "../oven-runtime/components/list-components";
+import { TerminalStreamingFeedList } from "../oven-runtime/components/streaming-diff-components";
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue } from "../oven-runtime/terminal-contract";
@@ -146,10 +148,33 @@ async function renderVisualParity(width: number, checkpoint: "desktop" | "mobile
   const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
   setup.renderer.on("frame", snapshot); try { flushSync(() => rootNode.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); if (!recorded) fail("Visual Parity frame missing"); const frame = capture(setup, recorded, visualParityFixture.id, checkpoint, fixtureSha256, provenance), text = frame.semanticText.join("\n"); if (["Current", "Reference", "Difference", checkpoint === "desktop" ? "Frame 7" : "Frame 8", "q:back"].some((label) => !text.includes(label)) || text.includes("esc:exit")) fail("Visual Parity frame omitted or contradicted media semantics"); return frame; } finally { setup.renderer.off("frame", snapshot); rootNode.unmount(); setup.renderer.destroy(); }
 }
+async function renderStreamingDiff(width: number, checkpoint: "collapsed" | "expanded", provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
+  const height = 18, source = await readFile(resolve(root, "ovens/streaming-diff/streaming-diff.oven"), "utf8"), compiled = compileOven(source, { file: "ovens/streaming-diff/streaming-diff.oven" });
+  if (!compiled.ok) fail(`Streaming Diff fixture does not compile: ${compiled.diagnostics[0]?.message || "unknown error"}`);
+  const result = admitTerminalOven(compiled.ir, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width, height }, expandedKeys: checkpoint === "expanded" ? ["streaming-diff:first-file"] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  if (result.status !== "ready") fail(`Streaming Diff admission failed: ${result.diagnostics[0]?.message || "unknown error"}`);
+  const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer); let recorded: any;
+  const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
+  setup.renderer.on("frame", snapshot);
+  try {
+    flushSync(() => rootNode.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); if (!recorded) fail("Streaming Diff frame missing");
+    const frame = capture(setup, recorded, streamingDiffFixture.id, checkpoint, fixtureSha256, provenance), text = frame.semanticText.join("\n"), body = frame.semanticText.slice(0, -2);
+    const required = ["run-42", "edit-7", "a1b2", "partial", "src/app.ts", "q:back"];
+    if (!required.every((label) => text.includes(label)) || text.includes("DO NOT SHOW") || text.includes("esc:exit") || checkpoint === "expanded" && !body.some((line) => line.includes("+new"))) fail("Streaming Diff frame omitted or leaked semantics");
+    if (body.some((line) => (line.includes("edit-7") || line.includes("a1b2")) && line.includes("src/app.ts")) || frame.semanticText.at(-2)?.includes("+new")) fail("Streaming Diff rows overlap the footer or each other");
+    return frame;
+  } finally { setup.renderer.off("frame", snapshot); rootNode.unmount(); setup.renderer.destroy(); }
+}
+async function renderStreamingFeed(width: number, checkpoint: "normal" | "loading" | "error" | "empty", provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
+  const height = 10, payload = checkpoint === "normal" ? { ...streamingDiffFixture.payload, showRepository: true } : checkpoint === "loading" ? { feeds: [], loading: true } : checkpoint === "error" ? { feeds: [], error: "Feed unavailable." } : { feeds: [] };
+  const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer); let recorded: any;
+  const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; }; setup.renderer.on("frame", snapshot);
+  try { flushSync(() => rootNode.render(<box width={width} height={height} flexDirection="column"><TerminalStreamingFeedList payload={payload as never} width={width} height={height - 2} /><box height={2} border={["top"]}><text>q:back</text></box></box>)); await setup.renderOnce(); if (!recorded) fail("Streaming Feed frame missing"); const frame = capture(setup, recorded, "streaming-feeds", checkpoint, fixtureSha256, provenance), text = frame.semanticText.join("\n"); const expected = checkpoint === "normal" ? ["run-42", "main", "Example", "2026-07-24", "q:back"] : [checkpoint === "loading" ? "Loading recent feeds." : checkpoint === "error" ? "Feed unavailable." : "No recent feeds.", "q:back"]; if (expected.some((label) => !text.includes(label)) || frame.semanticText.at(-2)?.includes("run-42")) fail("Streaming Feed frame omitted metadata or overlapped its footer"); return frame; } finally { setup.renderer.off("frame", snapshot); rootNode.unmount(); setup.renderer.destroy(); }
+}
 export async function buildFrames(): Promise<Record<string, string>> {
   const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"], listInputs = ["tui/src/catalog/list-fixture.ts", "tui/src/oven-runtime/components/list-components.tsx", "tui/src/theme.ts"], statusInputs = ["tui/src/catalog/status-fixture.ts", "tui/src/catalog/status-fixture.oven", "tui/src/catalog/status-empty-fixture.oven", "tui/src/oven-runtime/components/status-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/terminal-contract.ts"], controlsInputs = ["tui/src/oven-runtime/controls/controls-fixture.ts", "tui/src/oven-runtime/controls/controls-surface.tsx"];
   const sourceHash = async (inputs: readonly string[]) => sha((await Promise.all([...shared, ...inputs].map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`))).join("\n"));
-  const visualInputs = ["tui/src/catalog/visual-parity-fixture.ts", "ovens/visual-parity/visual-parity.oven", "tui/src/oven-runtime/components/media-components.tsx", "tui/src/glyph-image.tsx", "tui/src/image-supersample.ts", "tui/src/png-glyph.ts", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/state-runtime.ts"], flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs), controlsSha256 = await sourceHash(controlsInputs), visualSha256 = await sourceHash(visualInputs);
+  const visualInputs = ["tui/src/catalog/visual-parity-fixture.ts", "ovens/visual-parity/visual-parity.oven", "tui/src/oven-runtime/components/media-components.tsx", "tui/src/glyph-image.tsx", "tui/src/image-supersample.ts", "tui/src/png-glyph.ts", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/state-runtime.ts"], streamingInputs = ["tui/src/catalog/streaming-diff-fixture.ts", "ovens/streaming-diff/streaming-diff.oven", "tui/src/oven-runtime/components/streaming-diff-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx"], flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs), controlsSha256 = await sourceHash(controlsInputs), visualSha256 = await sourceHash(visualInputs), streamingSha256 = await sourceHash(streamingInputs);
   const lock = JSON.parse(await readFile(resolve(root, "tui/package-lock.json"), "utf8"));
   const packageRecord = (name: string) => { const entry = lock.packages[`node_modules/${name}`]; if (!entry?.version || !entry?.integrity) fail(`lockfile is missing pinned ${name} provenance`); return { version: String(entry.version), integrity: String(entry.integrity) }; };
   const bunPackage = packageRecord("bun");
@@ -163,7 +188,9 @@ export async function buildFrames(): Promise<Record<string, string>> {
   for (const width of [36, 72]) for (const checkpoint of controlsFixture.checkpoints) frames.push(await renderControls(width, checkpoint, provenance(controlsSha256), controlsSha256));
   for (const width of [36, 72]) for (const [checkpoint, state] of Object.entries(statusFixtureStates)) frames.push(await renderStatus(width, checkpoint, state.payload, provenance(statusSha256), statusSha256));
   for (const width of [42, 90]) for (const checkpoint of visualParityFixture.checkpoints) frames.push(await renderVisualParity(width, checkpoint, provenance(visualSha256), visualSha256));
-  return Object.fromEntries(frames.map((frame) => { const text = stable(frame); return [frameName(frame, text), text]; }));
+  for (const width of [34, 78]) for (const checkpoint of streamingDiffFixture.checkpoints) frames.push(await renderStreamingDiff(width, checkpoint, provenance(streamingSha256), streamingSha256));
+  for (const width of [34, 78]) for (const checkpoint of ["normal", "loading", "error", "empty"] as const) frames.push(await renderStreamingFeed(width, checkpoint, provenance(streamingSha256), streamingSha256));
+  return Object.fromEntries(frames.map((frame) => { const text = frame.fixture.startsWith("streaming-") ? JSON.stringify(frame) : stable(frame); return [frameName(frame, text), text]; }));
 }
 async function desired() {
   const files = await buildFrames();

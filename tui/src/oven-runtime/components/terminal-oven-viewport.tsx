@@ -6,8 +6,9 @@ import { kpiFromNode, kpiStripModel, TerminalKpiItem, TerminalKpiStrip } from ".
 import { logTableModel, TerminalLogTable } from "./list-components";
 import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
+import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
 
-type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number }>;
+type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
@@ -16,6 +17,8 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
   "refresh-status": TerminalStatusSurface,
   "domain-note": TerminalStatusSurface,
   "differential-empty-state": TerminalStatusSurface,
+  "streaming-diff-heading": TerminalStreamingDiffHeading,
+  "diff-card": TerminalStreamingDiff,
 });
 
 /** Evaluates every component root before React paint and converts failures to state. */
@@ -27,6 +30,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
+      else if (root.node.kind === "diff-card") streamingDiffModel(root.node, result.payload, result.state.expandedKeys.includes("streaming-diff:first-file"));
       else if (["section-header", "refresh-status", "differential-empty-state"].includes(root.node.kind) || root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom !== "string") statusSurfaceModel(root.node, result.payload);
       else if (root.node.kind === "verdict-header") validateVerdictRoot(root.node, result.payload);
     }
@@ -71,7 +75,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { 
           const content = root.node.kind === "domain-tabs" ? <TerminalDomainTabs model={media} width={cell.rect.width} /> : root.node.kind === "metric-tiles" ? <TerminalMetricTiles model={media} width={cell.rect.width} /> : <TerminalFrameCards model={media} width={cell.rect.width} height={cell.rect.height} />;
           return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden">{content}</box>;
         }
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} /></box> : null;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { expanded: prepared.state.expandedKeys.includes("streaming-diff:first-file") } : {})} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

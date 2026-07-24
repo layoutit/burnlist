@@ -84737,6 +84737,40 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/StreamingDiffFeedTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "b06e525b9730be845633b66f9b90d0d370947386484c67cb812cea5d7a2af23b",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "78",
+            "selection": "initial",
+            "content": "component:PairedFeedSurface"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/stories/StreamingDiffTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "ef0646239365d6e7c215da6aee9d503bfe9999784a7f686b73710308193bf27a",
+            "arg.checkpoint": "collapsed",
+            "arg.viewport": "78",
+            "selection": "initial",
+            "content": "component:PairedStreamingDiff"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/TerminalControlsSurface.stories.tsx#Paired",
       "states": [
         {

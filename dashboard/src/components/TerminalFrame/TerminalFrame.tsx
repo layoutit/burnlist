@@ -11,6 +11,8 @@ export const sharedListFrameEntries = (index.entries as FrameEntry[]).filter((en
 export const sharedControlsFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("shared-controls:"));
 export const statusFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("heading-status:"));
 export const visualParityFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("visual-parity:"));
+export const streamingDiffFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("streaming-diff:"));
+export const streamingFeedFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("streaming-feeds:"));
 export const frameForEntry = (entry: FrameEntry) => {
   const frame = modules[`../../generated/terminal-frames/${entry.path}`];
   if (!frame) throw new Error(`Missing indexed terminal frame ${entry.path}`);
