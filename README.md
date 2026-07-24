@@ -148,6 +148,45 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 
+## Review Loop (Stage 1)
+
+The built-in `review` Loop is an optional, serial foreground workflow for an
+assigned item:
+
+```text
+maker -> repository check -> fresh reviewer -> convergence gate -> CLI completion
+  ^                                  |
+  +------------ check failure / rejection
+```
+
+Configure a write-authority maker and read-authority reviewer with `burnlist
+agent profile add`, map them with `burnlist route set`, inspect and explicitly
+trust the repository check with `burnlist loop capability inspect|trust`, then
+assign an item with `burnlist loop assign`. Run `burnlist loop view <item-ref>`
+and paste its complete ASCII output into the work handoff; it is the frozen
+graph, pin, and completion-path record for that item. Create a Run with `loop create`, run
+or resume it in the foreground with `loop run|resume`, and inspect it with
+`loop status|inspect`. `pause` and `stop` are idle-Run recovery controls: they
+require no active foreground owner. For a live foreground Run, Ctrl-C belongs
+to that owner (first interrupt requests pause; second requests controlled
+stop). Proof-gated `reconcile` is for a demonstrably lost owner. Only a
+converged Run can be applied by `loop complete`; the
+command is idempotent and performs the normal shrinking-list completion.
+
+The Checklist UI is read-only and shows the active node, attempt, results,
+transition history, and paused, error, or terminal state. The runner enforces
+the graph, fresh reviewer process, budgets, closed outcomes, and atomic CLI
+writes. Reviewer filesystem write denial is **supervised**, not an OS sandbox.
+Parallel execution, Docker isolation, metrics gates, custom adapters,
+forecasting, worktrees, and background execution are deliberately unsupported
+in Stage 1. Items with no Loop assignment keep the ordinary direct
+`burnlist burn` workflow.
+
+See the [Loop CLI reference](website/src/content/docs/loops.mdx) for the exact
+setup and recovery commands. Installing the Burnlist skill (`burnlist install`)
+does not install Streaming Diff hooks (`burnlist hooks install`), and neither
+is required to use the Loop.
+
 ## Build and Verify
 
 From a source checkout:

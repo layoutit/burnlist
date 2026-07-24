@@ -37,6 +37,31 @@ These commands act on the current repository by default, or on an explicit `--re
 | `burnlist burn <id> <item> [--check] [--repo <path>]` | Complete a Burnlist item; `--check` validates it. |
 | `burnlist close <id> [--repo <path>]` | Close a completed Burnlist. |
 
+## Review Loop
+
+```sh
+burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
+burnlist loop unassign <ItemRef> [--repo <path>]
+burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
+burnlist loop create <ItemRef> [--repo <path>]
+burnlist loop run|pause|resume|stop|complete <RunRef> [--repo <path>]
+burnlist loop list [--repo <path>]
+burnlist loop status|inspect <RunRef> [--repo <path>]
+burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
+burnlist loop capability inspect <id> [--repo <path>]
+burnlist loop capability trust <id> --revision cp1-sha256:<hex> --grants <json-file> [--repo <path>]
+burnlist loop setup status [--repo <path>]
+burnlist agent profile add <slug> --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority read|write [--repo <path>]
+burnlist agent doctor <slug> [--repo <path>]
+burnlist route set <implementation.standard|review.strong> --profile <slug> [--repo <path>]
+```
+
+The Review Loop is an optional serial foreground maker → check → fresh reviewer
+workflow. `loop view` is deterministic ASCII graph output; `create`, control,
+and read commands use Run references. Only `loop complete` applies a converged
+Run to the Burnlist. See [Review Loop](/loops) for setup, recovery, visible UI
+states, guarantee labels, and deferred features.
+
 ## Registry
 
 ```sh
