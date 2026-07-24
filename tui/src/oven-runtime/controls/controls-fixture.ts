@@ -1,5 +1,3 @@
-import { runTerminalCollection } from "../collection-runtime";
-
 export const controlsFixture = {
   id: "shared-controls",
   title: "Keyboard controls",
@@ -25,7 +23,8 @@ export type ControlsState = { tab: number; query: string; filter: boolean; page:
 export const controlsInitialState = (): ControlsState => ({ tab: 0, query: "", filter: false, page: 0, focus: "tabs", notice: "" });
 const focusOrder: readonly ControlFocus[] = ["tabs", "search", "filter", "sort", "prev", "next"];
 export function controlsRows(state: ControlsState) {
-  return runTerminalCollection(controlsFixture.rows, { contract: controlsFixture.contract, query: state.query, matchFields: "/label", filterKey: "non-pass", filterActive: state.filter });
+  const query = state.query.trim().toLowerCase();
+  return controlsFixture.rows.filter((row) => (!query || row.label.toLowerCase().includes(query)) && (!state.filter || row.failedSampleCount + row.missingSampleCount > 0));
 }
 export function controlsPage(state: ControlsState) {
   const rows = controlsRows(state), count = Math.max(1, Math.ceil(rows.length / controlsFixture.pageSize)), page = Math.min(state.page, count - 1);

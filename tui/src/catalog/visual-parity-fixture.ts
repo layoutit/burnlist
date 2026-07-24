@@ -1,0 +1,8 @@
+export const visualParityPng = { current: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGP4z8DwH4QZYAwAR8oH+WdZbrcAAAAASUVORK5CYII=", reference: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAADklEQVR4nGNg+A+FMAYAQ84H+fei4u8AAAAASUVORK5CYII=", difference: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEElEQVR4nGNgYPj/H4KhDAA/0gf5tBJPzQAAAABJRU5ErkJggg==" } as const;
+const shots = [{ label: "Current", src: visualParityPng.current }, { label: "Reference", src: visualParityPng.reference }, { label: "Difference", src: visualParityPng.difference }] as const;
+export const visualParityFixture = { id: "visual-parity", title: "Visual Parity media", detail: "IR-bound image comparison", checkpoints: ["desktop", "mobile"] as const, payload: {
+  verdict: { targetPass: true, framesCount: 3, error: "" }, initialDomainId: "desktop", domains: ["desktop", "mobile"], byDomain: {
+    desktop: { summary: { passed: 2, total: 3, ratio: 0.02, meanAbsoluteDelta: 0.125, maximumAbsoluteDelta: 8 }, note: { isTarget: true, rationale: "Desktop is the release target." }, frames: [{ frame: 7, status: "pass", label: "Homepage", difference: { ratio: 0.02, meanAbsoluteDelta: 0.125, maximumAbsoluteDelta: 8 }, images: shots }] },
+    mobile: { summary: { passed: 1, total: 3, ratio: 0.11, meanAbsoluteDelta: 1.25, maximumAbsoluteDelta: 20 }, note: { isTarget: false, rationale: "Mobile remains diagnostic." }, frames: [{ frame: 8, status: "changed", label: "Mobile homepage", difference: { ratio: 0.11, meanAbsoluteDelta: 1.25, maximumAbsoluteDelta: 20 }, images: shots }] },
+  },
+} } as const;

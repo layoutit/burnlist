@@ -84932,6 +84932,32 @@
           "actions": []
         }
       ]
+    },
+    {
+      "id": "dashboard/src/stories/VisualParityTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "135e2b2053542de21677ad54b69d428a4f6a33eb2f34ff69731a50cfcdd44576",
+            "arg.checkpoint": "desktop",
+            "arg.viewport": "90",
+            "selection": "initial",
+            "content": "component:PairedVisualParity"
+          },
+          "actions": [
+            {
+              "id": "button:onClick",
+              "expectedConsoleOutcome": "Activate onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:onClick."
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

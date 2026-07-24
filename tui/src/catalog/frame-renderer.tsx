@@ -10,6 +10,7 @@ import { FIXTURE_ID, FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { listFixture, listFixtureStates, listPreviewRows } from "./list-fixture";
 import { statusFixtureStates } from "./status-fixture";
+import { visualParityFixture } from "./visual-parity-fixture";
 import { controlsCheckpoint, controlsFixture } from "../oven-runtime/controls/controls-fixture";
 import { ControlsSurface } from "../oven-runtime/controls/controls-surface";
 // @ts-expect-error Production DSL remains JavaScript by design.
@@ -19,6 +20,7 @@ import { TerminalList } from "../oven-runtime/components/list-components";
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue } from "../oven-runtime/terminal-contract";
+import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { layoutTerminalNodes } from "../oven-runtime/layout/layout-runtime";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame, type TerminalFrameIndex } from "./frame-contract";
 
@@ -134,10 +136,20 @@ async function renderStatus(width: number, checkpoint: string, payload: JsonValu
   try { await act(async () => { flushSync(() => rootNode.render(<TerminalOvenViewport result={result} />)); }); await setup.renderOnce(); if (!recorded) fail("status frame missing"); const frame = capture(setup, recorded, "heading-status", checkpoint, fixtureSha256, provenance); if (!frame.semanticText.join("\n").includes("q:back")) fail("status frame footer collision"); return frame; }
   finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previous; }
 }
+async function renderVisualParity(width: number, checkpoint: "desktop" | "mobile", provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
+  const height = 24, source = await readFile(resolve(root, "ovens/visual-parity/visual-parity.oven"), "utf8"), compiled = compileOven(source, { file: "ovens/visual-parity/visual-parity.oven" });
+  if (!compiled.ok) fail(`Visual Parity fixture does not compile: ${compiled.diagnostics[0]?.message || "unknown error"}`);
+  const initial = initTerminalRuntime(compiled.ir, visualParityFixture.payload), state = checkpoint === "desktop" ? initial : reduceTerminalRuntime(initial, { type: "domainSelected", id: "domain-select", value: checkpoint }, compiled.ir);
+  const result = admitTerminalOven(compiled.ir, { status: "ready", payload: visualParityFixture.payload }, { viewport: { width, height }, controls: state.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  if (result.status !== "ready") fail(`Visual Parity admission failed: ${result.diagnostics[0]?.message || "unknown error"}`);
+  const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer); let recorded: any;
+  const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
+  setup.renderer.on("frame", snapshot); try { flushSync(() => rootNode.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); if (!recorded) fail("Visual Parity frame missing"); const frame = capture(setup, recorded, visualParityFixture.id, checkpoint, fixtureSha256, provenance), text = frame.semanticText.join("\n"); if (["Current", "Reference", "Difference", checkpoint === "desktop" ? "Frame 7" : "Frame 8", "q:back"].some((label) => !text.includes(label)) || text.includes("esc:exit")) fail("Visual Parity frame omitted or contradicted media semantics"); return frame; } finally { setup.renderer.off("frame", snapshot); rootNode.unmount(); setup.renderer.destroy(); }
+}
 export async function buildFrames(): Promise<Record<string, string>> {
-  const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"], listInputs = ["tui/src/catalog/list-fixture.ts", "tui/src/oven-runtime/components/list-components.tsx", "tui/src/theme.ts"], statusInputs = ["tui/src/catalog/status-fixture.ts", "tui/src/catalog/status-fixture.oven", "tui/src/catalog/status-empty-fixture.oven", "tui/src/oven-runtime/components/status-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/terminal-contract.ts"], controlsInputs = ["tui/src/oven-runtime/controls/controls-fixture.ts", "tui/src/oven-runtime/controls/controls-surface.tsx", "tui/src/oven-runtime/collection-runtime.ts"];
+  const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"], listInputs = ["tui/src/catalog/list-fixture.ts", "tui/src/oven-runtime/components/list-components.tsx", "tui/src/theme.ts"], statusInputs = ["tui/src/catalog/status-fixture.ts", "tui/src/catalog/status-fixture.oven", "tui/src/catalog/status-empty-fixture.oven", "tui/src/oven-runtime/components/status-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/terminal-contract.ts"], controlsInputs = ["tui/src/oven-runtime/controls/controls-fixture.ts", "tui/src/oven-runtime/controls/controls-surface.tsx"];
   const sourceHash = async (inputs: readonly string[]) => sha((await Promise.all([...shared, ...inputs].map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`))).join("\n"));
-  const flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs), controlsSha256 = await sourceHash(controlsInputs);
+  const visualInputs = ["tui/src/catalog/visual-parity-fixture.ts", "ovens/visual-parity/visual-parity.oven", "tui/src/oven-runtime/components/media-components.tsx", "tui/src/glyph-image.tsx", "tui/src/image-supersample.ts", "tui/src/png-glyph.ts", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/state-runtime.ts"], flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs), controlsSha256 = await sourceHash(controlsInputs), visualSha256 = await sourceHash(visualInputs);
   const lock = JSON.parse(await readFile(resolve(root, "tui/package-lock.json"), "utf8"));
   const packageRecord = (name: string) => { const entry = lock.packages[`node_modules/${name}`]; if (!entry?.version || !entry?.integrity) fail(`lockfile is missing pinned ${name} provenance`); return { version: String(entry.version), integrity: String(entry.integrity) }; };
   const bunPackage = packageRecord("bun");
@@ -150,6 +162,7 @@ export async function buildFrames(): Promise<Record<string, string>> {
   for (const width of [36, 48, 72]) for (const checkpoint of listFixtureStates) frames.push(await renderList(width, checkpoint, provenance(listSha256), listSha256));
   for (const width of [36, 72]) for (const checkpoint of controlsFixture.checkpoints) frames.push(await renderControls(width, checkpoint, provenance(controlsSha256), controlsSha256));
   for (const width of [36, 72]) for (const [checkpoint, state] of Object.entries(statusFixtureStates)) frames.push(await renderStatus(width, checkpoint, state.payload, provenance(statusSha256), statusSha256));
+  for (const width of [42, 90]) for (const checkpoint of visualParityFixture.checkpoints) frames.push(await renderVisualParity(width, checkpoint, provenance(visualSha256), visualSha256));
   return Object.fromEntries(frames.map((frame) => { const text = stable(frame); return [frameName(frame, text), text]; }));
 }
 async function desired() {

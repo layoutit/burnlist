@@ -6,6 +6,7 @@ import progressSource from "./progress-fixture.oven" with { type: "text" };
 import structuralSource from "./structural-fixture.oven" with { type: "text" };
 import statusSource from "./status-fixture.oven" with { type: "text" };
 import statusEmptySource from "./status-empty-fixture.oven" with { type: "text" };
+import visualParitySource from "../../../ovens/visual-parity/visual-parity.oven" with { type: "text" };
 import { FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
@@ -15,11 +16,13 @@ import { ControlsSurface } from "../oven-runtime/controls/controls-surface";
 import { controlsAction, controlsFixture, controlsInitialState } from "../oven-runtime/controls/controls-fixture";
 import { listFixture, listFixtureStates, listPreviewRows, type ListFixtureState } from "./list-fixture";
 import { statusFixtureCheckpoints, statusFixtureStates } from "./status-fixture";
+import { visualParityFixture } from "./visual-parity-fixture";
+import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls";
+type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
@@ -28,6 +31,7 @@ const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; de
   { id: "status", label: "Heading and status", detail: "reserved activity and empty-state surface", checkpoints: statusFixtureCheckpoints },
   { id: "lists", label: listFixture.title, detail: listFixture.detail, checkpoints: listFixtureStates },
   { id: "controls", label: controlsFixture.title, detail: controlsFixture.detail, checkpoints: controlsFixture.checkpoints },
+  { id: "visual-parity", label: visualParityFixture.title, detail: visualParityFixture.detail, checkpoints: visualParityFixture.checkpoints },
 ];
 const progressPayloads = [
   { percent: 57, done: 4, total: 7, burns: [{ result: "pass" }, { result: "worsened" }, { result: "blocked" }], metric: { total: 8, failed: 2 }, required: "ready" },
@@ -43,6 +47,7 @@ const structuralOven = compile(structuralSource, "tui/src/catalog/structural-fix
 const progressOven = compile(progressSource, "tui/src/catalog/progress-fixture.oven");
 const statusOven = compile(statusSource, "tui/src/catalog/status-fixture.oven");
 const statusEmptyOven = compile(statusEmptySource, "tui/src/catalog/status-empty-fixture.oven");
+const visualParityOven = compile(visualParitySource, "ovens/visual-parity/visual-parity.oven");
 const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
 
 export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void; clock?: Clock }) {
@@ -54,6 +59,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const [listIndex, setListIndex] = useState(4);
   const [listExpanded, setListExpanded] = useState(false);
   const [controlsState, setControlsState] = useState(controlsInitialState);
+  const [visualState, setVisualState] = useState(() => initTerminalRuntime(visualParityOven, visualParityFixture.payload));
   const fixture = catalogFixtures[selected]!;
   const previewWidth = mode === "wide" ? 72 : 36;
   const previewHeight = mode === "wide" ? 16 : 14;
@@ -61,6 +67,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const progressResult = useMemo(() => admitTerminalOven(progressOven, { status: "ready", payload: progressPayloads[checkpoint % progressPayloads.length]! }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [checkpoint, previewHeight, previewWidth, reload]);
   const statusState = statusFixtureStates[stateName as keyof typeof statusFixtureStates] ?? statusFixtureStates.normal;
   const statusResult = useMemo(() => admitTerminalOven(statusState.empty ? statusEmptyOven : statusOven, { status: "ready", payload: statusState.payload }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, reload, statusState]);
+  const visualResult = useMemo(() => admitTerminalOven(visualParityOven, { status: "ready", payload: visualParityFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, controls: visualState.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, visualState]);
   const listState = stateName as ListFixtureState;
   const listRow = listFixture.rows[Math.max(0, Math.min(listIndex, listFixture.rows.length - 1))]!;
 
@@ -89,6 +96,14 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
       else setControlsState((value) => controlsAction(value, pressed));
       return;
     }
+    if (fixture.id === "visual-parity") {
+      if (pressed === "left" || pressed === "right") setVisualState((state) => {
+        const values = visualParityFixture.payload.domains, current = Math.max(0, values.indexOf(String(state.controls["domain-select"] ?? values[0]) as typeof values[number])), next = values[(current + (pressed === "right" ? 1 : -1) + values.length) % values.length]!;
+        return reduceTerminalRuntime(state, { type: "domainSelected", id: "domain-select", value: next }, visualParityOven);
+      });
+      else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
+      return;
+    }
     if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
     else if (pressed === "left" || pressed === "right") nextCheckpoint();
     else if (pressed === "c" || pressed === "s" || pressed === "tab") nextCheckpoint();
@@ -106,9 +121,10 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
         {fixture.id === "status" ? <TerminalOvenViewport result={statusResult} footer="" /> : null}
         {fixture.id === "lists" ? <TerminalList model={{ ...listPreviewRows(previewWidth - (mode === "wide" ? 1 : 0), listState), selectedId: listRow.id, expandedId: listExpanded ? listRow.id : undefined, columns: listFixture.columns, height: previewHeight }} /> : null}
         {fixture.id === "controls" ? <ControlsSurface state={controlsState} showFooter={false} /> : null}
+        {fixture.id === "visual-parity" ? <TerminalOvenViewport result={visualResult} footer="" /> : null}
       </box>
     </box>
-    <CatalogFooter text={fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
+    <CatalogFooter text={fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
   </box>;
 }
 

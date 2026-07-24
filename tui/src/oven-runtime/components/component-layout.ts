@@ -8,6 +8,10 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(10, Math.floor(width / 8))) }, row), source: node.source };
   if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
   if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: node.kind === "refresh-status" ? 1 : 2 }, row), source: node.source };
+  if (["metric-tiles", "frame-card", "domain-tabs", "verdict-header"].includes(node.kind)) {
+    const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(7, Math.min(12, Math.floor(width / 7)));
+    return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: rows }, row), source: node.source };
+  }
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item").length;
   const metadata = node.attributes.title || node.attributes.ariaLabel ? 1 : 0;
@@ -19,7 +23,7 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
 export function projectComponentLayout(nodes: readonly TerminalNode[], width: number): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
   const roots: ComponentRoot[] = [];
   const visit = (node: TerminalNode, path: string): TerminalNode => {
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
+    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "verdict-header", "metric-tiles", "frame-card", "domain-tabs"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };

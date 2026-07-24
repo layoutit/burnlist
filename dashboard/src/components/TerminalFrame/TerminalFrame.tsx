@@ -10,6 +10,7 @@ export const terminalFrameEntries = (index.entries as FrameEntry[]).filter((entr
 export const sharedListFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("shared-lists:"));
 export const sharedControlsFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("shared-controls:"));
 export const statusFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("heading-status:"));
+export const visualParityFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("visual-parity:"));
 export const frameForEntry = (entry: FrameEntry) => {
   const frame = modules[`../../generated/terminal-frames/${entry.path}`];
   if (!frame) throw new Error(`Missing indexed terminal frame ${entry.path}`);

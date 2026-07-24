@@ -5,6 +5,7 @@ import { projectComponentLayout } from "./component-layout";
 import { kpiFromNode, kpiStripModel, TerminalKpiItem, TerminalKpiStrip } from "./progress-components";
 import { logTableModel, TerminalLogTable } from "./list-components";
 import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
+import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
@@ -26,8 +27,10 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
-      else if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(root.node.kind)) statusSurfaceModel(root.node, result.payload);
+      else if (["section-header", "refresh-status", "differential-empty-state"].includes(root.node.kind) || root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom !== "string") statusSurfaceModel(root.node, result.payload);
+      else if (root.node.kind === "verdict-header") validateVerdictRoot(root.node, result.payload);
     }
+    if (projected.roots.some((root) => ["domain-tabs", "metric-tiles", "frame-card"].includes(root.node.kind))) validateMediaRoots(result.ir.root, result.payload, result.state.controls);
     return result;
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
@@ -58,6 +61,16 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { 
       const root = roots.get(cell.path), hidden = componentPaths.some((path) => cell.path.startsWith(`${path}/`));
       if (root) {
         const Component = TERMINAL_COMPONENT_ROOTS[root.node.kind];
+        if (root.node.kind === "verdict-header") return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><TerminalVerdictHeader node={root.node} payload={prepared.payload} width={cell.rect.width} /></box>;
+        if (root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom === "string") {
+          const note = mediaModel(prepared.ir!.root, prepared.payload, prepared.state.controls).note;
+          return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><text>{note}</text></box>;
+        }
+        if (["domain-tabs", "metric-tiles", "frame-card"].includes(root.node.kind)) {
+          const media = mediaModel(prepared.ir!.root, prepared.payload, prepared.state.controls);
+          const content = root.node.kind === "domain-tabs" ? <TerminalDomainTabs model={media} width={cell.rect.width} /> : root.node.kind === "metric-tiles" ? <TerminalMetricTiles model={media} width={cell.rect.width} /> : <TerminalFrameCards model={media} width={cell.rect.width} height={cell.rect.height} />;
+          return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden">{content}</box>;
+        }
         return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;

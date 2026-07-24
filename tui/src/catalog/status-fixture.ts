@@ -1,5 +1,3 @@
-import type { JsonValue } from "../oven-runtime/terminal-contract";
-
 export const statusRationale = "Shared representative fixture; status space stays reserved.";
 export const statusFixtureStates = {
   normal: {
@@ -22,7 +20,7 @@ export const statusFixtureStates = {
     payload: {},
     console: { count: 0, clientStatus: undefined, error: "", isTarget: false, rationale: "" },
   },
-} as const satisfies Readonly<Record<string, Readonly<{ empty: boolean; payload: JsonValue; console: Readonly<{ count: number; clientStatus: string | undefined; error: string; isTarget: boolean; rationale: string }> }>>>;
+} as const;
 
 export type StatusFixtureCheckpoint = keyof typeof statusFixtureStates;
 export const statusFixtureCheckpoints = Object.freeze(Object.keys(statusFixtureStates) as StatusFixtureCheckpoint[]);
