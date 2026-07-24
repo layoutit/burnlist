@@ -25,6 +25,9 @@ test("catalog reaches glyph, structural, progress, and shared list fixtures with
   await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("STATE") && frame.includes("ACTIVE") && frame.includes("↑/↓:row"));
   await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Expanded detail"));
   await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("B6"));
+  await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Keyboard controls") && frame.includes("● Fields !1") && frame.includes("Prev") && frame.includes("Next"));
+  await press(setup, "v"); await setup.waitForFrame((frame) => frame.includes("wide") && frame.includes("v:view"));
   await press(setup, "q"); await press(setup, "q"); expect(exits).toBe(0);
   setup.mockInput.pressEscape(); await new Promise((resolve) => setTimeout(resolve, 60)); await setup.flush(); expect(exits).toBe(1); root.unmount();
 });

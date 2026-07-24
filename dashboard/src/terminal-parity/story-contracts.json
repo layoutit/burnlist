@@ -84737,6 +84737,169 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/TerminalControlsSurface.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-size-guards-present",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "6e99359faeae34aaa43924c40c675873c295be84980955d476512b25647da2bf",
+            "arg.checkpoint": "initial",
+            "arg.viewport": "72",
+            "selection": "size",
+            "content": "component:ConsoleControls",
+            "guards": "present"
+          },
+          "guardBindings": {
+            "button:changedReason/undefined | Changed | onClick": true,
+            "button:Differential Testing previous page | driving-parity-page-prev | Prev | onClick": true,
+            "button:Differential Testing next page | driving-parity-page-next | Next | onClick": true
+          },
+          "actions": [
+            {
+              "id": "button:onClick",
+              "expectedConsoleOutcome": "Activate onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:onClick."
+              }
+            },
+            {
+              "id": "input:Differential Testing search fields | driving-parity-field-search | onInput",
+              "expectedConsoleOutcome": "Edit the value of Differential Testing search fields | driving-parity-field-search | onInput.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for input:Differential Testing search fields | driving-parity-field-search | onInput."
+              }
+            },
+            {
+              "id": "button:Value chart view | Value chart view | Value | onClick",
+              "expectedConsoleOutcome": "Activate Value chart view | Value chart view | Value | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Value chart view | Value chart view | Value | onClick."
+              }
+            },
+            {
+              "id": "button:Delta chart view | Delta chart view | Delta | onClick",
+              "expectedConsoleOutcome": "Activate Delta chart view | Delta chart view | Delta | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Delta chart view | Delta chart view | Delta | onClick."
+              }
+            },
+            {
+              "id": "button:changedReason/undefined | Changed | onClick",
+              "expectedConsoleOutcome": "Activate changedReason/undefined | Changed | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:changedReason/undefined | Changed | onClick."
+              }
+            },
+            {
+              "id": "button:Failed | onClick",
+              "expectedConsoleOutcome": "Activate Failed | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Failed | onClick."
+              }
+            },
+            {
+              "id": "select:Differential Testing rows per page | size",
+              "expectedConsoleOutcome": "Select option size; the visible result is size.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for select:Differential Testing rows per page | size."
+              }
+            },
+            {
+              "id": "button:Differential Testing previous page | driving-parity-page-prev | Prev | onClick",
+              "expectedConsoleOutcome": "Activate Differential Testing previous page | driving-parity-page-prev | Prev | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Differential Testing previous page | driving-parity-page-prev | Prev | onClick."
+              }
+            },
+            {
+              "id": "button:Differential Testing next page | driving-parity-page-next | Next | onClick",
+              "expectedConsoleOutcome": "Activate Differential Testing next page | driving-parity-page-next | Next | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Differential Testing next page | driving-parity-page-next | Next | onClick."
+              }
+            }
+          ]
+        },
+        {
+          "id": "state-size-guards-absent",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "6e99359faeae34aaa43924c40c675873c295be84980955d476512b25647da2bf",
+            "arg.checkpoint": "initial",
+            "arg.viewport": "72",
+            "selection": "size",
+            "content": "component:ConsoleControls",
+            "guards": "absent"
+          },
+          "guardBindings": {
+            "button:changedReason/undefined | Changed | onClick": false,
+            "button:Differential Testing previous page | driving-parity-page-prev | Prev | onClick": false,
+            "button:Differential Testing next page | driving-parity-page-next | Next | onClick": false
+          },
+          "actions": [
+            {
+              "id": "button:onClick",
+              "expectedConsoleOutcome": "Activate onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:onClick."
+              }
+            },
+            {
+              "id": "input:Differential Testing search fields | driving-parity-field-search | onInput",
+              "expectedConsoleOutcome": "Edit the value of Differential Testing search fields | driving-parity-field-search | onInput.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for input:Differential Testing search fields | driving-parity-field-search | onInput."
+              }
+            },
+            {
+              "id": "button:Value chart view | Value chart view | Value | onClick",
+              "expectedConsoleOutcome": "Activate Value chart view | Value chart view | Value | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Value chart view | Value chart view | Value | onClick."
+              }
+            },
+            {
+              "id": "button:Delta chart view | Delta chart view | Delta | onClick",
+              "expectedConsoleOutcome": "Activate Delta chart view | Delta chart view | Delta | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Delta chart view | Delta chart view | Delta | onClick."
+              }
+            },
+            {
+              "id": "button:Failed | onClick",
+              "expectedConsoleOutcome": "Activate Failed | onClick.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for button:Failed | onClick."
+              }
+            },
+            {
+              "id": "select:Differential Testing rows per page | size",
+              "expectedConsoleOutcome": "Select option size; the visible result is size.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for select:Differential Testing rows per page | size."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/TerminalListSurface.stories.tsx#Paired",
       "states": [
         {

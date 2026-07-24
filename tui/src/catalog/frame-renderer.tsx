@@ -10,6 +10,8 @@ import { FIXTURE_ID, FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { listFixture, listFixtureStates, listPreviewRows } from "./list-fixture";
 import { statusFixtureStates } from "./status-fixture";
+import { controlsCheckpoint, controlsFixture } from "../oven-runtime/controls/controls-fixture";
+import { ControlsSurface } from "../oven-runtime/controls/controls-surface";
 // @ts-expect-error Production DSL remains JavaScript by design.
 import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
@@ -113,6 +115,13 @@ async function renderList(width: number, checkpoint: typeof listFixtureStates[nu
     return frame;
   } finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previous; }
 }
+async function renderControls(width: number, checkpoint: typeof controlsFixture.checkpoints[number], provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
+  const height = 12, setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer); let recorded: any;
+  const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
+  setup.renderer.on("frame", snapshot); const reactGlobal = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }, previous = reactGlobal.IS_REACT_ACT_ENVIRONMENT; reactGlobal.IS_REACT_ACT_ENVIRONMENT = true;
+  try { await act(async () => { flushSync(() => rootNode.render(<ControlsSurface state={controlsCheckpoint(checkpoint)} />)); }); await setup.renderOnce(); if (!recorded) fail("controls frame missing"); const frame = capture(setup, recorded, controlsFixture.id, checkpoint, fixtureSha256, provenance); if (!frame.semanticText.slice(-2).join("\n").includes("q:back")) fail("controls frame footer collision"); return frame; }
+  finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previous; }
+}
 async function renderStatus(width: number, checkpoint: string, payload: JsonValue, provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
   const fixture = checkpoint === "empty" ? "status-empty-fixture.oven" : "status-fixture.oven";
   const height = 12, source = await readFile(resolve(root, `tui/src/catalog/${fixture}`), "utf8"), compiled = compileOven(source, { file: `tui/src/catalog/${fixture}` });
@@ -126,9 +135,9 @@ async function renderStatus(width: number, checkpoint: string, payload: JsonValu
   finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previous; }
 }
 export async function buildFrames(): Promise<Record<string, string>> {
-  const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"], listInputs = ["tui/src/catalog/list-fixture.ts", "tui/src/oven-runtime/components/list-components.tsx", "tui/src/theme.ts"], statusInputs = ["tui/src/catalog/status-fixture.ts", "tui/src/catalog/status-fixture.oven", "tui/src/catalog/status-empty-fixture.oven", "tui/src/oven-runtime/components/status-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/terminal-contract.ts"];
+  const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"], listInputs = ["tui/src/catalog/list-fixture.ts", "tui/src/oven-runtime/components/list-components.tsx", "tui/src/theme.ts"], statusInputs = ["tui/src/catalog/status-fixture.ts", "tui/src/catalog/status-fixture.oven", "tui/src/catalog/status-empty-fixture.oven", "tui/src/oven-runtime/components/status-components.tsx", "tui/src/oven-runtime/components/terminal-oven-viewport.tsx", "tui/src/oven-runtime/terminal-contract.ts"], controlsInputs = ["tui/src/oven-runtime/controls/controls-fixture.ts", "tui/src/oven-runtime/controls/controls-surface.tsx", "tui/src/oven-runtime/collection-runtime.ts"];
   const sourceHash = async (inputs: readonly string[]) => sha((await Promise.all([...shared, ...inputs].map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`))).join("\n"));
-  const flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs);
+  const flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs), listSha256 = await sourceHash(listInputs), statusSha256 = await sourceHash(statusInputs), controlsSha256 = await sourceHash(controlsInputs);
   const lock = JSON.parse(await readFile(resolve(root, "tui/package-lock.json"), "utf8"));
   const packageRecord = (name: string) => { const entry = lock.packages[`node_modules/${name}`]; if (!entry?.version || !entry?.integrity) fail(`lockfile is missing pinned ${name} provenance`); return { version: String(entry.version), integrity: String(entry.integrity) }; };
   const bunPackage = packageRecord("bun");
@@ -139,6 +148,7 @@ export async function buildFrames(): Promise<Record<string, string>> {
   for (const state of glyphFixture.states) for (const width of state.viewports) frames.push(await render(width, state.checkpoint, state.reducedMotion, state.key, provenance(flameSha256), flameSha256, state.advanceMs));
   for (const width of [40, 60, 80, 100, 140]) for (const [height, checkpoint, focusedPath] of [[10, "short", "root/0/1/0"], [20, "tall", "root/0/1/1"], [20, "final-focus", "root/0/1/11"]] as const) frames.push(await renderStructural(width, height, checkpoint, focusedPath, provenance(structuralSha256), structuralSha256));
   for (const width of [36, 48, 72]) for (const checkpoint of listFixtureStates) frames.push(await renderList(width, checkpoint, provenance(listSha256), listSha256));
+  for (const width of [36, 72]) for (const checkpoint of controlsFixture.checkpoints) frames.push(await renderControls(width, checkpoint, provenance(controlsSha256), controlsSha256));
   for (const width of [36, 72]) for (const [checkpoint, state] of Object.entries(statusFixtureStates)) frames.push(await renderStatus(width, checkpoint, state.payload, provenance(statusSha256), statusSha256));
   return Object.fromEntries(frames.map((frame) => { const text = stable(frame); return [frameName(frame, text), text]; }));
 }
