@@ -3,7 +3,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSyn
 import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { CANDIDATE_GC_AGE_MS, LOCK_MAX_AGE_MS, MAX_ATTEMPTS, RETRY_DELAY_MS, withDirectoryLock } from "./dir-lock.mjs";
+import { CANDIDATE_GC_AGE_MS, LOCK_MAX_AGE_MS, MAX_ATTEMPTS, RETRY_DELAY_MS, processStartIdentity, withDirectoryLock } from "./dir-lock.mjs";
 
 const token = (letter) => letter.repeat(64);
 
@@ -13,9 +13,10 @@ function paths(t) {
   return [join(root, ".lock"), join(root, "roots.lock")];
 }
 
-function writeV2(lock, { pid = process.pid, host = hostname(), value = token("a"), createdAt = Date.now() } = {}) {
+function writeV2(lock, { pid = process.pid, host = hostname(), value = token("a"), createdAt = Date.now(), version = 1, startedAt } = {}) {
   mkdirSync(lock, { recursive: true });
-  writeFileSync(join(lock, `owner-${value}.json`), `${JSON.stringify({ version: 1, pid, hostname: host, token: value, createdAt })}\n`);
+  writeFileSync(join(lock, `owner-${value}.json`), `${JSON.stringify({ version, pid, hostname: host, token: value, createdAt,
+    ...(version === 2 ? { startedAt: startedAt ?? "Mon Jan 01 00:00:00 2024" } : {}) })}\n`);
 }
 
 function writeLegacy(lock, { pid = process.pid, value = "a".repeat(24), createdAt = Date.now() } = {}) {
@@ -102,6 +103,38 @@ test("stale age boundary and foreign-host protection are exact", (t) => {
     writeV2(lock, { createdAt: now - LOCK_MAX_AGE_MS + 1 });
     assert.throws(() => acquire(lock, () => "no", { now: () => now, sleep: () => {} }), { code: "ELOCKED" });
   });
+});
+
+test("identity-held locks can disable age-only reclamation for bounded Run work", (t) => {
+  forBoth(t, "identity held", (lock) => {
+    const now = 2_000_000; writeV2(lock, { createdAt: now - 10 * LOCK_MAX_AGE_MS });
+    assert.throws(() => withDirectoryLock({ lockPath: lock, fn: () => assert.fail("live owner must retain lock"),
+      reclaimLiveAfterAge: false, adapters: { now: () => now, pidProbe: () => {}, sleep: () => {} },
+      errorFactory: () => Object.assign(new Error("locked"), { code: "ELOCKED" }) }), { code: "ELOCKED" });
+  });
+});
+
+test("v2 process identity distinguishes PID reuse while matching, unverifiable, and foreign owners remain held", (t) => {
+  const [lock] = paths(t), common = { version: 2, pid: 4242, startedAt: "Mon Jan 01 00:00:00 2024", createdAt: Date.now() };
+  writeV2(lock, common);
+  assert.equal(acquire(lock, () => "reclaimed", { pidProbe: () => {}, processIdentity: () => "Tue Jan 02 00:00:00 2024", sleep: () => {} }), "reclaimed");
+  for (const observed of [() => common.startedAt, () => null, () => { throw new Error("unavailable"); }]) {
+    writeV2(lock, common);
+    const processIdentity = (pid) => pid === common.pid ? observed() : "candidate";
+    assert.throws(() => acquire(lock, () => assert.fail("must remain held"), { pidProbe: () => {}, processIdentity, sleep: () => {} }), { code: "ELOCKED" });
+    rmSync(lock, { recursive: true, force: true });
+  }
+  writeV2(lock, { ...common, host: "foreign-host" });
+  assert.throws(() => acquire(lock, () => assert.fail("foreign owner must remain held"),
+    { pidProbe: () => { throw Object.assign(new Error("gone"), { code: "ESRCH" }); }, processIdentity: () => "different", sleep: () => {} }), { code: "ELOCKED" });
+});
+
+test("process start identity pins the ps locale and normalizes output independently of parent locale", () => {
+  let observed;
+  const value = processStartIdentity(42, { environment: { LANG: "de_DE.UTF-8", LC_ALL: "fr_FR.UTF-8", KEEP: "yes" },
+    exec(command, argv, options) { observed = { command, argv, options }; return "  Mon   Jan  01 00:00:00 2024  \n"; } });
+  assert.equal(value, "Mon Jan 01 00:00:00 2024");
+  assert.deepEqual(observed.options.env, { LANG: "C", LC_ALL: "C", KEEP: "yes" });
 });
 
 test("bounded contention performs 100 publications and 99 sleeps", (t) => {
