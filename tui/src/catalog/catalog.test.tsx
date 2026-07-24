@@ -3,6 +3,8 @@ import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { CatalogApp } from "./catalog-app";
 import { createModelLabClient } from "./model-lab-controller";
+import { GeneralComponentsSurface } from "./general-components-surface";
+import { generalComponentsFixture } from "./general-components-fixture";
 
 const renderers: Array<{ destroy(): void }> = [];
 afterEach(() => { while (renderers.length) renderers.pop()?.destroy(); });
@@ -39,6 +41,18 @@ test("catalog preview stays bounded in narrow mode and reserves its footer", asy
   await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); await press(setup, "RETURN"); await press(setup, "v");
   await setup.waitForFrame((frame) => frame.includes("narrow") && frame.includes("q:back"));
   const frame = setup.captureCharFrame(); assertFrameFits(frame, 48); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
+});
+
+test("General Components uses vertical text-native summaries in real 36–42 column frames", async () => {
+  for (const width of [36, 42]) for (const checkpoint of generalComponentsFixture.checkpoints) {
+    const setup = await createTestRenderer({ width, height: 18, useThread: false }); renderers.push(setup.renderer);
+    const root = createRoot(setup.renderer); flushSync(() => root.render(<GeneralComponentsSurface checkpoint={checkpoint} width={width} />)); await setup.flush();
+    const frame = setup.captureCharFrame(); assertFrameFits(frame, width);
+    expect(frame).toContain("GENERAL COMPONENTS");
+    expect(frame.split("\n").filter((line) => line.includes("─")).every((line) => /^[─\s]+$/u.test(line))).toBe(true);
+    expect(frame.split("\n").some((line) => /\[$/u.test(line.trimEnd()))).toBe(false);
+    root.unmount();
+  }
 });
 
 test("catalog uses left/right keys to switch the compiled Visual Parity IR domain", async () => {

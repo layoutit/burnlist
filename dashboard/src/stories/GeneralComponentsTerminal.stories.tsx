@@ -10,42 +10,48 @@ import {
 import { generalComponentsFixture, type GeneralComponentsCheckpoint } from "../../../tui/src/catalog/general-components-fixture";
 import { generalComponentsFrameEntries, PairedPreview, TerminalFrame } from "../components/TerminalFrame/TerminalFrame";
 
+const { labels, values } = generalComponentsFixture;
+
 function Overview() {
+  const { overview } = labels;
   return <div className="storybook-flow">
-    <Card className="storybook-card-demo"><CardHeader><CardTitle>Differential Testing</CardTitle><CardDescription>Exact-first comparison against the bound native source.</CardDescription></CardHeader><CardContent><div className="storybook-row"><Badge>active</Badge><Badge variant="secondary">ready</Badge><Badge variant="destructive">blocked</Badge></div><Progress aria-label="68% complete" value={68} /></CardContent><CardFooter><Button size="sm">Run burn</Button><Button size="sm" variant="outline">Open Oven</Button><Button disabled size="sm">Unavailable</Button></CardFooter></Card>
+    <Card className="storybook-card-demo"><CardHeader><CardTitle>{overview.cardTitle}</CardTitle><CardDescription>{overview.cardDescription}</CardDescription></CardHeader><CardContent><div className="storybook-row">{generalComponentsFixture.badges.map((badge, index) => <Badge key={badge} variant={index === 1 ? "secondary" : index === 2 ? "destructive" : "default"}>{badge}</Badge>)}</div><Progress aria-label={`${generalComponentsFixture.progress[2]}% complete`} value={generalComponentsFixture.progress[2]} /></CardContent><CardFooter>{generalComponentsFixture.buttons.map((label, index) => <Button key={label} disabled={index === 2} size="sm" variant={index === 1 ? "outline" : "default"}>{label}</Button>)}</CardFooter></Card>
     <Separator />
-    <Table><TableCaption>Local Burnlists discovered across configured repositories.</TableCaption><TableHeader><TableRow><TableHead>Project</TableHead><TableHead>Burnlist</TableHead><TableHead>Status</TableHead><TableHead>Progress</TableHead></TableRow></TableHeader><TableBody>{generalComponentsFixture.table.map((row) => <TableRow key={row[1]}>{row.map((cell) => <TableCell key={cell}>{cell}</TableCell>)}</TableRow>)}</TableBody></Table>
+    <Table><TableCaption>{overview.tableCaption}</TableCaption><TableHeader><TableRow>{overview.tableHeaders.map((header) => <TableHead key={header}>{header}</TableHead>)}</TableRow></TableHeader><TableBody>{generalComponentsFixture.table.map((row) => <TableRow key={row[1]}>{row.map((cell) => <TableCell key={cell}>{cell}</TableCell>)}</TableRow>)}</TableBody></Table>
   </div>;
 }
 
-function Forms({ interacted }: { interacted: boolean }) {
+function Forms({ checkpoint }: { checkpoint: "forms" | "interacted" }) {
+  const state = generalComponentsFixture.states[checkpoint];
+  const { forms } = labels;
   return <FieldGroup className="storybook-form-demo">
-    <label className="storybook-checkbox-row"><Checkbox checked={interacted} /> Include completed Burnlists</label>
-    <Field><FieldLabel htmlFor="general-name">Oven name</FieldLabel><Input defaultValue="Release readiness" id="general-name" /><FieldDescription>A short label shown in the dashboard.</FieldDescription></Field>
-    <Field><FieldLabel htmlFor="general-lifecycle">Lifecycle</FieldLabel><Select defaultValue={interacted ? "complete" : "active"} id="general-lifecycle"><option value="active">Active</option><option value="complete">Complete</option></Select></Field>
-    <Field><FieldLabel htmlFor="general-objective">Objective</FieldLabel><Textarea id="general-objective" placeholder="Describe the measurable outcome." /></Field>
-    <Field><FieldLabel htmlFor="general-path">Repository path</FieldLabel><Input aria-invalid="true" defaultValue="relative/path" id="general-path" /><FieldError>Use an absolute repository path.</FieldError></Field>
-    <Tabs defaultValue={interacted ? "complete" : "active"}><TabsList><TabsTrigger value="active">Active</TabsTrigger><TabsTrigger value="complete">Complete</TabsTrigger><TabsTrigger value="blocked">Blocked</TabsTrigger></TabsList><TabsContent value="active">Three Burnlists are cooking.</TabsContent><TabsContent value="complete">Completed work is retained.</TabsContent></Tabs>
-    <ToggleGroup defaultValue={interacted ? "chart" : "table"} type="single"><ToggleGroupItem value="list">List</ToggleGroupItem><ToggleGroupItem value="table">Table</ToggleGroupItem><ToggleGroupItem value="chart">Chart</ToggleGroupItem></ToggleGroup>
-    <Filters filter={interacted ? "complete" : "active"} onFilterChange={() => {}} />
+    <label className="storybook-checkbox-row"><Checkbox checked={state.includeCompleted} /> {forms.includeCompleted}</label>
+    <Field><FieldLabel htmlFor="general-name">{forms.ovenName}</FieldLabel><Input defaultValue={values.ovenName} id="general-name" /><FieldDescription>{forms.ovenNameDescription}</FieldDescription></Field>
+    <Field><FieldLabel htmlFor="general-lifecycle">{forms.lifecycle}</FieldLabel><Select defaultValue={state.lifecycle} id="general-lifecycle">{Object.entries(values.lifecycle).map(([key, value]) => <option key={key} value={value}>{key}</option>)}</Select></Field>
+    <Field><FieldLabel htmlFor="general-objective">{forms.objective}</FieldLabel><Textarea id="general-objective" placeholder={values.objectivePlaceholder} /></Field>
+    <Field><FieldLabel htmlFor="general-path">{forms.repositoryPath}</FieldLabel><Input aria-invalid="true" defaultValue={values.repositoryPath} id="general-path" /><FieldError>{forms.repositoryPathError}</FieldError></Field>
+    <Tabs defaultValue={state.selectedTab}><TabsList>{generalComponentsFixture.tabs.map((tab) => <TabsTrigger key={tab} value={tab.toLowerCase()}>{tab}</TabsTrigger>)}</TabsList>{Object.entries(values.tabs).map(([key, value]) => <TabsContent key={key} value={key}>{value}</TabsContent>)}</Tabs>
+    <ToggleGroup defaultValue={state.selectedView} type="single">{values.viewModes.map((mode) => <ToggleGroupItem key={mode} value={mode.toLowerCase()}>{mode}</ToggleGroupItem>)}</ToggleGroup>
+    <Filters filter={state.lifecycle} onFilterChange={() => {}} />
   </FieldGroup>;
 }
 
 function Feedback() {
+  const { feedback } = labels;
   return <div className="storybook-flow">
-    <Alert variant="success"><AlertTitle>Verification passed</AlertTitle><AlertDescription>All required evidence is available.</AlertDescription></Alert>
-    <Alert variant="warning"><AlertTitle>Evidence is stale</AlertTitle><AlertDescription>Refresh retained artifacts.</AlertDescription></Alert>
-    <DashboardError message="Could not read local state." />
-    <EmptyState title="No Burnlists found" detail="Register a repository or adjust lifecycle filters." />
-    <Card aria-busy="true"><CardHeader><Skeleton className="storybook-skeleton-title" /></CardHeader><CardContent><Skeleton className="storybook-skeleton-row" /><Spinner label="Loading summary" /></CardContent></Card>
-    <div className="storybook-row">Copy instructions <CopyButton text="burnlist oven use checklist" /><TooltipProvider delayDuration={0}><Tooltip defaultOpen><TooltipTrigger aria-label="Explain canonical state" asChild><Button variant="outline">Canonical state</Button></TooltipTrigger><TooltipContent>Source used to derive this view.</TooltipContent></Tooltip></TooltipProvider></div>
+    <Alert variant="success"><AlertTitle>{feedback.verificationPassed}</AlertTitle><AlertDescription>{feedback.evidenceAvailable}</AlertDescription></Alert>
+    <Alert variant="warning"><AlertTitle>{feedback.evidenceStale}</AlertTitle><AlertDescription>{feedback.refreshArtifacts}</AlertDescription></Alert>
+    <DashboardError message={feedback.dashboardError} />
+    <EmptyState title={feedback.emptyTitle} detail={feedback.emptyDetail} />
+    <Card aria-busy="true"><CardHeader><Skeleton className="storybook-skeleton-title" /></CardHeader><CardContent><Skeleton className="storybook-skeleton-row" /><Spinner label={feedback.loadingSummary} /></CardContent></Card>
+    <div className="storybook-row">{feedback.copyInstructions} <CopyButton text={feedback.copyValue} /><TooltipProvider delayDuration={0}><Tooltip defaultOpen><TooltipTrigger aria-label={feedback.canonicalStateDetail} asChild><Button variant="outline">{feedback.canonicalState}</Button></TooltipTrigger><TooltipContent>{feedback.canonicalStateDetail}</TooltipContent></Tooltip></TooltipProvider></div>
   </div>;
 }
 
 function NativeGeneral({ checkpoint }: { checkpoint: GeneralComponentsCheckpoint }) {
-  if (checkpoint === "overview") return <Overview />;
-  if (checkpoint === "feedback") return <Feedback />;
-  return <Forms interacted={checkpoint === "interacted"} />;
+  const state = generalComponentsFixture.states[checkpoint];
+  const content = state.visible === "overview" ? <Overview /> : state.visible === "feedback" ? <Feedback /> : <Forms checkpoint={checkpoint as "forms" | "interacted"} />;
+  return <section data-expected-outcome={state.expectedOutcome}>{content}</section>;
 }
 
 function PairedGeneral({ checkpoint = "overview", viewport = 78 }: { checkpoint?: GeneralComponentsCheckpoint; viewport?: 36 | 78 }) {

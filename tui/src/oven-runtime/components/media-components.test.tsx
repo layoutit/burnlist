@@ -30,11 +30,17 @@ async function frame(width: number, height: number, domain = "desktop") {
 }
 
 test("official Visual Parity IR renders readable wide and narrow real OpenTUI media frames", async () => {
-  for (const [width, height] of [[90, 24], [42, 24]] as const) {
+  for (const [width, height] of [[90, 24], [42, 24], [36, 24]] as const) {
     const output = await frame(width, height);
     for (const label of ["desktop", "mobile", "Frames", "Current", "Reference", "Difference", "F7", "q:back"]) expect(output).toContain(label);
     expect(output).not.toContain("esc:exit");
     expect(output.split("\n").every((line) => Array.from(line).length <= width)).toBe(true);
+    if (width < 48) {
+      expect(output).toContain("Current · Reference · Difference");
+      expect(output).not.toContain("┌");
+      expect(output.split("\n").filter((line) => line.includes("─")).every((line) => /^[─\s]+$/u.test(line))).toBe(true);
+      expect(output.split("\n").some((line) => /\[$/u.test(line.trimEnd()))).toBe(false);
+    }
   }
 });
 

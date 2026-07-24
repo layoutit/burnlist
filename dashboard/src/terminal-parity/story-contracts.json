@@ -84803,37 +84803,41 @@
       "id": "dashboard/src/stories/GeneralComponentsTerminal.stories.tsx#Paired",
       "states": [
         {
-          "id": "state-94db65bd5742",
+          "id": "state-93c775fbc6f1-guards-present",
           "sourceState": {
             "storyExport": "Paired",
-            "sourceFingerprint": "bb59e2d5ace06c0a2f8736f9e6745e66c8fd8de6932970ab16da75aecec16304",
+            "sourceFingerprint": "5d5ac8417ce7af25bc9eebc5bbb5dd6e4d650554ec343cfe8f24f2b0b0eac88c",
             "arg.checkpoint": "overview",
             "arg.viewport": "78",
-            "selection": "interacted:default:active",
+            "selection": "state.includeCompleted:default:key",
             "content": "component:PairedGeneral",
             "checkboxes": {
-              "checkbox:Include completed Burnlists": "interacted"
+              "checkbox:forms.includeCompleted": "state.includeCompleted"
             },
             "mode": "default",
             "selects": {
-              "select:general-lifecycle": "active"
-            }
+              "select:general-lifecycle": "key"
+            },
+            "guards": "present"
+          },
+          "guardBindings": {
+            "button:label": true
           },
           "actions": [
             {
-              "id": "button:Copy instructions",
-              "expectedConsoleOutcome": "Activate Copy instructions.",
+              "id": "button:feedback.copyInstructions",
+              "expectedConsoleOutcome": "Activate feedback.copyInstructions.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for button:Copy instructions."
+                "missing": "No terminal counterpart for button:feedback.copyInstructions."
               }
             },
             {
-              "id": "tooltip:Explain canonical state",
-              "expectedConsoleOutcome": "Reveal the tooltip for Explain canonical state.",
+              "id": "tooltip:feedback.canonicalStateDetail",
+              "expectedConsoleOutcome": "Reveal the tooltip for feedback.canonicalStateDetail.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tooltip:Explain canonical state."
+                "missing": "No terminal counterpart for tooltip:feedback.canonicalStateDetail."
               }
             },
             {
@@ -84845,19 +84849,11 @@
               }
             },
             {
-              "id": "select:general-lifecycle | active",
-              "expectedConsoleOutcome": "Select option active; the visible result is active.",
+              "id": "select:general-lifecycle | key",
+              "expectedConsoleOutcome": "Select option key; the visible result is key.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for select:general-lifecycle | active."
-              }
-            },
-            {
-              "id": "select:general-lifecycle | complete",
-              "expectedConsoleOutcome": "Select option complete; the visible result is complete.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for select:general-lifecycle | complete."
+                "missing": "No terminal counterpart for select:general-lifecycle | key."
               }
             },
             {
@@ -84877,87 +84873,59 @@
               }
             },
             {
-              "id": "tab:active | Active",
-              "expectedConsoleOutcome": "Select tab active; the visible panel is active.",
+              "id": "tab:tab",
+              "expectedConsoleOutcome": "Select tab tab; the visible panel is tab.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tab:active | Active."
+                "missing": "No terminal counterpart for tab:tab."
               }
             },
             {
-              "id": "tab:complete | Complete",
-              "expectedConsoleOutcome": "Select tab complete; the visible panel is complete.",
+              "id": "toggle:mode",
+              "expectedConsoleOutcome": "Select mode; the resulting selection is mode.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tab:complete | Complete."
-              }
-            },
-            {
-              "id": "tab:blocked | Blocked",
-              "expectedConsoleOutcome": "Select tab blocked; the visible panel is blocked.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for tab:blocked | Blocked."
-              }
-            },
-            {
-              "id": "toggle:list | List",
-              "expectedConsoleOutcome": "Select list; the resulting selection is list.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:list | List."
-              }
-            },
-            {
-              "id": "toggle:table | Table",
-              "expectedConsoleOutcome": "Select table; the resulting selection is table.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:table | Table."
-              }
-            },
-            {
-              "id": "toggle:chart | Chart",
-              "expectedConsoleOutcome": "Select chart; the resulting selection is chart.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:chart | Chart."
+                "missing": "No terminal counterpart for toggle:mode."
               }
             }
           ]
         },
         {
-          "id": "state-750d6b8aa76a",
+          "id": "state-93c775fbc6f1-guards-absent",
           "sourceState": {
             "storyExport": "Paired",
-            "sourceFingerprint": "bb59e2d5ace06c0a2f8736f9e6745e66c8fd8de6932970ab16da75aecec16304",
+            "sourceFingerprint": "5d5ac8417ce7af25bc9eebc5bbb5dd6e4d650554ec343cfe8f24f2b0b0eac88c",
             "arg.checkpoint": "overview",
             "arg.viewport": "78",
-            "selection": "interacted:default:complete",
+            "selection": "state.includeCompleted:default:key",
             "content": "component:PairedGeneral",
             "checkboxes": {
-              "checkbox:Include completed Burnlists": "interacted"
+              "checkbox:forms.includeCompleted": "state.includeCompleted"
             },
             "mode": "default",
             "selects": {
-              "select:general-lifecycle": "complete"
-            }
+              "select:general-lifecycle": "key"
+            },
+            "guards": "absent"
+          },
+          "guardBindings": {
+            "button:label": false
           },
           "actions": [
             {
-              "id": "button:Copy instructions",
-              "expectedConsoleOutcome": "Activate Copy instructions.",
+              "id": "button:feedback.copyInstructions",
+              "expectedConsoleOutcome": "Activate feedback.copyInstructions.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for button:Copy instructions."
+                "missing": "No terminal counterpart for button:feedback.copyInstructions."
               }
             },
             {
-              "id": "tooltip:Explain canonical state",
-              "expectedConsoleOutcome": "Reveal the tooltip for Explain canonical state.",
+              "id": "tooltip:feedback.canonicalStateDetail",
+              "expectedConsoleOutcome": "Reveal the tooltip for feedback.canonicalStateDetail.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tooltip:Explain canonical state."
+                "missing": "No terminal counterpart for tooltip:feedback.canonicalStateDetail."
               }
             },
             {
@@ -84969,19 +84937,11 @@
               }
             },
             {
-              "id": "select:general-lifecycle | active",
-              "expectedConsoleOutcome": "Select option active; the visible result is active.",
+              "id": "select:general-lifecycle | key",
+              "expectedConsoleOutcome": "Select option key; the visible result is key.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for select:general-lifecycle | active."
-              }
-            },
-            {
-              "id": "select:general-lifecycle | complete",
-              "expectedConsoleOutcome": "Select option complete; the visible result is complete.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for select:general-lifecycle | complete."
+                "missing": "No terminal counterpart for select:general-lifecycle | key."
               }
             },
             {
@@ -85001,51 +84961,19 @@
               }
             },
             {
-              "id": "tab:active | Active",
-              "expectedConsoleOutcome": "Select tab active; the visible panel is active.",
+              "id": "tab:tab",
+              "expectedConsoleOutcome": "Select tab tab; the visible panel is tab.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tab:active | Active."
+                "missing": "No terminal counterpart for tab:tab."
               }
             },
             {
-              "id": "tab:complete | Complete",
-              "expectedConsoleOutcome": "Select tab complete; the visible panel is complete.",
+              "id": "toggle:mode",
+              "expectedConsoleOutcome": "Select mode; the resulting selection is mode.",
               "terminal": {
                 "status": "gap",
-                "missing": "No terminal counterpart for tab:complete | Complete."
-              }
-            },
-            {
-              "id": "tab:blocked | Blocked",
-              "expectedConsoleOutcome": "Select tab blocked; the visible panel is blocked.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for tab:blocked | Blocked."
-              }
-            },
-            {
-              "id": "toggle:list | List",
-              "expectedConsoleOutcome": "Select list; the resulting selection is list.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:list | List."
-              }
-            },
-            {
-              "id": "toggle:table | Table",
-              "expectedConsoleOutcome": "Select table; the resulting selection is table.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:table | Table."
-              }
-            },
-            {
-              "id": "toggle:chart | Chart",
-              "expectedConsoleOutcome": "Select chart; the resulting selection is chart.",
-              "terminal": {
-                "status": "gap",
-                "missing": "No terminal counterpart for toggle:chart | Chart."
+                "missing": "No terminal counterpart for toggle:mode."
               }
             }
           ]

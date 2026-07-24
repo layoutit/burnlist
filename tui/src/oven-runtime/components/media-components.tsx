@@ -87,6 +87,11 @@ export function TerminalMetricTiles({ model, width }: { model: MediaModel; width
 
 function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; width: number; height: number }) {
   const palette = useTerminalPalette();
+  if (width < 48) return <box width={width} height={height} flexDirection="column" overflow="hidden">
+    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame F${frame.frame} · ${frame.status}`, width)}</text>
+    <text fg={palette.muted}>{fitText(frame.summary, width)}</text>
+    <text>{fitText(frame.images.map((image) => image.label.split(/\s+/u)[0] ?? image.label).join(" · "), width)}</text>
+  </box>;
   const imageWidth = Math.max(4, Math.floor((width - 4) / 3));
   const imageHeight = Math.max(1, Math.min(7, height - 3));
   return <box width={width} height={height} flexDirection="column" overflow="hidden" border={height > 3 ? ["top"] : undefined} borderColor={palette.dim}>
