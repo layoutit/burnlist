@@ -20,6 +20,9 @@ const knownSubcommands = new Set([
   "start",
   "close",
   "burn",
+  "loop",
+  "agent",
+  "route",
   "register",
   "unregister",
   "roots",
@@ -83,7 +86,7 @@ if (args[0] && !args[0].startsWith("--") && !["-h", "-v"].includes(args[0]) && !
   process.exit(2);
 }
 
-if (!["oven", "hooks"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
+if (!["oven", "hooks", "loop", "agent", "route"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
 Usage:
@@ -105,6 +108,20 @@ Usage:
   burnlist start <id> [--repo <path>]
   burnlist close <id> [--repo <path>]
   burnlist burn <id> <item> [--check] [--repo <path>]
+  burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
+  burnlist loop unassign <ItemRef> [--repo <path>]
+  burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
+  burnlist loop create <ItemRef> [--repo <path>]
+  burnlist loop list [--repo <path>]
+  burnlist loop run|resume <RunRef> [--repo <path>]
+  burnlist loop status|inspect <RunRef> [--repo <path>]
+  burnlist loop pause|stop <RunRef> [--repo <path>] (idle Run only)
+  burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
+  burnlist loop complete <RunRef> [--repo <path>]
+  burnlist loop capability <inspect|trust> <id> ...
+  burnlist loop setup status [--repo <path>]
+  burnlist agent <profile|doctor> ...
+  burnlist route set <route> --profile <slug> [--repo <path>]
   burnlist register [path]
   burnlist unregister [path]
   burnlist roots [--prune]
@@ -144,6 +161,15 @@ if (args[0] === "oven") {
   await import("../src/cli/hooks-cli.mjs");
 } else if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])) {
   await import("../src/cli/lifecycle-cli.mjs");
+} else if (args[0] === "loop") {
+  const { runLoopCliEntry } = await import("../src/cli/loop-cli.mjs");
+  await runLoopCliEntry(args.slice(1));
+} else if (args[0] === "agent") {
+  const { runAgentCliEntry } = await import("../src/cli/loop-config-cli.mjs");
+  await runAgentCliEntry(args.slice(1));
+} else if (args[0] === "route") {
+  const { runRouteCliEntry } = await import("../src/cli/loop-config-cli.mjs");
+  await runRouteCliEntry(args.slice(1));
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");
 } else {
