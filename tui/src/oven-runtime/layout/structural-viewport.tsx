@@ -1,6 +1,7 @@
 import type { TerminalNode } from "../terminal-contract";
 import { layoutTerminalNodes, type LayoutCell } from "./layout-runtime";
 import { fitTerminalText } from "../../terminal-text";
+import { useTerminalPalette } from "../../terminal-accessibility";
 
 export type StructuralViewportProps = Readonly<{ nodes: readonly TerminalNode[]; viewport: Readonly<{ width: number; height: number }>; focusedPath?: string; footer?: string }>;
 const structural = new Set(["box", "grid", "stack", "panel"]);
@@ -17,9 +18,10 @@ function Cell({ cell }: { cell: LayoutCell }) {
 }
 /** Production OpenTUI surface for structural Oven IR; B17 mounts it in Oven chrome. */
 export function StructuralOvenViewport({ nodes, viewport, focusedPath, footer = "q:back  esc:exit" }: StructuralViewportProps) {
+  const palette = useTerminalPalette();
   const footerHeight = 2, bodyHeight = Math.max(1, viewport.height - footerHeight), result = layoutTerminalNodes(nodes, viewport, focusedPath, footerHeight);
   return <box width={viewport.width} height={viewport.height} position="relative" overflow="hidden">
     {result.cells.map((cell) => <Cell key={cell.path} cell={cell} />)}
-    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor="#686868"><text>{fitTerminalText(footer, viewport.width)}</text></box>
+    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor={palette.dim}><text>{fitTerminalText(footer, viewport.width)}</text></box>
   </box>;
 }

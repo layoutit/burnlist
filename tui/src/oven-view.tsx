@@ -1,9 +1,11 @@
 import { detailItems, visualParityPayload } from "./detail-items";
-import { compactTime, fitText, palette, visibleWindow } from "./theme";
+import { compactTime, fitText, visibleWindow } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 import { TableCell, TableLine } from "./table-view";
 import type { BurnlistSummary, DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
 
 function OvenHeader({ active, lenses, width }: { active: OvenSummary | null; lenses: OvenSummary[]; width: number }) {
+  const palette = useTerminalPalette();
   const textWidth = Math.max(1, width - 4);
   const lensText = `${lenses.map((oven) => oven.id === active?.id ? `[${oven.name}]` : oven.name).join("  ")}${lenses.length > 1 ? "  [/] switch" : ""}`;
   return <box height={2} flexDirection="column" paddingLeft={2}>
@@ -13,6 +15,7 @@ function OvenHeader({ active, lenses, width }: { active: OvenSummary | null; len
 }
 
 function ItemRows({ items, selected, height, width }: { items: DetailItem[]; selected: number; height: number; width: number }) {
+  const palette = useTerminalPalette();
   const viewportHeight = Math.max(2, Math.floor(height) - 1);
   const window = visibleWindow(items, selected, Math.max(1, viewportHeight - 1));
   if (!items.length) return <text fg={palette.dim}>No navigable items are available.</text>;
@@ -38,6 +41,7 @@ function ItemRows({ items, selected, height, width }: { items: DetailItem[]; sel
 }
 
 function ChecklistOven({ progress, items, selected, height, width }: { progress: ProgressSnapshot | null; items: DetailItem[]; selected: number; height: number; width: number }) {
+  const palette = useTerminalPalette();
   if (!progress) return <box paddingTop={2}><text fg={palette.dim}>Checklist data is unavailable.</text></box>;
   return <box flexDirection="column" flexGrow={1}>
     <box height={1} flexDirection="row" alignItems="center" paddingLeft={2} gap={2}>
@@ -51,6 +55,7 @@ function ChecklistOven({ progress, items, selected, height, width }: { progress:
 }
 
 function VisualParityOven({ data, items, selected, height, width }: { data: OvenDataSnapshot | null; items: DetailItem[]; selected: number; height: number; width: number }) {
+  const palette = useTerminalPalette();
   const payload = visualParityPayload(data);
   if (!payload) return <box paddingTop={2}><text fg={palette.dim}>Visual Parity data is unavailable.</text></box>;
   const domain = payload.domains.find((entry) => entry.qualification === "target") ?? payload.domains[0]!;
@@ -65,6 +70,7 @@ function VisualParityOven({ data, items, selected, height, width }: { data: Oven
 }
 
 function GenericOven({ active, burnlist, data }: { active: OvenSummary | null; burnlist: BurnlistSummary | null; data: OvenDataSnapshot | null }) {
+  const palette = useTerminalPalette();
   const payload = data?.payload;
   const keys = payload && typeof payload === "object" ? Object.keys(payload).slice(0, 8) : [];
   return <box flexDirection="column" paddingTop={2} gap={1}><text fg={palette.foreground}>{fitText(active?.description ?? "No renderer is registered for this Oven.", 104).trimEnd()}</text><text fg={palette.muted}>{fitText(burnlist?.progressLabel ?? "", 104).trimEnd()}</text>{keys.length ? <text fg={palette.dim}>{fitText(`Payload: ${keys.join(" · ")}`, 104).trimEnd()}</text> : null}</box>;

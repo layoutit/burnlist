@@ -1,4 +1,5 @@
-import { fitText, palette } from "../../theme";
+import { fitText } from "../../theme";
+import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
 
@@ -11,6 +12,7 @@ const hash = (value: unknown) => { const source = text(value); return source.len
 
 /** Compact, terminal-native projection of the declarative Model Lab view. */
 export function TerminalModelLabView({ node, payload, width, height = 14, selectedId }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; selectedId?: string }) {
+  const palette = useTerminalPalette();
   const value = data(node, payload), model = record(value.model), actor = record(model.actor), protocol = record(value.terminal), frame = record(protocol.frame), metrics = record(protocol.metrics), comparison = record(value.comparison), animations = Array.isArray(model.animations) ? model.animations.map(record) : [];
   const count = Math.max(1, number(frame.count) || number(model.frameCount)), index = number(frame.index) || number(model.frameIndex);
   const current = animations.find((animation) => index >= number(animation.firstFrameIndex) && index < number(animation.firstFrameIndex) + number(animation.frameCount)) ?? animations[0] ?? {};

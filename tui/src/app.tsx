@@ -22,6 +22,7 @@ import { useStreamingDiffSession } from "./use-streaming-diff-session";
 import { loadStreamingFeeds, streamingRepositories } from "./streaming-diff-feeds";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components";
 import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, OvenSummary, ProgressSnapshot } from "./types";
+import { terminalKeyAction } from "./terminal-navigation";
 const emptyLanding: LandingSnapshot = { projects: [], burnlists: [], ovens: [], generatedAt: "" };
 function screen(source: string, file: string): GlyphScreen {
   const compiled = compileGlyph(source, { file });
@@ -280,7 +281,9 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const terminalControl = useCallback((kind: string) => (ovenDetail?.ir as unknown as TerminalOvenIR | undefined)?.controls.find((item) => item.kind === kind), [ovenDetail]);
   useKeyboard((key) => {
     if (key.name === "q") { if (view === "oven" && streamingNavigation?.page === "session") return setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "back" }) : state); return back(); }
-    if (key.name === "escape") return navigation.length === 1 ? shutdown() : back();
+    if (key.name === "escape") return navigation.length <= 1 ? shutdown() : back();
+    const global = terminalKeyAction(key.name, navigation.length, !!searchControlId);
+    if (global === "back" || global === "exit") return;
     if (key.name === "r" && view === "oven" && streamingNavigation) {
       const current = streamingNavigation;
       if (current.page === "feeds") void loadStreamingFeeds(client, streamingRepositories(landing.projects, activeOven?.repoKey ?? null)).then((feeds) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsLoaded", feeds }) : state)).catch((cause) => setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "feedsFailed", message: String(cause) }) : state));

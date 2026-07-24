@@ -1,7 +1,8 @@
 import { BrandMark } from "./brand-mark";
 import { GlyphFire } from "./glyph-fire";
 import { useTerminalDimensions } from "@opentui/react";
-import { compactTime, fitText, palette, progressLabel } from "./theme";
+import { compactTime, fitText, progressLabel } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
 import type { BurnlistSummary, ProgressSnapshot } from "./types";
 
@@ -11,6 +12,7 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
   compact?: boolean;
   activity?: { message: string; tone: "error" | "info" } | null;
 }) {
+  const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
   const { width } = useTerminalDimensions();
   const right = activity?.tone === "info" ? "✦ Refreshing" : activity?.message ?? (center ? subtitle : "");
@@ -42,6 +44,7 @@ export function DetailSummary({ burnlist, progress, fireWidth, fireHeight, fps, 
   compact: boolean;
   width: number;
 }) {
+  const palette = useTerminalPalette();
   if (!burnlist) return <box padding={2}><text fg={palette.dim}>Choose a Burnlist</text></box>;
   const percent = progress?.percent ?? burnlist.percent;
   const done = progress?.done ?? burnlist.done;

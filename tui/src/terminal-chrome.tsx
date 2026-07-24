@@ -1,6 +1,7 @@
 import { CliRenderEvents, type TerminalColors } from "@opentui/core";
 import { useRenderer } from "@opentui/react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { paletteFor, useTerminalAccessibility, type TerminalAccessibility } from "./terminal-accessibility";
 
 export interface TerminalChrome {
   background: string;
@@ -27,8 +28,12 @@ function mix(background: [number, number, number], foreground: [number, number, 
   return `#${background.map((value, index) => Math.round(value + (foreground[index]! - value) * amount).toString(16).padStart(2, "0")).join("")}`;
 }
 
-export function terminalChrome(colors: TerminalColors | null | undefined): TerminalChrome {
-  if (!colors?.defaultBackground) return fallback;
+export function terminalChrome(colors: TerminalColors | null | undefined, accessibility: TerminalAccessibility = { color: "truecolor", light: false, reducedMotion: false }): TerminalChrome {
+  const palette = paletteFor(accessibility);
+  if (accessibility.color === "none") return { ...fallback, surface: "transparent", line: palette.dim, faintLine: palette.dim };
+  if (!colors?.defaultBackground) return accessibility.color === "truecolor"
+    ? fallback
+    : { ...fallback, line: palette.dim, faintLine: palette.dim };
   const background = rgb(colors.defaultBackground, [24, 24, 27]);
   const foreground = rgb(colors.defaultForeground, [220, 220, 224]);
   return {
@@ -44,17 +49,18 @@ const ChromeContext = createContext<TerminalChrome>(fallback);
 
 export function TerminalChromeProvider({ children }: { children: ReactNode }) {
   const renderer = useRenderer();
-  const [chrome, setChrome] = useState(fallback);
+  const accessibility = useTerminalAccessibility();
+  const [chrome, setChrome] = useState(() => terminalChrome(null, accessibility));
   useEffect(() => {
     let active = true;
-    const apply = (colors: TerminalColors) => { if (active) setChrome(terminalChrome(colors)); };
+    const apply = (colors: TerminalColors) => { if (active) setChrome(terminalChrome(colors, accessibility)); };
     renderer.on(CliRenderEvents.PALETTE, apply);
     void renderer.getPalette({ timeout: 250, size: 16 }).then(apply).catch(() => {});
     return () => {
       active = false;
       renderer.off(CliRenderEvents.PALETTE, apply);
     };
-  }, [renderer]);
+  }, [accessibility, renderer]);
   return <ChromeContext.Provider value={chrome}>{children}</ChromeContext.Provider>;
 }
 

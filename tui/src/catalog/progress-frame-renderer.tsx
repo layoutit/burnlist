@@ -13,6 +13,7 @@ import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/te
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
 import { FRAME_SCHEMA, type RendererProvenance, type TerminalFrame } from "./frame-contract";
 import { cellsFromFrame } from "./frame-renderer";
+import { orderedSemanticText } from "../terminal-accessibility";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const generated = resolve(root, "dashboard/src/generated/terminal-progress-frames");
@@ -83,7 +84,7 @@ async function render(width: number, checkpoint: string, payload: JsonValue, sou
   try {
     await act(async () => { flushSync(() => app.render(<TerminalOvenViewport result={result} />)); }); await setup.renderOnce();
     if (!recorded) fail("OpenTUI produced no frame");
-    const semanticText = recorded.frame.split("\n").map((line: string) => line.trimEnd()), cells = cellsFromFrame(recorded.frame, width, height, recorded.buffers), text = semanticText.join("\n");
+    const semanticText = orderedSemanticText(recorded.frame), cells = cellsFromFrame(recorded.frame, width, height, recorded.buffers), text = semanticText.join("\n");
     if (checkpoint === "required-error") { if (!text.includes("Missing required")) fail("required binding fallback missing"); }
     else if (!targetKind && (!text.includes("Burnlist progress") || !cells.some((cell) => ["━", "■", "□"].includes(cell.char)))) fail("support semantics missing");
     const fixture = targetKind ? `progress-target-${targetKind}` : "progress-components";

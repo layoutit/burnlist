@@ -7,6 +7,7 @@ import { fitLayoutText } from "../layout/layout-runtime";
 import type { JsonValue, TerminalBinding, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding } from "../value-runtime";
 import { progressGlyphFrame, type ProgressGlyphKind } from "./progress-glyph";
+import { useTerminalPalette, type TerminalPalette } from "../../terminal-accessibility";
 
 export type ProgressMetric = Readonly<{ total?: number; failed?: number; blocked?: number }>;
 export type BurnEntry = Readonly<{ result?: string }>;
@@ -30,7 +31,7 @@ function source(node: TerminalNode, payload: JsonValue | undefined): unknown {
   if (typeof value !== "string") return undefined;
   return bound(directBinding(value, node.attributes.format, node.attributes.optional, node.attributes.fallback), payload);
 }
-function childSlot(node: TerminalNode, slot: string, payload: JsonValue | undefined, width: number): unknown {
+function childSlot(node: TerminalNode, slot: string, payload: JsonValue | undefined, width: number, palette?: TerminalPalette): unknown {
   let value: unknown;
   for (const child of node.children) {
     const named = typeof child.attributes.slot === "string" ? child.attributes.slot : undefined;
@@ -40,7 +41,7 @@ function childSlot(node: TerminalNode, slot: string, payload: JsonValue | undefi
     else if (child.kind === "icon") value = { icon: String(child.attributes.name) };
     else if (["progress-donut", "burn-donut", "waffle-metric"].includes(child.kind)) {
       const raw = source(child, payload);
-      value = { text: componentText(child, payload, width), frame: progressGlyphFrame(child.kind as ProgressGlyphKind, raw, width) };
+      value = { text: componentText(child, payload, width), frame: progressGlyphFrame(child.kind as ProgressGlyphKind, raw, width, palette) };
     } else value = componentText(child, payload, width);
   }
   return value;
@@ -97,10 +98,10 @@ function componentText(node: TerminalNode, payload: JsonValue | undefined, width
   return "";
 }
 
-export function kpiFromNode(node: TerminalNode, payload: JsonValue | undefined, width = 16): TerminalKpi {
+export function kpiFromNode(node: TerminalNode, payload: JsonValue | undefined, width = 16, palette?: TerminalPalette): TerminalKpi {
   let heading = property(node, "heading", payload), title = property(node, "title", payload), value = property(node, "value", payload);
   if (typeof node.attributes.source === "string") value = source(node, payload);
-  const headingSlot = childSlot(node, "heading", payload, width), titleSlot = childSlot(node, "title", payload, width), valueSlot = childSlot(node, "value", payload, width), visualSlot = childSlot(node, "visual", payload, Math.max(3, width - 4));
+  const headingSlot = childSlot(node, "heading", payload, width, palette), titleSlot = childSlot(node, "title", payload, width, palette), valueSlot = childSlot(node, "value", payload, width, palette), visualSlot = childSlot(node, "visual", payload, Math.max(3, width - 4), palette);
   if (headingSlot !== undefined) heading = headingSlot; if (titleSlot !== undefined) title = titleSlot; if (valueSlot !== undefined) value = valueSlot;
   let icon = visualSlot && typeof visualSlot === "object" && "icon" in visualSlot ? String((visualSlot as { icon: string }).icon) : undefined;
   let visual = typeof visualSlot === "string" ? visualSlot : undefined;
@@ -110,8 +111,8 @@ export function kpiFromNode(node: TerminalNode, payload: JsonValue | undefined, 
   return { heading: scalarText(heading), title: scalarText(title) || undefined, value: scalarText(value), visual, visualFrame, variant: scalarText(node.attributes.variant) || undefined, icon };
 }
 
-export function kpiStripModel(node: TerminalNode, payload: JsonValue | undefined, width: number): TerminalKpiStripModel {
-  return { ariaLabel: scalarText(property(node, "ariaLabel", payload) ?? property(node, "aria-label", payload)) || undefined, title: scalarText(property(node, "title", payload)) || undefined, items: node.children.filter((child) => child.kind === "kpi-item").map((child) => kpiFromNode(child, payload, Math.max(8, Math.floor(width / Math.max(1, node.children.length))))) };
+export function kpiStripModel(node: TerminalNode, payload: JsonValue | undefined, width: number, palette?: TerminalPalette): TerminalKpiStripModel {
+  return { ariaLabel: scalarText(property(node, "ariaLabel", payload) ?? property(node, "aria-label", payload)) || undefined, title: scalarText(property(node, "title", payload)) || undefined, items: node.children.filter((child) => child.kind === "kpi-item").map((child) => kpiFromNode(child, payload, Math.max(8, Math.floor(width / Math.max(1, node.children.length))), palette)) };
 }
 export const kpiStripFromNodes = (nodes: readonly TerminalNode[], payload: JsonValue | undefined, width: number) => nodes.filter((node) => node.kind === "kpi-item").map((node) => kpiFromNode(node, payload, Math.max(8, Math.floor(width / Math.max(1, nodes.length)))));
 
@@ -122,12 +123,14 @@ function KpiCell({ item, width }: { item: TerminalKpi; width: number }) {
 }
 
 export function TerminalKpiItem({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
-  return <KpiCell item={kpiFromNode(node, payload, width)} width={width} />;
+  const palette = useTerminalPalette();
+  return <KpiCell item={kpiFromNode(node, payload, width, palette)} width={width} />;
 }
 
 /** Generic OpenTUI projection of a compiled kpi-strip; no Oven identity branches. */
 export function TerminalKpiStrip({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
-  const model = kpiStripModel(node, payload, width), narrow = width < model.items.length * 18, metadata = model.title ?? model.ariaLabel;
+  const palette = useTerminalPalette();
+  const model = kpiStripModel(node, payload, width, palette), narrow = width < model.items.length * 18, metadata = model.title ?? model.ariaLabel;
   if (!model.items.length) return <text>{fitLayoutText(metadata || "No metrics", width)}</text>;
   const cellWidth = narrow ? width : Math.max(8, Math.floor(width / model.items.length));
   return <box flexDirection="column" width={width} overflow="hidden">{metadata ? <text>{fitLayoutText(metadata, width)}</text> : null}<box flexDirection={narrow ? "column" : "row"} width={width} overflow="hidden">{model.items.map((item, index) => <KpiCell key={`${item.heading}-${index}`} item={item} width={cellWidth} />)}</box></box>;

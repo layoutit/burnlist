@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { App } from "./app";
+import { TerminalAccessibilityProvider, terminalAccessibility } from "./terminal-accessibility";
 
 async function serverUrl(): Promise<string> {
   const index = process.argv.indexOf("--server");
@@ -42,7 +43,7 @@ process.once("SIGINT", () => shutdown(130));
 process.once("SIGTERM", () => shutdown(143));
 
 try {
-  root.render(<App serverUrl={await serverUrl()} shutdown={shutdown} />);
+  root.render(<TerminalAccessibilityProvider value={terminalAccessibility(process.env)}><App serverUrl={await serverUrl()} shutdown={shutdown} /></TerminalAccessibilityProvider>);
 } catch (error) {
   renderer.destroy();
   throw error;

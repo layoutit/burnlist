@@ -1,4 +1,5 @@
-import { fitText, palette } from "./theme";
+import { fitText } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
 import type { OvenPackageDetail, OvenSummary } from "./types";
 
@@ -15,6 +16,7 @@ export function CatalogOvenDetail({ summary, detail, height, width }: {
   height: number;
   width: number;
 }) {
+  const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
   const oven = detail ?? summary;
   if (!oven) return <box padding={2}><text fg={palette.dim}>Choose an Oven from the catalog.</text></box>;

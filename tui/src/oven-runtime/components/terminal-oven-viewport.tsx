@@ -7,10 +7,11 @@ import { logTableModel, TerminalLogTable } from "./list-components";
 import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
 import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
-import { TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
+import { differentialKpiModel, TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
 import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
 import { TerminalModelLabView } from "./model-lab-components";
 import { fitTerminalText } from "../../terminal-text";
+import { useTerminalPalette } from "../../terminal-accessibility";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
@@ -43,7 +44,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
-      else if (root.node.kind === "differential-kpi-strip") TerminalDifferentialKpiStrip({ node: root.node, payload: result.payload, width: result.state.viewport.width });
+      else if (root.node.kind === "differential-kpi-strip") differentialKpiModel(result.payload);
       else if (root.node.kind === "diff-card") streamingDiffModel(root.node, result.payload);
       else if (["section-header", "refresh-status", "differential-empty-state"].includes(root.node.kind) || root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom !== "string") statusSurfaceModel(root.node, result.payload);
       else if (root.node.kind === "verdict-header") validateVerdictRoot(root.node, result.payload);
@@ -67,6 +68,7 @@ function StructuralCell({ cell }: { cell: LayoutCell }) {
  * suppresses their projected descendants, and paints through a closed registry.
  */
 export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", streaming }: { result: TerminalRenderResult; footer?: string; streaming?: { selectedCard: number; selectedFile: number; expandedKey: string | null } }) {
+  const palette = useTerminalPalette();
   const prepared = prepareTerminalComponentResult(result), viewport = prepared.state.viewport, footerHeight = 2, bodyHeight = Math.max(1, viewport.height - footerHeight);
   if (prepared.status !== "ready" || !prepared.ir || prepared.payload === undefined) {
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
@@ -95,6 +97,6 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}
-    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor="#686868"><text>{fitTerminalText(footer, viewport.width)}</text></box>
+    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor={palette.dim}><text>{fitTerminalText(footer, viewport.width)}</text></box>
   </box>;
 }

@@ -1,9 +1,10 @@
 import { GlyphImage } from "./glyph-image";
 import { visualParityPayload } from "./detail-items";
-import { compactTime, fitText, palette } from "./theme";
+import { compactTime, fitText } from "./theme";
+import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
 import type { DetailItem, OvenDataSnapshot, OvenSummary, ProgressSnapshot } from "./types";
 
-function ChecklistItem({ item, width }: { item: DetailItem; width: number }) {
+function ChecklistItem({ item, width, palette }: { item: DetailItem; width: number; palette: TerminalPalette }) {
   const fields = Object.entries(item.fields ?? {});
   return <box flexGrow={1} flexDirection="column" padding={1} gap={1}>
     <box height={2} flexDirection="row" alignItems="center">
@@ -26,12 +27,13 @@ function ChecklistItem({ item, width }: { item: DetailItem; width: number }) {
   </box>;
 }
 
-function VisualFrame({ item, data, domainIndex, width, height }: {
+function VisualFrame({ item, data, domainIndex, width, height, palette }: {
   item: DetailItem;
   data: OvenDataSnapshot | null;
   domainIndex: number;
   width: number;
   height: number;
+  palette: TerminalPalette;
 }) {
   const payload = visualParityPayload(data);
   const comparison = payload?.comparisons[item.comparisonIndex ?? -1];
@@ -74,8 +76,9 @@ export function ItemDetail({ item, oven, progress, data, domainIndex, width, hei
   width: number;
   height: number;
 }) {
+  const palette = useTerminalPalette();
   if (!item) return <box padding={2}><text fg={palette.dim}>No item is selected.</text></box>;
-  if (item.kind === "visual-frame") return <VisualFrame item={item} data={data} domainIndex={domainIndex} width={width} height={height} />;
-  if (oven?.contract === "checklist-progress@1" && progress) return <ChecklistItem item={item} width={width} />;
+  if (item.kind === "visual-frame") return <VisualFrame item={item} data={data} domainIndex={domainIndex} width={width} height={height} palette={palette} />;
+  if (oven?.contract === "checklist-progress@1" && progress) return <ChecklistItem item={item} width={width} palette={palette} />;
   return <box padding={2}><text fg={palette.dim}>This Oven has no item renderer.</text></box>;
 }

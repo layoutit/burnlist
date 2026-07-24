@@ -1,6 +1,7 @@
 import type { BurnlistSummary, LandingSnapshot, OvenSummary } from "./types";
 import { groupBurnlists } from "./landing-groups";
-import { compactTime, fitText, palette, progressLabel, visibleWindow } from "./theme";
+import { compactTime, fitText, progressLabel, visibleWindow } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 import { TableCell, TableGroup, TableLine } from "./table-view";
 
 interface ListProps<T> {
@@ -13,6 +14,7 @@ interface ListProps<T> {
 }
 
 function BurnlistColumns({ width, header, entry }: { width: number; header?: boolean; entry?: BurnlistSummary }) {
+  const palette = useTerminalPalette();
   const wide = width >= 112;
   const medium = width >= 82;
   const ovenWidth = wide ? 20 : medium ? 18 : 0;
@@ -32,6 +34,7 @@ function BurnlistColumns({ width, header, entry }: { width: number; header?: boo
 }
 
 export function BurnlistList({ landing, selected, focused, maxRows, terminalWidth, empty }: Omit<ListProps<BurnlistSummary>, "entries"> & { landing: LandingSnapshot }) {
+  const palette = useTerminalPalette();
   const entries = groupBurnlists(landing).flatMap((group) => group.entries);
   let itemRows = maxRows;
   let window = visibleWindow(entries, selected, itemRows);
@@ -60,6 +63,7 @@ export function BurnlistList({ landing, selected, focused, maxRows, terminalWidt
 }
 
 function OvenColumns({ width, header, entry }: { width: number; header?: boolean; entry?: OvenSummary }) {
+  const palette = useTerminalPalette();
   const wide = width >= 110;
   const medium = width >= 76;
   const nameWidth = wide ? 24 : medium ? 22 : 20;
@@ -77,6 +81,7 @@ function OvenColumns({ width, header, entry }: { width: number; header?: boolean
 }
 
 export function OvenList({ entries, selected, focused, maxRows, terminalWidth, empty }: ListProps<OvenSummary>) {
+  const palette = useTerminalPalette();
   const window = visibleWindow(entries, selected, maxRows);
   if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{fitText(empty, Math.max(1, terminalWidth - 2)).trimEnd()}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
@@ -98,6 +103,7 @@ export function LandingSectionHeading({ title, source, landing }: {
   source: "burnlists" | "ovens";
   landing: LandingSnapshot;
 }) {
+  const palette = useTerminalPalette();
   const count = landing[source].length;
   const projects = new Set(landing.burnlists.map((entry) => entry.repoKey ?? entry.repo)).size;
   const summary = source === "burnlists"

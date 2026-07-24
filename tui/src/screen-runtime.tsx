@@ -10,7 +10,8 @@ import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-run
 import { TerminalStreamingFeedList } from "./oven-runtime/components/streaming-diff-components";
 import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
-import { fitText, palette } from "./theme";
+import { fitText } from "./theme";
+import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
 import type {
   BurnlistSummary,
@@ -54,6 +55,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
   height: number;
   chrome: TerminalChrome;
 }) {
+  const palette = useTerminalPalette();
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summary = node.children.find((child) => child.kind === "detail-summary");
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
@@ -112,12 +114,13 @@ function DetailSplit({ node, props, width, height, chrome }: {
   </box>;
 }
 function StreamingSession({ props, width, height }: { props: ScreenRuntimeProps; width: number; height: number }) {
+  const palette = useTerminalPalette();
   const navigation = props.streamingNavigation!, error = navigation.sessionError, available = Math.max(3, height - 1 - (error ? 1 : 0));
   const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: Math.max(1, width - 6), height: available } } }) : null;
   return <box height={height} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden" flexDirection="column">{error ? <box height={1} overflow="hidden"><text fg={palette.amber}>{fitText(error, Math.max(1, width - 6))}</text></box> : null}{runtime ? <TerminalOvenViewport result={runtime} footer="←/→:card · ↑/↓:file · enter:expand · r:refresh · q:feeds" streaming={{ selectedCard: navigation.selectedCard, selectedFile: navigation.selectedFile, expandedKey: navigation.expandedFile }} /> : <text>Loading session…</text>}</box>;
 }
 
-function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, height: number, chrome: TerminalChrome): React.ReactNode {
+function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, height: number, chrome: TerminalChrome, palette: TerminalPalette): React.ReactNode {
   const key = `${node.kind}:${node.source.offset}`;
   const rows = listRows(height);
   const catalog = genericOvens(props.landing.ovens);
@@ -178,8 +181,9 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
 function ScreenSurface(props: ScreenRuntimeProps) {
   const { width, height } = useTerminalDimensions();
   const chrome = useTerminalChrome();
+  const palette = useTerminalPalette();
   return <box width="100%" height="100%" flexDirection="column" overflow="hidden" backgroundColor={chrome.background}>
-    {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome))}
+    {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome, palette))}
   </box>;
 }
 

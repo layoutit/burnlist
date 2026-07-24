@@ -1,4 +1,5 @@
-import { fitText, palette } from "../../theme";
+import { fitText } from "../../theme";
+import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
 import { burnDonutCounts, progressDonutText, waffleMetricText } from "./progress-components";
@@ -19,6 +20,7 @@ export function differentialKpiModel(payload?: JsonValue) {
 }
 
 export function TerminalDifferentialKpiStrip({ payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+  const palette = useTerminalPalette();
   const model = differentialKpiModel(payload), compact = width < 56, title = text(record(payload).title);
   const items = [
     `◎ Scenario ${model.selected}${model.scenarioCount > 1 ? ` (${model.scenarioCount})` : ""}`,
@@ -32,18 +34,21 @@ export function TerminalDifferentialKpiStrip({ payload, width }: { node: Termina
 }
 
 export function TerminalDifferentialChart({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+  const palette = useTerminalPalette();
   const points = list(source(node, payload)), latest = record(points.at(-1)), total = Math.max(0, number(latest.frames)), done = Math.max(0, Math.min(total, number(latest.frame))), hasDelta = typeof latest.frameDelta === "number", delta = number(latest.frameDelta);
   const label = node.kind === "frame-delta-chart" ? hasDelta ? `Δ frame ${delta >= 0 ? "+" : ""}${delta}` : "Δ frame —" : `Progress ${done}/${total}`;
   return <box width={width} height={2} flexDirection="column" overflow="hidden"><text>{fitText(label, width)}</text><text fg={delta < 0 ? palette.red : palette.green}>{fitText(node.kind === "frame-delta-chart" ? hasDelta ? `${delta < 0 ? "▼" : "▲"} ${"▰".repeat(Math.min(Math.max(1, width - 4), Math.abs(delta) || 1))}` : "Δ unavailable: insufficient history" : progressDonutText(total ? done / total * 100 : 0, Math.max(3, width - 7)), width)}</text></box>;
 }
 
 export function TerminalDifferentialLogTable({ node, payload, width, height = 8 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
+  const palette = useTerminalPalette();
   const entries = list(source(node, payload)).slice(0, Math.max(1, height - 1));
   return <box width={width} height={height} flexDirection="column" overflow="hidden"><text fg={palette.dim}>{fitText("AGE  FRAME RESULT  DELTA DONE", width)}</text>{entries.length ? entries.map((entry, index) => { const row = record(entry), delta = number(row.frameDelta), frames = number(row.frames), frame = number(row.frame), marker = delta > 0 ? "▲" : delta < 0 ? "▼" : "·"; return <text key={`${text(row.timestamp)}-${index}`} fg={delta < 0 ? palette.red : delta > 0 ? palette.green : palette.muted}>{fitText(`${text(row.timestamp)} ${frame}/${frames} ${marker} ${typeof row.frameDelta === "number" ? Math.abs(delta) : "—"} ${frames ? `${Math.round(frame / frames * 100)}%` : "—"}`, width)}</text>; }) : <text fg={palette.dim}>{fitText("No log entries.", width)}</text>}</box>;
 }
 
 /** Field rows deliberately keep unavailable telemetry explicit instead of inventing a chart. */
 export function TerminalHybridFieldList({ node, payload, width, height = 8, expanded = false, selectedId }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string }) {
+  const palette = useTerminalPalette();
   const fields = list(resolveOvenPointer(payload, "/fields")).slice(0, Math.max(1, height)), telemetry = record(resolveOvenPointer(payload, "/telemetry"));
   const availability = typeof telemetry.status === "string" ? String(telemetry.status) : "absent";
   if (!fields.length) return <box width={width} height={height} overflow="hidden"><text fg={palette.dim}>{fitText(availability === "comparable" ? "No changed fields in this telemetry." : "No fields match the current view.", width)}</text></box>;

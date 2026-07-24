@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { supersampleImage } from "./image-supersample";
 import { decodePngDataUri } from "./png-glyph";
-import { fitText, palette } from "./theme";
+import { fitText } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 import "./supersample-surface";
 
 export function GlyphImage({ source, width, height }: { source: string | null; width: number; height: number }) {
+  const palette = useTerminalPalette();
   const result = useMemo(() => {
     if (!source) return { frame: null, error: "not captured" };
     try {

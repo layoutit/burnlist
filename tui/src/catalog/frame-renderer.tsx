@@ -31,6 +31,7 @@ import { admitTerminalOven, type JsonValue } from "../oven-runtime/terminal-cont
 import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { layoutTerminalNodes } from "../oven-runtime/layout/layout-runtime";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame, type TerminalFrameIndex } from "./frame-contract";
+import { orderedSemanticText } from "../terminal-accessibility";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const generated = resolve(root, "dashboard/src/generated/terminal-frames");
@@ -66,7 +67,7 @@ export function cellsFromFrame(frame: string, widthColumns: number, height: numb
 }
 function capture(setup: Awaited<ReturnType<typeof createTestRenderer>>, recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } }, fixture: string, checkpoint: string, fixtureSha256: string, provenance: TerminalFrame["renderer"]): TerminalFrame {
   const buffer = setup.renderer.currentRenderBuffer;
-  const text = recorded.frame.split("\n").map((line) => line.trimEnd());
+  const text = orderedSemanticText(recorded.frame);
   return { schema: FRAME_SCHEMA, fixture, checkpoint, viewport: { width: buffer.width, height: buffer.height }, semanticText: text, cells: cellsFromFrame(recorded.frame, buffer.width, buffer.height, recorded.buffers || {}), renderer: provenance, fixtureSha256 };
 }
 async function render(width: number, checkpoint: string, reducedMotion: boolean, key: string | null, provenance: TerminalFrame["renderer"], fixtureSha256: string, advance: number): Promise<TerminalFrame> {

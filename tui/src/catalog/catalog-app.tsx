@@ -34,6 +34,8 @@ import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/stat
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 import { initStreamingDiffNavigation, reduceStreamingDiffNavigation } from "../oven-runtime/streaming-diff-navigation";
+import { useTerminalPalette } from "../terminal-accessibility";
+import { useTerminalChrome } from "../terminal-chrome";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
 type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab" | "chiminea";
@@ -75,6 +77,7 @@ const modelLabOven = compile(modelLabSource, "ovens/model-lab/model-lab.oven");
 const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
 
 export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { shutdown(): void; clock?: Clock; modelLabClient?: ModelLabClient }) {
+  const chrome = useTerminalChrome();
   const [page, setPage] = useState<"catalog" | "preview">("catalog");
   const [selected, setSelected] = useState(0);
   const [mode, setMode] = useState<Mode>("wide");
@@ -171,10 +174,10 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   });
 
   if (page === "catalog") return <CatalogList fixture={fixture} selected={selected} onSelected={setSelected} />;
-  return <box width="100%" height="100%" flexDirection="column" backgroundColor="#151719" paddingLeft={2} paddingRight={2}>
+  return <box width="100%" height="100%" flexDirection="column" backgroundColor={chrome.background} paddingLeft={2} paddingRight={2}>
     <CatalogHeader title={fixture.label} right={`${mode} · ${stateName} · r${reload}`} />
     <box flexGrow={1} overflow="hidden" paddingTop={1} paddingBottom={1}>
-      <box key={`${fixture.id}-${reload}`} width={previewWidth} height={previewHeight} overflow="hidden" border={mode === "wide" ? ["left"] : undefined} borderColor="#3a3a40" paddingLeft={mode === "wide" ? 1 : 0}>
+      <box key={`${fixture.id}-${reload}`} width={previewWidth} height={previewHeight} overflow="hidden" border={mode === "wide" ? ["left"] : undefined} borderColor={chrome.line} paddingLeft={mode === "wide" ? 1 : 0}>
         {fixture.id === "flame" ? <FixtureFlame reducedMotion={stateName.startsWith("reduced")} clock={clock} /> : null}
         {fixture.id === "structural" ? <StructuralOvenViewport nodes={structuralOven.root} viewport={{ width: previewWidth - (mode === "wide" ? 1 : 0), height: previewHeight }} focusedPath={stateName === "focused" ? "root/1/2" : undefined} footer="" /> : null}
         {fixture.id === "progress" ? <TerminalOvenViewport result={progressResult} footer="" /> : null}
@@ -196,23 +199,26 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
 }
 
 function CatalogList({ fixture, selected, onSelected }: { fixture: (typeof catalogFixtures)[number]; selected: number; onSelected(value: number): void }) {
-  return <box width="100%" height="100%" flexDirection="column" backgroundColor="#151719" paddingLeft={2} paddingRight={2}>
+  const palette = useTerminalPalette(), chrome = useTerminalChrome();
+  return <box width="100%" height="100%" flexDirection="column" backgroundColor={chrome.background} paddingLeft={2} paddingRight={2}>
     <CatalogHeader title="Terminal catalog" right="paired review" />
     <box flexGrow={1} flexDirection="column" overflow="hidden" paddingTop={1}>
-      <text fg="#a8a8a8">Choose a reusable terminal fixture to inspect.</text>
+      <text fg={palette.muted}>Choose a reusable terminal fixture to inspect.</text>
       <box height={1} />
-      {catalogFixtures.map((entry, index) => <box key={entry.id} height={1} flexDirection="row" backgroundColor={index === selected ? "#282a2e" : "transparent"} paddingLeft={1} onMouseDown={() => onSelected(index)}>
-        <text fg={index === selected ? "#5aa2ff" : "#e8e8e8"}>{index === selected ? "› " : "  "}{entry.label}</text><text fg="#84888f">  {entry.detail}</text>
+      {catalogFixtures.map((entry, index) => <box key={entry.id} height={1} flexDirection="row" backgroundColor={index === selected ? chrome.surface : chrome.background} paddingLeft={1} onMouseDown={() => onSelected(index)}>
+        <text fg={index === selected ? palette.blue : palette.foreground}>{index === selected ? "› " : "  "}{entry.label}</text><text fg={palette.dim}>  {entry.detail}</text>
       </box>)}
-      <box height={1} /><text fg="#686868">Selected: {fixture.label}</text>
+      <box height={1} /><text fg={palette.dim}>Selected: {fixture.label}</text>
     </box>
     <CatalogFooter text="↑/↓:choose · enter:inspect · esc:exit" />
   </box>;
 }
 
 function CatalogHeader({ title, right }: { title: string; right: string }) {
-  return <box height={2} flexDirection="row" justifyContent="space-between" border={["bottom"]} borderColor="#3a3a40"><text fg="#e8e8e8">⟁  Burnlist · {title}</text><text fg="#a8a8a8">{right}</text></box>;
+  const palette = useTerminalPalette(), chrome = useTerminalChrome();
+  return <box height={2} flexDirection="row" justifyContent="space-between" border={["bottom"]} borderColor={chrome.line}><text fg={palette.foreground}>⟁  Burnlist · {title}</text><text fg={palette.muted}>{right}</text></box>;
 }
 function CatalogFooter({ text }: { text: string }) {
-  return <box height={2} flexDirection="row" border={["top"]} borderColor="#3a3a40" alignItems="center"><text fg="#84888f">{text}</text></box>;
+  const palette = useTerminalPalette(), chrome = useTerminalChrome();
+  return <box height={2} flexDirection="row" border={["top"]} borderColor={chrome.line} alignItems="center"><text fg={palette.dim}>{text}</text></box>;
 }

@@ -1,4 +1,5 @@
-import { fitText, palette } from "../../theme";
+import { fitText } from "../../theme";
+import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding } from "../value-runtime";
 
@@ -36,6 +37,7 @@ export function statusActivityText(model: StatusSurfaceModel, width: number) {
 
 /** Fixed-height terminal-native heading/status/note/empty projection. */
 export function TerminalStatusSurface({ node, payload, width, height = 2 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
+  const palette = useTerminalPalette();
   const model = statusSurfaceModel(node, payload), lineWidth = Math.max(1, Math.floor(width)), rows = Math.max(1, Math.floor(height));
   const tone = model.activity === "failed" ? palette.red : model.activity === "idle" ? palette.dim : model.activity === "running" ? palette.blue : palette.amber;
   if (node.kind === "refresh-status") return <box width={lineWidth} height={rows} overflow="hidden"><text fg={tone}>{statusActivityText(model, lineWidth)}</text></box>;

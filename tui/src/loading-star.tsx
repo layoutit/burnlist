@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { palette } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
 
 const frames = ["·", "✧", "✦", "✧"];
 
 export function LoadingStar({ label }: { label: string }) {
+  const palette = useTerminalPalette();
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setFrame((value) => (value + 1) % frames.length), 120);

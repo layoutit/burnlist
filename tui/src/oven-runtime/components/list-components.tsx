@@ -1,4 +1,6 @@
-import { fitText, palette, visibleWindow } from "../../theme";
+import { fitText, visibleWindow } from "../../theme";
+import { useTerminalPalette, type TerminalPalette } from "../../terminal-accessibility";
+import { useTerminalChrome } from "../../terminal-chrome";
 import type { ListColumn, ListRow } from "../../catalog/list-fixture";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding, resolveOvenPointer } from "../value-runtime";
@@ -13,7 +15,7 @@ export type TerminalListModel = Readonly<{
   emptyText?: string;
 }>;
 
-const toneFor = (row: ListRow) => row.tone === "bad" ? palette.red : row.tone === "warn" ? palette.amber : row.tone === "good" ? palette.green : palette.muted;
+const toneFor = (row: ListRow, palette: TerminalPalette) => row.tone === "bad" ? palette.red : row.tone === "warn" ? palette.amber : row.tone === "good" ? palette.green : palette.muted;
 
 export function listColumnWidths(columns: readonly ListColumn[], width: number): readonly number[] {
   if (!columns.length) return [];
@@ -43,15 +45,18 @@ function ListCell({ value, width, color }: { value: string; width: number; color
 }
 
 function ListLine({ model, row, selected, header }: { model: TerminalListModel; row?: ListRow; selected?: boolean; header?: boolean }) {
+  const palette = useTerminalPalette();
+  const chrome = useTerminalChrome();
   const widths = listColumnWidths(model.columns, model.width);
-  return <box height={1} width={model.width} flexDirection="row" backgroundColor={header ? "#202227" : selected ? "#282a2e" : "transparent"} overflow="hidden">
+  return <box height={1} width={model.width} flexDirection="row" backgroundColor={header ? chrome.header : selected ? chrome.surface : chrome.background} overflow="hidden">
     <box width={2} flexShrink={0}><text fg={selected ? palette.blue : row?.latest ? palette.amber : "transparent"}>{selected ? "▎ " : row?.latest ? "• " : "  "}</text></box>
-    {model.columns.map((column, index) => <ListCell key={column.id} width={widths[index]!} color={header ? palette.dim : column.id === "state" ? toneFor(row!) : selected ? palette.foreground : palette.muted} value={header ? column.label : String(row?.cells[column.id] ?? "")} />)}
+    {model.columns.map((column, index) => <ListCell key={column.id} width={widths[index]!} color={header ? palette.dim : column.id === "state" ? toneFor(row!, palette) : selected ? palette.foreground : palette.muted} value={header ? column.label : String(row?.cells[column.id] ?? "")} />)}
   </box>;
 }
 
 /** Measured, footer-safe list primitive shared by terminal log, ledger, feed, and field previews. */
 export function TerminalList({ model }: { model: TerminalListModel }) {
+  const palette = useTerminalPalette();
   const selected = Math.max(0, model.rows.findIndex((row) => row.id === model.selectedId));
   const expanded = model.rows.find((row) => row.id === model.expandedId);
   const expandedRows = expanded?.detail ? 1 : 0;

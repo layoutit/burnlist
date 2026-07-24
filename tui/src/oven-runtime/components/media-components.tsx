@@ -1,6 +1,7 @@
 import { GlyphImage } from "../../glyph-image";
 import { decodePngDataUri } from "../../png-glyph";
-import { fitText, palette } from "../../theme";
+import { fitText } from "../../theme";
+import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding, resolveOvenPointer } from "../value-runtime";
 
@@ -67,21 +68,25 @@ export function validateVerdictRoot(node: TerminalNode, payload: JsonValue | und
 }
 
 export function TerminalDomainTabs({ model, width }: { model: MediaModel; width: number }) {
+  const palette = useTerminalPalette();
   const text = model.domains.map((domain) => domain === model.selected ? `[${domain}]` : domain).join("  ");
   return <text fg={palette.blue}>{fitText(`←/→ domains: ${text}`, width)}</text>;
 }
 
 export function TerminalVerdictHeader({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+  const palette = useTerminalPalette();
   const pass = Boolean(value(node, "targetPass", payload)), frames = string(value(node, "framesCount", payload)), error = string(value(node, "error", payload));
   return <text fg={pass ? palette.green : palette.red}>{fitText(error ? `Verdict: ${error}` : `Verdict: ${pass ? "PASS" : "FAIL"}${frames ? ` · ${frames} frames` : ""}`, width)}</text>;
 }
 
 export function TerminalMetricTiles({ model, width }: { model: MediaModel; width: number }) {
+  const palette = useTerminalPalette();
   const compact = model.metrics.map(([label, metric]) => `${label} ${metric}`).join(" · ");
   return <box width={width} height={width < 48 ? 4 : 2} flexDirection="column" overflow="hidden">{width < 48 ? model.metrics.map(([label, metric]) => <text key={label}>{fitText(`${label}: ${metric}`, width)}</text>) : <text>{fitText(compact, width)}</text>}</box>;
 }
 
 function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; width: number; height: number }) {
+  const palette = useTerminalPalette();
   const imageWidth = Math.max(4, Math.floor((width - 4) / 3));
   const imageHeight = Math.max(1, Math.min(7, height - 3));
   return <box width={width} height={height} flexDirection="column" overflow="hidden" border={height > 3 ? ["top"] : undefined} borderColor={palette.dim}>
@@ -97,6 +102,7 @@ export function TerminalFrameCards({ model, width, height }: { model: MediaModel
 }
 
 export function TerminalMediaSurface({ nodes, payload, controls, width, height }: { nodes: readonly TerminalNode[]; payload?: JsonValue; controls: Readonly<Record<string, string | boolean>>; width: number; height: number }) {
+  const palette = useTerminalPalette();
   const model = mediaModel(nodes, payload, controls);
   return <box width={width} height={height} flexDirection="column" overflow="hidden"><TerminalDomainTabs model={model} width={width} /><TerminalMetricTiles model={model} width={width} />{model.note ? <text fg={palette.muted}>{fitText(model.note, width)}</text> : null}<TerminalFrameCards model={model} width={width} height={Math.max(3, height - 4)} /></box>;
 }
