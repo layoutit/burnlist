@@ -142,21 +142,20 @@ checklist and ledger under its lifecycle lock, and records an idempotent
 receipt. Repeating `complete` returns the existing receipt without burning the
 item twice.
 
-The canonical Checklist Oven is read-only. Its progress row always follows the
-first active checklist item, even while a different item is inspected through
-an item deep link (`#<item-id>`). A current item with a Loop gets a compact
-box-drawing graph beside Completion; its active node is highlighted and its
-footer legend is derived from the displayed graph. Direct items have no graph,
-so the Loop panel collapses and Completion uses the available width.
+The canonical Checklist Oven is read-only. A centered KPI row is followed by
+the existing Progress ledger and Completion trend. Below them, one unified
+Items list contains current, pending, and completed work beside one selected
+Item detail. Selecting any item through the list or an item deep link
+(`#<item-id>`) changes only the detail.
 
-Below that row, the Checklist Oven presents three compact columns: completed
-events, the remaining item queue, and the inspected item detail. Selecting an
-item changes only the detail column. The detail includes the item's action,
-completion criterion, validation, file hints, assigned Loop, outcome-labelled
-return paths, and a graph-derived node legend. An assigned item without a Run
-uses its frozen assignment graph as a preview; an unassigned item is explicitly
-labelled as direct execution. Transient stale-snapshot notices float above the
-page so refreshes do not reflow or flicker the layout.
+The detail includes an active item's action, completion criterion, validation,
+file hints, assigned Loop, outcome-labelled return paths, and graph-derived
+node legend. The current item's live Run is highlighted there; a future
+assigned item uses its frozen assignment graph as a preview; an unassigned item
+is explicitly labelled as direct execution. Completed items reuse the same list
+and detail surface for their timestamp and recorded outcome, so Events are not
+duplicated as a separate column or card feed. Transient stale-snapshot notices
+float above the page so refreshes do not reflow or flicker the layout.
 
 The graph vocabulary is semantic: `S` is Start, a converged terminal is `B` for
 Burn, and agent, check, review, and gate symbols come from the actual topology.

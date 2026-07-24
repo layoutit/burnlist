@@ -13,9 +13,12 @@ const stylesheetPath = new URL("./ChecklistDashboard.css", import.meta.url).path
 const libPath = new URL("../../lib", import.meta.url).pathname;
 const ovenPath = new URL("../../oven", import.meta.url).pathname;
 
-test("checklist progress owns its workspace height instead of inheriting the differential default", async () => {
+test("checklist keeps a centered horizontal KPI strip above matched Progress and Completion panels", async () => {
   const stylesheet = await readFile(stylesheetPath, "utf8");
-  assert.match(stylesheet, /body\.checklist-detail-view \.shell\.checklist-detail-shell #burnlist-detail \.checklist-overview:not\(\[hidden\]\) \+ \.checklist-progress-workspace \{\s+height: 232px;\s+min-height: 232px;\s+max-height: 232px;/u);
+  assert.match(stylesheet, /\.checklist-detail-shell #burnlist-detail \{\s+width: min\(100%, 1440px\);\s+margin-inline: auto;/u);
+  assert.match(stylesheet, /\.checklist-detail-shell #burnlist-detail \.checklist-progress-workspace \{[^}]+grid-template-columns: minmax\(320px, 38%\) minmax\(0, 62%\);/su);
+  assert.match(stylesheet, /@media \(min-width: 521px\) and \(max-width: 640px\) \{[\s\S]+grid-template-columns: minmax\(240px, 38%\) minmax\(0, 62%\);[\s\S]+\.event-ledger-panel \{[\s\S]+grid-column: 1;[\s\S]+grid-row: 1;[\s\S]+\.progress-panel \{[\s\S]+grid-column: 2;[\s\S]+grid-row: 1;/u);
+  assert.match(stylesheet, /@media \(max-width: 520px\) \{[\s\S]+\.event-ledger-panel,[\s\S]+\.progress-panel \{\s+width: 100%;/u);
 });
 
 test("checklist detail renders the split progress surface and event card list", async () => {
@@ -46,13 +49,13 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.doesNotMatch(markup, /aria-label="Burnlist progress chart view"/u);
     assert.match(markup, /<span>Age<\/span><span>Event<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
     assert.match(markup, /class="checklist-workspace"/u);
-    assert.match(markup, /aria-label="Completed events"/u);
-    assert.match(markup, /aria-label="Remaining items"/u);
-    assert.match(markup, /class="checklist-workspace__empty">No active item/u);
-    assert.equal((markup.match(/class="checklist-workspace__event"/gu) ?? []).length, 2);
+    assert.match(markup, /aria-label="All items"/u);
+    assert.match(markup, /aria-label="Item B2 detail"/u);
+    assert.match(markup, /<span>Item detail<\/span><span>Completed<\/span>/u);
+    assert.equal((markup.match(/class="checklist-workspace__item is-completed/gu) ?? []).length, 2);
     assert.equal(markup.indexOf("Second event") < markup.indexOf("First event"), true);
     assert.doesNotMatch(markup, /data-event-card="true"/u);
-    assert.doesNotMatch(markup, /Completed: 2026/u);
+    assert.equal((markup.match(/<dt>Completed<\/dt>/gu) ?? []).length, 1);
     assert.doesNotMatch(markup, />DONE</u);
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);
     assert.doesNotMatch(markup, /Burnlist detail view/u);

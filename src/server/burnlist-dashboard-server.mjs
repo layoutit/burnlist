@@ -1036,7 +1036,9 @@ function payloadForPlan(selection, selectedItemId = null) {
     title: plan.title,
     planPath: selection.planPath,
     planLabel: plan.planLabel,
-    selectedItemId: plan.items.some((item) => item.id === selectedItemId) ? selectedItemId : plan.items[0]?.id ?? null,
+    selectedItemId: [...plan.items, ...plan.completed].some((item) => item.id === selectedItemId)
+      ? selectedItemId
+      : plan.items[0]?.id ?? plan.completed.at(-1)?.id ?? null,
     total,
     done,
     remaining,

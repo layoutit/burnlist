@@ -1,16 +1,23 @@
 <oven id="checklist" version="0.1.0" contract="checklist-progress@1" theme="checklist">
-  <kpi-strip>
-    <kpi-item variant="current" heading="Current" icon="ClipboardList" title="/current/title" value="/current/value"/>
-    <kpi-item heading="Progress" title="/progress/title">
-      <progress-donut source="/progress/percent"/>
-      <progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/>
-    </kpi-item>
-    <kpi-item heading="Elapsed" icon="Clock3" value="/durations/elapsed"/>
-    <kpi-item heading="Avg pace" icon="Gauge" value="/durations/pace"/>
-    <kpi-item heading="Time left" icon="TimerReset" value="/durations/timeLeft"/>
-  </kpi-strip>
-  <checklist-ledger source="/raw"/>
-  <checklist-burn-panel source="/raw"/>
-  <checklist-current source="/raw"/>
-  <checklist-event-cards source="/raw"/>
+  <box element="div" class="shell detail-view-shell driving-parity-view checklist-detail-shell">
+    <box element="main" class="detail-view" id="burnlist-detail">
+      <box element="section" class="differential-overview checklist-overview">
+        <kpi-strip>
+          <kpi-item variant="current" heading="Current" icon="ClipboardList" title="/current/title" value="/current/value"/>
+          <kpi-item heading="Progress" title="/progress/title">
+            <progress-donut source="/progress/percent"/>
+            <progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/>
+          </kpi-item>
+          <kpi-item heading="Elapsed" icon="Clock3" value="/durations/elapsed"/>
+          <kpi-item heading="Avg pace" icon="Gauge" value="/durations/pace"/>
+          <kpi-item heading="Time left" icon="TimerReset" value="/durations/timeLeft"/>
+        </kpi-strip>
+      </box>
+      <box element="div" class="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard">
+        <checklist-ledger source="/raw"/>
+        <checklist-burn-panel source="/raw"/>
+      </box>
+      <checklist-event-cards source="/raw"/>
+    </box>
+  </box>
 </oven>

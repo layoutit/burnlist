@@ -96,7 +96,8 @@ test("M9 no-network CLI slice exposes interruption, repair, invalidation refetch
     assert.equal(escalationHttp.status, 200); const escalationProjection = JSON.parse(escalationHttp.body).loopRun;
     assert.deepEqual(escalationProjection, escalationInspection);
     const needsHumanUi = render("needs-human", escalationProjection);
-    assert.match(needsHumanUi.dom, /<section aria-label="Loop for item L29" class="panel checklist-current" id="L29">/u);
+    assert.match(needsHumanUi.dom, /<section aria-label="Item L29 detail" class="checklist-workspace__column checklist-workspace__detail">/u);
+    assert.match(needsHumanUi.dom, /<pre aria-label="Loop for L29" class="loop-compact" role="img">/u);
     assert.match(needsHumanUi.dom, /aria-current="step"/u);
     assert.equal(existsSync(join(repo, ".local", "burnlist", "loop", "m2", "runs", Buffer.from(escalation).toString("hex"), "completion-receipt.json")), false);
     assert.match(readFileSync(planPath, "utf8"), /- \[ \] L29/u);

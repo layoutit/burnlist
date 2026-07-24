@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 10215,
-    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
   }
 ]
