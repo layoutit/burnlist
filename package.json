@@ -42,6 +42,7 @@
     "generate:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --write",
     "check:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --check",
     "tui": "npm --prefix tui run dev --",
+    "catalog:tui": "npm --prefix tui run catalog --",
     "verify": "node scripts/verify.mjs",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",

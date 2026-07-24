@@ -1,0 +1,100 @@
+import { useKeyboard } from "@opentui/react";
+import { useMemo, useState } from "react";
+// @ts-expect-error The Oven compiler is intentionally JavaScript.
+import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
+import progressSource from "./progress-fixture.oven" with { type: "text" };
+import structuralSource from "./structural-fixture.oven" with { type: "text" };
+import { FixtureFlame } from "./fixture-flame";
+import { glyphFixture } from "./glyph-fixture";
+import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
+import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
+import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
+import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
+
+type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
+type FixtureId = "flame" | "structural" | "progress";
+type Mode = "wide" | "narrow";
+const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
+  { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
+  { id: "structural", label: "Structural layout", detail: "compiled layout projection", checkpoints: ["initial", "focused"] },
+  { id: "progress", label: "Progress components", detail: "KPI strip and glyph metrics", checkpoints: ["ready", "complete"] },
+];
+const progressPayloads = [
+  { percent: 57, done: 4, total: 7, burns: [{ result: "pass" }, { result: "worsened" }, { result: "blocked" }], metric: { total: 8, failed: 2 }, required: "ready" },
+  { percent: 100, done: 7, total: 7, burns: [{ result: "pass" }, { result: "pass" }, { result: "pass" }], metric: { total: 8, failed: 0 }, required: "complete" },
+] as const satisfies readonly JsonValue[];
+
+function compile(source: string, file: string): TerminalOvenIR {
+  const result = compileOven(source, { file });
+  if (!result.ok) throw new Error(result.diagnostics.map((entry: { message: string }) => entry.message).join("\n"));
+  return result.ir as TerminalOvenIR;
+}
+const structuralOven = compile(structuralSource, "tui/src/catalog/structural-fixture.oven");
+const progressOven = compile(progressSource, "tui/src/catalog/progress-fixture.oven");
+const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
+
+export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void; clock?: Clock }) {
+  const [page, setPage] = useState<"catalog" | "preview">("catalog");
+  const [selected, setSelected] = useState(0);
+  const [mode, setMode] = useState<Mode>("wide");
+  const [checkpoint, setCheckpoint] = useState(0);
+  const [reload, setReload] = useState(0);
+  const fixture = catalogFixtures[selected]!;
+  const previewWidth = mode === "wide" ? 72 : 36;
+  const previewHeight = mode === "wide" ? 16 : 14;
+  const stateName = fixture.checkpoints[checkpoint % fixture.checkpoints.length]!;
+  const progressResult = useMemo(() => admitTerminalOven(progressOven, { status: "ready", payload: progressPayloads[checkpoint % progressPayloads.length]! }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [checkpoint, previewHeight, previewWidth, reload]);
+
+  const move = (amount: number) => setSelected((value) => (value + amount + catalogFixtures.length) % catalogFixtures.length);
+  const nextCheckpoint = () => setCheckpoint((value) => (value + 1) % fixture.checkpoints.length);
+  useKeyboard((key) => {
+    const pressed = key.name ?? key.sequence;
+    if (pressed === "escape") { if (page === "preview") setPage("catalog"); else shutdown(); return; }
+    if (pressed === "q") { if (page === "preview") setPage("catalog"); return; }
+    if (page === "catalog") {
+      if (pressed === "up") move(-1);
+      else if (pressed === "down") move(1);
+      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setPage("preview"); }
+      return;
+    }
+    if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
+    else if (pressed === "left" || pressed === "right") nextCheckpoint();
+    else if (pressed === "c" || pressed === "s" || pressed === "tab") nextCheckpoint();
+    else if (pressed === "r") setReload((value) => value + 1);
+  });
+
+  if (page === "catalog") return <CatalogList fixture={fixture} selected={selected} onSelected={setSelected} />;
+  return <box width="100%" height="100%" flexDirection="column" backgroundColor="#151719" paddingLeft={2} paddingRight={2}>
+    <CatalogHeader title={fixture.label} right={`${mode} · ${stateName} · r${reload}`} />
+    <box flexGrow={1} overflow="hidden" paddingTop={1} paddingBottom={1}>
+      <box key={`${fixture.id}-${reload}`} width={previewWidth} height={previewHeight} overflow="hidden" border={mode === "wide" ? ["left"] : undefined} borderColor="#3a3a40" paddingLeft={mode === "wide" ? 1 : 0}>
+        {fixture.id === "flame" ? <FixtureFlame reducedMotion={stateName.startsWith("reduced")} clock={clock} /> : null}
+        {fixture.id === "structural" ? <StructuralOvenViewport nodes={structuralOven.root} viewport={{ width: previewWidth - (mode === "wide" ? 1 : 0), height: previewHeight }} focusedPath={stateName === "focused" ? "root/1/2" : undefined} footer="" /> : null}
+        {fixture.id === "progress" ? <TerminalOvenViewport result={progressResult} footer="" /> : null}
+      </box>
+    </box>
+    <CatalogFooter text="v:view · c:state · r:reload · q:back" />
+  </box>;
+}
+
+function CatalogList({ fixture, selected, onSelected }: { fixture: (typeof catalogFixtures)[number]; selected: number; onSelected(value: number): void }) {
+  return <box width="100%" height="100%" flexDirection="column" backgroundColor="#151719" paddingLeft={2} paddingRight={2}>
+    <CatalogHeader title="Terminal catalog" right="paired review" />
+    <box flexGrow={1} flexDirection="column" overflow="hidden" paddingTop={1}>
+      <text fg="#a8a8a8">Choose a reusable terminal fixture to inspect.</text>
+      <box height={1} />
+      {catalogFixtures.map((entry, index) => <box key={entry.id} height={1} flexDirection="row" backgroundColor={index === selected ? "#282a2e" : "transparent"} paddingLeft={1} onMouseDown={() => onSelected(index)}>
+        <text fg={index === selected ? "#5aa2ff" : "#e8e8e8"}>{index === selected ? "› " : "  "}{entry.label}</text><text fg="#84888f">  {entry.detail}</text>
+      </box>)}
+      <box height={1} /><text fg="#686868">Selected: {fixture.label}</text>
+    </box>
+    <CatalogFooter text="↑/↓:choose · enter:inspect · esc:exit" />
+  </box>;
+}
+
+function CatalogHeader({ title, right }: { title: string; right: string }) {
+  return <box height={2} flexDirection="row" justifyContent="space-between" border={["bottom"]} borderColor="#3a3a40"><text fg="#e8e8e8">⟁  Burnlist · {title}</text><text fg="#a8a8a8">{right}</text></box>;
+}
+function CatalogFooter({ text }: { text: string }) {
+  return <box height={2} flexDirection="row" border={["top"]} borderColor="#3a3a40" alignItems="center"><text fg="#84888f">{text}</text></box>;
+}

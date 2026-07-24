@@ -6,6 +6,7 @@
   "scripts": {
     "build": "bun build src/main.tsx --compile --minify --outfile dist/burnlist-tui",
     "dev": "bun src/main.tsx",
+    "catalog": "bun src/catalog/main.tsx",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "generate:story-frames": "bun src/catalog/frame-renderer.tsx --write",
