@@ -1,5 +1,8 @@
 import type { LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
 import { adaptOvenDefinition, ovenDataPath, ovenDefinitionPath, type OvenQuery, type OvenScope } from "./oven-runtime/definition-adapter";
+import { adaptStreamingDiff } from "../../dashboard/src/lib/streaming-diff-oven-adapter";
+// @ts-expect-error Console feed mapper is the canonical route/filter boundary.
+import { mapStreamingDiffFeeds } from "../../dashboard/src/lib/streaming-diff.mjs";
 
 function baseUrl(input: string): string {
   const url = new URL(input);
@@ -71,6 +74,15 @@ export function createDataClient(input: string) {
     },
     ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<SnapshotFetch<OvenDataSnapshot>> {
       return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal);
+    },
+    async streamingFeeds(repoKey: string, signal?: AbortSignal) {
+      const raw = await getJson<unknown>(base, `/api/oven-data/streaming-diff?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);
+      return mapStreamingDiffFeeds(raw).filter((feed: { identity: { logicalRepoKey: string } }) => feed.identity.logicalRepoKey === repoKey);
+    },
+    async streamingSession(repoKey: string, worktreeKey: string, session: string, signal?: AbortSignal): Promise<OvenDataSnapshot> {
+      const query = new URLSearchParams({ repoKey, worktreeKey, session });
+      const raw = await getJson<unknown>(base, `/api/oven-data/streaming-diff?${query}`, cache, signal);
+      return { ovenId: "streaming-diff", payload: adaptStreamingDiff(raw as never) };
     },
     async oven(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<OvenPackageDetail> {
       const scope: OvenScope = { ovenId, repoKey };

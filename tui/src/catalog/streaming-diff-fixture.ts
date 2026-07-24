@@ -4,6 +4,9 @@ const raw = { identity: { logicalRepoKey: "fixture-repository", worktreeKey: "ma
 export const streamingDiffFixture = { id: "streaming-diff", checkpoints: ["collapsed", "expanded"] as const, raw, payload: adaptStreamingDiff(raw as any) as any } as const;
 /** The landing feed model is separate from the selected-session Oven payload. */
 export const streamingFeedFixture = {
-  feeds: [{ identity: raw.identity, repoLabel: "Example", updatedAt: raw.updatedAt }],
+  feeds: [
+    { identity: raw.identity, repoLabel: "Example", updatedAt: raw.updatedAt, href: "/r/fixture-repository/o/streaming-diff?worktreeKey=main&session=run-42" },
+    { identity: { logicalRepoKey: "fixture-repository", worktreeKey: "feature", session: "run-43" }, repoLabel: "Example", updatedAt: "2026-07-24T09:00:00Z", href: "/r/fixture-repository/o/streaming-diff?worktreeKey=feature&session=run-43" },
+  ],
   showRepository: true,
 } as const;

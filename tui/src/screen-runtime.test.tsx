@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { compileGlyph } from "../../src/glyph/glyph-compile.mjs";
@@ -10,6 +11,9 @@ import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { detailItems } from "./detail-items";
 import { ScreenRuntime, type ScreenRuntimeProps } from "./screen-runtime";
 import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
+import { admitTerminalOven } from "./oven-runtime/terminal-contract";
+import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components/terminal-capabilities";
+import { streamingDiffFixture } from "./catalog/streaming-diff-fixture";
 
 const renderers: Array<{ destroy(): void }> = [];
 afterEach(() => { while (renderers.length) renderers.pop()?.destroy(); });
@@ -266,5 +270,25 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("domain-tabs → frame-card → metric-tiles");
     expect(frame).toContain("Compare trusted reference and candidate frames.");
     root.unmount();
+  });
+
+  test("keeps retained Streaming Diff session errors and its footer inside narrow and short viewports", async () => {
+    const source = readFileSync(new URL("../../ovens/streaming-diff/streaming-diff.oven", import.meta.url), "utf8");
+    // @ts-expect-error Production compiler intentionally remains JavaScript.
+    const oven = (await import("../../src/ovens/dsl/oven-compile.mjs")).compileOven(source); if (!oven.ok) throw new Error("fixture compile failed");
+    for (const [width, height] of [[40, 18], [80, 24]] as const) {
+      const runtime = admitTerminalOven(oven.ir, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width, height: height - 4 } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+      const navigation = { page: "session" as const, feeds: [], selectedFeed: 0, selectedCard: 0, selectedFile: 0, expandedFile: null, session: { identity: streamingDiffFixture.raw.identity, updatedAt: streamingDiffFixture.raw.updatedAt, href: "/stream" }, feedStatus: "ready" as const, sessionError: "The stream disconnected while this retained card remains readable and must not cross the footer.", restoreFocus: "oven-list" as const };
+      const { frame, root } = await renderFrame(width, height, props({ screen: parsed(ovenSource), ovenRuntime: runtime, streamingNavigation: navigation }));
+      const lines = frame.split("\n"); expect(frame).toContain("stream disconnected"); expect(frame).toContain("q/esc:back"); expect(lines.at(-2)).toContain("q/esc:back"); expect(lines.every((line) => Array.from(line).length <= width)).toBe(true); root.unmount();
+    }
+  });
+
+  test("keeps Streaming Diff feed loading, error, and empty states distinct", async () => {
+    for (const [status, error, expected] of [["loading", "", "Loading recent feeds."], ["error", "Feed unavailable.", "Feed unavailable."], ["empty", "", "No recent feeds."]] as const) for (const [width, height] of [[40, 18], [80, 24]] as const) {
+      const navigation = { page: "feeds" as const, feeds: [], selectedFeed: 0, selectedCard: 0, selectedFile: 0, expandedFile: null, session: null, feedStatus: status as "loading" | "error" | "empty", sessionError: error, restoreFocus: "oven-list" as const };
+      const { frame, root } = await renderFrame(width, height, props({ screen: parsed(ovenSource), streamingNavigation: navigation }));
+      expect(frame).toContain(expected); expect(frame).toContain("q/esc:back"); expect(frame.split("\n").every((line) => Array.from(line).length <= width)).toBe(true); root.unmount();
+    }
   });
 });

@@ -11,7 +11,7 @@ import { TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDiffer
 import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
 import { TerminalModelLabView } from "./model-lab-components";
 
-type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string }>;
+type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
@@ -43,7 +43,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "differential-kpi-strip") TerminalDifferentialKpiStrip({ node: root.node, payload: result.payload, width: result.state.viewport.width });
-      else if (root.node.kind === "diff-card") streamingDiffModel(root.node, result.payload, result.state.expandedKeys.includes("streaming-diff:first-file"));
+      else if (root.node.kind === "diff-card") streamingDiffModel(root.node, result.payload);
       else if (["section-header", "refresh-status", "differential-empty-state"].includes(root.node.kind) || root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom !== "string") statusSurfaceModel(root.node, result.payload);
       else if (root.node.kind === "verdict-header") validateVerdictRoot(root.node, result.payload);
     }
@@ -65,7 +65,7 @@ function StructuralCell({ cell }: { cell: LayoutCell }) {
  * byte-stable StructuralOvenViewport; this surface reserves component roots,
  * suppresses their projected descendants, and paints through a closed registry.
  */
-export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { result: TerminalRenderResult; footer?: string }) {
+export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", streaming }: { result: TerminalRenderResult; footer?: string; streaming?: { selectedCard: number; selectedFile: number; expandedKey: string | null } }) {
   const prepared = prepareTerminalComponentResult(result), viewport = prepared.state.viewport, footerHeight = 2, bodyHeight = Math.max(1, viewport.height - footerHeight);
   if (prepared.status !== "ready" || !prepared.ir || prepared.payload === undefined) {
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
@@ -90,7 +90,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { 
         }
         const collectionId = typeof root.node.attributes.collectionFrom === "string" ? root.node.attributes.collectionFrom : "";
         const fieldKey = prepared.state.expandedKeys.find((key) => key.startsWith(`${collectionId}:`));
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { expanded: prepared.state.expandedKeys.includes("streaming-diff:first-file") } : root.node.kind === "field-list" ? { expanded: !!fieldKey, selectedId: fieldKey?.slice(collectionId.length + 1) } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { selectedCard: streaming?.selectedCard ?? 0, selectedFile: streaming?.selectedFile ?? 0, expandedKey: streaming?.expandedKey ?? (prepared.state.expandedKeys.includes("streaming-diff:first-file") ? "a1b2:src/app.ts" : null) } : root.node.kind === "field-list" ? { expanded: !!fieldKey, selectedId: fieldKey?.slice(collectionId.length + 1) } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

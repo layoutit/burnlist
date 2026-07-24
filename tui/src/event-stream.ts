@@ -38,20 +38,21 @@ export function isDashboardInvalidation(event: OvenEvent): boolean {
 }
 
 export function parseSseFrames(buffer: string): {
-  frames: Array<{ event: string; data: string }>;
+  frames: Array<{ event: string; data: string; id?: string }>;
   remainder: string;
 } {
   const normalized = buffer.replace(/\r\n/gu, "\n");
   const chunks = normalized.split("\n\n");
   const remainder = chunks.pop() ?? "";
   const frames = chunks.flatMap((chunk) => {
-    let event = "message";
+    let event = "message", id: string | undefined;
     const data: string[] = [];
     for (const line of chunk.split("\n")) {
       if (line.startsWith("event:")) event = line.slice(6).trimStart();
+      if (line.startsWith("id:")) id = line.slice(3).trimStart();
       if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
     }
-    return data.length ? [{ event, data: data.join("\n") }] : [];
+    return data.length ? [{ event, data: data.join("\n"), ...(id ? { id } : {}) }] : [];
   });
   return { frames, remainder };
 }

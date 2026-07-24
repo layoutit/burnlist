@@ -7,8 +7,10 @@ import { BurnlistList, LandingSectionHeading, OvenList } from "./landing-view";
 import { genericOvens } from "./oven-fit";
 import { OvenPane } from "./oven-view";
 import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
+import { TerminalStreamingFeedList } from "./oven-runtime/components/streaming-diff-components";
+import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
-import { palette } from "./theme";
+import { fitText, palette } from "./theme";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
 import type {
   BurnlistSummary,
@@ -38,6 +40,7 @@ export interface ScreenRuntimeProps {
   streamStatus: StreamStatus;
   notice?: { message: string; tone: "error" | "info" } | null;
   ovenRuntime?: TerminalRenderResult | null;
+  streamingNavigation?: StreamingDiffNavigation | null;
 }
 
 function listRows(height: number): number {
@@ -108,6 +111,11 @@ function DetailSplit({ node, props, width, height, chrome }: {
     </box>
   </box>;
 }
+function StreamingSession({ props, width, height }: { props: ScreenRuntimeProps; width: number; height: number }) {
+  const navigation = props.streamingNavigation!, error = navigation.sessionError, available = Math.max(3, height - 1 - (error ? 1 : 0));
+  const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: Math.max(1, width - 6), height: available } } }) : null;
+  return <box height={height} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden" flexDirection="column">{error ? <box height={1} overflow="hidden"><text fg={palette.amber}>{fitText(error, Math.max(1, width - 6))}</text></box> : null}{runtime ? <TerminalOvenViewport result={runtime} footer="←/→:card · ↑/↓:file · enter:expand · r:refresh · q:feeds" streaming={{ selectedCard: navigation.selectedCard, selectedFile: navigation.selectedFile, expandedKey: navigation.expandedFile }} /> : <text>Loading session…</text>}</box>;
+}
 
 function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, height: number, chrome: TerminalChrome): React.ReactNode {
   const key = `${node.kind}:${node.source.offset}`;
@@ -154,6 +162,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "detail-split":
       return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
     case "oven-detail":
+      if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 3} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 4} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 3} />;
       return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} />;
     case "item-detail":
       return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 3} />;

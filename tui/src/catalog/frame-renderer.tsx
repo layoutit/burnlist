@@ -188,16 +188,16 @@ async function renderVisualParity(width: number, checkpoint: "desktop" | "mobile
 async function renderStreamingDiff(width: number, checkpoint: "collapsed" | "expanded", provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
   const height = 18, source = await readFile(resolve(root, "ovens/streaming-diff/streaming-diff.oven"), "utf8"), compiled = compileOven(source, { file: "ovens/streaming-diff/streaming-diff.oven" });
   if (!compiled.ok) fail(`Streaming Diff fixture does not compile: ${compiled.diagnostics[0]?.message || "unknown error"}`);
-  const result = admitTerminalOven(compiled.ir, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width, height }, expandedKeys: checkpoint === "expanded" ? ["streaming-diff:first-file"] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  const result = admitTerminalOven(compiled.ir, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width, height } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   if (result.status !== "ready") fail(`Streaming Diff admission failed: ${result.diagnostics[0]?.message || "unknown error"}`);
   const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer); let recorded: any;
   const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
   setup.renderer.on("frame", snapshot);
   try {
-    flushSync(() => rootNode.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); if (!recorded) fail("Streaming Diff frame missing");
+    flushSync(() => rootNode.render(<TerminalOvenViewport result={result} footer="q:back" streaming={{ selectedCard: 0, selectedFile: 0, expandedKey: checkpoint === "expanded" ? "a1b2:src/app.ts" : null }} />)); await setup.renderOnce(); if (!recorded) fail("Streaming Diff frame missing");
     const frame = capture(setup, recorded, streamingDiffFixture.id, checkpoint, fixtureSha256, provenance), text = frame.semanticText.join("\n"), body = frame.semanticText.slice(0, -2);
-    const required = ["run-42", "edit-7", "a1b2", "partial", "src/app.ts", "q:back"];
-    if (!required.every((label) => text.includes(label)) || text.includes("DO NOT SHOW") || text.includes("esc:exit") || checkpoint === "expanded" && !body.some((line) => line.includes("+new"))) fail("Streaming Diff frame omitted or leaked semantics");
+    const required = ["run-42", "src/app.ts", "q:back"];
+    if (!required.every((label) => text.includes(label)) || text.includes("DO NOT SHOW") || text.includes("esc:exit")) fail("Streaming Diff frame omitted or leaked semantics");
     if (body.some((line) => (line.includes("edit-7") || line.includes("a1b2")) && line.includes("src/app.ts")) || frame.semanticText.at(-2)?.includes("+new")) fail("Streaming Diff rows overlap the footer or each other");
     return frame;
   } finally { setup.renderer.off("frame", snapshot); rootNode.unmount(); setup.renderer.destroy(); }

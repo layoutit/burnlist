@@ -33,6 +33,7 @@ import { applyVerifiedModelLabFrame, type ModelLabClient } from "./model-lab-con
 import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
+import { initStreamingDiffNavigation, reduceStreamingDiffNavigation } from "../oven-runtime/streaming-diff-navigation";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
 type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing" | "checklist" | "model-lab" | "chiminea";
@@ -84,6 +85,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   const [controlsState, setControlsState] = useState(controlsInitialState);
   const [visualState, setVisualState] = useState(() => initTerminalRuntime(visualParityOven, visualParityFixture.payload));
   const [streamingExpanded, setStreamingExpanded] = useState(false);
+  const [streamingNavigation, setStreamingNavigation] = useState(() => initStreamingDiffNavigation("streaming-feeds"));
   const [differentialState, setDifferentialState] = useState(() => initTerminalRuntime(differentialOven, differentialFixture.payload));
   const [checklistState, setChecklistState] = useState(() => initTerminalRuntime(checklistOven, checklistFixture.active));
   const [modelLabState, setModelLabState] = useState(() => initTerminalRuntime(modelLabOven, modelLabFixture.ready));
@@ -97,6 +99,8 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   const statusResult = useMemo(() => admitTerminalOven(statusState.empty ? statusEmptyOven : statusOven, { status: "ready", payload: statusState.payload }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, reload, statusState]);
   const visualResult = useMemo(() => admitTerminalOven(visualParityOven, { status: "ready", payload: visualParityFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, controls: visualState.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, visualState]);
   const streamingResult = useMemo(() => admitTerminalOven(streamingDiffOven, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, expandedKeys: streamingExpanded ? ["streaming-diff:first-file"] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, streamingExpanded]);
+  const streamingSessionPayload = useMemo(() => streamingNavigation.session ? { ...streamingDiffFixture.payload, identity: { ...streamingDiffFixture.payload.identity, session: streamingNavigation.session.identity.session } } : streamingDiffFixture.payload, [streamingNavigation.session]);
+  const streamingSessionResult = useMemo(() => admitTerminalOven(streamingDiffOven, { status: "ready", payload: streamingSessionPayload }, { viewport: { width: previewWidth, height: previewHeight }, expandedKeys: streamingNavigation.expandedFile ? [streamingNavigation.expandedFile] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, streamingNavigation.expandedFile, streamingSessionPayload]);
   const differentialPayload = stateName === "empty" ? differentialFixture.empty : stateName === "failure" ? differentialFixture.failure : differentialFixture.payload;
   const differentialFields = "fields" in differentialPayload && Array.isArray(differentialPayload.fields) ? differentialPayload.fields : [];
   const differentialKey = differentialFields.find((field: { id: string }) => differentialState.expandedKeys.includes(`field-view:${field.id}`))?.id;
@@ -115,11 +119,11 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   useKeyboard((key) => {
     const pressed = key.name ?? key.sequence;
     if (pressed === "escape") { if (page === "preview") setPage("catalog"); else shutdown(); return; }
-    if (pressed === "q") { if (page === "preview") setPage("catalog"); return; }
+    if (pressed === "q") { if (fixture.id === "streaming-feeds" && streamingNavigation.page === "session") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "back" })); else if (page === "preview") setPage("catalog"); return; }
     if (page === "catalog") {
       if (pressed === "up") move(-1);
       else if (pressed === "down") move(1);
-      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setDifferentialState(initTerminalRuntime(differentialOven, differentialFixture.payload)); setChecklistState(initTerminalRuntime(checklistOven, checklistFixture.active)); setModelLabState(initTerminalRuntime(modelLabOven, modelLabFixture.ready)); setModelLabPayload(modelLabFixture.ready); setControlsState(controlsInitialState()); setPage("preview"); }
+      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setStreamingNavigation(reduceStreamingDiffNavigation(initStreamingDiffNavigation("streaming-feeds"), { type: "feedsLoaded", feeds: streamingFeedFixture.feeds })); setDifferentialState(initTerminalRuntime(differentialOven, differentialFixture.payload)); setChecklistState(initTerminalRuntime(checklistOven, checklistFixture.active)); setModelLabState(initTerminalRuntime(modelLabOven, modelLabFixture.ready)); setModelLabPayload(modelLabFixture.ready); setControlsState(controlsInitialState()); setPage("preview"); }
       return;
     }
     if (fixture.id === "lists") {
@@ -144,6 +148,19 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
       return;
     }
     if (fixture.id === "streaming-diff") { if (pressed === "return" || pressed === "enter") setStreamingExpanded((value) => !value); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); return; }
+    if (fixture.id === "streaming-feeds") {
+      if (streamingNavigation.page === "feeds") {
+        if (pressed === "up") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "feedMoved", direction: -1 }));
+        else if (pressed === "down") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "feedMoved", direction: 1 }));
+        else if (pressed === "return" || pressed === "enter") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "feedOpened" }));
+        else if (pressed === "r") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "feedsLoaded", feeds: streamingFeedFixture.feeds }));
+      } else if (pressed === "up") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "fileMoved", direction: -1, fileCount: streamingDiffFixture.payload.cards[0]?.files.length ?? 0 }));
+      else if (pressed === "down") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "fileMoved", direction: 1, fileCount: streamingDiffFixture.payload.cards[0]?.files.length ?? 0 }));
+      else if (pressed === "return" || pressed === "enter") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "fileToggled", key: "streaming-diff:first-file" }));
+      else if (pressed === "r") setStreamingNavigation((state) => reduceStreamingDiffNavigation(state, { type: "refresh" }));
+      else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
+      return;
+    }
     if (fixture.id === "differential-testing") { if (pressed === "return" || pressed === "enter") { const field = differentialKey ?? differentialFields[0]?.id; if (field) setDifferentialState((state) => reduceTerminalRuntime(state, { type: "toggleExpanded", key: `field-view:${field}` }, differentialOven)); } else if (pressed === "c") setDifferentialState((state) => reduceTerminalRuntime(state, { type: "modeSelected", id: "progress-mode", value: state.controls["progress-mode"] === "delta" ? "progress" : state.controls["progress-mode"] === "progress" ? "failed" : "delta" }, differentialOven)); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "left" || pressed === "right") nextCheckpoint(); return; }
     if (fixture.id === "checklist") { if (pressed === "return" || pressed === "enter") setChecklistState((state) => { const expanded = state.expandedKeys.includes("checklist-event-cards:latest"), next = reduceTerminalRuntime(state, { type: "toggleExpanded", key: "checklist-event-cards:latest" }, checklistOven); return { ...next, ...(expanded || !checklistEventPath ? { focusId: undefined } : { focusId: checklistEventPath }) }; }); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "left" || pressed === "right") nextCheckpoint(); return; }
     if (fixture.id === "model-lab") { if (pressed === "left" || pressed === "right") { const next = (modelLabPayload.terminal.frame.index + (pressed === "right" ? 1 : -1) + modelLabPayload.terminal.frame.count) % modelLabPayload.terminal.frame.count, client = modelLabClient; if (client) void client.select({ sessionId: modelLabPayload.terminal.sessionId, requestId: `catalog-frame-${next}`, frameIndex: next }).then((result) => { if (result.status === "ready" && result.frame) setModelLabPayload(applyVerifiedModelLabFrame(modelLabPayload, result.frame) as typeof modelLabPayload); }); } else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "c") nextCheckpoint(); return; }
@@ -166,14 +183,15 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
         {fixture.id === "controls" ? <ControlsSurface state={controlsState} showFooter={false} /> : null}
         {fixture.id === "visual-parity" ? <TerminalOvenViewport result={visualResult} footer="" /> : null}
         {fixture.id === "streaming-diff" ? <TerminalOvenViewport result={streamingResult} footer="" /> : null}
-        {fixture.id === "streaming-feeds" ? <TerminalStreamingFeedList payload={streamingFeedFixture} width={previewWidth} height={previewHeight} /> : null}
+        {fixture.id === "streaming-feeds" && streamingNavigation.page === "feeds" ? <TerminalStreamingFeedList payload={{ ...streamingFeedFixture, ...(streamingNavigation.feedStatus === "loading" ? { loading: true } : streamingNavigation.feedStatus === "error" ? { error: streamingNavigation.sessionError } : {}) }} selectedFeed={streamingNavigation.selectedFeed} width={previewWidth} height={previewHeight} /> : null}
+        {fixture.id === "streaming-feeds" && streamingNavigation.page === "session" ? <TerminalOvenViewport result={streamingSessionResult} footer="" /> : null}
         {fixture.id === "differential-testing" ? <TerminalOvenViewport result={differentialResult} footer="" /> : null}
         {fixture.id === "checklist" ? <TerminalOvenViewport result={checklistResult} footer="" /> : null}
         {fixture.id === "model-lab" ? <TerminalOvenViewport result={modelLabResult} footer="" /> : null}
         {fixture.id === "chiminea" ? <FixtureChiminea reducedMotion={stateName === "reduced-motion"} clock={clock} /> : null}
       </box>
     </box>
-    <CatalogFooter text={fixture.id === "differential-testing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "checklist" ? "←/→:state · enter:latest detail · v:view · q:back" : fixture.id === "model-lab" ? modelLabClient ? "←/→:request frame · c:state · v:view · q:back" : "frame controller unavailable · c:state · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
+    <CatalogFooter text={fixture.id === "differential-testing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "checklist" ? "←/→:state · enter:latest detail · v:view · q:back" : fixture.id === "model-lab" ? modelLabClient ? "←/→:request frame · c:state · v:view · q:back" : "frame controller unavailable · c:state · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "streaming-feeds" ? streamingNavigation.page === "feeds" ? "↑/↓:feed · enter:open · r:refresh · q:back" : "↑/↓:file · enter:expand · r:refresh · q:feeds" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
   </box>;
 }
 
