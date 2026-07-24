@@ -8,6 +8,7 @@ import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
 import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
 import { TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
+import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
@@ -25,6 +26,9 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
   "field-list": TerminalHybridFieldList,
   "streaming-diff-heading": TerminalStreamingDiffHeading,
   "diff-card": TerminalStreamingDiff,
+  "checklist-ledger": TerminalChecklistLedger,
+  "checklist-burn-panel": TerminalChecklistBurnPanel,
+  "checklist-event-cards": TerminalChecklistEventCards,
 });
 
 /** Evaluates every component root before React paint and converts failures to state. */
@@ -84,7 +88,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { 
         }
         const collectionId = typeof root.node.attributes.collectionFrom === "string" ? root.node.attributes.collectionFrom : "";
         const fieldKey = prepared.state.expandedKeys.find((key) => key.startsWith(`${collectionId}:`));
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { expanded: prepared.state.expandedKeys.includes("streaming-diff:first-file") } : root.node.kind === "field-list" ? { expanded: !!fieldKey, selectedId: fieldKey?.slice(collectionId.length + 1) } : {})} /></box> : null;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { expanded: prepared.state.expandedKeys.includes("streaming-diff:first-file") } : root.node.kind === "field-list" ? { expanded: !!fieldKey, selectedId: fieldKey?.slice(collectionId.length + 1) } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

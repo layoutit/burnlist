@@ -84707,6 +84707,23 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/ChecklistTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "b7fc4497c6f913eadba4a8445be583e15eb708e9c93193c72945509a2f621b57",
+            "arg.checkpoint": "active",
+            "arg.viewport": "78",
+            "selection": "initial",
+            "content": "component:PairedChecklist"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/DifferentialTestingTerminal.stories.tsx#Paired",
       "states": [
         {

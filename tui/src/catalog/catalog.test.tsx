@@ -67,3 +67,14 @@ test("catalog dispatches a real Differential field drill-down and q returns only
   await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("empty"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
 });
+
+test("catalog scrolls the reducer-expanded Checklist detail into its real wide and narrow preview", async () => {
+  const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 10; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Checklist") && frame.includes("enter:latest detail")); expect(setup.captureCharFrame()).not.toContain("Outcome:");
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Outcome:")); assertFrameFits(setup.captureCharFrame(), 82);
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Current") && !frame.includes("Outcome:"));
+  await press(setup, "v"); await setup.waitForFrame((frame) => frame.includes("narrow")); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Outcome:")); const frame = setup.captureCharFrame(); assertFrameFits(frame, 82); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
+});

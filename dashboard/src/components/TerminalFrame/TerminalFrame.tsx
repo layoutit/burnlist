@@ -15,6 +15,7 @@ export const streamingDiffFrameEntries = (index.entries as FrameEntry[]).filter(
 export const streamingFeedFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("streaming-feeds:"));
 export const differentialFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("differential-testing:"));
 export const performanceTracingFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("performance-tracing:"));
+export const checklistFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("checklist:"));
 export const frameForEntry = (entry: FrameEntry) => {
   const frame = modules[`../../generated/terminal-frames/${entry.path}`];
   if (!frame) throw new Error(`Missing indexed terminal frame ${entry.path}`);

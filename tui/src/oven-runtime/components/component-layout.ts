@@ -19,6 +19,9 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "field-list") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
   if (["progress-chart", "frame-delta-chart"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
   if (node.kind === "diff-card") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(5, Math.min(14, Math.floor(width / 4))) }, row), source: node.source };
+  if (node.kind === "checklist-ledger") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 4 }, row), source: node.source };
+  if (node.kind === "checklist-burn-panel") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
+  if (node.kind === "checklist-event-cards") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(6, Math.floor(width / 10))) }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item").length;
   const metadata = node.attributes.title || node.attributes.ariaLabel ? 1 : 0;
@@ -40,8 +43,13 @@ export function projectComponentLayout(nodes: readonly TerminalNode[], width: nu
     if (node.kind === "case") return { ...node, children: [] };
     if (node.kind === "field-toolbar" || node.kind === "pagination" || node.kind === "mode-toggle") return { ...node, children: [] };
     if (node.kind === "collection") return { ...node, children: node.children.filter((child) => child.kind === "field-list").map((child, index) => visit(child, `${path}/${index}`)) };
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
+    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card", "checklist-ledger", "checklist-burn-panel", "checklist-event-cards"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };
+}
+
+/** Finds a measured component root without coupling callers to an Oven's tree indices. */
+export function componentRootPath(nodes: readonly TerminalNode[], width: number, kind: string, payload?: unknown, controls: Readonly<Record<string, string | boolean>> = {}): string | undefined {
+  return projectComponentLayout(nodes, width, payload, controls).roots.find((root) => root.node.kind === kind)?.path;
 }
