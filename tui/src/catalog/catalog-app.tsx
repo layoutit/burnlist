@@ -8,6 +8,7 @@ import statusSource from "./status-fixture.oven" with { type: "text" };
 import statusEmptySource from "./status-empty-fixture.oven" with { type: "text" };
 import visualParitySource from "../../../ovens/visual-parity/visual-parity.oven" with { type: "text" };
 import streamingDiffSource from "../../../ovens/streaming-diff/streaming-diff.oven" with { type: "text" };
+import differentialSource from "../../../ovens/differential-testing/differential-testing.oven" with { type: "text" };
 import { FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
@@ -20,12 +21,13 @@ import { listFixture, listFixtureStates, listPreviewRows, type ListFixtureState 
 import { statusFixtureCheckpoints, statusFixtureStates } from "./status-fixture";
 import { visualParityFixture } from "./visual-parity-fixture";
 import { streamingDiffFixture } from "./streaming-diff-fixture";
+import { differentialFixture } from "./differential-fixture";
 import { initTerminalRuntime, reduceTerminalRuntime } from "../oven-runtime/state-runtime";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds";
+type FixtureId = "flame" | "structural" | "progress" | "status" | "lists" | "controls" | "visual-parity" | "streaming-diff" | "streaming-feeds" | "differential-testing";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
@@ -37,6 +39,7 @@ const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; de
   { id: "visual-parity", label: visualParityFixture.title, detail: visualParityFixture.detail, checkpoints: visualParityFixture.checkpoints },
   { id: "streaming-diff", label: "Streaming Diff", detail: "shared feed, card, and file-hunk fixture", checkpoints: streamingDiffFixture.checkpoints },
   { id: "streaming-feeds", label: "Streaming Diff feeds", detail: "landing feed metadata surface", checkpoints: ["normal", "loading", "error", "empty"] },
+  { id: "differential-testing", label: "Differential Testing", detail: "compiled KPI, chart, log, and field drill-down", checkpoints: differentialFixture.checkpoints },
 ];
 const progressPayloads = [
   { percent: 57, done: 4, total: 7, burns: [{ result: "pass" }, { result: "worsened" }, { result: "blocked" }], metric: { total: 8, failed: 2 }, required: "ready" },
@@ -54,6 +57,7 @@ const statusOven = compile(statusSource, "tui/src/catalog/status-fixture.oven");
 const statusEmptyOven = compile(statusEmptySource, "tui/src/catalog/status-empty-fixture.oven");
 const visualParityOven = compile(visualParitySource, "ovens/visual-parity/visual-parity.oven");
 const streamingDiffOven = compile(streamingDiffSource, "ovens/streaming-diff/streaming-diff.oven");
+const differentialOven = compile(differentialSource, "ovens/differential-testing/differential-testing.oven");
 const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
 
 export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void; clock?: Clock }) {
@@ -67,6 +71,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const [controlsState, setControlsState] = useState(controlsInitialState);
   const [visualState, setVisualState] = useState(() => initTerminalRuntime(visualParityOven, visualParityFixture.payload));
   const [streamingExpanded, setStreamingExpanded] = useState(false);
+  const [differentialState, setDifferentialState] = useState(() => initTerminalRuntime(differentialOven, differentialFixture.payload));
   const fixture = catalogFixtures[selected]!;
   const previewWidth = mode === "wide" ? 72 : 36;
   const previewHeight = mode === "wide" ? 16 : 14;
@@ -76,6 +81,10 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const statusResult = useMemo(() => admitTerminalOven(statusState.empty ? statusEmptyOven : statusOven, { status: "ready", payload: statusState.payload }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, reload, statusState]);
   const visualResult = useMemo(() => admitTerminalOven(visualParityOven, { status: "ready", payload: visualParityFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, controls: visualState.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, visualState]);
   const streamingResult = useMemo(() => admitTerminalOven(streamingDiffOven, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, expandedKeys: streamingExpanded ? ["streaming-diff:first-file"] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, streamingExpanded]);
+  const differentialPayload = stateName === "empty" ? differentialFixture.empty : stateName === "failure" ? differentialFixture.failure : differentialFixture.payload;
+  const differentialFields = "fields" in differentialPayload && Array.isArray(differentialPayload.fields) ? differentialPayload.fields : [];
+  const differentialKey = differentialFields.find((field) => differentialState.expandedKeys.includes(`field-view:${field.id}`))?.id;
+  const differentialResult = useMemo(() => admitTerminalOven(differentialOven, { status: "ready", payload: differentialPayload }, { viewport: { width: previewWidth, height: previewHeight }, controls: differentialState.controls, expandedKeys: differentialState.expandedKeys }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [differentialPayload, differentialState, previewHeight, previewWidth]);
   const listState = stateName as ListFixtureState;
   const listRow = listFixture.rows[Math.max(0, Math.min(listIndex, listFixture.rows.length - 1))]!;
 
@@ -88,7 +97,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
     if (page === "catalog") {
       if (pressed === "up") move(-1);
       else if (pressed === "down") move(1);
-      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setControlsState(controlsInitialState()); setPage("preview"); }
+      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setStreamingExpanded(false); setDifferentialState(initTerminalRuntime(differentialOven, differentialFixture.payload)); setControlsState(controlsInitialState()); setPage("preview"); }
       return;
     }
     if (fixture.id === "lists") {
@@ -113,6 +122,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
       return;
     }
     if (fixture.id === "streaming-diff") { if (pressed === "return" || pressed === "enter") setStreamingExpanded((value) => !value); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); return; }
+    if (fixture.id === "differential-testing") { if (pressed === "return" || pressed === "enter") { const field = differentialKey ?? differentialFields[0]?.id; if (field) setDifferentialState((state) => reduceTerminalRuntime(state, { type: "toggleExpanded", key: `field-view:${field}` }, differentialOven)); } else if (pressed === "c") setDifferentialState((state) => reduceTerminalRuntime(state, { type: "modeSelected", id: "progress-mode", value: state.controls["progress-mode"] === "delta" ? "progress" : state.controls["progress-mode"] === "progress" ? "failed" : "delta" }, differentialOven)); else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide"); else if (pressed === "left" || pressed === "right") nextCheckpoint(); return; }
     if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
     else if (pressed === "left" || pressed === "right") nextCheckpoint();
     else if (pressed === "c" || pressed === "s" || pressed === "tab") nextCheckpoint();
@@ -133,9 +143,10 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
         {fixture.id === "visual-parity" ? <TerminalOvenViewport result={visualResult} footer="" /> : null}
         {fixture.id === "streaming-diff" ? <TerminalOvenViewport result={streamingResult} footer="" /> : null}
         {fixture.id === "streaming-feeds" ? <TerminalStreamingFeedList payload={{ ...streamingDiffFixture.payload, showRepository: true }} width={previewWidth} height={previewHeight} /> : null}
+        {fixture.id === "differential-testing" ? <TerminalOvenViewport result={differentialResult} footer="" /> : null}
       </box>
     </box>
-    <CatalogFooter text={fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
+    <CatalogFooter text={fixture.id === "differential-testing" ? "↑/↓:field · c:chart · ←/→:state · enter:detail · v:view · q:back" : fixture.id === "streaming-diff" ? "enter:expand · v:view · q:back" : fixture.id === "visual-parity" ? "←/→:domain · v:view · q:back" : fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : fixture.id === "controls" ? "tab:focus · enter:toggle · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
   </box>;
 }
 

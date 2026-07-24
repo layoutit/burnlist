@@ -57,3 +57,13 @@ test("catalog Enter expands the compiled Streaming Diff hunk without leaking red
   expect(setup.captureCharFrame()).not.toContain("+new"); await press(setup, "RETURN");
   await setup.waitForFrame((frame) => frame.includes("+new")); const frame = setup.captureCharFrame(); expect(frame).not.toContain("DO NOT SHOW"); assertFrameFits(frame, 48); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
 });
+
+test("catalog dispatches a real Differential field drill-down and q returns only to the catalog", async () => {
+  const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 9; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Differential Testing") && frame.includes("←/→:state"));
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Position after the update"));
+  await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("empty"));
+  await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
+});

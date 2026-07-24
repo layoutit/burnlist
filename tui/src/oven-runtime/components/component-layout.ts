@@ -1,4 +1,5 @@
 import type { TerminalNode } from "../terminal-contract";
+import { resolveOvenPointer } from "../value-runtime";
 
 export type ComponentRoot = Readonly<{ path: string; node: TerminalNode }>;
 const source = Object.freeze({ offset: 0, line: 1, column: 1 });
@@ -13,6 +14,10 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
     return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: rows }, row), source: node.source };
   }
   if (node.kind === "streaming-diff-heading") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
+  if (node.kind === "differential-kpi-strip") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: width < 56 ? 6 : 3 }, row), source: node.source };
+  if (node.kind === "differential-log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
+  if (node.kind === "field-list") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
+  if (["progress-chart", "frame-delta-chart"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
   if (node.kind === "diff-card") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(5, Math.min(14, Math.floor(width / 4))) }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item").length;
@@ -22,10 +27,20 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
 }
 
 /** Projects component roots to measured structural rows while retaining paths. */
-export function projectComponentLayout(nodes: readonly TerminalNode[], width: number): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
+export function projectComponentLayout(nodes: readonly TerminalNode[], width: number, payload?: unknown, controls: Readonly<Record<string, string | boolean>> = {}): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
   const roots: ComponentRoot[] = [];
   const visit = (node: TerminalNode, path: string): TerminalNode => {
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
+    if (node.kind === "switch") {
+      const sourced = typeof node.attributes.source === "string" ? resolveOvenPointer(payload, node.attributes.source) : undefined;
+      const emptyCatalog = sourced === undefined && payload && typeof payload === "object" && !Array.isArray(payload) && (() => { const catalog = (payload as Record<string, unknown>).scenarioCatalog; return !!catalog && typeof catalog === "object" && !Array.isArray(catalog) && (catalog as Record<string, unknown>).selectedScenarioId === null; })();
+      const selected = typeof node.attributes.modeFrom === "string" ? controls[node.attributes.modeFrom] : sourced ?? (emptyCatalog ? "empty" : "detail");
+      const branch = node.children.find((child) => child.kind === "case" && child.attributes.value === selected);
+      return { ...node, children: branch ? branch.children.map((child, index) => visit(child, `${path}/${index}`)) : [] };
+    }
+    if (node.kind === "case") return { ...node, children: [] };
+    if (node.kind === "field-toolbar" || node.kind === "pagination" || node.kind === "mode-toggle") return { ...node, children: [] };
+    if (node.kind === "collection") return { ...node, children: node.children.filter((child) => child.kind === "field-list").map((child, index) => visit(child, `${path}/${index}`)) };
+    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };

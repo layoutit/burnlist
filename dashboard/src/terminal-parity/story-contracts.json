@@ -84707,6 +84707,52 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/DifferentialTestingTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-scenario-id-guards-present",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "4fbd98ec7095af2f2564731ae5a64cf8e7f928bf3651188d52d9547e73787637",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "78",
+            "selection": "scenario.id",
+            "content": "component:PairedDifferential",
+            "guards": "present"
+          },
+          "guardBindings": {
+            "select:Differential Testing scenario | scenario.id": true
+          },
+          "actions": [
+            {
+              "id": "select:Differential Testing scenario | scenario.id",
+              "expectedConsoleOutcome": "Select option scenario.id; the visible result is scenario.id.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for select:Differential Testing scenario | scenario.id."
+              }
+            }
+          ]
+        },
+        {
+          "id": "state-scenario-id-guards-absent",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "4fbd98ec7095af2f2564731ae5a64cf8e7f928bf3651188d52d9547e73787637",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "78",
+            "selection": "scenario.id",
+            "content": "component:PairedDifferential",
+            "guards": "absent"
+          },
+          "guardBindings": {
+            "select:Differential Testing scenario | scenario.id": false
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/Foundations.stories.tsx#Palette",
       "states": [
         {
