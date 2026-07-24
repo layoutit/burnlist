@@ -321,9 +321,14 @@ export function differentialTestingAllPassingPayload() {
 }
 
 export function performanceTracingPayload() {
+  const report = performanceTracingReport();
+  return adaptPerformanceTracingReport(report);
+}
+
+export function performanceTracingReport() {
   const report = performanceTracingFixture();
   assertPerformanceTracingData(report);
-  return adaptPerformanceTracingReport(report);
+  return report;
 }
 
 function performanceTracingFixture() {

@@ -154,7 +154,7 @@
       },
       {
         "path": "dashboard/src/components/DifferentialTestingOven/DifferentialTestingOven.tsx",
-        "fingerprint": "b4877a3128a36f19bd6cdb58e2a9ec7fd9f90c7b44591d882d2ee8572851b224"
+        "fingerprint": "fe74839582577b3e3e6a6db01843850e76fd66698bce636dcd99c0468d146e26"
       },
       {
         "path": "dashboard/src/components/ModelLab/ModelLab.tsx",
@@ -43901,7 +43901,7 @@
     },
     {
       "id": "surface:dashboard/src/components/DifferentialTestingOven/DifferentialTestingOven.tsx",
-      "fingerprint": "648039a2b2e492f8484e9cc95dad5bb1cb06ceca6b713dae08d9bf72ef8fc90a",
+      "fingerprint": "50ea6f1d6ed5ec1f9dda679dff54ba8e00eea4cc950fd68b0a9499f58f4510b5",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -43914,7 +43914,7 @@
         "path": "dashboard/src/components/DifferentialTestingOven/DifferentialTestingOven.tsx",
         "export": "module",
         "node": "wrapper-surface",
-        "fingerprint": "648039a2b2e492f8484e9cc95dad5bb1cb06ceca6b713dae08d9bf72ef8fc90a"
+        "fingerprint": "50ea6f1d6ed5ec1f9dda679dff54ba8e00eea4cc950fd68b0a9499f58f4510b5"
       },
       "blocker": {
         "burnlistItem": "B17",

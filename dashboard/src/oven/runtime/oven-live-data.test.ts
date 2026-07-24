@@ -144,11 +144,7 @@ test("runtime snapshot missing outcomes clear a formerly valid payload", () => {
 test("runtime snapshot descriptors adapt DT and PT envelopes", async () => {
   const fixture = await import(pathToFileURL(resolve(process.cwd(), "dashboard/src/oven/differential-testing-render/golden-harness.mjs")).href);
   const dtReport = fixture.differentialTestingPayload();
-  const ptReport = {
-    runId: "trace-fixture", generatedAt: "2026-07-15T12:00:00.000Z", status: "pass",
-    scenario: { id: "prepared" }, metrics: { p95FrameMs: 20 }, budgets: { p95FrameMs: 25 },
-    runs: [{ frameTiming: { series: [{ frame: 0, frameMs: 20 }] } }],
-  };
+  const ptReport = fixture.performanceTracingReport();
   const envelopes = [
     { ovenId: "differential-testing", payload: dtReport },
     { ovenId: "performance-tracing", payload: ptReport, validated: true },

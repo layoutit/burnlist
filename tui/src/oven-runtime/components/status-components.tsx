@@ -25,7 +25,7 @@ export function statusSurfaceModel(node: TerminalNode, payload: JsonValue | unde
     return { title: "", activity: phase, activityText: error ? `${labels[phase]} · ${error}` : labels[phase] };
   }
   if (node.kind === "domain-note") return { title: text(read(node, "isTarget", payload)) === "true" ? "Qualifying target" : "Diagnostic context", note: text(read(node, "rationale", payload) ?? read(node, "source", payload)), activity: phase, activityText: labels[phase] };
-  if (node.kind === "differential-empty-state") return { title: text(read(node, "title", payload)) || "Differential Testing", empty: "No Differential Testing scenarios", activity: phase, activityText: labels[phase] };
+  if (node.kind === "differential-empty-state") return { title: text(record(payload)?.title) || text(read(node, "title", payload)) || "Differential Testing", empty: `No ${text(record(payload)?.title) || text(read(node, "title", payload)) || "Differential Testing"} scenarios`, activity: phase, activityText: labels[phase] };
   return { title: text(read(node, "title", payload) ?? read(node, "source", payload)), count: text(read(node, "count", payload)), activity: phase, activityText: labels[phase] };
 }
 

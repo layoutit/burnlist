@@ -84783,6 +84783,52 @@
       ]
     },
     {
+      "id": "dashboard/src/stories/PerformanceTracingTerminal.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-scenario-id-guards-present",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "5e85cf67ae260494d778f8a6a2427f16e3562f7429f916857afb9f3a36bbf8a9",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "78",
+            "selection": "scenario.id",
+            "content": "component:PairedPerformanceTracing",
+            "guards": "present"
+          },
+          "guardBindings": {
+            "select:Differential Testing scenario | scenario.id": true
+          },
+          "actions": [
+            {
+              "id": "select:Differential Testing scenario | scenario.id",
+              "expectedConsoleOutcome": "Select option scenario.id; the visible result is scenario.id.",
+              "terminal": {
+                "status": "gap",
+                "missing": "No terminal counterpart for select:Differential Testing scenario | scenario.id."
+              }
+            }
+          ]
+        },
+        {
+          "id": "state-scenario-id-guards-absent",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "5e85cf67ae260494d778f8a6a2427f16e3562f7429f916857afb9f3a36bbf8a9",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "78",
+            "selection": "scenario.id",
+            "content": "component:PairedPerformanceTracing",
+            "guards": "absent"
+          },
+          "guardBindings": {
+            "select:Differential Testing scenario | scenario.id": false
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/stories/StreamingDiffFeedTerminal.stories.tsx#Paired",
       "states": [
         {
