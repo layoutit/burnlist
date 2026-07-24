@@ -8,6 +8,10 @@ import { createRoot, flushSync } from "@opentui/react";
 import { act } from "react";
 import { FIXTURE_ID, FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
+// @ts-expect-error Production DSL remains JavaScript by design.
+import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
+import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
+import { layoutTerminalNodes } from "../oven-runtime/layout/layout-runtime";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame, type TerminalFrameIndex } from "./frame-contract";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -16,7 +20,7 @@ const indexPath = join(generated, "index.json");
 const evidencePath = resolve(root, "tui/src/oven-runtime/terminal-evidence-index.json");
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 const stable = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
-const frameName = (frame: TerminalFrame, text: string) => `${FIXTURE_ID}.${frame.viewport.width}x${frame.viewport.height}.${frame.checkpoint}.${sha(text).slice(0, 16)}.json`;
+const frameName = (frame: TerminalFrame, text: string) => `${frame.fixture}.${frame.viewport.width}x${frame.viewport.height}.${frame.checkpoint}.${sha(text).slice(0, 16)}.json`;
 const fail = (message: string) => { throw new Error(`terminal story frames: ${message}`); };
 
 async function withLock<T>(work: () => Promise<T>) {
@@ -42,10 +46,10 @@ export function cellsFromFrame(frame: string, widthColumns: number, height: numb
   for (let row = 0; row < height; row += 1) { const glyphs = Array.from(segmenter.segment(lines[row] || ""), (part) => part.segment); let glyph = 0; for (let column = 0; column < widthColumns; column += 1) { const offset = row * widthColumns + column, rawChar = char[offset]!; const continuation = ((rawChar & 0xc0000000) >>> 0) === 0xc0000000; const visible = continuation ? "" : glyphs[glyph++] || " "; cells.push({ char: visible, fg: packed(fg, offset), bg: packed(bg, offset), attributes: attributes[offset]!, continuation }); } }
   return cells;
 }
-function capture(setup: Awaited<ReturnType<typeof createTestRenderer>>, recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } }, checkpoint: string, fixtureSha256: string, provenance: TerminalFrame["renderer"]): TerminalFrame {
+function capture(setup: Awaited<ReturnType<typeof createTestRenderer>>, recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } }, fixture: string, checkpoint: string, fixtureSha256: string, provenance: TerminalFrame["renderer"]): TerminalFrame {
   const buffer = setup.renderer.currentRenderBuffer;
   const text = recorded.frame.split("\n").map((line) => line.trimEnd());
-  return { schema: FRAME_SCHEMA, fixture: FIXTURE_ID, checkpoint, viewport: { width: buffer.width, height: buffer.height }, semanticText: text, cells: cellsFromFrame(recorded.frame, buffer.width, buffer.height, recorded.buffers || {}), renderer: provenance, fixtureSha256 };
+  return { schema: FRAME_SCHEMA, fixture, checkpoint, viewport: { width: buffer.width, height: buffer.height }, semanticText: text, cells: cellsFromFrame(recorded.frame, buffer.width, buffer.height, recorded.buffers || {}), renderer: provenance, fixtureSha256 };
 }
 async function render(width: number, checkpoint: string, reducedMotion: boolean, key: string | null, provenance: TerminalFrame["renderer"], fixtureSha256: string, advance: number): Promise<TerminalFrame> {
   const clock = new ManualClock(), setup = await createTestRenderer({ width, height: 12, clock, targetFps: 60, useThread: false });
@@ -59,31 +63,72 @@ async function render(width: number, checkpoint: string, reducedMotion: boolean,
     await setup.renderOnce();
     if (key === "right") { await act(async () => { setup.mockInput.pressArrow("right"); await Promise.resolve(); }); await setup.renderOnce(); }
     if (!reducedMotion && advance) { await act(async () => { clock.advance(advance); }); await setup.renderOnce(); }
-    if (!recorded) throw new Error("terminal story frames: OpenTUI produced no raw frame"); return capture(setup, recorded, checkpoint, fixtureSha256, provenance);
+    if (!recorded) throw new Error("terminal story frames: OpenTUI produced no raw frame"); return capture(setup, recorded, FIXTURE_ID, checkpoint, fixtureSha256, provenance);
   } finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previousActEnvironment; }
 }
+async function renderStructural(width: number, height: number, checkpoint: string, focusedPath: string, provenance: TerminalFrame["renderer"], fixtureSha256: string): Promise<TerminalFrame> {
+  const fixture = await readFile(resolve(root, "tui/src/catalog/structural-fixture.oven"), "utf8"), compiled = compileOven(fixture, { file: "tui/src/catalog/structural-fixture.oven" });
+  if (!compiled.ok) fail(`structural fixture does not compile: ${compiled.diagnostics[0]?.message || "unknown error"}`);
+  const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false }), rootNode = createRoot(setup.renderer);
+  let recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } } | undefined;
+  const snapshot = () => { const buffer = setup.renderer.currentRenderBuffer, raw = buffer.buffers; recorded = { frame: new TextDecoder().decode(buffer.getRealCharBytes(true)), buffers: { char: new Uint32Array(raw.char), fg: new Uint16Array(raw.fg), bg: new Uint16Array(raw.bg), attributes: new Uint32Array(raw.attributes) } }; };
+  setup.renderer.on("frame", snapshot);
+  const reactGlobal = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }, previous = reactGlobal.IS_REACT_ACT_ENVIRONMENT; reactGlobal.IS_REACT_ACT_ENVIRONMENT = true;
+  try {
+    await act(async () => { flushSync(() => rootNode.render(<StructuralOvenViewport nodes={compiled.ir.root} viewport={{ width, height }} focusedPath={focusedPath} />)); });
+    await setup.renderOnce();
+    if (!recorded) throw new Error("terminal story frames: OpenTUI produced no structural frame");
+    const frame = capture(setup, recorded, "structural-layout", checkpoint, fixtureSha256, provenance), layout = layoutTerminalNodes(compiled.ir.root, { width, height }, focusedPath);
+    const painted = layout.cells.filter((cell) => (cell.kind === "text" || cell.kind === "icon") && cell.text);
+    for (const [index, left] of painted.entries()) for (const right of painted.slice(index + 1)) if (left.rect.y < right.rect.y + right.rect.height && right.rect.y < left.rect.y + left.rect.height && left.rect.x < right.rect.x + right.rect.width && right.rect.x < left.rect.x + left.rect.width) fail("structural text cells overlap");
+    if (width === 40 && (!painted.some((cell) => cell.collapsed) || !frame.semanticText.some((line) => line.includes("↳")))) fail("narrow structural frame did not render its collapse marker");
+    if (width === 140 && checkpoint === "final-focus") {
+      const rendered = frame.semanticText.join("\n"), values = ["This text stays above the footer", "Narrow terminals reflow this", "Overflow row 09", "Clock3"];
+      if (values.some((value) => !rendered.includes(value)) || /This─text|Overflow─row|Clock3─/u.test(rendered)) fail("structural leaf paint contains transformed spaces or border glyphs");
+    }
+    return frame;
+  } finally { setup.renderer.off("frame", snapshot); await act(async () => { rootNode.unmount(); }); setup.renderer.destroy(); reactGlobal.IS_REACT_ACT_ENVIRONMENT = previous; }
+}
 export async function buildFrames(): Promise<Record<string, string>> {
-  const inputs = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/catalog/frame-renderer.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"];
-  const source = await Promise.all(inputs.map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`));
-  const sourceSha256 = sha(source.join("\n"));
+  const shared = ["tui/package-lock.json", "tui/package.json", "tui/src/catalog/frame-renderer.tsx"], flameInputs = ["tui/src/catalog/glyph-fixture.ts", "tui/src/catalog/fixture-flame.tsx", "tui/src/glyph-surface.ts", "tui/src/fire-frame.ts"], structuralInputs = ["tui/src/catalog/structural-fixture.oven", "tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx"];
+  const sourceHash = async (inputs: readonly string[]) => sha((await Promise.all([...shared, ...inputs].map(async (path) => `${path}\n${await readFile(resolve(root, path), "utf8")}`))).join("\n"));
+  const flameSha256 = await sourceHash(flameInputs), structuralSha256 = await sourceHash(structuralInputs);
   const lock = JSON.parse(await readFile(resolve(root, "tui/package-lock.json"), "utf8"));
   const packageRecord = (name: string) => { const entry = lock.packages[`node_modules/${name}`]; if (!entry?.version || !entry?.integrity) fail(`lockfile is missing pinned ${name} provenance`); return { version: String(entry.version), integrity: String(entry.integrity) }; };
   const bunPackage = packageRecord("bun");
   if (Bun.version !== bunPackage.version) fail(`Bun runtime ${Bun.version} does not match pinned ${bunPackage.version}`);
   const packageNames = ["@opentui/core", "@opentui/react", "glyphcss", "@glyphcss/core", "@glyphcss/effects"] as const;
-  const provenance: RendererProvenance = { sourceSha256, bun: { runtimeVersion: Bun.version, packageVersion: bunPackage.version, integrity: bunPackage.integrity }, packages: Object.fromEntries(packageNames.map((name) => [name, packageRecord(name)])) };
+  const provenance = (sourceSha256: string): RendererProvenance => ({ sourceSha256, bun: { runtimeVersion: Bun.version, packageVersion: bunPackage.version, integrity: bunPackage.integrity }, packages: Object.fromEntries(packageNames.map((name) => [name, packageRecord(name)])) });
   const frames = [];
-  for (const state of glyphFixture.states) for (const width of state.viewports) frames.push(await render(width, state.checkpoint, state.reducedMotion, state.key, provenance, sourceSha256, state.advanceMs));
+  for (const state of glyphFixture.states) for (const width of state.viewports) frames.push(await render(width, state.checkpoint, state.reducedMotion, state.key, provenance(flameSha256), flameSha256, state.advanceMs));
+  for (const width of [40, 60, 80, 100, 140]) for (const [height, checkpoint, focusedPath] of [[10, "short", "root/0/1/0"], [20, "tall", "root/0/1/1"], [20, "final-focus", "root/0/1/11"]] as const) frames.push(await renderStructural(width, height, checkpoint, focusedPath, provenance(structuralSha256), structuralSha256));
   return Object.fromEntries(frames.map((frame) => { const text = stable(frame); return [frameName(frame, text), text]; }));
 }
 async function desired() {
   const files = await buildFrames();
   const entries = Object.entries(files).map(([name, text]) => {
     const frame = JSON.parse(text) as TerminalFrame;
-    return { id: `${FIXTURE_ID}:${frame.viewport.width}x${frame.viewport.height}:${frame.checkpoint}`, path: name, sha256: sha(text), fixtureSha256: frame.fixtureSha256, checkpoint: frame.checkpoint, viewport: frame.viewport };
+    return { id: `${frame.fixture}:${frame.viewport.width}x${frame.viewport.height}:${frame.checkpoint}`, fixture: frame.fixture, path: name, sha256: sha(text), fixtureSha256: frame.fixtureSha256, checkpoint: frame.checkpoint, viewport: frame.viewport };
   }).sort((a, b) => a.id.localeCompare(b.id));
   const index: TerminalFrameIndex = { schema: FRAME_INDEX_SCHEMA, generator: "burnlist-b6-offscreen@1", provenance: JSON.parse(Object.values(files)[0]!).renderer, entries };
-  const evidence = { schema: "burnlist-terminal-evidence-index@1", generator: "burnlist-b6-offscreen@1", records: entries.map((entry) => ({ recordId: entry.id, artifactPath: `dashboard/src/generated/terminal-frames/${entry.path}`, artifactSha256: entry.sha256, sourceSha256: entry.fixtureSha256, viewport: entry.viewport, checkpoint: entry.checkpoint })) };
+  const structuralSources = Object.fromEntries(await Promise.all(["tui/src/oven-runtime/layout/layout-runtime.ts", "tui/src/oven-runtime/layout/structural-viewport.tsx", "tui/src/catalog/structural-fixture.oven", "tui/src/catalog/frame-renderer.tsx", "tui/package.json", "tui/package-lock.json"].map(async (path) => [path, sha(await readFile(resolve(root, path), "utf8"))])));
+  const fixtureSource = await readFile(resolve(root, "tui/src/catalog/structural-fixture.oven"), "utf8"), fixtureIR = compileOven(fixtureSource, { file: "tui/src/catalog/structural-fixture.oven" });
+  if (!fixtureIR.ok) fail("structural fixture does not compile for evidence");
+  const structuralKinds = new Set<string>(); const visit = (node: { kind: string; children: readonly any[] }) => { if (["box", "grid", "stack", "panel", "text", "icon"].includes(node.kind)) structuralKinds.add(node.kind); node.children.forEach(visit); }; fixtureIR.ir.root.forEach(visit);
+  const expectedStructuralKinds = ["box", "grid", "stack", "panel", "text", "icon"].sort();
+  if (JSON.stringify([...structuralKinds].sort()) !== JSON.stringify(expectedStructuralKinds)) fail("structural fixture must compile exactly the six structural kinds");
+  const structuralAtoms = [...structuralKinds].sort().flatMap((kind) => [`grammar:element:${kind}`, `compiled:element:${kind}`]);
+  const baseRecords = entries.filter((entry) => entry.fixture !== "structural-layout").map((entry) => ({ recordId: entry.id, fixture: entry.fixture, frameId: entry.id, artifactPath: `dashboard/src/generated/terminal-frames/${entry.path}`, artifactSha256: entry.sha256, sourceSha256: entry.fixtureSha256, viewport: entry.viewport, checkpoint: entry.checkpoint }));
+  const structuralFrames = [40, 60, 80, 100, 140].flatMap((width) => [[width, 10, "short"], [width, 20, "tall"], [width, 20, "final-focus"]].map(([w, h, checkpoint]) => `structural-layout:${w}x${h}:${checkpoint}`));
+  if (structuralFrames.some((id) => !entries.some((entry) => entry.id === id))) throw new Error("terminal story frames: structural matrix is incomplete");
+  const structuralRows = structuralFrames.map((id) => entries.find((entry) => entry.id === id)!);
+  const semantic = new Set(structuralRows.map((entry) => JSON.stringify(JSON.parse(files[entry.path]!).semanticText)));
+  if (semantic.size !== structuralRows.length) throw new Error("terminal story frames: duplicate structural frame content");
+  const structuralRecords = structuralRows.map((frame, index) => {
+    const atomId = structuralAtoms[index];
+    return { recordId: atomId ? `structural-layout:${atomId}` : `structural-layout:support:${frame.id}`, target: atomId ? `atom:${atomId}` : `support:frame:${frame.id}`, fixture: "structural-layout", frameId: frame.id, artifactPath: `dashboard/src/generated/terminal-frames/${frame.path}`, artifactSha256: frame.sha256, implementationExport: "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport", sourceFiles: structuralSources };
+  });
+  const evidence = { schema: "burnlist-terminal-evidence-index@1", generator: "burnlist-b6-offscreen@1", records: [...baseRecords, ...structuralRecords] };
   return { files, index: stable(index), evidence: stable(evidence) };
 }
 async function existingFiles() { try { return (await Bun.$`git -C ${root} ls-files --others --exclude-standard -- dashboard/src/generated/terminal-frames`.text()).trim().split("\n").filter(Boolean); } catch { return []; } }

@@ -1,0 +1,29 @@
+<oven id="structural-layout" version="1.0.0" contract="checklist-progress@1" theme="checklist">
+  <box element="section">
+    <grid columns="3" rows="2" row-height="3">
+      <panel id="primary" title="Structural layout" column="1" row="1" column-span="2">
+        <stack direction="row" gap="1">
+          <section-header title="Wide terminal layout"><text slot="detail" text="Measured wide layout content"/></section-header>
+          <section-header title="Measured cells"><text slot="detail" text="Measured cells"/></section-header>
+        </stack>
+      </panel>
+      <panel id="signal" title="Signal" column="3" row="1" row-span="2">
+        <section-header title="Current"><icon slot="main" name="Clock3"/></section-header>
+      </panel>
+      <panel id="content" title="Content" column="1" row="2" column-span="2">
+        <stack gap="1">
+          <section-header title="Final focused row"><text slot="detail" text="This text stays above the footer"/></section-header>
+          <section-header title="Footer-safe scroll region"><text slot="detail" text="Narrow terminals reflow this content"/></section-header>
+        </stack>
+      </panel>
+    </grid>
+    <stack gap="1">
+      <section-header title="First checkpoint"><text slot="detail" text="First checkpoint"/></section-header>
+      <section-header title="Middle checkpoint"><text slot="detail" text="Middle checkpoint"/></section-header>
+      <section-header title="Final focus checkpoint"><text slot="detail" text="Final focus checkpoint"/></section-header>
+      <section-header title="Overflow row 01"><text slot="detail" text="Overflow row 01"/></section-header><section-header title="Overflow row 02"><text slot="detail" text="Overflow row 02"/></section-header><section-header title="Overflow row 03"><text slot="detail" text="Overflow row 03"/></section-header>
+      <section-header title="Overflow row 04"><text slot="detail" text="Overflow row 04"/></section-header><section-header title="Overflow row 05"><text slot="detail" text="Overflow row 05"/></section-header><section-header title="Overflow row 06"><text slot="detail" text="Overflow row 06"/></section-header>
+      <section-header title="Overflow row 07"><text slot="detail" text="Overflow row 07"/></section-header><section-header title="Overflow row 08"><text slot="detail" text="Overflow row 08"/></section-header><section-header title="Overflow row 09"><text slot="detail" text="Overflow row 09"/></section-header>
+    </stack>
+  </box>
+</oven>

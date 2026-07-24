@@ -28,6 +28,7 @@ export type TerminalFrame = Readonly<{
 
 export type FrameIndexEntry = Readonly<{
   id: string;
+  fixture: string;
   path: string;
   sha256: string;
   fixtureSha256: string;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { cp, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -19,12 +20,12 @@ async function fails(target, pattern, args = ["scripts/audit-terminal-oven-parit
 
 test("source union is finite, classifies FILTERS as data, and records all source gaps", async () => {
   const manifest = await auditTerminalOvenParity(root), rows = [...manifest.denominatorA.grammar, ...manifest.denominatorA.compiledIR, ...manifest.denominatorA.b34References, ...manifest.denominatorA.officialOvens, ...manifest.denominatorB.publicExports, ...manifest.denominatorB.stories];
-  assert.equal(manifest.schema, SCHEMA); assert.equal(manifest.denominatorA.compiledIR.length, 455); assert.equal(new Set(rows.map((x) => x.id)).size, rows.length); assert.equal(manifest.terminal.coverage.implemented, 0); assert.ok(manifest.denominatorB.publicExports.some((row) => row.export === "FILTERS" && row.classification === "data"));
+  assert.equal(manifest.schema, SCHEMA); assert.equal(manifest.denominatorA.compiledIR.length, 455); assert.equal(new Set(rows.map((x) => x.id)).size, rows.length); assert.equal(manifest.terminal.coverage.implemented, 12); assert.deepEqual(manifest.terminal.registry.covered, ["compiled:element:box", "compiled:element:grid", "compiled:element:icon", "compiled:element:panel", "compiled:element:stack", "compiled:element:text", "grammar:element:box", "grammar:element:grid", "grammar:element:icon", "grammar:element:panel", "grammar:element:stack", "grammar:element:text"]); assert.ok(manifest.denominatorB.publicExports.some((row) => row.export === "FILTERS" && row.classification === "data"));
 });
 
-test("B6 evidence schema is tracked but cannot alter B1 canonical coverage", async () => {
-  const index = JSON.parse(await readFile(join(root, "tui/src/oven-runtime/terminal-evidence-index.json"), "utf8")); assert.equal(index.schema, "burnlist-terminal-evidence-index@1"); assert.equal(index.generator, "burnlist-b6-offscreen@1"); assert.equal(index.records.length, 6); assert.ok(index.records.every((record) => record.artifactPath.startsWith("dashboard/src/generated/terminal-frames/") && /^[a-f0-9]{64}$/u.test(record.artifactSha256)));
-  await withFixture(async (target) => { await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"checkpoint": "t0"', '"checkpoint": "fabricated"'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); });
+test("structural evidence has an exact twelve-atom claim and fifteen-frame matrix", async () => {
+  const index = JSON.parse(await readFile(join(root, "tui/src/oven-runtime/terminal-evidence-index.json"), "utf8")), structural = index.records.filter((record) => record.fixture === "structural-layout"); assert.equal(index.schema, "burnlist-terminal-evidence-index@1"); assert.equal(index.generator, "burnlist-b6-offscreen@1"); assert.equal(structural.length, 15); assert.equal(structural.filter((record) => String(record.target).startsWith("atom:")).length, 12); assert.equal(new Set(structural.map((record) => record.frameId)).size, 15); assert.ok(structural.every((record) => record.artifactPath.startsWith("dashboard/src/generated/terminal-frames/") && /^[a-f0-9]{64}$/u.test(record.artifactSha256) && record.implementationExport === "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport")); const content = await Promise.all(structural.map((record) => readFile(join(root, record.artifactPath), "utf8"))); assert.equal(new Set(content.map((text) => JSON.stringify(JSON.parse(text).semanticText))).size, 15);
+  await withFixture(async (target) => { await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"target": "atom:grammar:element:box"', '"target": "atom:grammar:element:unknown"'); await fails(target, /target|evidence/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); });
 });
 
 test("stateful Storybook sources have finite source-dependent action matrices", async () => {
@@ -74,8 +75,9 @@ test("every corpus predicate rejects a changed raw compiler output", () => {
   }
 });
 
-test("pre-B6 terminal annotations fail closed", async () => withFixture(async (target) => {
-  await replace(target, "tui/src/oven-runtime/capability-registry.ts", "export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([]);", 'export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([{ recordId: "fabricated", actionId: "terminal-action:missing" }]);'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+test("structural registry rejects action claims and nonliteral capability forms", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/capability-registry.ts", "export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([]);", 'export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([{ recordId: "fabricated", actionId: "terminal-action:missing" }]);'); await fails(target, /actions/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'atomMappings: [', 'atomMappings: [...[],'); await fails(target, /literal|spread/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
 }));
 
 test("every keyboard handler branch is an AST-derived stale denominator", async () => withFixture(async (target) => {
@@ -89,18 +91,43 @@ test("Story controls distinguish inert presentation from an actionable handler",
   const actionable = (await discoverStorybook(target)).find((entry) => entry.id.endsWith("Card/Card.stories.tsx#OvenSummary")); assert.equal(actionable.stateMatrix[0].actions.length, 1); assert.match(actionable.stateMatrix[0].actions[0].id, /Open Oven/u);
 }));
 
-test("pre-B6 terminal capability claims fail closed", async () => withFixture(async (target) => {
-  await replace(target, "tui/src/oven-runtime/capability-registry.ts", "export const TERMINAL_OVEN_CAPABILITIES: readonly TerminalCapabilityClaim[] = Object.freeze([]);", 'export const TERMINAL_OVEN_CAPABILITIES: readonly TerminalCapabilityClaim[] = Object.freeze([{ sourceFamilyId: "fabricated", implementationExport: "tui/src/app.tsx#App", fixtureIds: ["echo"], atomMappings: [] }]);'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+test("structural registry rejects wrong families, targets, mappings, and provenance", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'sourceFamilyId: "grammar:element:box"', 'sourceFamilyId: "fabricated"'); await fails(target, /family|shape/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'sourceFamilyId: "fabricated"', 'sourceFamilyId: "grammar:element:box"'); await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'target: "atom:grammar:element:box"', 'target: "atom:grammar:element:grid"'); await fails(target, /target|evidence/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'target: "atom:grammar:element:grid"', 'target: "atom:grammar:element:box"'); await replace(target, "tui/src/oven-runtime/capability-registry.ts", 'atomId: "compiled:element:box"', 'atomId: "grammar:element:box"'); await fails(target, /duplicate|twelve|missing|family/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+}));
+
+test("structural registry rejects current implementation provenance drift", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/layout/structural-viewport.tsx", 'export function StructuralOvenViewport', '// drift\nexport function StructuralOvenViewport'); await fails(target, /provenance|drift/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+}));
+
+test("structural registry rejects evidence hash drift and unrelated records", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"artifactSha256": "', '"artifactSha256": "0'); await fails(target, /frame index|hash|evidence/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  const separate = await fixture(); try {
+    await replace(separate, "tui/src/oven-runtime/terminal-evidence-index.json", '"records": [', '"records": [{"recordId":"unrelated","fixture":"structural-layout"},'); await fails(separate, /unrelated|missing|record|evidence index|frame index/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  } finally { await rm(separate, { recursive: true, force: true }); }
+}));
+
+test("structural evidence rejects missing, extra, orphan, and non-source-derived frames", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/terminal-evidence-index.json", '"recordId": "structural-layout:grammar:element:box"', '"recordId": "structural-layout:missing"'); await fails(target, /target|evidence|record/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  const extra = await fixture(); try { await replace(extra, "tui/src/oven-runtime/terminal-evidence-index.json", '"records": [', '"records": [{"recordId":"extra","target":"support:frame:unknown","fixture":"structural-layout"},'); await fails(extra, /orphan|unrelated|record|matrix|disagrees/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); } finally { await rm(extra, { recursive: true, force: true }); }
+  const source = await fixture(); try { await replace(source, "tui/src/catalog/structural-fixture.oven", '<icon slot="main" name="Clock3"/>', ''); await fails(source, /stale|source|evidence/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); } finally { await rm(source, { recursive: true, force: true }); }
+}));
+
+test("structural implementation export cannot be removed after evidence exists", async () => withFixture(async (target) => {
+  await replace(target, "tui/src/oven-runtime/layout/structural-viewport.tsx", 'export function StructuralOvenViewport', 'function StructuralOvenViewport'); await fails(target, /named export|implementation export/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+}));
+
+test("global evidence rejects a missing flame record and a self-consistent stale structural source hash", async () => withFixture(async (target) => {
+  const evidencePath = join(target, "tui/src/oven-runtime/terminal-evidence-index.json"), evidence = JSON.parse(await readFile(evidencePath, "utf8")); evidence.records = evidence.records.filter((record) => record.fixture !== "glyphcss-interactive-flame" || record !== evidence.records.find((row) => row.fixture === "glyphcss-interactive-flame")); await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`); await fails(target, /global frame evidence|incomplete|orphaned/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  const stale = await fixture(); try { const runtime = "tui/src/oven-runtime/layout/layout-runtime.ts", path = join(stale, runtime), changed = `${await readFile(path, "utf8")}\n// current source mutation\n`; await writeFile(path, changed); const indexPath = join(stale, "tui/src/oven-runtime/terminal-evidence-index.json"), index = JSON.parse(await readFile(indexPath, "utf8")), digest = createHash("sha256").update(changed).digest("hex"); for (const record of index.records.filter((record) => record.fixture === "structural-layout")) record.sourceFiles[runtime] = digest; await writeFile(indexPath, `${JSON.stringify(index, null, 2)}\n`); await fails(stale, /cryptographically join|source bytes/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]); } finally { await rm(stale, { recursive: true, force: true }); }
 }));
 
 test("a Story action cannot cover its state render atom", async () => {
   const value = structuredClone(await auditTerminalOvenParity(root)), row = value.denominatorB.stories.find((entry) => value.atomicDenominator.some((atom) => atom.rowId === entry.id && atom.kind === "story-action")), action = value.atomicDenominator.find((atom) => atom.rowId === row.id && atom.kind === "story-action"), render = value.atomicDenominator.find((atom) => atom.rowId === row.id && atom.kind === "story-render");
-  action.mappingStatus = "implemented"; assert.equal(render.mappingStatus, "gap"); row.mappingStatus = "partial"; row.atomCoverage = { implemented: 1, total: row.atomCoverage.total, status: "partial" }; value.terminal.registry.covered = [action.id]; value.terminal.coverage.implemented = 1; value.terminal.coverage.status = "partial"; assert.doesNotThrow(() => validateTerminalParity(value)); row.mappingStatus = "implemented"; row.atomCoverage.status = "implemented"; assert.throws(() => validateTerminalParity(value), /inexact atomic row coverage/u);
+  const baseline = [...value.terminal.registry.covered]; action.mappingStatus = "implemented"; assert.equal(render.mappingStatus, "gap"); row.mappingStatus = "partial"; row.atomCoverage = { implemented: 1, total: row.atomCoverage.total, status: "partial" }; value.terminal.registry.covered = [...baseline, action.id]; value.terminal.coverage.implemented = baseline.length + 1; value.terminal.coverage.status = "partial"; assert.doesNotThrow(() => validateTerminalParity(value)); row.mappingStatus = "implemented"; row.atomCoverage.status = "implemented"; assert.throws(() => validateTerminalParity(value), /inexact atomic row coverage/u);
 });
 
-test("pre-B6 fabricated evidence cannot cover non-action atoms", async () => withFixture(async (target) => {
-  await replace(target, "tui/src/oven-runtime/capability-registry.ts", "export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([]);", 'export const TERMINAL_OVEN_ACTIONS: readonly TerminalActionAnnotation[] = Object.freeze([{ recordId: "fabricated", actionId: "terminal-action:fake" }]);'); await fails(target, /B6 offscreen harness/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
-}));
 
 test("check mode is non-writing and atomic failure removes only its exact temporary output", async () => withFixture(async (target) => {
   const manifest = join(target, "terminal-oven-parity.json"), before = await readFile(manifest, "utf8"), time = (await stat(manifest)).mtimeMs;
@@ -110,6 +137,6 @@ test("check mode is non-writing and atomic failure removes only its exact tempor
 
 test("malformed manifests and current behavior source mutations fail closed", async () => {
   const value = structuredClone(await auditTerminalOvenParity(root)); value.terminal.coverage.total = 0; assert.throws(() => validateTerminalParity(value), /inexact terminal coverage/u);
-  const exact = structuredClone(await auditTerminalOvenParity(root)), first = exact.atomicDenominator[0], second = exact.atomicDenominator[1], row = [...exact.denominatorA.grammar, ...exact.denominatorA.compiledIR, ...exact.denominatorA.b34References, ...exact.denominatorA.officialOvens, ...exact.denominatorB.publicExports, ...exact.denominatorB.stories].find((entry) => entry.id === first.rowId); first.mappingStatus = "implemented"; row.mappingStatus = "implemented"; row.atomCoverage = { implemented: 1, total: 1, status: "implemented" }; exact.terminal.registry.covered = [first.id]; exact.terminal.coverage = { implemented: 1, total: exact.atomicDenominator.length, status: "partial" }; assert.doesNotThrow(() => validateTerminalParity(exact)); exact.terminal.registry.covered = [second.id]; assert.throws(() => validateTerminalParity(exact), /inexact terminal coverage/u); exact.terminal.registry.covered = ["atom:unknown"]; assert.throws(() => validateTerminalParity(exact), /incomplete source mapping/u); exact.terminal.registry.covered = [first.id, first.id]; assert.throws(() => validateTerminalParity(exact), /incomplete source mapping/u);
+  const exact = structuredClone(await auditTerminalOvenParity(root)), first = exact.atomicDenominator.find((atom) => atom.mappingStatus === "gap"), second = exact.atomicDenominator.find((atom) => atom.mappingStatus === "gap" && atom.id !== first.id), baseline = [...exact.terminal.registry.covered], row = [...exact.denominatorA.grammar, ...exact.denominatorA.compiledIR, ...exact.denominatorA.b34References, ...exact.denominatorA.officialOvens, ...exact.denominatorB.publicExports, ...exact.denominatorB.stories].find((entry) => entry.id === first.rowId); first.mappingStatus = "implemented"; row.mappingStatus = "implemented"; row.atomCoverage = { implemented: 1, total: 1, status: "implemented" }; exact.terminal.registry.covered = [...baseline, first.id]; exact.terminal.coverage = { implemented: baseline.length + 1, total: exact.atomicDenominator.length, status: "partial" }; assert.doesNotThrow(() => validateTerminalParity(exact)); exact.terminal.registry.covered = [...baseline, second.id]; assert.throws(() => validateTerminalParity(exact), /inexact terminal coverage/u); exact.terminal.registry.covered = [...baseline, "atom:unknown"]; assert.throws(() => validateTerminalParity(exact), /incomplete source mapping/u); exact.terminal.registry.covered = [...baseline, first.id, first.id]; assert.throws(() => validateTerminalParity(exact), /incomplete source mapping/u);
   await withFixture(async (target) => { await replace(target, "ovens/checklist/checklist.oven", 'id="checklist"', 'id="checklist-mutated"'); await fails(target, /stale/u); });
 });

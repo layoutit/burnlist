@@ -4,9 +4,11 @@
   "records": [
     {
       "recordId": "glyphcss-interactive-flame:42x12:keyboard-right",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.keyboard-right.9b322cce626a3b19.json",
-      "artifactSha256": "9b322cce626a3b198a0121d6dfed7cd605ffb7febe2f9fa9e1c0c0576e30a3e6",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:42x12:keyboard-right",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.keyboard-right.3182a5d3b9c28f23.json",
+      "artifactSha256": "3182a5d3b9c28f2366ab0f75bf70ee2e40c4df8063a52c0b9037f056a8a32e21",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 42,
         "height": 12
@@ -15,9 +17,11 @@
     },
     {
       "recordId": "glyphcss-interactive-flame:42x12:reduced-t0",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t0.926ce1538c5f371c.json",
-      "artifactSha256": "926ce1538c5f371c214bc202549554fab6c8a8622f0da53624e48e36558b4694",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:42x12:reduced-t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t0.0de3b4c0c4dfe547.json",
+      "artifactSha256": "0de3b4c0c4dfe547dbc0e79c229be0e36f278f03ebf8654c01876d339058e056",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 42,
         "height": 12
@@ -26,9 +30,11 @@
     },
     {
       "recordId": "glyphcss-interactive-flame:42x12:reduced-t240",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t240.94daed8c28027316.json",
-      "artifactSha256": "94daed8c28027316e715fdd5c2673ab0c93f6eda348dccab22f49bdb2d56aa86",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:42x12:reduced-t240",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.reduced-t240.bbfb26d02b59bf08.json",
+      "artifactSha256": "bbfb26d02b59bf0888fa761f7bd10311d3e4502c45965bd5a2c330b981fa6efd",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 42,
         "height": 12
@@ -37,9 +43,11 @@
     },
     {
       "recordId": "glyphcss-interactive-flame:42x12:t0",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t0.9df256a2036c7243.json",
-      "artifactSha256": "9df256a2036c724351e28d0fdc72d709d876228a18772e8592f41b7b02a99325",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:42x12:t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t0.3a5e7bd4c3599f59.json",
+      "artifactSha256": "3a5e7bd4c3599f594ebede3c24cdc4f9d0f6a9634a4a0fdb600d40784ba5d879",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 42,
         "height": 12
@@ -48,9 +56,11 @@
     },
     {
       "recordId": "glyphcss-interactive-flame:42x12:t240",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t240.85d6be5ce21eeb69.json",
-      "artifactSha256": "85d6be5ce21eeb69c1e6c134a202fd536c469a00b04253633063a3f277eb4723",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:42x12:t240",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.42x12.t240.749b44e0ece036f6.json",
+      "artifactSha256": "749b44e0ece036f647abb1e35e5f8d55261bb04d1a436c3bed09c26be0c22566",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 42,
         "height": 12
@@ -59,14 +69,271 @@
     },
     {
       "recordId": "glyphcss-interactive-flame:64x12:t0",
-      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.64x12.t0.648af8d343eef1c5.json",
-      "artifactSha256": "648af8d343eef1c5b04d77b6414bda22305eae924e3dffa67c96c9855e563401",
-      "sourceSha256": "cfd79b3921b04215b8099c5633d5c674981a0f6876fd244f7972c3ec4ac136c4",
+      "fixture": "glyphcss-interactive-flame",
+      "frameId": "glyphcss-interactive-flame:64x12:t0",
+      "artifactPath": "dashboard/src/generated/terminal-frames/glyphcss-interactive-flame.64x12.t0.9f97a65f360da023.json",
+      "artifactSha256": "9f97a65f360da023aa01a4b926b84ca69a1b3c559a5cdfa65820a29d8b3b6c63",
+      "sourceSha256": "9f3c42a31c5ee4428f69e3038416e7d1beb0258c51f424718a113ebbe34e362d",
       "viewport": {
         "width": 64,
         "height": 12
       },
       "checkpoint": "t0"
+    },
+    {
+      "recordId": "structural-layout:grammar:element:box",
+      "target": "atom:grammar:element:box",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:40x10:short",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.40x10.short.0882cc4417929875.json",
+      "artifactSha256": "0882cc44179298757733420d8c1dfec2bc1f9f483d1321d8c5bd224b47cd6e46",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:box",
+      "target": "atom:compiled:element:box",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:40x20:tall",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.40x20.tall.ea0165b09ce50e5b.json",
+      "artifactSha256": "ea0165b09ce50e5b9e46dfa2bfa2bbfaf2ec7a99fd9156de9712cb0b23fa0c6b",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:grammar:element:grid",
+      "target": "atom:grammar:element:grid",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:40x20:final-focus",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.40x20.final-focus.4ccfe2961f03cef8.json",
+      "artifactSha256": "4ccfe2961f03cef8c33df7a499c2994050c74c6fbe4bf0f95571efad4a783cc6",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:grid",
+      "target": "atom:compiled:element:grid",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:60x10:short",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.60x10.short.3fed8ba775aba53f.json",
+      "artifactSha256": "3fed8ba775aba53f2a983b718cec83d0fe0da9b0c82240216d61a0d2a1ebe811",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:grammar:element:icon",
+      "target": "atom:grammar:element:icon",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:60x20:tall",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.60x20.tall.31ac94c25819fd26.json",
+      "artifactSha256": "31ac94c25819fd26c9adf58237222020ac29b55a9a46fcb7f47f30c1caaa1d0f",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:icon",
+      "target": "atom:compiled:element:icon",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:60x20:final-focus",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.60x20.final-focus.a43adc1e72e62d6f.json",
+      "artifactSha256": "a43adc1e72e62d6f7671ed22cd4dc0c7ba7251f2bb30a39f372062603f047fe4",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:grammar:element:panel",
+      "target": "atom:grammar:element:panel",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:80x10:short",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.80x10.short.90e50099bb046d68.json",
+      "artifactSha256": "90e50099bb046d689da29db0bc44ea77745298458c9f3ff0ea953609e556a0ca",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:panel",
+      "target": "atom:compiled:element:panel",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:80x20:tall",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.80x20.tall.6d6d8351200e70ca.json",
+      "artifactSha256": "6d6d8351200e70cadb19d793de183116f6cff51f1c6dee8a553e2371e4cf2f29",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:grammar:element:stack",
+      "target": "atom:grammar:element:stack",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:80x20:final-focus",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.80x20.final-focus.57bfae381680d4c8.json",
+      "artifactSha256": "57bfae381680d4c8a88bbfb5fcdf6ae7969bd244ed2c45ab0d77bf626038a86a",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:stack",
+      "target": "atom:compiled:element:stack",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:100x10:short",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.100x10.short.aed3aeed1216a713.json",
+      "artifactSha256": "aed3aeed1216a713b6e7cf5d61af449f5a3afc5a94b3724198b703b04d814371",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:grammar:element:text",
+      "target": "atom:grammar:element:text",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:100x20:tall",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.100x20.tall.0e29beeb747db631.json",
+      "artifactSha256": "0e29beeb747db631f416d407871a7115276437589ffee307e8367ef9d0334559",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:compiled:element:text",
+      "target": "atom:compiled:element:text",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:100x20:final-focus",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.100x20.final-focus.d41bf574a569bcc1.json",
+      "artifactSha256": "d41bf574a569bcc16c3950a2738817f494e0dbbefac4a384abd9ca43d414f0d6",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:support:structural-layout:140x10:short",
+      "target": "support:frame:structural-layout:140x10:short",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:140x10:short",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.140x10.short.379797ca56d837d6.json",
+      "artifactSha256": "379797ca56d837d6b090b33d7f28d005271f46d13e6f02b4b68f267ec46f31c6",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:support:structural-layout:140x20:tall",
+      "target": "support:frame:structural-layout:140x20:tall",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:140x20:tall",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.140x20.tall.01f1aa04e1349739.json",
+      "artifactSha256": "01f1aa04e134973986c7458a7e6dd8940285e700ca7df703abcbb961242ab667",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
+    },
+    {
+      "recordId": "structural-layout:support:structural-layout:140x20:final-focus",
+      "target": "support:frame:structural-layout:140x20:final-focus",
+      "fixture": "structural-layout",
+      "frameId": "structural-layout:140x20:final-focus",
+      "artifactPath": "dashboard/src/generated/terminal-frames/structural-layout.140x20.final-focus.4baec4011e3d1386.json",
+      "artifactSha256": "4baec4011e3d1386228f5fa7f482d775c470f2031e0bc0ee3ce119336a71bf69",
+      "implementationExport": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
+      "sourceFiles": {
+        "tui/src/oven-runtime/layout/layout-runtime.ts": "7e3ce4f3b604b6e45f40a51df9257405d9d123df55d354487d917821a63db23e",
+        "tui/src/oven-runtime/layout/structural-viewport.tsx": "faed3fcf2326423532465a886dbe68a3cd425a08f51d14ec53da828bb4495a5f",
+        "tui/src/catalog/structural-fixture.oven": "182c120d5c5747c7e0a7f1cbc460bab2f3e415232a988ba33aa4842c1f3d22c4",
+        "tui/src/catalog/frame-renderer.tsx": "d4a7e1df601f118859809f1169b69eda8f761658896a3bad89ea83d7c0d748ca",
+        "tui/package.json": "8b27543c75531ff1ef19b24a61eba2d6afe5528194252d71ece16fb166ebeada",
+        "tui/package-lock.json": "69b4f9d964b4a26443cfc504b11fd93b750d0d4480339a6a2d0a149a6ba4db25"
+      }
     }
   ]
 }
