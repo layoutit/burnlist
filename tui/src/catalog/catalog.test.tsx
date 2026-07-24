@@ -10,17 +10,20 @@ async function press(setup: Awaited<ReturnType<typeof createTestRenderer>>, key:
 }
 function assertFrameFits(frame: string, width: number) { for (const line of frame.split("\n")) expect(Array.from(line).length).toBeLessThanOrEqual(width); }
 
-test("catalog reaches existing glyph, structural, and progress fixtures with safe navigation", async () => {
+test("catalog reaches glyph, structural, progress, and shared list fixtures with safe navigation", async () => {
   const setup = await createTestRenderer({ width: 90, height: 24, useThread: false }); renderers.push(setup.renderer);
   const root = createRoot(setup.renderer); let exits = 0;
   flushSync(() => root.render(<CatalogApp shutdown={() => { exits += 1; }} />));
-  await setup.waitForFrame((frame) => frame.includes("Terminal catalog") && frame.includes("Glyph flame") && frame.includes("Structural layout") && frame.includes("Progress components"));
+  await setup.waitForFrame((frame) => frame.includes("Terminal catalog") && frame.includes("Glyph flame") && frame.includes("Structural layout") && frame.includes("Progress components") && frame.includes("Tables and lists"));
   await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Glyph fixture") && frame.includes("q:back"));
   await press(setup, "v"); await setup.waitForFrame((frame) => frame.includes("narrow"));
   await press(setup, "r"); await setup.waitForFrame((frame) => frame.includes("narrow") && frame.includes("r1"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog"));
   await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Structural layout") && frame.includes("First checkpoint"));
   await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Burnlist progress") && frame.includes("Progress"));
+  await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("STATE") && frame.includes("ACTIVE") && frame.includes("↑/↓:row"));
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Expanded detail"));
+  await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("B6"));
   await press(setup, "q"); await press(setup, "q"); expect(exits).toBe(0);
   setup.mockInput.pressEscape(); await new Promise((resolve) => setTimeout(resolve, 60)); await setup.flush(); expect(exits).toBe(1); root.unmount();
 });

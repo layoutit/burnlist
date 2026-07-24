@@ -1,10 +1,10 @@
 import { ovenFormatRegistry } from "../value-runtime";
 import type { TerminalCapabilities } from "../terminal-contract";
 
-/** Closed production allowlist: structural B5 plus the implemented B7 family. */
+/** Closed production allowlist: structural B5 plus implemented component families. */
 export const TERMINAL_IMPLEMENTED_CAPABILITIES: TerminalCapabilities = Object.freeze({
-  kinds: Object.freeze(["box", "grid", "stack", "panel", "text", "icon", "bind", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value"]),
-  components: Object.freeze(["box", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value"]),
+  kinds: Object.freeze(["box", "grid", "stack", "panel", "text", "icon", "bind", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value", "log-table", "column"]),
+  components: Object.freeze(["box", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value", "log-table"]),
   formats: Object.freeze(Object.keys(ovenFormatRegistry)),
   icons: Object.freeze(["ClipboardList", "Clock3", "Gauge", "TimerReset"]),
   selectors: Object.freeze([]),

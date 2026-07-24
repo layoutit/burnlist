@@ -8,16 +8,19 @@ import { FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
+import { TerminalList } from "../oven-runtime/components/list-components";
+import { listFixture, listFixtureStates, listPreviewRows, type ListFixtureState } from "./list-fixture";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress";
+type FixtureId = "flame" | "structural" | "progress" | "lists";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
   { id: "structural", label: "Structural layout", detail: "compiled layout projection", checkpoints: ["initial", "focused"] },
   { id: "progress", label: "Progress components", detail: "KPI strip and glyph metrics", checkpoints: ["ready", "complete"] },
+  { id: "lists", label: listFixture.title, detail: listFixture.detail, checkpoints: listFixtureStates },
 ];
 const progressPayloads = [
   { percent: 57, done: 4, total: 7, burns: [{ result: "pass" }, { result: "worsened" }, { result: "blocked" }], metric: { total: 8, failed: 2 }, required: "ready" },
@@ -39,11 +42,15 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const [mode, setMode] = useState<Mode>("wide");
   const [checkpoint, setCheckpoint] = useState(0);
   const [reload, setReload] = useState(0);
+  const [listIndex, setListIndex] = useState(4);
+  const [listExpanded, setListExpanded] = useState(false);
   const fixture = catalogFixtures[selected]!;
   const previewWidth = mode === "wide" ? 72 : 36;
   const previewHeight = mode === "wide" ? 16 : 14;
   const stateName = fixture.checkpoints[checkpoint % fixture.checkpoints.length]!;
   const progressResult = useMemo(() => admitTerminalOven(progressOven, { status: "ready", payload: progressPayloads[checkpoint % progressPayloads.length]! }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [checkpoint, previewHeight, previewWidth, reload]);
+  const listState = stateName as ListFixtureState;
+  const listRow = listFixture.rows[Math.max(0, Math.min(listIndex, listFixture.rows.length - 1))]!;
 
   const move = (amount: number) => setSelected((value) => (value + amount + catalogFixtures.length) % catalogFixtures.length);
   const nextCheckpoint = () => setCheckpoint((value) => (value + 1) % fixture.checkpoints.length);
@@ -54,7 +61,15 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
     if (page === "catalog") {
       if (pressed === "up") move(-1);
       else if (pressed === "down") move(1);
-      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setPage("preview"); }
+      else if (pressed === "return" || pressed === "enter") { setCheckpoint(0); setListIndex(4); setListExpanded(false); setPage("preview"); }
+      return;
+    }
+    if (fixture.id === "lists") {
+      if (pressed === "up") setListIndex((value) => Math.max(0, value - 1));
+      else if (pressed === "down") setListIndex((value) => Math.min(listFixture.rows.length - 1, value + 1));
+      else if (pressed === "return" || pressed === "enter") setListExpanded((value) => !value);
+      else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
+      else if (pressed === "r") setReload((value) => value + 1);
       return;
     }
     if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
@@ -71,9 +86,10 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
         {fixture.id === "flame" ? <FixtureFlame reducedMotion={stateName.startsWith("reduced")} clock={clock} /> : null}
         {fixture.id === "structural" ? <StructuralOvenViewport nodes={structuralOven.root} viewport={{ width: previewWidth - (mode === "wide" ? 1 : 0), height: previewHeight }} focusedPath={stateName === "focused" ? "root/1/2" : undefined} footer="" /> : null}
         {fixture.id === "progress" ? <TerminalOvenViewport result={progressResult} footer="" /> : null}
+        {fixture.id === "lists" ? <TerminalList model={{ ...listPreviewRows(previewWidth - (mode === "wide" ? 1 : 0), listState), selectedId: listRow.id, expandedId: listExpanded ? listRow.id : undefined, columns: listFixture.columns, height: previewHeight }} /> : null}
       </box>
     </box>
-    <CatalogFooter text="v:view · c:state · r:reload · q:back" />
+    <CatalogFooter text={fixture.id === "lists" ? "↑/↓:row · enter:expand · v:view · q:back" : "v:view · c:state · r:reload · q:back"} />
   </box>;
 }
 

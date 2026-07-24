@@ -84735,6 +84735,23 @@
           "actions": []
         }
       ]
+    },
+    {
+      "id": "dashboard/src/stories/TerminalListSurface.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "4cfd0567df77e8a34142a979220cffbe141eb534d64a95623a2d335850ca929d",
+            "arg.state": "current",
+            "arg.viewport": "72",
+            "selection": "initial",
+            "content": "current"
+          },
+          "actions": []
+        }
+      ]
     }
   ]
 }

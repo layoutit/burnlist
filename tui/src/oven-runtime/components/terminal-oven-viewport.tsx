@@ -3,11 +3,13 @@ import { layoutTerminalNodes, type LayoutCell } from "../layout/layout-runtime";
 import type { JsonValue, TerminalNode, TerminalRenderResult } from "../terminal-contract";
 import { projectComponentLayout } from "./component-layout";
 import { kpiFromNode, kpiStripModel, TerminalKpiItem, TerminalKpiStrip } from "./progress-components";
+import { logTableModel, TerminalLogTable } from "./list-components";
 
-type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number }>;
+type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
+  "log-table": TerminalLogTable,
 });
 
 /** Evaluates every component root before React paint and converts failures to state. */
@@ -18,6 +20,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
     for (const root of projected.roots) {
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
+      else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
     }
     return result;
   } catch (cause) {
@@ -49,7 +52,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit" }: { 
       const root = roots.get(cell.path), hidden = componentPaths.some((path) => cell.path.startsWith(`${path}/`));
       if (root) {
         const Component = TERMINAL_COMPONENT_ROOTS[root.node.kind];
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} /></box> : null;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

@@ -7,6 +7,7 @@ import "./terminal-frame.css";
 
 const modules = import.meta.glob("../../generated/terminal-frames/*.json", { eager: true, import: "default" }) as Record<string, StaticFrame>;
 export const terminalFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith(`${glyphFixture.id}:`));
+export const sharedListFrameEntries = (index.entries as FrameEntry[]).filter((entry) => entry.id.startsWith("shared-lists:"));
 export const frameForEntry = (entry: FrameEntry) => {
   const frame = modules[`../../generated/terminal-frames/${entry.path}`];
   if (!frame) throw new Error(`Missing indexed terminal frame ${entry.path}`);

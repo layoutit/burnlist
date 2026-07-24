@@ -5,6 +5,7 @@ const source = Object.freeze({ offset: 0, line: 1, column: 1 });
 const row = (): TerminalNode => ({ kind: "text", attributes: { text: " " }, bindings: {}, children: [], source });
 
 function reserve(node: TerminalNode, width: number): TerminalNode {
+  if (node.kind === "log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(10, Math.floor(width / 8))) }, row), source: node.source };
   if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item").length;
@@ -17,7 +18,7 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
 export function projectComponentLayout(nodes: readonly TerminalNode[], width: number): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
   const roots: ComponentRoot[] = [];
   const visit = (node: TerminalNode, path: string): TerminalNode => {
-    if (node.kind === "kpi-strip" || node.kind === "kpi-item") { roots.push({ path, node }); return reserve(node, width); }
+    if (node.kind === "kpi-strip" || node.kind === "kpi-item" || node.kind === "log-table") { roots.push({ path, node }); return reserve(node, width); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };
