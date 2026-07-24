@@ -13,7 +13,7 @@ import { TerminalModelLabView } from "./model-lab-components";
 import { fitTerminalText } from "../../terminal-text";
 import { useTerminalPalette } from "../../terminal-accessibility";
 
-type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null }>;
+type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null; pageIndex?: number; pageSize?: number }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
@@ -88,13 +88,13 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
         }
         if (["domain-tabs", "metric-tiles", "frame-card"].includes(root.node.kind)) {
           const media = mediaModel(prepared.ir!.root, prepared.payload, prepared.state.controls);
-          const content = root.node.kind === "domain-tabs" ? <TerminalDomainTabs model={media} width={cell.rect.width} /> : root.node.kind === "metric-tiles" ? <TerminalMetricTiles model={media} width={cell.rect.width} /> : <TerminalFrameCards model={media} width={cell.rect.width} height={cell.rect.height} />;
+          const content = root.node.kind === "domain-tabs" ? <TerminalDomainTabs model={media} width={cell.rect.width} /> : root.node.kind === "metric-tiles" ? <TerminalMetricTiles model={media} width={cell.rect.width} /> : <TerminalFrameCards model={media} width={cell.rect.width} height={cell.rect.height} selectedIndex={Number(prepared.state.selections["frame-card"] ?? 0)} />;
           return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden">{content}</box>;
         }
         const collectionId = typeof root.node.attributes.collectionFrom === "string" ? root.node.attributes.collectionFrom : "";
-        const fieldKey = prepared.state.expandedKeys.find((key) => key.startsWith(`${collectionId}:`));
-        const selectedKey = prepared.state.selections[collectionId] ?? fieldKey?.slice(collectionId.length + 1);
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { selectedCard: streaming?.selectedCard ?? 0, selectedFile: streaming?.selectedFile ?? 0, expandedKey: streaming?.expandedKey ?? (prepared.state.expandedKeys.includes("streaming-diff:first-file") ? "a1b2:src/app.ts" : null) } : root.node.kind === "field-list" ? { expanded: !!fieldKey && fieldKey.slice(collectionId.length + 1) === selectedKey, selectedId: selectedKey } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
+        const selectedKey = prepared.state.selections[collectionId] ?? prepared.state.expandedKeys.find((key) => key.startsWith(`${collectionId}:`))?.slice(collectionId.length + 1);
+        const fieldKey = selectedKey ? prepared.state.expandedKeys.find((key) => key === `${collectionId}:${selectedKey}`) : undefined;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { selectedCard: streaming?.selectedCard ?? 0, selectedFile: streaming?.selectedFile ?? 0, expandedKey: streaming?.expandedKey ?? (prepared.state.expandedKeys.includes("streaming-diff:first-file") ? "a1b2:src/app.ts" : null) } : root.node.kind === "field-list" ? { expanded: !!fieldKey && fieldKey.slice(collectionId.length + 1) === selectedKey, selectedId: selectedKey, pageIndex: prepared.state.collections[collectionId]?.pageIndex, pageSize: prepared.state.collections[collectionId]?.pageSize } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

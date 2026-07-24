@@ -141,9 +141,9 @@ describe("terminal capability accessibility", () => {
     }
   });
   test("q is globally reserved and escape has an explicit home-only exit invariant", () => {
-    expect(terminalKeyAction("q", 3, true)).toBe("back");
-    expect(terminalKeyAction("escape", 3, true)).toBe("back");
-    expect(terminalKeyAction("escape", 1, true)).toBe("exit");
+    expect(terminalKeyAction("q", 3, true)).toBe("input");
+    expect(terminalKeyAction("escape", 3, true)).toBe("continue");
+    expect(terminalKeyAction("escape", 1, true)).toBe("continue");
     expect(terminalKeyAction("a", 3, true)).toBe("input");
   });
 });

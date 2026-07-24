@@ -12,6 +12,7 @@ import { visualParityFixture } from "../../catalog/visual-parity-fixture";
 import { visualParityPng } from "../../catalog/visual-parity-fixture";
 import { decodePngDataUri } from "../../png-glyph";
 import { prepareTerminalComponentResult } from "./terminal-oven-viewport";
+import { mediaModel } from "./media-components";
 
 const payload = visualParityFixture.payload;
 
@@ -53,4 +54,18 @@ test("corrupt required triptych PNG fails closed before React paint", () => {
   const broken = JSON.parse(JSON.stringify(payload)); broken.byDomain.desktop.frames[0].images[2].src = "data:image/png;base64,AA==";
   const admitted = admitTerminalOven(compiled(), { status: "ready", payload: broken }, { viewport: { width: 72, height: 22 } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   const prepared = prepareTerminalComponentResult(admitted); expect(prepared.status).toBe("error"); expect(prepared.diagnostics.at(-1)?.message).toContain("PNG signature");
+});
+
+test("hostile Visual Parity tails stay admitted instead of being truncated before rendering", () => {
+  const payloadWithTail = JSON.parse(JSON.stringify(payload));
+  payloadWithTail.byDomain.desktop.frames = Array.from({ length: 19 }, (_, index) => ({ ...payload.byDomain.desktop.frames[0], frame: `TAIL-${index}` }));
+  expect(mediaModel(compiled().root, payloadWithTail, {}).frames.at(-1)?.frame).toBe("TAIL-18");
+});
+
+test("frame keyboard state windows around a selected hostile tail in the real viewport", async () => {
+  const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 14 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `FRAME-${index}` }));
+  const ir = compiled(), initial = initTerminalRuntime(ir, long), state = reduceTerminalRuntime(initial, { type: "mediaFrameMoved", direction: -1 }, ir);
+  const selected = { ...state, selections: { ...state.selections, "frame-card": "13" } }, result = admitTerminalOven(ir, { status: "ready", payload: long }, { viewport: { width: 72, height: 22 }, controls: selected.controls, selections: selected.selections }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  const setup = await createTestRenderer({ width: 72, height: 22, useThread: false }), root = createRoot(setup.renderer);
+  try { flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("Frame 14/14"); } finally { root.unmount(); setup.renderer.destroy(); }
 });

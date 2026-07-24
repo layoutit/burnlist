@@ -58,6 +58,7 @@ function collectionAction(key: string, ir: TerminalOvenIR, state: TerminalRuntim
 }
 
 export function terminalKeyboardAction(key: string, ir: TerminalOvenIR, state: TerminalRuntimeState): TerminalRuntimeAction | null {
+  if ((key === "up" || key === "down") && nodes(ir.root).some((node) => node.kind === "frame-card")) return { type: "mediaFrameMoved", direction: key === "up" ? -1 : 1 };
   const domain = control(ir, "domain-tabs");
   if (domain && (key === "left" || key === "right")) {
     const value = cycle(domainValues(state.payload, domain.source), state.controls[domain.id], key === "left" ? -1 : 1);

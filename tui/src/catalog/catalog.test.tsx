@@ -50,6 +50,13 @@ test("catalog uses left/right keys to switch the compiled Visual Parity IR domai
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
 });
 
+test("catalog Visual Parity Up/Down advances the admitted selected-frame window", async () => {
+  const setup = await createTestRenderer({ width: 90, height: 28, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 6; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("Frame 1/")); await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("Frame 2/")); root.unmount();
+});
+
 test("catalog Enter expands the compiled Streaming Diff hunk without leaking redacted content", async () => {
   const setup = await createTestRenderer({ width: 48, height: 18, useThread: false }); renderers.push(setup.renderer);
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
@@ -64,9 +71,22 @@ test("catalog dispatches a real Differential field drill-down and q returns only
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   for (let index = 0; index < 9; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
   await setup.waitForFrame((frame) => frame.includes("Differential Testing") && frame.includes("←/→:state"));
-  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Position after the update"));
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Tail 0"));
   await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("empty"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
+});
+
+test("catalog pages a 70-field Differential fixture through advertised n/p keys", async () => {
+  const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 9; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
+  await setup.waitForFrame((frame) => frame.includes("n/p:page") && frame.includes("Tail 0")); await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("› Tail 1")); await press(setup, "n"); await press(setup, "n"); await setup.waitForFrame((frame) => frame.includes("Tail 69")); root.unmount();
+});
+
+test("catalog Performance field preview does not advertise Differential paging", async () => {
+  const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
+  const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
+  for (let index = 0; index < 12; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Performance Tracing") && frame.includes("↑/↓:field") && !frame.includes("n/p:page")); const before = setup.captureCharFrame(); await press(setup, "n"); await press(setup, "p"); const after = setup.captureCharFrame(); expect(after).toContain("Fields"); expect(after).not.toContain("No fields match"); expect(after).toContain(before.includes("Tail") ? "Tail" : "Fields"); root.unmount();
 });
 
 test("catalog scrolls the reducer-expanded Checklist detail into its real wide and narrow preview", async () => {

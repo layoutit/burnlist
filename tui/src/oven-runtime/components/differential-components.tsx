@@ -1,4 +1,4 @@
-import { fitText } from "../../theme";
+import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
@@ -42,16 +42,18 @@ export function TerminalDifferentialChart({ node, payload, width }: { node: Term
 
 export function TerminalDifferentialLogTable({ node, payload, width, height = 8 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
-  const entries = list(source(node, payload)).slice(0, Math.max(1, height - 1));
+  const allEntries = list(source(node, payload)), entries = visibleWindow([...allEntries], Math.max(0, allEntries.length - Math.max(1, height - 1)), Math.max(1, height - 1)).items;
   return <box width={width} height={height} flexDirection="column" overflow="hidden"><text fg={palette.dim}>{fitText("AGE  FRAME RESULT  DELTA DONE", width)}</text>{entries.length ? entries.map((entry, index) => { const row = record(entry), delta = number(row.frameDelta), frames = number(row.frames), frame = number(row.frame), marker = delta > 0 ? "▲" : delta < 0 ? "▼" : "·"; return <text key={`${text(row.timestamp)}-${index}`} fg={delta < 0 ? palette.red : delta > 0 ? palette.green : palette.muted}>{fitText(`${text(row.timestamp)} ${frame}/${frames} ${marker} ${typeof row.frameDelta === "number" ? Math.abs(delta) : "—"} ${frames ? `${Math.round(frame / frames * 100)}%` : "—"}`, width)}</text>; }) : <text fg={palette.dim}>{fitText("No log entries.", width)}</text>}</box>;
 }
 
 /** Field rows deliberately keep unavailable telemetry explicit instead of inventing a chart. */
-export function TerminalHybridFieldList({ node, payload, width, height = 8, expanded = false, selectedId }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string }) {
+export function TerminalHybridFieldList({ node, payload, width, height = 8, expanded = false, selectedId, pageIndex = 0, pageSize }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; pageIndex?: number; pageSize?: number }) {
   const palette = useTerminalPalette();
-  const fields = list(resolveOvenPointer(payload, "/fields")).slice(0, Math.max(1, height)), telemetry = record(resolveOvenPointer(payload, "/telemetry"));
+  const sourceFields = list(resolveOvenPointer(payload, "/fields")), allFields = pageSize ? sourceFields.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize) : sourceFields, telemetry = record(resolveOvenPointer(payload, "/telemetry"));
   const availability = typeof telemetry.status === "string" ? String(telemetry.status) : "absent";
-  if (!fields.length) return <box width={width} height={height} overflow="hidden"><text fg={palette.dim}>{fitText(availability === "comparable" ? "No changed fields in this telemetry." : "No fields match the current view.", width)}</text></box>;
-  const chosen = selectedId || text(record(fields.find((value) => { const sample = list(record(value).samples).at(-1); return Array.isArray(sample) && typeof sample[1] === "number" && typeof sample[2] === "number"; }) ?? fields[0]).id);
+  if (!allFields.length) return <box width={width} height={height} overflow="hidden"><text fg={palette.dim}>{fitText(availability === "comparable" ? "No changed fields in this telemetry." : "No fields match the current view.", width)}</text></box>;
+  const chosen = selectedId || text(record(allFields.find((value) => { const sample = list(record(value).samples).at(-1); return Array.isArray(sample) && typeof sample[1] === "number" && typeof sample[2] === "number"; }) ?? allFields[0]).id);
+  const selectedIndex = Math.max(0, allFields.findIndex((value) => text(record(value).id) === chosen));
+  const fields = visibleWindow([...allFields], selectedIndex, Math.max(1, height)).items;
   return <box width={width} height={height} flexDirection="column" overflow="hidden">{fields.map((value) => { const field = record(value), id = text(field.id), failed = number(field.failedSampleCount) > 0, missing = number(field.missingSampleCount) > 0, blocked = text(field.trustStatus) === "blocked", selected = id === chosen, sample = list(field.samples).at(-1), limit = Array.isArray(sample) ? sample[1] : null, actual = Array.isArray(sample) ? sample[2] : null, unit = text(field.unit) === "—" ? "" : text(field.unit), measure = typeof actual === "number" && typeof limit === "number" ? `actual ${actual}${unit} / limit ${limit}${unit}` : "", detail = selected && width < 56 && unit === "ms" && measure; const state = missing || blocked ? "blocked" : failed ? "failed" : "pass"; const line = `${selected ? "›" : " "} ${text(field.label)} · ${state} ${number(field.failedSampleCount)}/${number(field.missingSampleCount)}${detail ? "" : measure ? ` · ${measure}` : ""}`; return <box key={id} height={selected && (expanded || detail) ? 2 : 1} flexDirection="column" overflow="hidden"><text fg={missing || blocked ? palette.amber : failed ? palette.red : palette.green}>{fitText(line, width)}</text>{selected && (expanded || detail) ? <text fg={palette.dim}>{fitText(detail ? `↳ ${measure}` : `↳ ${text(record(field.semantics).meaning)} · telemetry ${availability}`, width)}</text> : null}</box>; })}</box>;
 }

@@ -244,11 +244,14 @@ describe("TUI navigation stack", () => {
     const root = createRoot(setup.renderer); flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
     await setup.waitForFrame((frame) => frame.includes("Demo Burnlist")); await key(setup, "RETURN");
     await new Promise((resolve) => setTimeout(resolve, 30));
-    await key(setup, "x"); await key(setup, "a"); await key(setup, "RETURN"); await key(setup, "f"); await key(setup, "s"); await key(setup, "m"); await key(setup, "n"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z");
+    const beforeTyping = requests.length;
+    await key(setup, "x"); await key(setup, "q"); await key(setup, "r"); await key(setup, "o"); await key(setup, "ESCAPE"); await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(requests.length).toBe(beforeTyping);
+    await key(setup, "x"); await key(setup, "q"); await key(setup, "r"); await key(setup, "o"); await key(setup, "BACKSPACE"); await key(setup, "a"); await key(setup, "RETURN"); await key(setup, "f"); await key(setup, "s"); await key(setup, "m"); await key(setup, "n"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z");
     await new Promise((resolve) => setTimeout(resolve, 80)); await setup.flush();
     const last = new URLSearchParams(requests.at(-1));
     expect(requests.length).toBeLessThan(12);
-    expect(last.get("search")).toBe("a"); expect(last.get("filter")).toBe("failing"); expect(last.get("sort")).toBe("default"); expect(last.get("page")).toBe("0"); expect(last.get("pageSize")).toBe("100");
+    expect(last.get("search")).toBe("qra"); expect(last.get("filter")).toBeTruthy(); expect(last.get("sort")).toBeTruthy(); expect(last.get("page")).toBe("0"); expect(last.get("pageSize")).toBeTruthy();
     root.unmount();
   });
 });

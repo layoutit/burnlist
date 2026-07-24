@@ -1,6 +1,6 @@
 import { GlyphImage } from "../../glyph-image";
 import { decodePngDataUri } from "../../png-glyph";
-import { fitText } from "../../theme";
+import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding, resolveOvenPointer } from "../value-runtime";
@@ -45,7 +45,7 @@ export function mediaModel(nodes: readonly TerminalNode[], payload: JsonValue | 
   const noteScope = note ? selectedScope(note, payload, selected) : undefined;
   const noteText = note ? string(binding(note, "rationale", payload, noteScope)) : "";
   const cardScope = card ? selectedScope(card, payload, selected) : undefined;
-  const frames = Array.isArray(record(cardScope)?.frames) ? (record(cardScope)?.frames as readonly JsonValue[]).slice(0, 2).map((entry) => {
+  const frames = Array.isArray(record(cardScope)?.frames) ? (record(cardScope)?.frames as readonly JsonValue[]).map((entry) => {
     const frame = record(entry), difference = record(frame?.difference);
     return { frame: string(frame?.frame), status: string(frame?.status) || "unknown", summary: `${percent(difference?.ratio)} · mean ${delta(difference?.meanAbsoluteDelta)} · max ${string(difference?.maximumAbsoluteDelta)}`, label: string(frame?.label) || "Visual comparison", images: images(frame?.images) };
   }) : [];
@@ -96,9 +96,11 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
   </box>;
 }
 
-export function TerminalFrameCards({ model, width, height }: { model: MediaModel; width: number; height: number }) {
-  const frameHeight = Math.max(3, Math.floor(height / Math.max(1, model.frames.length)));
-  return <box width={width} height={height} flexDirection="column" overflow="hidden">{model.frames.map((item) => <Frame key={`${item.frame}-${item.label}`} frame={item} width={width} height={frameHeight} />)}</box>;
+export function TerminalFrameCards({ model, width, height, selectedIndex = 0 }: { model: MediaModel; width: number; height: number; selectedIndex?: number }) {
+  const rows = Math.max(1, Math.floor((height - 1) / 3));
+  const window = visibleWindow([...model.frames], selectedIndex, rows);
+  const frameHeight = Math.max(3, Math.floor((height - 1) / Math.max(1, window.items.length)));
+  return <box width={width} height={height} flexDirection="column" overflow="hidden"><text>{fitText(`Frame ${Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1))) + 1}/${model.frames.length}`, width)}</text>{window.items.map((item, index) => <Frame key={`${item.frame}-${item.label}`} frame={{ ...item, label: window.start + index === selectedIndex ? `${item.label} · selected` : item.label }} width={width} height={frameHeight} />)}</box>;
 }
 
 export function TerminalMediaSurface({ nodes, payload, controls, width, height }: { nodes: readonly TerminalNode[]; payload?: JsonValue; controls: Readonly<Record<string, string | boolean>>; width: number; height: number }) {

@@ -9,6 +9,7 @@ import { admitTerminalOven } from "../terminal-contract";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./terminal-capabilities";
 import { TerminalOvenViewport } from "./terminal-oven-viewport";
 import { initTerminalRuntime, reduceTerminalRuntime } from "../state-runtime";
+import { TerminalHybridFieldList } from "./differential-components";
 // @ts-expect-error Canonical validator intentionally remains JavaScript.
 import { validateDifferentialTestingData } from "../../../../ovens/differential-testing/engine/data-contract.mjs";
 
@@ -48,4 +49,10 @@ test("compiled Differential progress-mode defaults to delta and reducer selects 
     const result = admitTerminalOven(compiled.ir, { status: "ready", payload: differentialFixture.payload }, { viewport: { width: 78, height: 22 }, controls: state.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
     const setup = await createTestRenderer({ width: 78, height: 22, useThread: false }), root = createRoot(setup.renderer); flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain(label); root.unmount(); setup.renderer.destroy();
   }
+});
+
+test("hostile Differential tail field is retained and selected-window reachable", async () => {
+  const payload = { ...differentialFixture.payload, fields: Array.from({ length: 70 }, (_, index) => ({ ...differentialFixture.payload.fields[0], id: `tail-${index}`, label: `Tail ${index}` })) };
+  const setup = await createTestRenderer({ width: 60, height: 8, useThread: false }), root = createRoot(setup.renderer);
+  try { flushSync(() => root.render(<TerminalHybridFieldList node={compiled.ir.root[0]!} payload={payload as never} width={60} height={6} selectedId="tail-69" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("Tail 69"); } finally { root.unmount(); setup.renderer.destroy(); }
 });

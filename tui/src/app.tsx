@@ -51,10 +51,13 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [activeLive, setActiveLive] = useState<LiveSnapshot<true>>(initialLiveSnapshot());
   const [terminalState, setTerminalState] = useState<TerminalRuntimeState | null>(null);
   const [searchControlId, setSearchControlId] = useState<string | null>(null);
+  const [searchFlush, setSearchFlush] = useState(0);
   const [streamingNavigation, setStreamingNavigation] = useState<StreamingDiffNavigation | null>(null);
   const [streamingRefresh, setStreamingRefresh] = useState(0);
   const terminalRuntimeRef = useRef<{ scope: string; state: TerminalRuntimeState } | null>(null);
   const terminalQueryRef = useRef("");
+  const deferredQueryRef = useRef("");
+  const searchBeforeFocusRef = useRef<string>("");
   const domainIdRef = useRef<string | null>(null);
   const ovenRequest = useRef<{ generation: number; controller: AbortController | null }>({ generation: 0, controller: null });
   const beginOvenRequest = useCallback(() => {
@@ -214,9 +217,13 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     const query = terminalServerQuery(ovenDetail.ir as unknown as TerminalOvenIR, terminalState);
     const key = JSON.stringify([selectedBurnlist.repoKey, activeOven.id, ovenDetail.repoKey, query]);
     if (terminalQueryRef.current === key) return;
-    terminalQueryRef.current = key;
-    void loadBurnlist(selectedBurnlist, activeOven, false);
-  }, [activeOven, loadBurnlist, ovenDetail, selectedBurnlist, terminalState]);
+    const search = (ovenDetail.ir as unknown as TerminalOvenIR).controls.find((control) => control.kind === "search");
+    const previous = deferredQueryRef.current;
+    deferredQueryRef.current = key;
+    const delay = searchControlId && previous && search && typeof search.debounceMs === "number" ? Math.max(0, Math.min(search.debounceMs, 1000)) : 0;
+    const timer = setTimeout(() => { if (deferredQueryRef.current !== key || terminalQueryRef.current === key) return; terminalQueryRef.current = key; void loadBurnlist(selectedBurnlist, activeOven, false); }, delay);
+    return () => clearTimeout(timer);
+  }, [activeOven, loadBurnlist, ovenDetail, searchControlId, searchFlush, selectedBurnlist, terminalState]);
   const refreshActive = useCallback(() => {
     if ((view === "burnlist" || view === "item") && selectedBurnlist) void loadBurnlist(selectedBurnlist, activeOven, false);
     if (view === "oven" && activeOven) void loadCatalogOven(activeOven);
@@ -319,6 +326,14 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     return true;
   }, [activeOven, client, landing.projects, ovenDetail]);
   useKeyboard((key) => {
+    if (searchControlId && (view === "burnlist" || view === "oven")) {
+      if (key.name === "escape") { dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: searchBeforeFocusRef.current }); setSearchControlId(null); return; }
+      if (key.name === "return" || key.name === "enter") { setSearchControlId(null); setSearchFlush((value) => value + 1); return; }
+      const value = terminalRuntimeRef.current?.state.controls[searchControlId];
+      if (key.name === "backspace") return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: typeof value === "string" ? value.slice(0, -1) : "" });
+      if (key.name && key.name.length === 1) return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: `${typeof value === "string" ? value : ""}${key.name}` });
+      return;
+    }
     if (key.name === "q") { if (view === "oven" && streamingNavigation?.page === "session") return setStreamingNavigation((state) => state ? reduceStreamingDiffNavigation(state, { type: "back" }) : state); return back(); }
     if (key.name === "escape") return navigation.length <= 1 ? shutdown() : back();
     const global = terminalKeyAction(key.name, navigation.length, !!searchControlId);
@@ -333,13 +348,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (key.name === "o") {
       if (view === "oven") return back();
       if (view !== "ovens") pushView("ovens");
-      return;
-    }
-    if (searchControlId && (view === "burnlist" || view === "oven")) {
-      if (key.name === "return" || key.name === "enter") return setSearchControlId(null);
-      const value = terminalRuntimeRef.current?.state.controls[searchControlId];
-      if (key.name === "backspace") return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: typeof value === "string" ? value.slice(0, -1) : "" });
-      if (key.name && key.name.length === 1) return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: `${typeof value === "string" ? value : ""}${key.name}` });
       return;
     }
     if (view === "home") {
@@ -379,7 +387,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       if ((key.name === "left" || key.name === "right") && selectModelLabFrame(key.name === "left" ? -1 : 1)) return;
       if (key.name === "x") {
         const control = ovenDetail ? terminalSearchControl(ovenDetail.ir as unknown as TerminalOvenIR) : null;
-        if (control) setSearchControlId(control.id);
+        if (control) { searchBeforeFocusRef.current = String(terminalRuntimeRef.current?.state.controls[control.id] ?? ""); setSearchControlId(control.id); }
         return;
       }
       dispatchRuntimeKey(key.name ?? key.sequence ?? "");
@@ -394,7 +402,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       if ((key.name === "left" || key.name === "right") && selectModelLabFrame(key.name === "left" ? -1 : 1)) return;
       if (key.name === "x") {
         const control = ovenDetail ? terminalSearchControl(ovenDetail.ir as unknown as TerminalOvenIR) : null;
-        if (control) setSearchControlId(control.id);
+        if (control) { searchBeforeFocusRef.current = String(terminalRuntimeRef.current?.state.controls[control.id] ?? ""); setSearchControlId(control.id); }
         return;
       }
       dispatchRuntimeKey(key.name ?? key.sequence ?? "");

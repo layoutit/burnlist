@@ -34,3 +34,15 @@ test("array-valued diff-card source follows canonical withholding semantics", ()
   const hostile = { identity: { session: "x" }, cards: [{ toolUseId: "t", revId: "r", files: [{ path: "a", kind: "modified", diff: "SECRET", meta: { redacted: true } }, { path: "b", kind: "renamed", diff: "RENAMED" }, { path: "c", kind: "binary", diff: "BINARY", meta: { redacted: true } }] }] };
   const safe = streamingDiffModel(compiled.ir.root[1]!, hostile as never, 0, 0, "r:a"); expect(JSON.stringify(safe)).not.toContain("SECRET"); expect(JSON.stringify(safe)).not.toContain("RENAMED"); expect(JSON.stringify(safe)).not.toContain("BINARY");
 });
+
+test("hostile card and file tails remain selectable through their model indexes", () => {
+  const cards = Array.from({ length: 25 }, (_, card) => ({ toolUseId: `tool-${card}`, revId: `rev-${card}`, files: Array.from({ length: 17 }, (_, file) => ({ path: `tail-${card}-${file}.ts`, kind: "modified", diff: "+tail" })) }));
+  const model = streamingDiffModel(compiled.ir.root[1]!, { identity: { session: "tail" }, cards } as never, 24, 16);
+  expect(model.cards).toHaveLength(25); expect(model.cards[24]?.files[16]?.path).toBe("tail-24-16.ts");
+});
+
+test("real Streaming Diff frame keeps a selected 17th file visible within rendered row budget", async () => {
+  const files = Array.from({ length: 17 }, (_, index) => ({ path: `tail-${index}.ts`, kind: "modified", diff: index === 16 ? "+selected" : "+x" })), data = { identity: { session: "tail" }, cards: [{ toolUseId: "tool", revId: "tail", status: "complete", files }] };
+  const result = admitTerminalOven(compiled.ir, { status: "ready", payload: data }, { viewport: { width: 52, height: 10 } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), setup = await createTestRenderer({ width: 52, height: 10, useThread: false }), root = createRoot(setup.renderer);
+  try { flushSync(() => root.render(<TerminalOvenViewport result={result} footer="" streaming={{ selectedCard: 0, selectedFile: 16, expandedKey: null }} />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("tail-16.ts"); } finally { root.unmount(); setup.renderer.destroy(); }
+});

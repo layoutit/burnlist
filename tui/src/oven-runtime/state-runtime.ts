@@ -4,7 +4,7 @@ import { resolveOvenPointer } from "./value-runtime";
 import { collectionDescriptor, collectionDescriptors, serverPage } from "./ir-descriptor";
 
 export type TerminalRuntimeState = Readonly<TerminalState & { payload?: JsonValue; payloadRevision: number }>;
-export type TerminalRuntimeAction = Readonly<{ type: "payloadAccepted"; payload: JsonValue } | { type: "modeSelected" | "queryChanged" | "domainSelected"; id: string; value: string } | { type: "toggleChanged"; id: string; active: boolean } | { type: "pagePrevious" | "pageNext"; collectionId: string } | { type: "pageSizeChanged"; collectionId: string; pageSize: number } | { type: "selectionMoved"; collectionId: string; direction: -1 | 1 } | { type: "toggleExpanded"; key: string } | { type: "focusNext" | "focusPrevious" } | { type: "focusSet"; id: string }>;
+export type TerminalRuntimeAction = Readonly<{ type: "payloadAccepted"; payload: JsonValue } | { type: "modeSelected" | "queryChanged" | "domainSelected"; id: string; value: string } | { type: "toggleChanged"; id: string; active: boolean } | { type: "pagePrevious" | "pageNext"; collectionId: string } | { type: "pageSizeChanged"; collectionId: string; pageSize: number } | { type: "selectionMoved"; collectionId: string; direction: -1 | 1 } | { type: "mediaFrameMoved"; direction: -1 | 1 } | { type: "toggleExpanded"; key: string } | { type: "focusNext" | "focusPrevious" } | { type: "focusSet"; id: string }>;
 const clamp = (value: number, count: number) => Math.max(0, Math.min(value, count - 1));
 const controls = (ir: TerminalOvenIR, id: string) => ir.controls.find((item) => item.id === id);
 const modeValues = (ir: TerminalOvenIR, id: string): string[] => {
@@ -52,6 +52,13 @@ export function reduceTerminalRuntime(state: TerminalRuntimeState, action: Termi
     if (!keys.length) return state;
     const current = Math.max(0, keys.indexOf(state.selections[action.collectionId] ?? keys[0]!));
     return { ...state, selections: { ...state.selections, [action.collectionId]: keys[(current + action.direction + keys.length) % keys.length]! } };
+  }
+  if (action.type === "mediaFrameMoved") {
+    const domain = ir.controls.find((item) => item.kind === "domain-tabs"), source = domain && pointer(state.payload, domain.source), selectedDomain = domain ? String(state.controls[domain.id] ?? "") : "";
+    const scope = source && typeof source === "object" ? undefined : undefined;
+    const frames = selectedDomain && state.payload && typeof state.payload === "object" ? resolveOvenPointer(state.payload, `/byDomain/${selectedDomain}/frames`) : scope;
+    const count = Array.isArray(frames) ? frames.length : 0, current = Number(state.selections["frame-card"] ?? 0);
+    return count ? { ...state, selections: { ...state.selections, "frame-card": String((Math.max(0, Math.min(current, count - 1)) + action.direction + count) % count) } } : state;
   }
   if (action.type === "pagePrevious" || action.type === "pageNext" || action.type === "pageSizeChanged") { const descriptor = collectionDescriptor(ir, action.collectionId), current = descriptor && state.collections[action.collectionId]; if (!current) return state; const pageSize = action.type === "pageSizeChanged" ? action.pageSize : current.pageSize; if (!Number.isSafeInteger(pageSize) || pageSize < 1) return state; return { ...state, collections: { ...state.collections, [action.collectionId]: { ...current, pageIndex: action.type === "pagePrevious" ? Math.max(0, current.pageIndex - 1) : action.type === "pageNext" ? current.pageIndex + 1 : 0, pageSize } } }; }
   if (action.type !== "modeSelected" && action.type !== "queryChanged" && action.type !== "domainSelected" && action.type !== "toggleChanged") return state;
