@@ -21,6 +21,7 @@ test("catalog reaches glyph, structural, progress, and shared list fixtures with
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog"));
   await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Structural layout") && frame.includes("First checkpoint"));
   await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Burnlist progress") && frame.includes("Progress"));
+  await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Run overview") && frame.includes("q:back"));
   await press(setup, "q"); await press(setup, "ARROW_DOWN"); await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("STATE") && frame.includes("ACTIVE") && frame.includes("↑/↓:row"));
   await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Expanded detail"));
   await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("B6"));

@@ -84752,6 +84752,23 @@
           "actions": []
         }
       ]
+    },
+    {
+      "id": "dashboard/src/stories/TerminalStatusSurface.stories.tsx#Paired",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Paired",
+            "sourceFingerprint": "ef6389f8e6751edee7ef18bbcc97b55795fec74d38ee79ad09851f209569e688",
+            "arg.checkpoint": "normal",
+            "arg.viewport": "72",
+            "selection": "initial",
+            "content": "component:PairedStatus"
+          },
+          "actions": []
+        }
+      ]
     }
   ]
 }

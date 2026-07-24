@@ -4,12 +4,17 @@ import type { JsonValue, TerminalNode, TerminalRenderResult } from "../terminal-
 import { projectComponentLayout } from "./component-layout";
 import { kpiFromNode, kpiStripModel, TerminalKpiItem, TerminalKpiStrip } from "./progress-components";
 import { logTableModel, TerminalLogTable } from "./list-components";
+import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
   "log-table": TerminalLogTable,
+  "section-header": TerminalStatusSurface,
+  "refresh-status": TerminalStatusSurface,
+  "domain-note": TerminalStatusSurface,
+  "differential-empty-state": TerminalStatusSurface,
 });
 
 /** Evaluates every component root before React paint and converts failures to state. */
@@ -21,6 +26,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "log-table") logTableModel(root.node, result.payload, result.state.viewport.width);
+      else if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(root.node.kind)) statusSurfaceModel(root.node, result.payload);
     }
     return result;
   } catch (cause) {

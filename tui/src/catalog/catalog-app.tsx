@@ -4,22 +4,26 @@ import { useMemo, useState } from "react";
 import { compileOven } from "../../../src/ovens/dsl/oven-compile.mjs";
 import progressSource from "./progress-fixture.oven" with { type: "text" };
 import structuralSource from "./structural-fixture.oven" with { type: "text" };
+import statusSource from "./status-fixture.oven" with { type: "text" };
+import statusEmptySource from "./status-empty-fixture.oven" with { type: "text" };
 import { FixtureFlame } from "./fixture-flame";
 import { glyphFixture } from "./glyph-fixture";
 import { StructuralOvenViewport } from "../oven-runtime/layout/structural-viewport";
 import { TerminalOvenViewport } from "../oven-runtime/components/terminal-oven-viewport";
 import { TerminalList } from "../oven-runtime/components/list-components";
 import { listFixture, listFixtureStates, listPreviewRows, type ListFixtureState } from "./list-fixture";
+import { statusFixtureCheckpoints, statusFixtureStates } from "./status-fixture";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "../oven-runtime/components/terminal-capabilities";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "../oven-runtime/terminal-contract";
 
 type Clock = Readonly<{ now(): number; setInterval(fn: () => void, delayMs: number): unknown; clearInterval(handle: unknown): void }>;
-type FixtureId = "flame" | "structural" | "progress" | "lists";
+type FixtureId = "flame" | "structural" | "progress" | "status" | "lists";
 type Mode = "wide" | "narrow";
 const catalogFixtures: ReadonlyArray<Readonly<{ id: FixtureId; label: string; detail: string; checkpoints: readonly string[] }>> = [
   { id: "flame", label: "Glyph flame", detail: "glyphcss animated fire", checkpoints: glyphFixture.states.map((state) => state.checkpoint) },
   { id: "structural", label: "Structural layout", detail: "compiled layout projection", checkpoints: ["initial", "focused"] },
   { id: "progress", label: "Progress components", detail: "KPI strip and glyph metrics", checkpoints: ["ready", "complete"] },
+  { id: "status", label: "Heading and status", detail: "reserved activity and empty-state surface", checkpoints: statusFixtureCheckpoints },
   { id: "lists", label: listFixture.title, detail: listFixture.detail, checkpoints: listFixtureStates },
 ];
 const progressPayloads = [
@@ -34,6 +38,8 @@ function compile(source: string, file: string): TerminalOvenIR {
 }
 const structuralOven = compile(structuralSource, "tui/src/catalog/structural-fixture.oven");
 const progressOven = compile(progressSource, "tui/src/catalog/progress-fixture.oven");
+const statusOven = compile(statusSource, "tui/src/catalog/status-fixture.oven");
+const statusEmptyOven = compile(statusEmptySource, "tui/src/catalog/status-empty-fixture.oven");
 const systemClock: Clock = { now: () => Date.now(), setInterval: (fn, delay) => setInterval(fn, delay), clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>) };
 
 export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void; clock?: Clock }) {
@@ -49,6 +55,8 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
   const previewHeight = mode === "wide" ? 16 : 14;
   const stateName = fixture.checkpoints[checkpoint % fixture.checkpoints.length]!;
   const progressResult = useMemo(() => admitTerminalOven(progressOven, { status: "ready", payload: progressPayloads[checkpoint % progressPayloads.length]! }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [checkpoint, previewHeight, previewWidth, reload]);
+  const statusState = statusFixtureStates[stateName as keyof typeof statusFixtureStates] ?? statusFixtureStates.normal;
+  const statusResult = useMemo(() => admitTerminalOven(statusState.empty ? statusEmptyOven : statusOven, { status: "ready", payload: statusState.payload }, { viewport: { width: previewWidth, height: previewHeight } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, reload, statusState]);
   const listState = stateName as ListFixtureState;
   const listRow = listFixture.rows[Math.max(0, Math.min(listIndex, listFixture.rows.length - 1))]!;
 
@@ -86,6 +94,7 @@ export function CatalogApp({ shutdown, clock = systemClock }: { shutdown(): void
         {fixture.id === "flame" ? <FixtureFlame reducedMotion={stateName.startsWith("reduced")} clock={clock} /> : null}
         {fixture.id === "structural" ? <StructuralOvenViewport nodes={structuralOven.root} viewport={{ width: previewWidth - (mode === "wide" ? 1 : 0), height: previewHeight }} focusedPath={stateName === "focused" ? "root/1/2" : undefined} footer="" /> : null}
         {fixture.id === "progress" ? <TerminalOvenViewport result={progressResult} footer="" /> : null}
+        {fixture.id === "status" ? <TerminalOvenViewport result={statusResult} footer="" /> : null}
         {fixture.id === "lists" ? <TerminalList model={{ ...listPreviewRows(previewWidth - (mode === "wide" ? 1 : 0), listState), selectedId: listRow.id, expandedId: listExpanded ? listRow.id : undefined, columns: listFixture.columns, height: previewHeight }} /> : null}
       </box>
     </box>
