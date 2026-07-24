@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { fitText, palette } from "./theme";
+import { sanitizeTerminalText } from "./terminal-text";
 import { useTerminalChrome } from "./terminal-chrome";
 
 export function TableCell({ children, width, grow = 0, color = palette.muted }: {
@@ -30,10 +31,11 @@ export function TableLine({ children, selected = false, header = false }: {
   </box>;
 }
 
-export function TableGroup({ name, count, noun }: { name: string; count: number; noun: string }) {
+export function TableGroup({ name, count, noun, width }: { name: string; count: number; noun: string; width: number }) {
   const chrome = useTerminalChrome();
+  const suffix = `  ·  ${count} ${noun}${count === 1 ? "" : "s"}`;
   return <box height={1} paddingLeft={3} backgroundColor={chrome.background} flexDirection="row">
-    <text fg={palette.blue}>{name}</text>
-    <text fg={palette.dim}>{`  ·  ${count} ${noun}${count === 1 ? "" : "s"}`}</text>
+    <text fg={palette.blue}>{fitText(sanitizeTerminalText(name), Math.max(1, width - 3 - suffix.length)).trimEnd()}</text>
+    <text fg={palette.dim}>{suffix}</text>
   </box>;
 }

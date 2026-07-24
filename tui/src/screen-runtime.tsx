@@ -86,7 +86,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         result={runtime}
         footer="q:back"
       /> : <>
-      {runtime ? <box height={2} overflow="hidden"><text fg={palette.dim}>{`LEGACY FALLBACK · ${runtime.diagnostics.at(-1)?.message ?? runtime.status}`}</text></box> : null}
+      {runtime ? <box height={2} overflow="hidden"><text fg={palette.dim}>{fitText(`LEGACY FALLBACK · ${runtime.diagnostics.at(-1)?.message ?? runtime.status}`, Math.max(1, width - 6)).trimEnd()}</text></box> : null}
       <OvenPane
         active={props.activeOven}
         lenses={props.ovenLenses}
@@ -163,12 +163,12 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
     case "oven-detail":
       if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 3} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 4} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 3} />;
-      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} />;
+      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} width={width} />;
     case "item-detail":
       return <ItemDetail key={key} item={props.selectedItem} oven={props.activeOven} progress={props.progress} data={props.ovenData} domainIndex={props.domainIndex} width={width} height={height - 3} />;
     case "footer":
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
-        <text fg={palette.dim}>{String(node.attributes.hints)}</text>
+        <text fg={palette.dim}>{fitText(String(node.attributes.hints), Math.max(1, width - 6)).trimEnd()}</text>
       </box>;
     default:
       return null;

@@ -10,6 +10,7 @@ import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading
 import { TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
 import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
 import { TerminalModelLabView } from "./model-lab-components";
+import { fitTerminalText } from "../../terminal-text";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
@@ -57,7 +58,7 @@ export function prepareTerminalComponentResult(result: TerminalRenderResult): Te
 
 function StructuralCell({ cell }: { cell: LayoutCell }) {
   const text = cell.collapsed && cell.text ? `↳ ${cell.text}` : cell.text ?? "";
-  return <box position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><text>{text}</text></box>;
+  return <box position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><text>{fitTerminalText(text, cell.rect.width)}</text></box>;
 }
 
 /**
@@ -69,7 +70,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
   const prepared = prepareTerminalComponentResult(result), viewport = prepared.state.viewport, footerHeight = 2, bodyHeight = Math.max(1, viewport.height - footerHeight);
   if (prepared.status !== "ready" || !prepared.ir || prepared.payload === undefined) {
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
-    return <box width={viewport.width} height={viewport.height} overflow="hidden"><text>{message}</text></box>;
+    return <box width={viewport.width} height={viewport.height} overflow="hidden"><text>{fitTerminalText(message, viewport.width)}</text></box>;
   }
   const projected = projectComponentLayout(prepared.ir.root, viewport.width, prepared.payload, prepared.state.controls), layout = layoutTerminalNodes(projected.nodes, viewport, prepared.state.focusId, footerHeight);
   const roots = new Map(projected.roots.map((root) => [root.path, root])), componentPaths = [...roots.keys()];
@@ -81,7 +82,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
         if (root.node.kind === "verdict-header") return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><TerminalVerdictHeader node={root.node} payload={prepared.payload} width={cell.rect.width} /></box>;
         if (root.node.kind === "domain-note" && typeof root.node.attributes.selectionFrom === "string") {
           const note = mediaModel(prepared.ir!.root, prepared.payload, prepared.state.controls).note;
-          return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><text>{note}</text></box>;
+          return <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><text>{fitTerminalText(note, cell.rect.width)}</text></box>;
         }
         if (["domain-tabs", "metric-tiles", "frame-card"].includes(root.node.kind)) {
           const media = mediaModel(prepared.ir!.root, prepared.payload, prepared.state.controls);
@@ -94,6 +95,6 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}
-    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor="#686868"><text>{footer}</text></box>
+    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor="#686868"><text>{fitTerminalText(footer, viewport.width)}</text></box>
   </box>;
 }

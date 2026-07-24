@@ -28,9 +28,9 @@ function ItemRows({ items, selected, height, width }: { items: DetailItem[]; sel
       const active = index === selected;
       const statusTone = item.status === "ACTIVE" || item.status === "PASS" ? palette.green : item.status === "FAIL" ? palette.red : palette.blue;
       return <TableLine key={item.key} selected={active}>
-        <TableCell width={9} color={statusTone}>{item.status}</TableCell>
-        <TableCell width={9} color={palette.soft}>{item.id}</TableCell>
-        <TableCell width={Math.max(8, width - 30)} color={active ? palette.foreground : palette.muted}>{item.title}</TableCell>
+        <TableCell width={9} color={statusTone}>{fitText(item.status, 8).trimEnd()}</TableCell>
+        <TableCell width={9} color={palette.soft}>{fitText(item.id, 8).trimEnd()}</TableCell>
+        <TableCell width={Math.max(8, width - 30)} color={active ? palette.foreground : palette.muted}>{fitText(item.title, Math.max(8, width - 31)).trimEnd()}</TableCell>
         <TableCell width={8} color={item.latest ? palette.amber : palette.dim}>{item.latest ? "LATEST" : item.completedAt ? compactTime(item.completedAt) : ""}</TableCell>
       </TableLine>;
     })}
@@ -58,7 +58,7 @@ function VisualParityOven({ data, items, selected, height, width }: { data: Oven
   const passed = rows.filter((entry) => entry.status === "pass").length;
   const qualified = payload.comparisons.every((comparison) => comparison.status === "pass");
   return <box flexDirection="column" flexGrow={1}>
-    <box height={1} flexDirection="row" alignItems="center" paddingLeft={2} gap={2}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{domain.label}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
+    <box height={1} flexDirection="row" alignItems="center" paddingLeft={2} gap={2}><text fg={qualified ? palette.green : palette.red}>{qualified ? "QUALIFIED" : "OPEN"}</text><text fg={palette.muted}>{fitText(domain.label, Math.max(1, width - 28)).trimEnd()}</text><text fg={palette.dim}>{`${passed}/${rows.length} frames pass`}</text></box>
     <box height={2} paddingLeft={2} flexDirection="row" alignItems="center" gap={2}><text fg={palette.foreground}>Frames</text><text fg={palette.dim}>↑/↓ compare</text></box>
     <ItemRows items={items} selected={selected} height={Math.max(1, height - 3)} width={width} />
   </box>;
@@ -67,7 +67,7 @@ function VisualParityOven({ data, items, selected, height, width }: { data: Oven
 function GenericOven({ active, burnlist, data }: { active: OvenSummary | null; burnlist: BurnlistSummary | null; data: OvenDataSnapshot | null }) {
   const payload = data?.payload;
   const keys = payload && typeof payload === "object" ? Object.keys(payload).slice(0, 8) : [];
-  return <box flexDirection="column" paddingTop={2} gap={1}><text fg={palette.foreground}>{active?.description ?? "No renderer is registered for this Oven."}</text><text fg={palette.muted}>{burnlist?.progressLabel ?? ""}</text>{keys.length ? <text fg={palette.dim}>{`Payload: ${keys.join(" · ")}`}</text> : null}</box>;
+  return <box flexDirection="column" paddingTop={2} gap={1}><text fg={palette.foreground}>{fitText(active?.description ?? "No renderer is registered for this Oven.", 104).trimEnd()}</text><text fg={palette.muted}>{fitText(burnlist?.progressLabel ?? "", 104).trimEnd()}</text>{keys.length ? <text fg={palette.dim}>{fitText(`Payload: ${keys.join(" · ")}`, 104).trimEnd()}</text> : null}</box>;
 }
 
 export function OvenPane({ active, lenses, progress, data, burnlist, height, width, itemIndex }: {

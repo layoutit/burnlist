@@ -1,3 +1,5 @@
+import { fitTerminalText } from "./terminal-text";
+
 export const palette = Object.freeze({
   foreground: "#e8e8e8",
   soft: "#d4d4d8",
@@ -10,11 +12,7 @@ export const palette = Object.freeze({
 });
 
 export function fitText(value: unknown, width: number): string {
-  const text = String(value ?? "").replace(/\s+/gu, " ").trim();
-  if (width <= 0) return "";
-  if (text.length <= width) return text.padEnd(width);
-  if (width === 1) return "…";
-  return `${text.slice(0, width - 1)}…`;
+  return fitTerminalText(value, width, true);
 }
 
 export function compactTime(value: string | null): string {

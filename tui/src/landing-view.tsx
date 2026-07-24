@@ -41,13 +41,13 @@ export function BurnlistList({ landing, selected, focused, maxRows, terminalWidt
     window = visibleWindow(entries, selected, itemRows);
   }
   const groups = groupBurnlists({ ...landing, burnlists: window.items });
-  if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{empty}</text></box>;
+  if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{fitText(empty, Math.max(1, terminalWidth - 2)).trimEnd()}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
     <TableLine header>
       <BurnlistColumns width={terminalWidth - 3} header />
     </TableLine>
     {groups.map((group) => <box key={group.key} flexDirection="column">
-      <TableGroup name={group.label} count={group.entries.length} noun="Burnlist" />
+      <TableGroup name={group.label} count={group.entries.length} noun="Burnlist" width={terminalWidth} />
       {group.entries.map((entry) => {
         const index = entries.indexOf(entry);
         const active = focused && index === selected;
@@ -78,7 +78,7 @@ function OvenColumns({ width, header, entry }: { width: number; header?: boolean
 
 export function OvenList({ entries, selected, focused, maxRows, terminalWidth, empty }: ListProps<OvenSummary>) {
   const window = visibleWindow(entries, selected, maxRows);
-  if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{empty}</text></box>;
+  if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{fitText(empty, Math.max(1, terminalWidth - 2)).trimEnd()}</text></box>;
   return <box flexDirection="column" flexGrow={1}>
     <TableLine header>
       <OvenColumns width={terminalWidth - 3} header />
@@ -104,7 +104,7 @@ export function LandingSectionHeading({ title, source, landing }: {
     ? `${count} Burnlists in ${projects} ${projects === 1 ? "project" : "projects"}`
     : `${count} generic ${count === 1 ? "Oven" : "Ovens"} · global catalog`;
   return <box height={3} paddingLeft={2} paddingTop={1} flexDirection="row" gap={2}>
-    <text fg={palette.foreground}>{title}</text>
+    <text fg={palette.foreground}>{fitText(title, 40).trimEnd()}</text>
     <text fg={palette.dim}>{summary}</text>
   </box>;
 }

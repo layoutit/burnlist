@@ -1,4 +1,5 @@
 import type { TerminalNode } from "../terminal-contract";
+import { fitTerminalText, terminalCellWidth } from "../../terminal-text";
 
 export type LayoutRect = Readonly<{ x: number; y: number; width: number; height: number }>;
 export type LayoutCell = Readonly<{ path: string; kind: string; rect: LayoutRect; text?: string; collapsed?: boolean }>;
@@ -7,21 +8,10 @@ const positive = (value: unknown, fallback: number) => typeof value === "number"
 const gap = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0;
 const inset = (node: TerminalNode) => node.kind === "box" || node.kind === "panel" ? 1 : 0;
 const label = (node: TerminalNode) => node.kind === "text" && typeof node.attributes.text === "string" ? node.attributes.text : node.kind === "icon" && typeof node.attributes.name === "string" ? node.attributes.name : undefined;
-const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
-// The pinned Bun entrypoint omits OpenTUI's declared stringWidth export. This
-// grapheme implementation handles the terminal sequences this renderer accepts.
-const codepoints = (value: string) => [...value].map((part) => part.codePointAt(0)!);
-const cellSize = (value: string) => { const points = codepoints(value); if (!points.length || points.every((point) => /\p{Mark}/u.test(String.fromCodePoint(point)))) return 0; const regional = points.filter((point) => point >= 0x1f1e6 && point <= 0x1f1ff); if (regional.length === 2 || points.includes(0x200d) || points.some((point) => point >= 0x1f300 && point <= 0x1faff)) return 2; return points.some((point) => /[\u1100-\u115f\u2329\u232a\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe6f\uff00-\uff60\uffe0-\uffe6]/u.test(String.fromCodePoint(point))) ? 2 : 1; };
-export const cellWidth = (value: string) => [...segmenter.segment(value)].reduce((total, part) => total + cellSize(part.segment), 0);
+export const cellWidth = (value: string) => terminalCellWidth(value);
 /** Clips by terminal cells, never UTF-16 code units. */
 export function fitLayoutText(value: string, width: number): string {
-  if (width <= 0) return "";
-  const words = value.replace(/\s+/gu, " ").trim();
-  if (cellWidth(words) <= width) return words;
-  if (width === 1) return "…";
-  let out = "", used = 0;
-  for (const part of segmenter.segment(words)) { const size = cellSize(part.segment); if (used + size > width - 1) break; out += part.segment; used += size; }
-  return `${out}…`;
+  return fitTerminalText(value, width);
 }
 const inner = (node: TerminalNode, rect: LayoutRect): LayoutRect => { const amount = inset(node); return { x: rect.x + amount, y: rect.y + amount, width: Math.max(0, rect.width - amount * 2), height: Math.max(0, rect.height - amount * 2) }; };
 const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
