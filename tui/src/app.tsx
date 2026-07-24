@@ -6,11 +6,13 @@ import homeSource from "../screens/home.glyph" with { type: "text" };
 import itemSource from "../screens/item.glyph" with { type: "text" };
 import ovenSource from "../screens/oven.glyph" with { type: "text" };
 import ovensSource from "../screens/ovens.glyph" with { type: "text" };
-import { createDataClient } from "./data-client";
+import { createDataClient, DataClientError } from "./data-client";
 import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import { detailItems, visualParityPayload } from "./detail-items";
-import { observeDashboardEvents, type OvenEvent, type StreamStatus } from "./event-stream";
+import { eventInvalidatesScope, observeDashboardEvents, type OvenEvent, type StreamStatus } from "./event-stream";
 import { definitionChangeInvalidates } from "./oven-runtime/definition-adapter";
+import { initialLiveSnapshot, isMissingSnapshotStatus, reduceLiveSnapshot, terminalServerQuery, type LiveSnapshot } from "./oven-runtime/live-snapshot";
+import { initTerminalRuntime, reduceTerminalRuntime, type TerminalRuntimeAction, type TerminalRuntimeState } from "./oven-runtime/state-runtime";
 import { orderedBurnlists } from "./landing-groups";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
@@ -50,6 +52,12 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
+  const [activeLive, setActiveLive] = useState<LiveSnapshot<true>>(initialLiveSnapshot());
+  const [terminalState, setTerminalState] = useState<TerminalRuntimeState | null>(null);
+  const [searchControlId, setSearchControlId] = useState<string | null>(null);
+  const terminalRuntimeRef = useRef<{ scope: string; state: TerminalRuntimeState } | null>(null);
+  const terminalQueryRef = useRef("");
+  const domainIdRef = useRef<string | null>(null);
   const ovenRequest = useRef<{ generation: number; controller: AbortController | null }>({ generation: 0, controller: null });
   const beginOvenRequest = useCallback(() => {
     ovenRequest.current.controller?.abort();
@@ -73,13 +81,27 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
     }) : ovenData?.payload;
     if (payload === undefined) return null;
-    return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
-  }, [activeOven?.contract, ovenData?.payload, ovenDetail, progress]);
+    return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, terminalState ?? undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+  }, [activeOven?.contract, ovenData?.payload, ovenDetail, progress, terminalState]);
 
+  const acceptTerminalPayload = useCallback((detail: OvenPackageDetail, payload: JsonValue, scope: string) => {
+    const ir = detail.ir as unknown as TerminalOvenIR;
+    const prior = terminalRuntimeRef.current;
+    const state = prior?.scope === scope ? reduceTerminalRuntime(prior.state, { type: "payloadAccepted", payload }, ir) : initTerminalRuntime(ir, payload);
+    terminalRuntimeRef.current = { scope, state };
+    setTerminalState(state);
+  }, []);
+  const dispatchTerminalAction = useCallback((action: TerminalRuntimeAction) => {
+    const prior = terminalRuntimeRef.current;
+    if (!prior || !ovenDetail) return;
+    const state = reduceTerminalRuntime(prior.state, action, ovenDetail.ir as unknown as TerminalOvenIR);
+    terminalRuntimeRef.current = { ...prior, state };
+    setTerminalState(state);
+  }, [ovenDetail]);
   const pushView = useCallback((next: View) => {
     setNavigation((current) => current.at(-1) === next ? current : [...current, next]);
   }, []);
-  const back = useCallback(() => setNavigation((current) => current.length > 1 ? current.slice(0, -1) : current), []);
+  const back = useCallback(() => { setSearchControlId(null); setNavigation((current) => current.length > 1 ? current.slice(0, -1) : current); }, []);
 
   const loadLanding = useCallback(async () => {
     setLoading(true);
@@ -95,86 +117,137 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
 
   const loadBurnlist = useCallback(async (burnlist: BurnlistSummary, oven: OvenSummary | null, resetItem: boolean) => {
     const request = beginOvenRequest();
+    const sameSelection = selectedBurnlist?.id === burnlist.id && selectedBurnlist.repoKey === burnlist.repoKey
+      && activeOven?.id === oven?.id && activeOven?.repoKey === oven?.repoKey;
     setLoading(true);
+    setActiveLive((current) => sameSelection ? reduceLiveSnapshot(current, "loading") : reduceLiveSnapshot(initialLiveSnapshot<true>(), "loading"));
     setError(null);
     setActiveOven(oven);
-    setOvenDetail(null);
-    setProgress(null);
-    setOvenData(null);
+    // A reconciliation must retain the last accepted payload and focused item until its
+    // replacement arrives. Clearing is reserved for a genuinely different selection.
+    if (!sameSelection) {
+      setOvenDetail(null);
+      setProgress(null);
+      setOvenData(null);
+    }
     if (resetItem) setItemIndex(0);
     try {
       if (oven?.contract === "checklist-progress@1") {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
-        const [nextProgress, detail] = await Promise.all([client.progress(burnlist.planPath, request.signal), client.oven(oven.id, burnlist.repoKey, request.signal)]);
+        const [progressResponse, definitionResponse] = await Promise.all([client.progressResult(burnlist.planPath, request.signal), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
-        setProgress(nextProgress);
-        setOvenDetail(detail);
-        setDomainIndex(0);
+        setProgress(progressResponse.data);
+        setOvenDetail(definitionResponse.data);
+        acceptTerminalPayload(definitionResponse.data, adaptChecklist({ ...progressResponse.data, history: progressResponse.data.history ?? [], active: progressResponse.data.active.map((item) => ({ ...item, fields: item.fields ?? {} })), completed: progressResponse.data.completed.map((item) => ({ ...item, detail: item.detail ?? "" })) }) as JsonValue, JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
+        if (!sameSelection) setDomainIndex(0);
+        setActiveLive((current) => reduceLiveSnapshot(current, progressResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       } else if (oven) {
-        const [snapshot, detail] = await Promise.all([client.ovenData(oven.id, burnlist.repoKey, request.signal), client.oven(oven.id, burnlist.repoKey, request.signal)]);
+        const currentDefinition = ovenDetail?.id === oven.id ? ovenDetail : null;
+        const query = currentDefinition ? terminalServerQuery(currentDefinition.ir as unknown as TerminalOvenIR, terminalRuntimeRef.current?.state ?? null) : undefined;
+        terminalQueryRef.current = JSON.stringify([burnlist.repoKey, oven.id, currentDefinition?.repoKey ?? null, query ?? {}]);
+        const [snapshotResponse, definitionResponse] = await Promise.all([client.ovenDataResult(oven.id, burnlist.repoKey, request.signal, query), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
+        const snapshot = snapshotResponse.data;
         setOvenData(snapshot);
-        setOvenDetail(detail);
+        setOvenDetail(definitionResponse.data);
+        acceptTerminalPayload(definitionResponse.data, snapshot.payload as JsonValue, JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
         const payload = visualParityPayload(snapshot);
-        setDomainIndex(Math.max(0, payload?.domains.findIndex((domain) => domain.qualification === "target") ?? 0));
+        const retainedDomain = domainIdRef.current;
+        const target = Math.max(0, payload?.domains.findIndex((domain) => domain.qualification === "target") ?? 0);
+        const nextDomain = retainedDomain ? payload?.domains.findIndex((domain) => domain.id === retainedDomain) ?? -1 : -1;
+        const index = nextDomain >= 0 ? nextDomain : target;
+        domainIdRef.current = payload?.domains[index]?.id ?? null;
+        setDomainIndex(index);
+        setActiveLive((current) => reduceLiveSnapshot(current, snapshotResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       }
     } catch (cause) {
-      if (request.owns()) setError(cause instanceof Error ? cause.message : String(cause));
+      if (request.owns()) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        const missing = cause instanceof DataClientError && isMissingSnapshotStatus(cause.status);
+        if (missing) { setProgress(null); setOvenData(null); setOvenDetail(null); }
+        setActiveLive((current) => reduceLiveSnapshot(current, missing ? "missing" : "rejected", null, message));
+        setError(message);
+      }
     } finally {
       if (request.owns()) setLoading(false);
     }
-  }, [beginOvenRequest, client]);
+  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client, ovenDetail, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
 
   const loadCatalogOven = useCallback(async (oven: OvenSummary) => {
     const request = beginOvenRequest();
+    const sameSelection = activeOven?.id === oven.id && activeOven?.repoKey === oven.repoKey;
     setLoading(true);
+    setActiveLive((current) => sameSelection ? reduceLiveSnapshot(current, "loading") : reduceLiveSnapshot(initialLiveSnapshot<true>(), "loading"));
     setError(null);
     setActiveOven(oven);
-    setOvenDetail(null);
+    if (!sameSelection) setOvenDetail(null);
     try {
-      const detail = await client.oven(oven.id, oven.repoKey, request.signal);
-      if (request.owns()) setOvenDetail(detail);
+      const detail = await client.ovenResult(oven.id, oven.repoKey, request.signal);
+      if (request.owns()) { setOvenDetail(detail.data); setActiveLive((current) => reduceLiveSnapshot(current, detail.outcome, true)); }
     } catch (cause) {
-      if (request.owns()) setError(cause instanceof Error ? cause.message : String(cause));
+      if (request.owns()) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        const missing = cause instanceof DataClientError && isMissingSnapshotStatus(cause.status);
+        if (missing) setOvenDetail(null);
+        setActiveLive((current) => reduceLiveSnapshot(current, missing ? "missing" : "rejected", null, message));
+        setError(message);
+      }
     } finally {
       if (request.owns()) setLoading(false);
     }
-  }, [beginOvenRequest, client]);
+  }, [activeOven?.id, activeOven?.repoKey, beginOvenRequest, client]);
 
   useEffect(() => { void loadLanding(); }, [loadLanding]);
   useEffect(() => () => ovenRequest.current.controller?.abort(), []);
+  useEffect(() => {
+    if (!selectedBurnlist || !activeOven || activeOven.contract === "checklist-progress@1" || !ovenDetail || !terminalState) return;
+    const query = terminalServerQuery(ovenDetail.ir as unknown as TerminalOvenIR, terminalState);
+    const key = JSON.stringify([selectedBurnlist.repoKey, activeOven.id, ovenDetail.repoKey, query]);
+    if (terminalQueryRef.current === key) return;
+    terminalQueryRef.current = key;
+    void loadBurnlist(selectedBurnlist, activeOven, false);
+  }, [activeOven, loadBurnlist, ovenDetail, selectedBurnlist, terminalState]);
 
-  const refresh = useCallback(() => {
-    void loadLanding();
+  const refreshActive = useCallback(() => {
     if ((view === "burnlist" || view === "item") && selectedBurnlist) void loadBurnlist(selectedBurnlist, activeOven, false);
     if (view === "oven" && activeOven) void loadCatalogOven(activeOven);
-  }, [activeOven, loadBurnlist, loadCatalogOven, loadLanding, selectedBurnlist, view]);
-  const refreshRef = useRef(refresh);
-  useEffect(() => { refreshRef.current = refresh; }, [refresh]);
-  const activeDefinitionRef = useRef<{ ovenId: string; repoKey: string | null; definitionRepoKey: string | null } | null>(null);
+  }, [activeOven, loadBurnlist, loadCatalogOven, selectedBurnlist, view]);
+  const refresh = useCallback(() => { void loadLanding(); refreshActive(); }, [loadLanding, refreshActive]);
+  const refreshActiveRef = useRef(refreshActive);
+  useEffect(() => { refreshActiveRef.current = refreshActive; }, [refreshActive]);
+  const activeDefinitionRef = useRef<{ ovenId: string; repoKey: string | null; definitionRepoKey: string | null; subjectId: string | null } | null>(null);
   useEffect(() => {
     activeDefinitionRef.current = activeOven ? {
       ovenId: activeOven.id,
       repoKey: selectedBurnlist?.repoKey ?? activeOven.repoKey,
       definitionRepoKey: ovenDetail?.repoKey ?? activeOven.repoKey,
+      subjectId: selectedBurnlist?.id ?? null,
     } : null;
-  }, [activeOven, ovenDetail?.repoKey, selectedBurnlist?.repoKey]);
+  }, [activeOven, ovenDetail?.repoKey, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
   useEffect(() => observeDashboardEvents(client.base, {
     onInvalidate: (event?: OvenEvent) => {
+      // Landing is a global observer and must reconcile even if a scoped event is
+      // unrelated to the currently open Oven. The active pane is narrower.
+      void loadLanding();
+      let activeMatches = eventInvalidatesScope(event, activeDefinitionRef.current);
       if (event?.kind === "definition-changed") {
         const active = activeDefinitionRef.current;
-        if (!active || !definitionChangeInvalidates(active, event)) return;
+        activeMatches = !!active && definitionChangeInvalidates(active, event);
       }
-      refreshRef.current();
+      if (activeMatches) refreshActiveRef.current();
     },
-    onStatus: setStreamStatus,
-  }), [client.base]);
+    onStatus: (status) => {
+      setStreamStatus(status);
+      if (status === "live") refreshActiveRef.current();
+    },
+  }), [client.base, loadLanding]);
   useEffect(() => {
-    const timer = setInterval(() => refreshRef.current(), 30_000);
+    // The terminal shell has no per-snapshot polling: Oven refresh is event-led,
+    // with a reconnect reconciliation above. Landing keeps its independent shell cadence.
+    const timer = setInterval(() => void loadLanding(), 30_000);
     timer.unref?.();
     return () => clearInterval(timer);
-  }, []);
-
+  }, [loadLanding]);
   const openBurnlist = useCallback((burnlist: BurnlistSummary) => {
     const oven = associatedOven(burnlist, landing.ovens);
     setSelectedBurnlist(burnlist);
@@ -186,7 +259,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     pushView("oven");
     void loadCatalogOven(oven);
   }, [loadCatalogOven, pushView]);
-
   const moveList = useCallback((id: "burnlists" | "ovens", length: number, direction: -1 | 1) => {
     if (!length) return;
     setSelections((current) => {
@@ -208,8 +280,22 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
 
   const cycleDomain = useCallback((direction: -1 | 1) => {
     const count = visualParityPayload(ovenData)?.domains.length ?? 0;
-    if (count > 1) setDomainIndex((current) => (current + direction + count) % count);
-  }, [ovenData]);
+    if (count > 1) setDomainIndex((current) => {
+      const next = (current + direction + count) % count;
+      const domain = visualParityPayload(ovenData)?.domains[next]?.id;
+      const control = (ovenDetail?.ir as unknown as TerminalOvenIR | undefined)?.controls.find((item) => item.kind === "domain-tabs");
+      if (domain && control?.id) dispatchTerminalAction({ type: "domainSelected", id: control.id, value: domain });
+      domainIdRef.current = domain ?? null;
+      return next;
+    });
+  }, [dispatchTerminalAction, ovenData, ovenDetail]);
+  const pageTerminalCollection = useCallback((direction: -1 | 1) => {
+    const ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
+    const state = terminalRuntimeRef.current?.state;
+    const collection = ir?.collections.find((item) => state?.collections[item.id]?.serverPage && (item.paging === "server" || item.paging === "auto"));
+    if (collection) dispatchTerminalAction({ type: direction > 0 ? "pageNext" : "pagePrevious", collectionId: collection.id });
+  }, [dispatchTerminalAction, ovenDetail]);
+  const terminalControl = useCallback((kind: string) => (ovenDetail?.ir as unknown as TerminalOvenIR | undefined)?.controls.find((item) => item.kind === kind), [ovenDetail]);
 
   useKeyboard((key) => {
     if (key.name === "q") return back();
@@ -239,10 +325,47 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "burnlist") {
+      if (searchControlId) {
+        if (key.name === "escape" || key.name === "return" || key.name === "enter") return setSearchControlId(null);
+        const value = terminalRuntimeRef.current?.state.controls[searchControlId];
+        if (key.name === "backspace") return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: typeof value === "string" ? value.slice(0, -1) : "" });
+        if (key.name && key.name.length === 1) return dispatchTerminalAction({ type: "queryChanged", id: searchControlId, value: `${typeof value === "string" ? value : ""}${key.name}` });
+        return;
+      }
       if (key.name === "up") return moveItem(-1);
       if (key.name === "down") return moveItem(1);
       if (key.sequence === "[") return cycleLens(-1);
       if (key.sequence === "]") return cycleLens(1);
+      if (key.name === "n") return pageTerminalCollection(1);
+      if (key.name === "p") return pageTerminalCollection(-1);
+      if (key.name === "z") {
+        const ir = ovenDetail?.ir as unknown as TerminalOvenIR | undefined;
+        const collection = ir?.collections.find((item) => terminalRuntimeRef.current?.state.collections[item.id]?.serverPage);
+        const current = collection && terminalRuntimeRef.current?.state.collections[collection.id];
+        const find = (nodes: readonly any[]): any[] => nodes.flatMap((node) => [node, ...find(node.children ?? [])]);
+        const pagination = ir && find(ir.root).find((node) => node.kind === "pagination" && node.attributes.collectionFrom === collection?.id);
+        const sizes = String(pagination?.attributes.pageSizes ?? "").split(" ").map(Number).filter((size) => Number.isSafeInteger(size) && size > 0);
+        if (collection && current && sizes.length) dispatchTerminalAction({ type: "pageSizeChanged", collectionId: collection.id, pageSize: sizes[(sizes.indexOf(current.pageSize) + 1 + sizes.length) % sizes.length]! });
+        return;
+      }
+      if (key.name === "x") { const control = terminalControl("search"); if (control) setSearchControlId(control.id); return; }
+      if (key.name === "f" || key.name === "s") {
+        const control = terminalControl(key.name === "f" ? "filter-toggle" : "sort-toggle");
+        const current = control && terminalRuntimeRef.current?.state.controls[control.id];
+        if (control) dispatchTerminalAction({ type: "toggleChanged", id: control.id, active: current !== true });
+        return;
+      }
+      if (key.name === "m") {
+        const control = terminalControl("mode-toggle");
+        if (control) {
+          const walk = (nodes: readonly any[]): any[] => nodes.flatMap((node) => [node, ...walk(node.children ?? [])]);
+          const values = walk((ovenDetail?.ir as unknown as TerminalOvenIR).root).flatMap((node) => node.kind === "mode-toggle" && node.attributes.id === control.id ? node.children.map((child: any) => String(child.attributes.value ?? "")) : []);
+          const current = String(terminalRuntimeRef.current?.state.controls[control.id] ?? "");
+          const next = values[(values.indexOf(current) + 1 + values.length) % values.length];
+          if (next) dispatchTerminalAction({ type: "modeSelected", id: control.id, value: next });
+        }
+        return;
+      }
       return;
     }
     if (view === "item") {
@@ -253,8 +376,8 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     }
   });
 
-  const notice = error ? { message: `Cannot read ${client.base}: ${error}`, tone: "error" as const }
-    : loading ? { message: "Refreshing Burnlist data…", tone: "info" as const } : null;
+  const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const }
+    : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : null;
 
   return <ScreenRuntime
     screen={screens[view]}

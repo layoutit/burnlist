@@ -9,25 +9,49 @@ function baseUrl(input: string): string {
   return url.href.replace(/\/$/u, "");
 }
 
-async function getJson<T>(base: string, path: string, signal?: AbortSignal): Promise<T> {
+type CachedJson = { etag: string; body: unknown };
+export type SnapshotFetch<T> = Readonly<{ data: T; outcome: "accepted" | "unchanged" }>;
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+export class DataClientError extends Error {
+  constructor(message: string, readonly status?: number) { super(message); this.name = "DataClientError"; }
+}
+
+async function getJsonResult<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal): Promise<SnapshotFetch<T>> {
+  const cached = cache.get(path);
   const response = await fetch(`${base}${path}`, {
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...(cached ? { "If-None-Match": cached.etag } : {}) },
     signal,
   });
-  const body = await response.json().catch(() => ({})) as { error?: string };
-  if (!response.ok) throw new Error(body.error ?? `Burnlist server returned ${response.status}.`);
-  return body as T;
+  if (response.status === 304) {
+    if (!cached) throw new DataClientError("Burnlist server returned 304 before an initial snapshot.", 304);
+    return { data: cloneJson(cached.body as T), outcome: "unchanged" };
+  }
+  const body = await response.json().catch(() => null) as { error?: string } | null;
+  if (!response.ok) {
+    if (response.status === 404 || response.status === 410) cache.delete(path);
+    throw new DataClientError(body?.error ?? `Burnlist server returned ${response.status}.`, response.status);
+  }
+  if (body === null) throw new DataClientError("Burnlist server returned malformed JSON.", response.status);
+  const etag = response.headers.get("etag");
+  if (etag) cache.set(path, { etag, body: cloneJson(body) });
+  return { data: cloneJson(body as T), outcome: "accepted" };
+}
+
+async function getJson<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal): Promise<T> {
+  return (await getJsonResult<T>(base, path, cache, signal)).data;
 }
 
 export function createDataClient(input: string) {
   const base = baseUrl(input);
+  const cache = new Map<string, CachedJson>();
   return Object.freeze({
     base,
     async landing(signal?: AbortSignal): Promise<LandingSnapshot> {
       const [projectPayload, burnlistPayload, ovenPayload] = await Promise.all([
-        getJson<{ generatedAt: string; projects: LandingSnapshot["projects"] }>(base, "/api/projects", signal),
-        getJson<{ generatedAt: string; burnlists: LandingSnapshot["burnlists"] }>(base, "/api/burnlists", signal),
-        getJson<{ ovens: LandingSnapshot["ovens"] }>(base, "/api/ovens", signal),
+        getJson<{ generatedAt: string; projects: LandingSnapshot["projects"] }>(base, "/api/projects", cache, signal),
+        getJson<{ generatedAt: string; burnlists: LandingSnapshot["burnlists"] }>(base, "/api/burnlists", cache, signal),
+        getJson<{ ovens: LandingSnapshot["ovens"] }>(base, "/api/ovens", cache, signal),
       ]);
       return {
         projects: projectPayload.projects,
@@ -37,16 +61,27 @@ export function createDataClient(input: string) {
       };
     },
     progress(planPath: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
-      return getJson(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, signal);
+      return getJson(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
+    },
+    progressResult(planPath: string, signal?: AbortSignal): Promise<SnapshotFetch<ProgressSnapshot>> {
+      return getJsonResult(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
     },
     ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<OvenDataSnapshot> {
-      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), signal);
+      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal);
+    },
+    ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<SnapshotFetch<OvenDataSnapshot>> {
+      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal);
     },
     async oven(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<OvenPackageDetail> {
       const scope: OvenScope = { ovenId, repoKey };
-      const response = await getJson<unknown>(base, ovenDefinitionPath(scope), signal);
+      const response = await getJson<unknown>(base, ovenDefinitionPath(scope), cache, signal);
       const definition = adaptOvenDefinition(response, scope);
       return definition.detail;
+    },
+    async ovenResult(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<SnapshotFetch<OvenPackageDetail>> {
+      const scope: OvenScope = { ovenId, repoKey };
+      const response = await getJsonResult<unknown>(base, ovenDefinitionPath(scope), cache, signal);
+      return { data: adaptOvenDefinition(response.data, scope).detail, outcome: response.outcome };
     },
   });
 }

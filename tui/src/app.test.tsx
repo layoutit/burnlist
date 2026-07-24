@@ -218,4 +218,32 @@ describe("TUI navigation stack", () => {
     expect(setup.captureCharFrame()).not.toContain("Stale first payload");
     root.unmount();
   });
+
+  test("drives compiled server-paged Oven controls into bounded canonical App requests", async () => {
+    const source = readFileSync(new URL("../../ovens/differential-testing/differential-testing.oven", import.meta.url), "utf8");
+    const compiled = compileOven(source); if (!compiled.ok) throw new Error("paged fixture did not compile");
+    const pagedOven = { ...oven, id: "differential-testing", name: "Differential", contract: "burnlist-differential-testing-data@1", dataInput: "json-payload" };
+    const pagedBurnlist = { ...burnlist, ovenId: pagedOven.id, ovenName: pagedOven.name, planPath: null };
+    const requests: string[] = [];
+    const payload = { pageMode: "detail", telemetry: { status: "comparable", fields: {} }, fields: [], progress: {}, log: [], refresh: {}, __burnlistOvenRuntime: { collectionPages: { "/fields": { page: 0, pageSize: 25, pageCount: 4, total: 80 } } } };
+    globalThis.fetch = (async (input) => {
+      const url = new URL(String(input)), path = url.pathname;
+      if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [] });
+      if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [pagedBurnlist] });
+      if (path === "/api/ovens") return Response.json({ ovens: [pagedOven] });
+      if (path === "/api/ovens/differential-testing") return Response.json({ oven: { ...pagedOven, repoKey: null, instructions: "# Differential", oven: source, ovenRevision: `o1-sha256:${"d".repeat(64)}`, ir: compiled.ir } });
+      if (path === "/api/oven-data/differential-testing") { requests.push(url.search); const page = Number(url.searchParams.get("page") ?? 0), pageSize = Number(url.searchParams.get("pageSize") ?? 25); return Response.json({ ovenId: pagedOven.id, payload: { ...payload, __burnlistOvenRuntime: { collectionPages: { "/fields": { page, pageSize, pageCount: 4, total: 80 } } } }, validated: true }); }
+      return Response.json({ error: "unexpected" }, { status: 404 });
+    }) as typeof fetch;
+    const setup = await createTestRenderer({ width: 110, height: 34 }); renderers.push(setup.renderer);
+    const root = createRoot(setup.renderer); flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
+    await setup.waitForFrame((frame) => frame.includes("Demo Burnlist")); await key(setup, "RETURN");
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    await key(setup, "x"); await key(setup, "a"); await key(setup, "RETURN"); await key(setup, "f"); await key(setup, "s"); await key(setup, "m"); await key(setup, "n"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z");
+    await new Promise((resolve) => setTimeout(resolve, 80)); await setup.flush();
+    const last = new URLSearchParams(requests.at(-1));
+    expect(requests.length).toBeLessThan(12);
+    expect(last.get("search")).toBe("a"); expect(last.get("filter")).toBe("failing"); expect(last.get("sort")).toBe("default"); expect(last.get("page")).toBe("0"); expect(last.get("pageSize")).toBe("100");
+    root.unmount();
+  });
 });
