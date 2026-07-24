@@ -17,7 +17,10 @@ const compiled = compileOven(source, { file: "ovens/differential-testing/differe
 if (!compiled.ok) throw new Error(compiled.diagnostics.map((item: { message: string }) => item.message).join("\n"));
 
 test("shared Differential normal, empty, and failure fixtures satisfy the canonical data validator", () => {
-  for (const payload of [differentialFixture.payload, differentialFixture.empty, differentialFixture.failure]) expect(validateDifferentialTestingData(payload).ok).toBe(true);
+  for (const payload of [differentialFixture.payload, differentialFixture.empty, differentialFixture.failure]) {
+    const { pageMode: _pageMode, ...raw } = payload;
+    expect(validateDifferentialTestingData(raw).ok).toBe(true);
+  }
 });
 
 test("official Differential IR fails closed before paint and renders bounded normal, empty, failure, and drill-down states", async () => {

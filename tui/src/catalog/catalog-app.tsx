@@ -25,7 +25,7 @@ import { controlsAction, controlsFixture, controlsInitialState } from "../oven-r
 import { listFixture, listFixtureStates, listPreviewRows, type ListFixtureState } from "./list-fixture";
 import { statusFixtureCheckpoints, statusFixtureStates } from "./status-fixture";
 import { visualParityFixture } from "./visual-parity-fixture";
-import { streamingDiffFixture } from "./streaming-diff-fixture";
+import { streamingDiffFixture, streamingFeedFixture } from "./streaming-diff-fixture";
 import { differentialFixture } from "./differential-fixture";
 import { checklistFixture } from "./checklist-fixture";
 import { modelLabFixture } from "./model-lab-fixture";
@@ -99,7 +99,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
   const streamingResult = useMemo(() => admitTerminalOven(streamingDiffOven, { status: "ready", payload: streamingDiffFixture.payload }, { viewport: { width: previewWidth, height: previewHeight }, expandedKeys: streamingExpanded ? ["streaming-diff:first-file"] : [] }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [previewHeight, previewWidth, streamingExpanded]);
   const differentialPayload = stateName === "empty" ? differentialFixture.empty : stateName === "failure" ? differentialFixture.failure : differentialFixture.payload;
   const differentialFields = "fields" in differentialPayload && Array.isArray(differentialPayload.fields) ? differentialPayload.fields : [];
-  const differentialKey = differentialFields.find((field) => differentialState.expandedKeys.includes(`field-view:${field.id}`))?.id;
+  const differentialKey = differentialFields.find((field: { id: string }) => differentialState.expandedKeys.includes(`field-view:${field.id}`))?.id;
   const differentialResult = useMemo(() => admitTerminalOven(differentialOven, { status: "ready", payload: differentialPayload }, { viewport: { width: previewWidth, height: previewHeight }, controls: differentialState.controls, expandedKeys: differentialState.expandedKeys }, [], TERMINAL_IMPLEMENTED_CAPABILITIES), [differentialPayload, differentialState, previewHeight, previewWidth]);
   const checklistPayload = stateName === "completed" ? checklistFixture.completed : stateName === "long-list" ? checklistFixture.longList : checklistFixture.active;
   const checklistEventPath = componentRootPath(checklistOven.root, previewWidth, "checklist-event-cards", checklistPayload, checklistState.controls);
@@ -137,7 +137,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
     }
     if (fixture.id === "visual-parity") {
       if (pressed === "left" || pressed === "right") setVisualState((state) => {
-        const values = visualParityFixture.payload.domains, current = Math.max(0, values.indexOf(String(state.controls["domain-select"] ?? values[0]) as typeof values[number])), next = values[(current + (pressed === "right" ? 1 : -1) + values.length) % values.length]!;
+        const values = visualParityFixture.payload.domains.map((domain: { id: string }) => domain.id), current = Math.max(0, values.indexOf(String(state.controls["domain-select"] ?? values[0]))), next = values[(current + (pressed === "right" ? 1 : -1) + values.length) % values.length]!;
         return reduceTerminalRuntime(state, { type: "domainSelected", id: "domain-select", value: next }, visualParityOven);
       });
       else if (pressed === "v") setMode((value) => value === "wide" ? "narrow" : "wide");
@@ -166,7 +166,7 @@ export function CatalogApp({ shutdown, clock = systemClock, modelLabClient }: { 
         {fixture.id === "controls" ? <ControlsSurface state={controlsState} showFooter={false} /> : null}
         {fixture.id === "visual-parity" ? <TerminalOvenViewport result={visualResult} footer="" /> : null}
         {fixture.id === "streaming-diff" ? <TerminalOvenViewport result={streamingResult} footer="" /> : null}
-        {fixture.id === "streaming-feeds" ? <TerminalStreamingFeedList payload={{ ...streamingDiffFixture.payload, showRepository: true }} width={previewWidth} height={previewHeight} /> : null}
+        {fixture.id === "streaming-feeds" ? <TerminalStreamingFeedList payload={streamingFeedFixture} width={previewWidth} height={previewHeight} /> : null}
         {fixture.id === "differential-testing" ? <TerminalOvenViewport result={differentialResult} footer="" /> : null}
         {fixture.id === "checklist" ? <TerminalOvenViewport result={checklistResult} footer="" /> : null}
         {fixture.id === "model-lab" ? <TerminalOvenViewport result={modelLabResult} footer="" /> : null}

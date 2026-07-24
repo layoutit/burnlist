@@ -45,8 +45,8 @@ test("catalog uses left/right keys to switch the compiled Visual Parity IR domai
   const setup = await createTestRenderer({ width: 90, height: 28, useThread: false }); renderers.push(setup.renderer);
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   for (let index = 0; index < 6; index += 1) await press(setup, "ARROW_DOWN");
-  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Frame 7") && frame.includes("←/→:domain"));
-  await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("Frame 8") && frame.includes("[mobile]"));
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("F7") && frame.includes("←/→:domain"));
+  await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("F8") && frame.includes("[mobile]"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
 });
 

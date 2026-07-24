@@ -1,4 +1,5 @@
 import type { LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
+import { adaptOvenDefinition, ovenDataPath, ovenDefinitionPath, type OvenQuery, type OvenScope } from "./oven-runtime/definition-adapter";
 
 function baseUrl(input: string): string {
   const url = new URL(input);
@@ -38,13 +39,14 @@ export function createDataClient(input: string) {
     progress(planPath: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
       return getJson(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, signal);
     },
-    ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal): Promise<OvenDataSnapshot> {
-      const query = repoKey === null ? "" : `?repoKey=${encodeURIComponent(repoKey)}`;
-      return getJson(base, `/api/oven-data/${encodeURIComponent(ovenId)}${query}`, signal);
+    ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<OvenDataSnapshot> {
+      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), signal);
     },
-    async oven(ovenId: string, signal?: AbortSignal): Promise<OvenPackageDetail> {
-      const response = await getJson<{ oven: OvenPackageDetail }>(base, `/api/ovens/${encodeURIComponent(ovenId)}`, signal);
-      return response.oven;
+    async oven(ovenId: string, repoKey: string | null = null, signal?: AbortSignal): Promise<OvenPackageDetail> {
+      const scope: OvenScope = { ovenId, repoKey };
+      const response = await getJson<unknown>(base, ovenDefinitionPath(scope), signal);
+      const definition = adaptOvenDefinition(response, scope);
+      return definition.detail;
     },
   });
 }

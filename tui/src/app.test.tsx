@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, test } from "bun:test";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
@@ -28,8 +29,17 @@ const progress = {
   active: [{ id: "demo-02", title: "Current item", fields: { description: "Finish navigation." } }],
   completed: [{ id: "demo-01", title: "Latest completed", completedAt: "2026-07-23T09:00:00Z", detail: "Navigation foundation done." }],
 };
+function validCatalogDefinition(id: string) {
+  const source = id === "checklist"
+    ? readFileSync(new URL("../../ovens/checklist/checklist.oven", import.meta.url), "utf8")
+    : `<oven id="${id}" version="0.1.0" contract="checklist-progress@1" theme="checklist"><kpi-strip title="Fixture"><kpi-item heading="Current" source="/current"/></kpi-strip></oven>`;
+  const result = compileOven(source, { file: `${id}.oven` });
+  if (!result.ok) throw new Error(`Catalog fixture ${id} did not compile.`);
+  return { source, ir: result.ir };
+}
 
 function installApi() {
+  const definition = validCatalogDefinition("checklist");
   globalThis.fetch = (async (input) => {
     const path = new URL(String(input)).pathname;
     if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }] });
@@ -37,8 +47,8 @@ function installApi() {
     if (path === "/api/ovens") return Response.json({ ovens: [oven, { ...oven, id: "installed", name: "Installed", builtIn: false, repoKey: "repo1" }] });
     if (path === "/api/progress") return Response.json(progress);
     if (path === "/api/ovens/checklist") return Response.json({ oven: {
-      ...oven, instructions: "# Checklist\n\nInspect the ordered checklist.", oven: "<oven />", ovenRevision: `o1-sha256:${"a".repeat(64)}`,
-      ir: { schema: "burnlist-oven-ir@1", id: "checklist", version: "0.1.0", contract: "checklist-progress@1", theme: "checklist", root: [], requirements: { components: ["checklist-ledger"] } },
+      ...oven, instructions: "# Checklist\n\nInspect the ordered checklist.", oven: definition.source, ovenRevision: `o1-sha256:${"a".repeat(64)}`,
+      ir: definition.ir,
     } });
     return Response.json({ error: `unexpected ${path}` }, { status: 404 });
   }) as typeof fetch;
@@ -116,12 +126,8 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("Items") && frame.includes("Current item"));
-    expect(setup.captureCharFrame()).toContain("LEGACY FALLBACK");
-    setup.mockInput.pressArrow("down");
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("COMPLETION DETAIL") && frame.includes("Navigation foundation done."));
+    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("Completion 1/2"));
+    expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("o:Oven catalog"));
 
@@ -141,6 +147,7 @@ describe("TUI navigation stack", () => {
       { ...oven, id: "second", name: "Second Oven" },
     ];
     const signals: AbortSignal[] = [];
+    const firstDefinition = validCatalogDefinition("first"), secondDefinition = validCatalogDefinition("second");
     globalThis.fetch = ((input, init) => {
       const path = new URL(String(input)).pathname;
       if (path === "/api/projects") return Promise.resolve(Response.json({ generatedAt: "now", projects: [] }));
@@ -164,9 +171,9 @@ describe("TUI navigation stack", () => {
     setup.mockInput.pressArrow("down"); await new Promise((resolve) => setTimeout(resolve, 0)); await setup.flush();
     await setup.mockInput.pressKeys(["RETURN"]); await new Promise((resolve) => setTimeout(resolve, 0));
     expect(signals[0]?.aborted).toBe(true);
-    second.resolve(Response.json({ oven: { ...summaries[1], description: "Second resolved description", instructions: "# Second\n\nLatest response.", oven: "<oven/>", ovenRevision: "second", ir: { root: [], requirements: {} } } }));
+    second.resolve(Response.json({ oven: { ...summaries[1], description: "Second resolved description", instructions: "# Second\n\nLatest response.", oven: secondDefinition.source, ovenRevision: `o1-sha256:${"b".repeat(64)}`, ir: secondDefinition.ir } }));
     await setup.waitForFrame((frame) => frame.includes("Second resolved description"));
-    first.resolve(Response.json({ oven: { ...summaries[0], description: "Stale first description", instructions: "# First\n\nStale response.", oven: "<oven/>", ovenRevision: "first", ir: { root: [], requirements: {} } } }));
+    first.resolve(Response.json({ oven: { ...summaries[0], description: "Stale first description", instructions: "# First\n\nStale response.", oven: firstDefinition.source, ovenRevision: `o1-sha256:${"c".repeat(64)}`, ir: firstDefinition.ir } }));
     await new Promise((resolve) => setTimeout(resolve, 0)); await setup.flush();
     expect(setup.captureCharFrame()).not.toContain("Stale first description");
     flushSync(() => root.unmount()); await new Promise((resolve) => setTimeout(resolve, 0));
@@ -202,11 +209,11 @@ describe("TUI navigation stack", () => {
     expect(signals.slice(0, 2).every((signal) => signal.aborted)).toBe(true);
     expect(signals.slice(2).every((signal) => !signal.aborted)).toBe(true);
     secondData.resolve(Response.json({ ovenId: "second-lens", payload: { current: "Second payload" }, validated: true }));
-    secondDetail.resolve(Response.json({ oven: { ...lensOvens[1], instructions: "# Lens", oven: source, ovenRevision: "second", ir: ir.ir } }));
+    secondDetail.resolve(Response.json({ oven: { ...lensOvens[1], instructions: "# Lens", oven: source, ovenRevision: `o1-sha256:${"b".repeat(64)}`, ir: { ...ir.ir, id: "second-lens" } } }));
     await new Promise((resolve) => setTimeout(resolve, 0)); await setup.flush();
     await setup.waitForFrame((frame) => frame.includes("Lens runtime") && frame.includes("Second payload"));
     firstData.resolve(Response.json({ ovenId: "first-lens", payload: { current: "Stale first payload" }, validated: true }));
-    firstDetail.resolve(Response.json({ oven: { ...lensOvens[0], instructions: "# Lens", oven: source, ovenRevision: "first", ir: ir.ir } }));
+    firstDetail.resolve(Response.json({ oven: { ...lensOvens[0], instructions: "# Lens", oven: source, ovenRevision: `o1-sha256:${"c".repeat(64)}`, ir: { ...ir.ir, id: "first-lens" } } }));
     await new Promise((resolve) => setTimeout(resolve, 0)); await setup.flush();
     expect(setup.captureCharFrame()).not.toContain("Stale first payload");
     root.unmount();

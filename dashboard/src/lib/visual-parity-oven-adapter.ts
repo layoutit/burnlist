@@ -1,4 +1,4 @@
-import { visualParityDomainSummary, type VisualParityPayload } from "@lib";
+import { visualParityDomainSummary, type VisualParityPayload } from "./visual-parity";
 
 export function adaptVisualParity(payload: VisualParityPayload) {
   const domains = payload.domains.map((domain) => ({

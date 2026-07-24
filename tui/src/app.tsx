@@ -9,7 +9,8 @@ import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { createDataClient } from "./data-client";
 import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import { detailItems, visualParityPayload } from "./detail-items";
-import { observeDashboardEvents, type StreamStatus } from "./event-stream";
+import { observeDashboardEvents, type OvenEvent, type StreamStatus } from "./event-stream";
+import { definitionChangeInvalidates } from "./oven-runtime/definition-adapter";
 import { orderedBurnlists } from "./landing-groups";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
@@ -104,13 +105,13 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     try {
       if (oven?.contract === "checklist-progress@1") {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
-        const [nextProgress, detail] = await Promise.all([client.progress(burnlist.planPath, request.signal), client.oven(oven.id, request.signal)]);
+        const [nextProgress, detail] = await Promise.all([client.progress(burnlist.planPath, request.signal), client.oven(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
         setProgress(nextProgress);
         setOvenDetail(detail);
         setDomainIndex(0);
       } else if (oven) {
-        const [snapshot, detail] = await Promise.all([client.ovenData(oven.id, burnlist.repoKey, request.signal), client.oven(oven.id, request.signal)]);
+        const [snapshot, detail] = await Promise.all([client.ovenData(oven.id, burnlist.repoKey, request.signal), client.oven(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
         setOvenData(snapshot);
         setOvenDetail(detail);
@@ -131,7 +132,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     setActiveOven(oven);
     setOvenDetail(null);
     try {
-      const detail = await client.oven(oven.id, request.signal);
+      const detail = await client.oven(oven.id, oven.repoKey, request.signal);
       if (request.owns()) setOvenDetail(detail);
     } catch (cause) {
       if (request.owns()) setError(cause instanceof Error ? cause.message : String(cause));
@@ -150,8 +151,22 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   }, [activeOven, loadBurnlist, loadCatalogOven, loadLanding, selectedBurnlist, view]);
   const refreshRef = useRef(refresh);
   useEffect(() => { refreshRef.current = refresh; }, [refresh]);
+  const activeDefinitionRef = useRef<{ ovenId: string; repoKey: string | null; definitionRepoKey: string | null } | null>(null);
+  useEffect(() => {
+    activeDefinitionRef.current = activeOven ? {
+      ovenId: activeOven.id,
+      repoKey: selectedBurnlist?.repoKey ?? activeOven.repoKey,
+      definitionRepoKey: ovenDetail?.repoKey ?? activeOven.repoKey,
+    } : null;
+  }, [activeOven, ovenDetail?.repoKey, selectedBurnlist?.repoKey]);
   useEffect(() => observeDashboardEvents(client.base, {
-    onInvalidate: () => refreshRef.current(),
+    onInvalidate: (event?: OvenEvent) => {
+      if (event?.kind === "definition-changed") {
+        const active = activeDefinitionRef.current;
+        if (!active || !definitionChangeInvalidates(active, event)) return;
+      }
+      refreshRef.current();
+    },
     onStatus: setStreamStatus,
   }), [client.base]);
   useEffect(() => {

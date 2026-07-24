@@ -31,7 +31,7 @@ async function frame(width: number, height: number, domain = "desktop") {
 test("official Visual Parity IR renders readable wide and narrow real OpenTUI media frames", async () => {
   for (const [width, height] of [[90, 24], [42, 24]] as const) {
     const output = await frame(width, height);
-    for (const label of ["desktop", "mobile", "Frames", "Current", "Reference", "Difference", "Frame 7", "q:back"]) expect(output).toContain(label);
+    for (const label of ["desktop", "mobile", "Frames", "Current", "Reference", "Difference", "F7", "q:back"]) expect(output).toContain(label);
     expect(output).not.toContain("esc:exit");
     expect(output.split("\n").every((line) => Array.from(line).length <= width)).toBe(true);
   }
@@ -39,7 +39,7 @@ test("official Visual Parity IR renders readable wide and narrow real OpenTUI me
 
 test("the terminal domain keyboard action selects the next IR-bound media scope", async () => {
   const output = await frame(72, 22, "mobile");
-  expect(output).toContain("[mobile]"); expect(output).toContain("Frame 8"); expect(output).toContain("Mobile remains diagnostic.");
+  expect(output).toContain("[mobile]"); expect(output).toContain("F8"); expect(output).toContain("Mobile remains diagnostic.");
 });
 
 test("triptych fixture has distinct image pixels and preflight fails closed before paint", () => {

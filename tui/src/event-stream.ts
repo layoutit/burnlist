@@ -1,13 +1,14 @@
 export type StreamStatus = "connecting" | "live" | "fallback";
 
-interface OvenEvent {
+export interface OvenEvent {
   ovenId?: string;
+  repoKey?: string | null;
   kind?: string;
   phase?: string;
 }
 
 interface ObserverOptions {
-  onInvalidate(): void;
+  onInvalidate(event?: OvenEvent): void;
   onStatus?(status: StreamStatus): void;
   fetchImpl?: typeof fetch;
   retryMs?: number;
@@ -50,12 +51,18 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
   let controller: AbortController | null = null;
   let retry: ReturnType<typeof setTimeout> | null = null;
   let coalesce: ReturnType<typeof setTimeout> | null = null;
+  let pendingInvalidations: Array<OvenEvent | undefined> = [];
 
-  const invalidate = () => {
-    if (coalesce || stopped) return;
+  const invalidate = (event?: OvenEvent) => {
+    if (stopped) return;
+    if (event === undefined) pendingInvalidations = [undefined];
+    else if (!pendingInvalidations.some((entry) => entry && entry.ovenId === event.ovenId && (entry.repoKey ?? null) === (event.repoKey ?? null) && entry.kind === event.kind && entry.phase === event.phase)) pendingInvalidations.push(event);
+    if (coalesce) return;
     coalesce = setTimeout(() => {
       coalesce = null;
-      if (!stopped) options.onInvalidate();
+      const events = pendingInvalidations;
+      pendingInvalidations = [];
+      if (!stopped) events.forEach((pending) => options.onInvalidate(pending));
     }, coalesceMs);
     coalesce.unref?.();
   };
@@ -85,7 +92,8 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
           if (frame.event === "oven-reset") invalidate();
           if (frame.event === "oven-event") {
             try {
-              if (isDashboardInvalidation(JSON.parse(frame.data))) invalidate();
+              const event = JSON.parse(frame.data) as OvenEvent;
+              if (isDashboardInvalidation(event)) invalidate(event);
             } catch {
               // A malformed event is not canonical state; the next valid event or
               // reconciliation refresh will recover the snapshot.
@@ -108,5 +116,6 @@ export function observeDashboardEvents(base: string, options: ObserverOptions): 
     controller?.abort();
     if (retry) clearTimeout(retry);
     if (coalesce) clearTimeout(coalesce);
+    pendingInvalidations = [];
   };
 }
