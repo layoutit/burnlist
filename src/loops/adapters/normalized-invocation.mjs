@@ -40,6 +40,13 @@ function binding(value) {
     fail("invalid invocation binding");
   return value;
 }
+function boundaryCandidate(candidateForBoundary, expected) {
+  if (typeof candidateForBoundary !== "function") return expected;
+  const value = candidateForBoundary();
+  const id = typeof value === "string" ? value : value?.id;
+  if (!CANDIDATE.test(id) || id !== expected) fail("candidate changed at evidence boundary");
+  return id;
+}
 function finalPrompt(invocation, node, current) {
   return ["Burnlist Stage 1 invocation.", `run=${invocation.runId}`, `node=${node.id}`, `attempt=${invocation.attempt}`,
     `claim=${current.claimId}`, `invocation=${invocation.invocationId}`, `assignment=${current.assignmentId}`,
@@ -104,8 +111,10 @@ function boundedCompletion(handle, milliseconds) {
  * the immutable assignment/candidate pair that the M2 invocation shape lacks;
  * a final cannot be accepted without both values matching exactly.
  */
-export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor, startAgent = startCodexInvocation, runCheck = runTrustedCapability, agentTimeoutMs = 0 }) {
+export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor, candidateForBoundary = null,
+  startAgent = startCodexInvocation, runCheck = runTrustedCapability, agentTimeoutMs = 0 }) {
   if (typeof repoRoot !== "string" || !repoRoot.startsWith("/") || !(nodes instanceof Map) || typeof bindingFor !== "function"
+    || !(candidateForBoundary === null || typeof candidateForBoundary === "function")
     || typeof startAgent !== "function" || typeof runCheck !== "function" || !Number.isSafeInteger(agentTimeoutMs)
     || agentTimeoutMs < 0 || agentTimeoutMs > 86_400_000) fail("invalid dispatcher input");
   let active = null;
@@ -118,7 +127,9 @@ export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor
       return Object.freeze({ kind: "error", summary: "review context is incomplete", outputBytes: 0 });
     if (node.kind === "check") {
       try {
+        boundaryCandidate(candidateForBoundary, current.inputCandidate);
         const checked = await runCheck({ repoRoot, capabilityId: node.capability, inputCandidate: current.inputCandidate });
+        boundaryCandidate(candidateForBoundary, current.inputCandidate);
         if (checked?.result?.inputCandidate !== current.inputCandidate || !["pass", "fail"].includes(checked?.result?.outcome)) fail("stale trusted check result");
         const summary = checked.result.timedOut ? "repository check timed out" : checked.result.truncated ? "repository check output limit" : `repository check ${checked.result.outcome}`;
         return Object.freeze({ kind: checked.result.timedOut ? "timeout" : checked.result.outcome, summary, outputBytes: Buffer.isBuffer(checked.evidence) ? checked.evidence.length : 0 });
@@ -126,16 +137,18 @@ export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor
     }
     const profile = route(routes, node.mode === "review" ? "review" : "implementation");
     try {
+      if (node.mode === "review") boundaryCandidate(candidateForBoundary, current.inputCandidate);
       const handle = startAgent({ profile, cwd: repoRoot, prompt: finalPrompt(invocation, node, current) });
       if (!handle || typeof handle.cancel !== "function" || !handle.completion || typeof handle.completion.then !== "function") fail("agent did not return a foreground handle");
       active = handle;
       const completed = await boundedCompletion(handle, agentTimeoutMs);
       if (completed.cleanupLost) return Object.freeze({ kind: "lost", summary: "agent deadline cleanup unproven", outputBytes: 0 });
+      if (completed.value?.outcome === "quarantined") return Object.freeze({ kind: "lost", summary: "agent process cleanup unproven", outputBytes: 0 });
       if (completed.timedOut) return Object.freeze({ kind: "timeout", summary: "agent deadline exceeded", outputBytes: 0 });
       if (completed.failed) return Object.freeze({ kind: "error", summary: "agent process failed", outputBytes: 0 });
       if (completed.value.outcome === "cancelled") return Object.freeze({ kind: "cancelled", summary: "agent cancelled", outputBytes: 0 });
-      if (completed.value.outcome === "quarantined") return Object.freeze({ kind: "lost", summary: "agent process cleanup unproven", outputBytes: 0 });
       if (completed.value.outcome !== "completed") return Object.freeze({ kind: "error", summary: "agent process failed", outputBytes: 0 });
+      if (node.mode === "review") boundaryCandidate(candidateForBoundary, current.inputCandidate);
       const result = agentResult(completed.value.events, invocation, node, current);
       return Object.freeze({ ...result, outputBytes: Buffer.byteLength(JSON.stringify(completed.value.events), "utf8") });
     } catch (error) { return Object.freeze({ kind: "error", summary: clean(error?.message), outputBytes: 0 }); }

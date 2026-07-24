@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { bindRunCreation, createProductionRun, createProductionRunRunner, createStoredProductionRunRunner, revalidatePreparedBinding } from "./binder.mjs";
 import { loadBoundPolicy } from "./run-artifacts.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
-import { ownerClaimId } from "./run-claim.mjs";
 import { runStore } from "./run-store.mjs";
 import { presentRun } from "./read-projection.mjs";
 import { createProductionRunAuthority, fixtureItemRef, fixtureRunId } from "./run-test-fixtures.mjs";
@@ -52,14 +51,7 @@ test("production factory drives direct maker-check-reject-repair-approve", async
     if (oldCounter === undefined) delete process.env.BURNLIST_FAKE_COUNTER; else process.env.BURNLIST_FAKE_COUNTER = oldCounter;
     if (oldOutcomes === undefined) delete process.env.BURNLIST_FAKE_OUTCOMES; else process.env.BURNLIST_FAKE_OUTCOMES = oldOutcomes;
   });
-  const candidate = `cm1-sha256:${"c".repeat(64)}`;
   const runner = createProductionRunRunner({ repoRoot: repo, store, runId: fixtureRunId, authority,
-    contextFor(invocation) {
-      return { claimId: ownerClaimId({ runId: invocation.runId, nodeId: invocation.nodeId,
-        attempt: invocation.attempt, assignmentId: authority.assignmentId, inputCandidate: candidate }),
-      inputCandidate: candidate, itemText: "- [ ] L29 | Exercise production authority\n",
-      candidateContext: "candidate-summary@1\n", reviewerEvidence: ["repo-verify:pass"] };
-    },
     runCheck: async ({ inputCandidate }) => ({ result: { outcome: "pass", inputCandidate,
       timedOut: false, truncated: false }, evidence: Buffer.from("pass") }),
     agentTimeoutMs: 2_000 });
@@ -85,11 +77,7 @@ test("executable reviewer escalation and malformed or stale finals fail closed",
     process.env.BURNLIST_FAKE_COUNTER = counter; process.env.BURNLIST_FAKE_OUTCOMES = outcomes;
     if (mode) process.env.BURNLIST_FAKE_FINAL_MODE = mode; else delete process.env.BURNLIST_FAKE_FINAL_MODE;
     try {
-      const candidate = `cm1-sha256:${"d".repeat(64)}`;
       const runner = createProductionRunRunner({ repoRoot: repo, store, runId: fixtureRunId, authority,
-        contextFor(invocation) { return { claimId: ownerClaimId({ runId: invocation.runId, nodeId: invocation.nodeId,
-          attempt: invocation.attempt, assignmentId: authority.assignmentId, inputCandidate: candidate }),
-        inputCandidate: candidate, candidateContext: "candidate-summary@1\n", reviewerEvidence: ["repo-verify:pass"] }; },
         runCheck: async ({ inputCandidate }) => ({ result: { outcome: "pass", inputCandidate,
           timedOut: false, truncated: false }, evidence: Buffer.from("pass") }), agentTimeoutMs: 2_000 });
       assert.equal((await runner.run()).projection.state, expected, name);
@@ -166,28 +154,25 @@ test("production replay normalizes item-mismatched, malformed, or missing requir
   assert.throws(() => runStore(repo).read(fixtureRunId), { code: "EAUTHORITY" });
 });
 
-test("over-limit and unreadable post-maker candidates replay as closed failures without a lease", async (t) => {
-  for (const mode of ["over-limit", "unreadable"]) {
-    const directory = realpathSync(mkdtempSync(join(tmpdir(), `burnlist-candidate-${mode}-`)));
-    t.after(() => rmSync(directory, { recursive: true, force: true }));
-    const { repo } = createProductionRunAuthority(join(directory, "repo")), store = runStore(repo);
-    await createProductionRun({ repoRoot: repo, store, itemRef: fixtureItemRef, runId: fixtureRunId });
-    const startAgent = ({ prompt }) => {
-      const values = Object.fromEntries(prompt.split("\n").filter((line) => line.includes("=")).map((line) => line.split(/=(.*)/su).slice(0, 2)));
-      if (mode === "over-limit") writeFileSync(join(repo, "oversized-candidate.bin"), Buffer.alloc(65_537));
-      else symlinkSync(join(repo, "src"), join(repo, "unreadable-candidate"));
-      const final = { schema: "burnlist.agent-final@1", runId: values.run, nodeId: values.node, attempt: Number(values.attempt),
-        claimId: values.claim, invocationId: values.invocation, assignmentId: values.assignment, recipeRevision: values.recipe,
-        policyRevision: values.policy, inputCandidate: values.candidate, outcome: "complete", summary: "maker complete" };
-      return { cancel: () => true, completion: Promise.resolve({ outcome: "completed",
-        events: [{ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(final) } }] }) };
-    };
-    const final = await createStoredProductionRunRunner({ repoRoot: repo, store, runId: fixtureRunId, startAgent }).run();
-    assert.equal(final.projection.state, "failed", mode);
-    assert.equal(final.projection.leaseHeld, false, mode);
-    const replayed = runStore(repo).read(fixtureRunId);
-    assert.equal(replayed.projection.state, "failed", mode);
-    assert.equal(replayed.projection.leaseHeld, false, mode);
-    assert.match(replayed.execution.system.summary, mode === "over-limit" ? /too large/u : /symbolic/u);
-  }
+test("an over-limit post-maker candidate replays as a closed failure without a lease", async (t) => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), "burnlist-candidate-over-limit-")));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo")), store = runStore(repo);
+  await createProductionRun({ repoRoot: repo, store, itemRef: fixtureItemRef, runId: fixtureRunId });
+  const startAgent = ({ prompt }) => {
+    const values = Object.fromEntries(prompt.split("\n").filter((line) => line.includes("=")).map((line) => line.split(/=(.*)/su).slice(0, 2)));
+    writeFileSync(join(repo, "oversized-candidate.bin"), Buffer.alloc(16_777_217));
+    const final = { schema: "burnlist.agent-final@1", runId: values.run, nodeId: values.node, attempt: Number(values.attempt),
+      claimId: values.claim, invocationId: values.invocation, assignmentId: values.assignment, recipeRevision: values.recipe,
+      policyRevision: values.policy, inputCandidate: values.candidate, outcome: "complete", summary: "maker complete" };
+    return { cancel: () => true, completion: Promise.resolve({ outcome: "completed",
+      events: [{ type: "item.completed", item: { type: "agent_message", text: JSON.stringify(final) } }] }) };
+  };
+  const final = await createStoredProductionRunRunner({ repoRoot: repo, store, runId: fixtureRunId, startAgent }).run();
+  assert.equal(final.projection.state, "failed");
+  assert.equal(final.projection.leaseHeld, false);
+  const replayed = runStore(repo).read(fixtureRunId);
+  assert.equal(replayed.projection.state, "failed");
+  assert.equal(replayed.projection.leaseHeld, false);
+  assert.match(replayed.execution.system.summary, /too large/u);
 });

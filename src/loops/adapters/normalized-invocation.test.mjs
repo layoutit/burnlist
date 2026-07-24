@@ -22,9 +22,9 @@ function final(invocation, node, outcome = "complete", extra = {}) {
 }
 function event(...texts) { return texts.map((text) => ({ type: "item.completed", item: { type: "agent_message", text } })); }
 function agent(events, outcome = "completed") { return () => ({ cancel() { return true; }, completion: Promise.resolve({ outcome, events }) }); }
-function dispatcher({ startAgent, runCheck, timeout = 0, bindingFor = () => current } = {}) {
+function dispatcher({ startAgent, runCheck, timeout = 0, bindingFor = () => current, candidateForBoundary = null } = {}) {
   return createNormalizedInvocation({ repoRoot: "/repo", routes, nodes: new Map([[maker.id, maker], [reviewer.id, reviewer], [check.id, check]]), bindingFor,
-    startAgent: startAgent ?? agent(event(final(call, maker))), runCheck: runCheck ?? (async () => ({ result: { outcome: "pass", inputCandidate: current.inputCandidate, timedOut: false, truncated: false }, evidence: Buffer.from("check") })), agentTimeoutMs: timeout });
+    candidateForBoundary, startAgent: startAgent ?? agent(event(final(call, maker))), runCheck: runCheck ?? (async () => ({ result: { outcome: "pass", inputCandidate: current.inputCandidate, timedOut: false, truncated: false }, evidence: Buffer.from("check") })), agentTimeoutMs: timeout });
 }
 
 test("maps actual Codex agent-message finals for maker and fresh reviewer", async () => {
@@ -60,6 +60,22 @@ test("maps trusted checks including timeout and stale candidate without invoking
   assert.equal(timeout.kind, "timeout");
   const stale = await dispatcher({ runCheck: async () => ({ result: { outcome: "pass", inputCandidate: `cm1-sha256:${"f".repeat(64)}`, timedOut: false, truncated: false }, evidence: Buffer.alloc(0) }) })(verify);
   assert.equal(stale.kind, "error");
+});
+
+test("invalidates check and review evidence when the worktree drifts at a boundary", async () => {
+  const verify = { ...call, nodeId: "verify" };
+  const changed = `cm1-sha256:${"f".repeat(64)}`;
+  let captures = 0;
+  const checkResult = await dispatcher({
+    candidateForBoundary: () => ({ id: captures++ === 0 ? current.inputCandidate : changed }),
+  })(verify);
+  assert.equal(checkResult.kind, "error");
+  captures = 0;
+  const reviewResult = await dispatcher({
+    candidateForBoundary: () => ({ id: captures++ === 0 ? current.inputCandidate : changed }),
+    startAgent: agent(event(final({ ...call, nodeId: "review", invocationId: "c".repeat(32) }, reviewer, "approve"))),
+  })({ ...call, nodeId: "review", invocationId: "c".repeat(32) });
+  assert.equal(reviewResult.kind, "error");
 });
 
 test("agent deadline becomes lost if cancellation never settles", async () => {

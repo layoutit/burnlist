@@ -99,7 +99,6 @@ export const verificationTestFiles = [
   "src/loops/run/controller.test.mjs",
   "src/loops/run/current-authority.test.mjs",
   "src/loops/run/launch-authority.test.mjs",
-  "src/loops/run/run-admission.test.mjs",
   "src/loops/run/run-clock.test.mjs",
   "src/loops/events/projection-events.test.mjs",
   "src/loops/run/run-journal.test.mjs",

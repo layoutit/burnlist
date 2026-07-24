@@ -294,7 +294,8 @@ export function releaseRunLaunchBinding(held) {
  * deliberately a direct Codex path: Docker controllers are legacy setup
  * artifacts and are not consulted for foreground Stage One dispatch.
  */
-export function createBoundNormalizedInvocation({ repoRoot, replay, contextFor, startAgent, runCheck, agentTimeoutMs = 0 }) {
+export function createBoundNormalizedInvocation({ repoRoot, replay, contextFor, candidateForBoundary = null,
+  startAgent, runCheck, agentTimeoutMs = 0 }) {
   if (typeof repoRoot !== "string" || !replay?.projection?.assignmentId || !replay?.frozenRecipe?.ir
     || typeof replay.itemText !== "string" || !replay.itemText
     || !Buffer.isBuffer(replay.policyBytes) || typeof contextFor !== "function") fail("invalid production invocation input");
@@ -315,7 +316,7 @@ export function createBoundNormalizedInvocation({ repoRoot, replay, contextFor, 
           ? Buffer.from(instruction.base64, "base64").toString("utf8") : "Run the frozen trusted capability.\n",
         itemText: replay.itemText, candidateContext: context.candidateContext,
         reviewerEvidence: context.reviewerEvidence ?? [] };
-    }, startAgent, runCheck, agentTimeoutMs });
+    }, candidateForBoundary, startAgent, runCheck, agentTimeoutMs });
 }
 
 /** Compose frozen creation authority, the M3 dispatcher, and the M2 runner. */
@@ -340,7 +341,8 @@ export function createProductionRunRunner({ repoRoot, store, runId, authority, c
       assignmentId: authority.assignmentId, inputCandidate: candidate.id }), inputCandidate: candidate.id,
       candidateContext: candidate.context, reviewerEvidence };
   };
-  const dispatch = createBoundNormalizedInvocation({ repoRoot, replay, contextFor: contextFor ?? liveContext, startAgent, runCheck, agentTimeoutMs });
+  const dispatch = createBoundNormalizedInvocation({ repoRoot, replay, contextFor: contextFor ?? liveContext,
+    candidateForBoundary: () => deriveCandidate({ repoRoot }), startAgent, runCheck, agentTimeoutMs });
   const invoke = async (invocation) => {
     const captured = captureRunLaunchBinding({ repoRoot, replay: { ...replay, projection: { ...replay.projection, itemRef: authority.itemRef, itemRevision: authority.itemRevision }, boundPolicy: loadBoundPolicy(authority.policyBytes).policy } });
     recheckRunLaunchBinding(captured); const held = holdRunLaunchBinding(captured);

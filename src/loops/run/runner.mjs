@@ -54,7 +54,9 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null }) 
     // A pause is committed only after the foreground handle has settled.  Its
     // cancelled result is intentionally not journalled: it has no graph edge,
     // and the next foreground owner must retry this unfinished invocation.
-    if (pauseRequested && !stopRequested) return { kind: "paused" };
+    const cleanupLost = result?.kind === "lost";
+    if (pauseRequested && !stopRequested && !cleanupLost) return { kind: "paused" };
+    if (cleanupLost) { pauseRequested = false; cancelRequested = false; }
     result = validateNormalizedResult({ ...result, candidateId: result.candidateId ?? execution.candidate?.id ?? null }, node, current.graph.budget.maxOutputBytes); const exhausted = budgetReason({ folded: execution.budget, graph: current.graph, outputBytes: result.outputBytes });
     return append("invocation-result", { invocationId: execution.invocation.invocationId, ...(exhausted ? { kind: "exhausted", summary: exhausted, outputBytes: 0, candidateId: execution.candidate?.id ?? null } : result) });
   }

@@ -51,13 +51,13 @@ test("adapter uses exact ephemeral argv and ignores child capability claims", as
   } finally { context.cleanup(); }
 });
 
-test("cancellation uses bounded TERM/KILL and reports a closed direct child without descendant claims", async () => {
+test("cancellation quarantines a closed direct child when descendant exit is unproven", async () => {
   const context = fixture();
   try {
     await withMode("hang", async () => {
       const direct = startCodexInvocation({ profile: profile(context.binary, "maker", "write"), cwd: context.directory, prompt: "Wait.", trustedIsolation: unprovenIsolation() });
       assert.equal(direct.cancel(), true); assert.equal(direct.cancel(), false); const uncertain = await direct.completion;
-      assert.equal(uncertain.outcome, "cancelled"); assert.equal(uncertain.quarantineRequired, false); assert.equal(uncertain.termination.killSent, true); assert.equal(uncertain.termination.emptyProven, false);
+      assert.equal(uncertain.outcome, "quarantined"); assert.equal(uncertain.quarantineRequired, true); assert.equal(uncertain.termination.killSent, true); assert.equal(uncertain.termination.emptyProven, false);
 
     });
   } finally { context.cleanup(); }

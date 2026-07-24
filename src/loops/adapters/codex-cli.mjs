@@ -87,7 +87,7 @@ export function startCodexInvocation({ profile, cwd, prompt, spawn = nodeSpawn, 
       if (settled || finalizing) return; finalizing = true; clearTimeout(forceTimer);
       let empty = false; try { empty = await controller.proveEmpty({ pid: child.pid, exitCode, signal, processError }) === true; } catch { empty = false; }
       finally { try { controller.dispose?.(); } catch { empty = false; } }
-      if (!empty && controller.requireEmptyProof && !cancellationRequested) {
+      if (!empty && (controller.requireEmptyProof || cancellationRequested)) {
         settled = true;
         resolve(Object.freeze({
           requested: launch.requested, providerReported: null, technicallyProven: Object.freeze({ argv: [launch.command, ...launch.args], pidObserved: true }),
@@ -101,17 +101,14 @@ export function startCodexInvocation({ profile, cwd, prompt, spawn = nodeSpawn, 
         if (processError) throw processError;
         if (outputExceeded) fail("JSONL output exceeds limit", "ELOOP_CODEX_OUTPUT_LIMIT");
         const events = parseJsonl(Buffer.concat(stdout)); const provider = providerReported(events); const usage = usageFrom(events);
-        // A foreground child close is sufficient to report a requested direct
-        // cancellation.  Descendant containment remains explicitly unknown.
-        const cancellationClosed = cancellationRequested && (Number.isInteger(exitCode) || signal !== null);
         settled = true;
         resolve(Object.freeze({
           requested: launch.requested, providerReported: provider, technicallyProven: Object.freeze({ argv: [launch.command, ...launch.args], pidObserved: true }),
           guarantees: Object.freeze({ ...controller.guarantees }), events, usage, usageStatus: usage ? "reported" : "unavailable",
           exitCode: Number.isInteger(exitCode) ? exitCode : null, signal: signal ?? null, cancellationRequested,
           termination: Object.freeze({ termSent, killSent, emptyProven: empty, descendants: controller.guarantees.lifecycle }),
-          quarantineRequired: cancellationRequested && !cancellationClosed,
-          outcome: cancellationRequested ? cancellationClosed ? "cancelled" : "quarantined" : exitCode === 0 && !signal ? "completed" : "failed",
+          quarantineRequired: false,
+          outcome: cancellationRequested ? "cancelled" : exitCode === 0 && !signal ? "completed" : "failed",
         }));
       } catch (error) { settled = true; reject(error); }
     };

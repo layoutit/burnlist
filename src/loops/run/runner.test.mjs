@@ -131,6 +131,19 @@ test("a settled foreground interruption pauses without a synthetic result and re
   assert.equal(completed.projection.state, "converged");
   assert.equal(completed.journal.filter((record) => record.value.type === "invocation-started" && record.value.payload.nodeId === "implement").length, 2);
 });
+test("unproven cancellation terminalizes as needs-human instead of becoming resumable", async (t) => {
+  const store = fixture(t); let settle;
+  const invoke = Object.assign(() => new Promise((resolve) => { settle = resolve; }), { cancel: () => true });
+  const runner = createRunRunner({ store, runId: testRunId, invoke });
+  const running = runner.run(); while (!settle) await new Promise((resolve) => setImmediate(resolve));
+  runner.requestPause(); settle({ kind: "lost", summary: "process cleanup unproven", outputBytes: 0 });
+  const result = await running;
+  assert.equal(result.projection.state, "needs-human");
+  assert.equal(result.projection.leaseHeld, false);
+  assert.equal(result.execution.system.kind, "lost");
+  assert.equal(result.journal.some((record) => record.value.type === "invocation-result"
+    && record.value.payload.kind === "lost"), true);
+});
 test("ordinary retry traffic spends the final slot on one lease-clearing journal terminal", async (t) => {
   const store = fixture(t, highBoundaryGraph()), calls = [];
   const runner = createRunRunner({ store, runId: testRunId, invoke: async ({ nodeId }) => { calls.push(nodeId); return { kind: nodeId === "implement" ? "complete" : "fail", summary: "retry", outputBytes: 0 }; } });
