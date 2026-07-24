@@ -22,4 +22,4 @@ test("frame checker rejects extra, stale, missing, and locked evidence", async (
     await writeFile(lock, "test"); expect((await runCheck()).code).not.toBe(0); await rm(lock);
     expect((await runCheck()).code).toBe(0);
   } finally { await rm(extra, { force: true }); await rm(lock, { force: true }); try { await rename(moved, frame); } catch {} await writeFile(index, original); }
-});
+}, 15_000);

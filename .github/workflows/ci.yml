@@ -44,5 +44,34 @@ jobs:
       - name: Verify
         run: npm run verify
 
-      - name: Verify package payload
-        run: npm run verify:package
+  terminal-package:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tui/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix tui
+
+      - name: Build packaged terminal binaries
+        run: |
+          npm run build:dashboard
+          npm run build:tui
+          npm run build:catalog:tui
+
+      - name: Verify installed current-host package
+        run: |
+          npm run verify:package
+          npm run test:global-install

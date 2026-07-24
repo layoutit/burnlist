@@ -7,6 +7,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "burnlistTui": {
+    "targets": [
+      "darwin-arm64"
+    ]
+  },
   "bin": {
     "burnlist": "bin/burnlist.mjs"
   },
@@ -30,7 +35,7 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
-    "build:tui": "npm --prefix tui run build",
+    "build:tui": "tui/node_modules/.bin/bun build tui/src/main.tsx --compile --minify --target=bun-darwin-arm64 --outfile tui/dist/burnlist-tui",
     "storybook": "storybook dev -p 6006 -c dashboard/.storybook --no-open",
     "build:storybook": "npm run check:terminal-story-frames && storybook build -c dashboard/.storybook -o .local/storybook",
     "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/handler.test.mjs ovens/differential-testing/engine/query-projection-cache.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
@@ -44,12 +49,14 @@
     "check:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --check",
     "tui": "npm --prefix tui run dev --",
     "catalog:tui": "npm --prefix tui run catalog --",
-    "build:catalog:tui": "npm --prefix tui run build:catalog",
+    "build:catalog:tui": "tui/node_modules/.bin/bun build tui/src/catalog/main.tsx --compile --minify --target=bun-darwin-arm64 --outfile tui/dist/burnlist-tui-catalog",
+    "verify:fast": "npm --prefix tui run typecheck && npm --prefix tui test && npm run check:terminal-story-frames && npm run check:terminal-progress-frames && node scripts/audit-terminal-oven-parity.mjs --check && node scripts/audit-terminal-oven-parity.mjs --official-ovens && node scripts/audit-terminal-oven-parity.mjs --storybook",
     "verify": "node scripts/verify.mjs",
+    "verify:gate": "npm run verify",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "test:global-install": "node scripts/smoke-global-install.mjs",
-    "prepack": "npm run build:dashboard && npm run build:tui && npm run verify",
+    "prepack": "npm run build:dashboard && npm run build:tui && npm run build:catalog:tui && npm run verify",
     "postinstall": "node scripts/register-skills.mjs"
   },
   "engines": {

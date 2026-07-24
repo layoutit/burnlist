@@ -4,6 +4,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readlinkSync,
   realpathSync,
   rmSync,
@@ -29,6 +30,7 @@ const env = {
   USERPROFILE: home,
   npm_config_cache: npmCache,
 };
+const tuiTarget = "darwin-arm64";
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -44,6 +46,58 @@ function run(command, args, options = {}) {
     throw new Error(`${command} ${args.join(" ")} failed`);
   }
   return options.capture ? result.stdout.trim() : "";
+}
+
+function runFailure(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd || repoRoot,
+    encoding: "utf8",
+    env,
+    maxBuffer: 8 * 1024 * 1024,
+    shell: false,
+    stdio: "pipe",
+  });
+  if (result.status === 0) throw new Error(`${command} ${args.join(" ")} unexpectedly succeeded`);
+  return `${result.stdout || ""}${result.stderr || ""}`;
+}
+
+function runPty(binary, marker, label, interactive = false) {
+  const observation = join(tmpRoot, `${label}.pty-observed.txt`);
+  const result = spawnSync("expect", ["-c", `
+set timeout 20
+log_user 1
+if {$env(BURNLIST_PTY_INTERACTIVE) eq "1"} {
+  spawn -noecho $env(BURNLIST_PTY_BINARY) -i
+} else {
+  spawn -noecho $env(BURNLIST_PTY_BINARY)
+}
+expect {
+  -re $env(BURNLIST_PTY_MARKER) {
+    set observation [open $env(BURNLIST_PTY_OBSERVATION) w]
+    puts $observation $env(BURNLIST_PTY_MARKER)
+    close $observation
+    send "\\033"
+  }
+  eof { puts stderr "${label} exited before rendering ${marker}"; exit 126 }
+  timeout { puts stderr "${label} did not render ${marker}"; exit 124 }
+}
+expect {
+  eof {}
+  timeout { puts stderr "${label} did not exit after root Escape"; exit 125 }
+}
+set outcome [wait]
+exit [lindex $outcome 3]
+`], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: { ...env, BURNLIST_PTY_BINARY: binary, BURNLIST_PTY_MARKER: marker, BURNLIST_PTY_OBSERVATION: observation, BURNLIST_PTY_INTERACTIVE: interactive ? "1" : "0" },
+    maxBuffer: 8 * 1024 * 1024,
+    shell: false,
+    stdio: "pipe",
+  });
+  const output = `${result.stdout || ""}${result.stderr || ""}`;
+  if (result.status !== 0) throw new Error(`${label} PTY smoke failed: ${output}`);
+  if (readFileSync(observation, "utf8") !== `${marker}\n`) throw new Error(`${label} PTY smoke did not observe recognizable content: ${marker}`);
 }
 
 function assertManagedLink(agentDirectory, name, packageRoot) {
@@ -85,6 +139,16 @@ try {
   }
   run(cli, ["--stamp"], { capture: true });
   run(cli, ["oven", "list"], { capture: true });
+  const installedTarget = `${process.platform}-${process.arch}`;
+  if (installedTarget === tuiTarget) {
+    runPty(cli, "Burnlist", "interactive CLI", true);
+    runPty(join(packageRoot, "tui", "dist", "burnlist-tui-catalog"), "Terminal catalog", "catalog binary");
+  } else {
+    const output = runFailure(cli, ["-i"]);
+    if (!output.includes(tuiTarget) || !output.includes(installedTarget)) {
+      throw new Error(`unsupported host interactive CLI message is not actionable: ${output}`);
+    }
+  }
   const sdkPath = run(cli, ["differential-testing", "sdk"], { capture: true });
   const expectedSdkPath = resolve(packageRoot, "ovens", "differential-testing", "engine", "adapter-sdk.mjs");
   if (realpathSync(sdkPath) !== realpathSync(expectedSdkPath)) throw new Error(`installed CLI reported unexpected SDK path: ${sdkPath}`);

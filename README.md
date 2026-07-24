@@ -170,7 +170,9 @@ The TUI reads the dashboard URL from `~/.burnlist/server.json`; pass an explicit
 URL with `npm run tui -- --server http://127.0.0.1:4510`. Screen layouts are
 declarative `.glyph` documents under `tui/screens/`. A standalone executable
 with the OpenTUI native renderer and glyphcss source embedded is produced by
-`npm run build:tui`. Once built, open it through the regular CLI with
+`npm run build:tui`. This visual-review package currently contains only the
+`darwin-arm64` TUI binary; other hosts retain the Node CLI and dashboard and
+receive an explicit `burnlist -i` explanation. Once built, open it through the regular CLI with
 `burnlist -i`; pass an explicit dashboard with
 `burnlist -i --server http://127.0.0.1:4510`.
 
@@ -195,13 +197,14 @@ npm run storybook
 npm run build:storybook
 npm run test:differential-testing
 npm run test:tui
+npm run verify:fast
 npm run verify
 npm run verify:clean
 npm run verify:package
 npm run test:global-install
 ```
 
-`verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
+`verify:fast` is the non-mutating inner loop for TUI types, tests, generated-frame freshness, and prototype coverage audits; it intentionally does not claim final 100% coverage. `verify` remains the required full gate (`verify:gate` is an alias). `verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
 
 ## Oven events
 
