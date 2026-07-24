@@ -7,8 +7,8 @@ import { DomainNote } from "../DomainNote";
 import { FrameCard } from "../FrameCard";
 import { MetricTiles } from "../MetricTiles";
 import { VerdictHeader } from "../VerdictHeader";
-import { formatRegistry } from "../OvenView/registries";
 import { resolvePointer } from "../utils/json-pointer";
+import { evaluateOvenBinding } from "../../../../src/ovens/oven-value-runtime.mjs";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 import { selectCollection, selectDomain, selectMode, selectRefreshStatus } from "./oven-selectors";
 
@@ -26,8 +26,7 @@ function collectionControlId(ir: OvenIr, collectionId: string, name: string): st
 function bind(node: Node, prop: string, payload: unknown): unknown {
   const child = (node.children ?? []).find((item) => item.kind === "bind" && item.attributes?.prop === prop);
   if (!child || typeof child.attributes?.source !== "string") return undefined;
-  const format = formatRegistry[String(child.attributes.format ?? "identity")];
-  return format?.(resolvePointer(payload, child.attributes.source));
+  return evaluateOvenBinding({ source: child.attributes.source, format: String(child.attributes.format ?? "identity"), optional: child.attributes.optional === true, ...(child.attributes.fallback !== undefined ? { fallback: child.attributes.fallback } : {}) }, payload);
 }
 
 export function WidgetAdapter({ node, ir, state, dispatch }: { node: Node; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void }) {

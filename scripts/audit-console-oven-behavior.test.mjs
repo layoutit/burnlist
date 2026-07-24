@@ -5,12 +5,12 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { parse } from "@babel/parser";
-import { auditConsoleOvenBehavior, SCHEMA, validateInventory } from "./console-oven-behavior-lib.mjs";
+import { auditConsoleOvenBehavior, policyFor, SCHEMA, validateInventory } from "./console-oven-behavior-lib.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function fixture() {
   const temp = await mkdtemp(join(tmpdir(), "burnlist-console-oven-"));
-  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "console-oven-behavior-policy.json"), join(temp, "console-oven-behavior-policy.json"))]);
+  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "src/ovens/oven-value-runtime.mjs"), join(temp, "src/ovens/oven-value-runtime.mjs")), cp(join(root, "console-oven-behavior-policy.json"), join(temp, "console-oven-behavior-policy.json"))]);
   return temp;
 }
 async function mutate(root, path, before, after) {
@@ -73,6 +73,19 @@ test("official Oven fixtures cannot influence the source inventory", async () =>
   assert.deepEqual(await auditConsoleOvenBehavior(temp), before);
 }));
 
+test("shared evaluator decisions are authoritative and policy-owned", async () => withFixture(async (temp) => {
+  const before = await auditConsoleOvenBehavior(temp, { compare: false });
+  assert.deepEqual(before.authoritativeSources.shared, ["src/ovens/oven-value-runtime.mjs"]);
+  const owned = before.behaviors.filter((row) => row.source.path === "src/ovens/oven-value-runtime.mjs");
+  assert.ok(owned.length > 0);
+  assert.ok(owned.every((row) => row.classification === "closed-shared-adapter" && row.semanticOwner.ownerTarget === `${row.source.path}:${row.source.export}`));
+  await writeFile(join(temp, "console-oven-behavior-policy.json"), `${JSON.stringify(policyFor(before), null, 2)}\n`, "utf8");
+  await mutate(temp, "src/ovens/oven-value-runtime.mjs", "if (!binding.optional)", "if (binding.optional)");
+  const after = await auditConsoleOvenBehavior(temp, { compare: false });
+  assert.notDeepEqual(after.behaviors.filter((row) => row.source.path === "src/ovens/oven-value-runtime.mjs"), owned);
+  await assert.rejects(auditConsoleOvenBehavior(temp), /semantic capabilities differ from approved policy/u);
+}));
+
 test("incidental source offsets do not change semantic IDs or policy approval", async () => withFixture(async (temp) => {
   const before = await auditConsoleOvenBehavior(temp);
   const file = join(temp, "dashboard/src/lib/route-model.mjs");
@@ -110,11 +123,11 @@ test("wrapper, dispatcher owner, and structured-policy mutations are fail closed
 }));
 
 test("spread provenance and grammar guards fail even without policy comparison", async () => withFixture(async (temp) => {
-  await mutate(temp, "dashboard/src/oven/runtime/differential-testing-formats.ts", "\"progress-headline\":", "\"changed-progress-headline\":");
-  await assert.rejects(auditConsoleOvenBehavior(temp, { compare: false }), /format registry differs from grammar|semantic/i);
+  await mutate(temp, "dashboard/src/oven/OvenView/registries.ts", "identity: ovenFormatRegistry.identity,", "changedIdentity: ovenFormatRegistry.identity,");
+  await assert.rejects(auditConsoleOvenBehavior(temp, { compare: false }), /format registry differs from grammar/u);
   const spread = await fixture();
   try {
-    await mutate(spread, "dashboard/src/oven/OvenView/registries.ts", "...differentialFormatRegistry", "...unownedFormatRegistry");
+    await mutate(spread, "dashboard/src/oven/OvenView/registries.ts", "identity: ovenFormatRegistry.identity,", "...unownedFormatRegistry,");
     await assert.rejects(auditConsoleOvenBehavior(spread, { compare: false }), /unowned spread/u);
   } finally { await rm(spread, { recursive: true, force: true }); }
   const theme = await fixture();
@@ -164,7 +177,7 @@ test("registry spread provenance names its source export and is policy-owned", a
     assert.ok(found, `${row.source.path} does not export ${row.source.export}`);
   }
   const progress = rows.find((row) => row.id === "registry:formatRegistry:progress-headline");
-  assert.deepEqual({ path: progress.source.path, export: progress.source.export, owner: progress.semanticOwner.ownerTarget, consumedBy: progress.source.consumedBy }, { path: "dashboard/src/oven/runtime/differential-testing-formats.ts", export: "differentialFormatRegistry", owner: "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry", consumedBy: "formatRegistry" });
+  assert.deepEqual({ path: progress.source.path, export: progress.source.export, owner: progress.semanticOwner.ownerTarget }, { path: "dashboard/src/oven/OvenView/registries.ts", export: "formatRegistry", owner: "dashboard/src/oven/OvenView/registries.ts:formatRegistry" });
   await withFixture(async (temp) => {
     const policyPath = join(temp, "console-oven-behavior-policy.json"), policy = JSON.parse(await readFile(policyPath, "utf8"));
     policy.capabilities.find((row) => row.id === "registry:formatRegistry:progress-headline").semanticOwner.ownerTarget = "wrong-origin";
@@ -174,7 +187,7 @@ test("registry spread provenance names its source export and is policy-owned", a
 });
 
 test("every authoritative AST decision owns exactly one policy behavior", async () => {
-  const inventory = await auditConsoleOvenBehavior(root), paths = [...new Set([...inventory.authoritativeSources.oven, ...inventory.authoritativeSources.wrappers])], actual = inventory.behaviors.filter((row) => ["IfStatement", "ConditionalExpression", "SwitchCase", "LogicalExpression"].includes(row.source.node));
+  const inventory = await auditConsoleOvenBehavior(root), paths = [...new Set([...inventory.authoritativeSources.oven, ...inventory.authoritativeSources.wrappers, ...inventory.authoritativeSources.shared])], actual = inventory.behaviors.filter((row) => ["IfStatement", "ConditionalExpression", "SwitchCase", "LogicalExpression"].includes(row.source.node));
   let expected = 0;
   const count = (node) => { if (!node || typeof node !== "object") return; if (["IfStatement", "ConditionalExpression", "LogicalExpression"].includes(node.type) || (node.type === "SwitchCase" && node.test)) expected += 1; for (const value of Object.values(node)) { if (Array.isArray(value)) value.forEach(count); else if (value?.type) count(value); } };
   for (const path of paths) count(parse(await readFile(join(root, path), "utf8"), { sourceType: "module", plugins: ["typescript", "jsx"] }));

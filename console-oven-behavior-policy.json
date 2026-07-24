@@ -15010,18 +15010,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/OvenView/OvenView.tsx:module:IfStatement:7512cbd1f2f3654e",
-      "fingerprint": "7512cbd1f2f3654e11897574de8c985612e18e3803181f7da85dd410fd640f6d",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/OvenView.tsx:module",
-        "path": "dashboard/src/oven/OvenView/OvenView.tsx",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/OvenView/OvenView.tsx:module:IfStatement:83fedff8c10bcd26",
       "fingerprint": "83fedff8c10bcd26ea09b79a90fddf8a6e1ffa712242d96d9925254ab28598c3",
       "classification": "closed-shared-adapter",
@@ -15072,18 +15060,6 @@
     {
       "id": "branch:dashboard/src/oven/OvenView/OvenView.tsx:module:LogicalExpression:37066df1cd032321",
       "fingerprint": "37066df1cd0323219fe06b72f7bf26fe424d3d2207ed5bd168d80acf78868e1b",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/OvenView.tsx:module",
-        "path": "dashboard/src/oven/OvenView/OvenView.tsx",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/OvenView.tsx:module:LogicalExpression:6e846d31edd18fbd",
-      "fingerprint": "6e846d31edd18fbd6f3b85f866e2e8c6a506b4f239691cd6641552123e005195",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -15150,306 +15126,6 @@
         "ownerTarget": "dashboard/src/oven/OvenView/OvenView.tsx:OvenView",
         "path": "dashboard/src/oven/OvenView/OvenView.tsx",
         "export": "OvenView",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:formatRegistry:ConditionalExpression:b4a31a6bfdb8de71",
-      "fingerprint": "b4a31a6bfdb8de7116c9ac32c1579f82ef4ddba6af4ab865776b4299b7c41eda",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "formatRegistry",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:formatRegistry:ConditionalExpression:f8034bf269765712",
-      "fingerprint": "f8034bf269765712b08c489a1f7349dc29de0f90e12e883a5a750db3ad5af0f5",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "formatRegistry",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:formatRegistry:LogicalExpression:d1fa5fe08a7dc0c9",
-      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "formatRegistry",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:formatRegistry:LogicalExpression:d1fa5fe08a7dc0c9:1",
-      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "formatRegistry",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:0a123c3c7ed6639a",
-      "fingerprint": "0a123c3c7ed6639ac914db415bd3d89c37f6ebc3cf08353dda430a3665ba800e",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:0a123c3c7ed6639a:1",
-      "fingerprint": "0a123c3c7ed6639ac914db415bd3d89c37f6ebc3cf08353dda430a3665ba800e",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:1025b78027ad4fe3",
-      "fingerprint": "1025b78027ad4fe35baa6cb7eeca130b97927c2074640bfd4ddf39fed513f6fc",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:22a36cbcd70eb7b2",
-      "fingerprint": "22a36cbcd70eb7b2bdb0111a194425be67c798d35e3e9b88d0fc26b7f859fc19",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:31fb8820ce3b6343",
-      "fingerprint": "31fb8820ce3b6343e21401abf712daf1576658d99ac8f91f62561c581cd8156c",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:7a104371331d2f1c",
-      "fingerprint": "7a104371331d2f1c792004248a1394ca66aeb9b7e46c248fcf5d98c236e162f7",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:dc69cdd4efdf89a4",
-      "fingerprint": "dc69cdd4efdf89a41dc25b851ac624ff08c9566a27eade25812788bf0b0ef5e4",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:ConditionalExpression:e4fec688043bda04",
-      "fingerprint": "e4fec688043bda04f48551ce025aef7da80432914ffac93a1abf9ed56c005e53",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:0d0e769ae95961cd",
-      "fingerprint": "0d0e769ae95961cdccfb56682336814a476d4aeb98f01ce7fbda36b10eed2685",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:0ee7a5deef88f0bf",
-      "fingerprint": "0ee7a5deef88f0bfce31e2e1383db9bfa301e58b252913cc60eb34efbcc25baf",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:3147585880b0c15f",
-      "fingerprint": "3147585880b0c15f0419842bc89807281372c00754036ba2ff356fb0f4d42351",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:383e28eefa33df27",
-      "fingerprint": "383e28eefa33df271e9f0a92012bb296766d7e50edf1762e474ecabbe52394ae",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:3ca7709bd7890864",
-      "fingerprint": "3ca7709bd78908646711c151b23d7c80ed50f406bba41e7d955e262e4f44df8e",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:510e95306a5cb903",
-      "fingerprint": "510e95306a5cb903eef2fa181aa1949ddd79e1d0adccd2f0eb26e6e26f9a5839",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:5e5e3207c173e157",
-      "fingerprint": "5e5e3207c173e1571c14f816af6ad9ee902474502e8af084b9981fd3e8d7ef00",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:IfStatement:f53d4d3e1b404eaa",
-      "fingerprint": "f53d4d3e1b404eaaf3a63e93609ab17f021f2e79d1a13950d474fd1c53c9e69a",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:LogicalExpression:3cdfb457d785f46f",
-      "fingerprint": "3cdfb457d785f46f3e22af1e1539b380299522f3648c5d2835a6c3c39464d610",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:LogicalExpression:4f254029584adac3",
-      "fingerprint": "4f254029584adac37c6e526dd4fa0a9d23c6862aa8eb564724583c57fd91adb3",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:LogicalExpression:d1fa5fe08a7dc0c9",
-      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:LogicalExpression:d1fa5fe08a7dc0c9:1",
-      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/OvenView/registries.ts:module:LogicalExpression:d940a4b58d02a9e7",
-      "fingerprint": "d940a4b58d02a9e7702fc8c268999f20fa41cecb2278f34455ab421744013ce7",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:module",
-        "path": "dashboard/src/oven/OvenView/registries.ts",
-        "export": "module",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
@@ -17146,8 +16822,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:ConditionalExpression:553c79fb5b33e5d3",
-      "fingerprint": "553c79fb5b33e5d354eb7967a506a965df43ce8637f8b0be85d33cc27ce65ea1",
+      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:ConditionalExpression:3ae1acde645995de",
+      "fingerprint": "3ae1acde645995de093518cef12c7682b1a77169b7973c7ab3be724ef705de7f",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -17206,30 +16882,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:IfStatement:0dedaf6829beca87",
-      "fingerprint": "0dedaf6829beca87143844ce768e5e29d069d1a732204f7649cdeaef02c613d2",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "buildLogTableProps",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:LogicalExpression:00c93cf24b8a68a7",
-      "fingerprint": "00c93cf24b8a68a78c2f4d989f154763f8410aec6d970ed26c67ab4af2bc2c56",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "buildLogTableProps",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:LogicalExpression:0217fcbd88b18e00",
       "fingerprint": "0217fcbd88b18e00353c321aa5c69500de6907ddf36126401994248372763fe4",
       "classification": "closed-shared-adapter",
@@ -17242,32 +16894,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:LogicalExpression:1e96434ff4fbba6a",
-      "fingerprint": "1e96434ff4fbba6a5d9092575b4414fbb2e07162e2d0b9d6b1f1334fc901b23f",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "buildLogTableProps",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:LogicalExpression:2f2c1c0c8395b9d4",
       "fingerprint": "2f2c1c0c8395b9d4b685fe92ccd6355562b266be5dfaed2afe2b96597f4b83f2",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "buildLogTableProps",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:buildLogTableProps:LogicalExpression:6b69c62a89f622e7",
-      "fingerprint": "6b69c62a89f622e75f812ae16f3148ee40e058c7f5f35b3e5e959a88b7345c94",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -17374,30 +17002,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:module:IfStatement:208b0b1bd81f7612",
-      "fingerprint": "208b0b1bd81f7612ef069030a73d6d0aff9582b980bce5223524143907973c76",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:module",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:module:IfStatement:236394a1ca6827da",
-      "fingerprint": "236394a1ca6827dad51fba564927c0c9b2193a8cad0921e45a58163f4afc4cc2",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:module",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:module:LogicalExpression:1128d0e1114c4145",
       "fingerprint": "1128d0e1114c41451aecfcb4236aaf75f176080b6c9234009529d7fc5fd549e9",
       "classification": "closed-shared-adapter",
@@ -17424,18 +17028,6 @@
     {
       "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:module:LogicalExpression:385816fe2d41ecba",
       "fingerprint": "385816fe2d41ecbaa75b04273f241b445ab3ac28fa16d9b6aabe1022bdb5f021",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/log-table-adapter.ts:module",
-        "path": "dashboard/src/oven/runtime/log-table-adapter.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/log-table-adapter.ts:module:LogicalExpression:64439e8329ac7e14",
-      "fingerprint": "64439e8329ac7e14796727b608f8425090e210bd0a974cd890f2075153c01266",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -21382,24 +20974,24 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f2b611589fe81b52",
-      "fingerprint": "f2b611589fe81b5225465b1cb3472de837c87704c279a4a1bedc6e5eb9d65674",
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:bcf69466deb7cdfa",
+      "fingerprint": "bcf69466deb7cdfaac08f9b45a42e2c6d5cf04d9f6140d03abdb60b53b8d2024",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "WidgetAdapter",
+        "ownerTarget": "LogTable",
         "path": "dashboard/src/oven/runtime/OvenNode.tsx",
         "export": "OvenNode",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f4e0aadda15a4518",
-      "fingerprint": "f4e0aadda15a451829446891d53b67dd57f9ed7112749db3a292b3027af08488",
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f2b611589fe81b52",
+      "fingerprint": "f2b611589fe81b5225465b1cb3472de837c87704c279a4a1bedc6e5eb9d65674",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "LogTable",
+        "ownerTarget": "WidgetAdapter",
         "path": "dashboard/src/oven/runtime/OvenNode.tsx",
         "export": "OvenNode",
         "version": "burnlist-console-oven-behavior@1"
@@ -22084,6 +21676,18 @@
     {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:module:ConditionalExpression:57db9939cba2fdff",
       "fingerprint": "57db9939cba2fdffa687547f2d252fc8bf2a06384410d6fa45e1a74911895825",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:module",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:module:ConditionalExpression:64d525e75b5b0abb",
+      "fingerprint": "64d525e75b5b0abbce0eee719379825bd44ff1852204c6289e8df9a420bf3a2b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -24266,114 +23870,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:IfStatement:15150f04b4394b08",
-      "fingerprint": "15150f04b4394b081c1208d4eda1f95fc60a137834c48e775cac2075ca909970",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:IfStatement:1ac0e3755d446808",
-      "fingerprint": "1ac0e3755d446808bcc70190c4b2e32808d1578e6c5473723984be79d8335b9f",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:IfStatement:cc3acdb3252d8bc0",
-      "fingerprint": "cc3acdb3252d8bc0624fd3359cfa9aea96192df6ef0e213cd0234bad5be38b97",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:IfStatement:eb2626d7688adcc8",
-      "fingerprint": "eb2626d7688adcc8cb1ccc86adfafacb8eeff0a7c04af6e2e86d61d51d380190",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:LogicalExpression:5cdaaa17a74ae498",
-      "fingerprint": "5cdaaa17a74ae4985253476a518b25d6e84e3251c1ae1bd1fdc066efddc834e9",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:LogicalExpression:8070e306dadc1ac2",
-      "fingerprint": "8070e306dadc1ac2b49f4b512365e00505ca50313bfca56289b778e4a2afef0b",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:LogicalExpression:ce91e9a51265cdf5",
-      "fingerprint": "ce91e9a51265cdf595aaa39ab33cadae0a83bfdd37cb1d957a2c040bea3ea25d",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:LogicalExpression:d1fa5fe08a7dc0c9",
-      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/utils/json-pointer.ts:resolvePointer:LogicalExpression:ffaad42e1e73bd69",
-      "fingerprint": "ffaad42e1e73bd693fddc6248fc2adf7df41cf4a33ac5c790556687c0c099fda",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/utils/json-pointer.ts:resolvePointer",
-        "path": "dashboard/src/oven/utils/json-pointer.ts",
-        "export": "resolvePointer",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/utils/streaming-diff-time.ts:timestamp:ConditionalExpression:0065eaf72f7da0cc",
       "fingerprint": "0065eaf72f7da0cc2557f289a4e12c64cff003ccde0543b20117af1b9d2cb2c7",
       "classification": "closed-shared-adapter",
@@ -24866,6 +24362,822 @@
       }
     },
     {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:IfStatement:266bd4a174e2169d",
+      "fingerprint": "266bd4a174e2169d161ffb133a5d7111ae65ede46c07e303174c2a9fc9ae2d9d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:IfStatement:46825b555885d540",
+      "fingerprint": "46825b555885d54083d54f828967078f664c88f17bfe41df406eab33225d638b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:IfStatement:49c98686c06cf2e4",
+      "fingerprint": "49c98686c06cf2e4888e987d95ea8235397172a733d6014b2d78a9e19b5bbb06",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:LogicalExpression:37cd9221352f3ea6",
+      "fingerprint": "37cd9221352f3ea61a93e8b9d9db3c582d4262e6b5331d23abe95da2fa633b84",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:LogicalExpression:6d90dfc18ed439bc",
+      "fingerprint": "6d90dfc18ed439bce0ac7e6c8aabf8e43b02842543a67c704652ba8c8545d1b8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:LogicalExpression:6e846d31edd18fbd",
+      "fingerprint": "6e846d31edd18fbd6f3b85f866e2e8c6a506b4f239691cd6641552123e005195",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:evaluateOvenBinding:LogicalExpression:ada514ff4082aabf",
+      "fingerprint": "ada514ff4082aabfc93fe750f8a6c0eaac303b44ac1296fc9a0700a2790d8b86",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:evaluateOvenBinding",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "evaluateOvenBinding",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:formatOvenValue:IfStatement:7e80e3d13481975b",
+      "fingerprint": "7e80e3d13481975be6c45ffc91ee22fd71a2b82325fcba5c5f7286f326b88d28",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:formatOvenValue",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "formatOvenValue",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:formatOvenValue:LogicalExpression:6cbafdf94ec10aa6",
+      "fingerprint": "6cbafdf94ec10aa6167046bc82d7beedcce2200c48953be1e3e6b3cae95d761a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:formatOvenValue",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "formatOvenValue",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:0ed326f807c4c8f0",
+      "fingerprint": "0ed326f807c4c8f0c8e9c7f4cc1663be57d829bf499054a5a85ea259efca3788",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:1025b78027ad4fe3",
+      "fingerprint": "1025b78027ad4fe35baa6cb7eeca130b97927c2074640bfd4ddf39fed513f6fc",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:191149f3550d13f1",
+      "fingerprint": "191149f3550d13f1826292ae00fd3c8f15037be650eb89f6b60172c1d0fb6ae2",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:1e494f21b8c37c13",
+      "fingerprint": "1e494f21b8c37c1370001ede46e180335d5688dca496520605b21f69765f1c27",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:5552e0d70c0b01a4",
+      "fingerprint": "5552e0d70c0b01a4e89397cfa7ddeb537e555406f213ea595e93438a59657a3c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:b35bc7b0704ce657",
+      "fingerprint": "b35bc7b0704ce657f8c4ad616e3bdeeb7fe2ba3e1f17c4bf470e31c88ac0c9f9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:cf51dbd39dea5c25",
+      "fingerprint": "cf51dbd39dea5c25f1359c798e8ed6d8e80124d46dca5fe1439a731b2f4a299a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:ConditionalExpression:dc69cdd4efdf89a4",
+      "fingerprint": "dc69cdd4efdf89a41dc25b851ac624ff08c9566a27eade25812788bf0b0ef5e4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:IfStatement:1ea8a2859b50cf43",
+      "fingerprint": "1ea8a2859b50cf43f2a7a586c137c1e6135a5bd34a52f22b99ef75e5a6131157",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:IfStatement:383e28eefa33df27",
+      "fingerprint": "383e28eefa33df271e9f0a92012bb296766d7e50edf1762e474ecabbe52394ae",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:IfStatement:4f4e867f9fcd3c3d",
+      "fingerprint": "4f4e867f9fcd3c3d97c6ccba487bd4389841e8376d62b15770636b68dacbe8a7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:IfStatement:5e5e3207c173e157",
+      "fingerprint": "5e5e3207c173e1571c14f816af6ad9ee902474502e8af084b9981fd3e8d7ef00",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:1333e2da1876253d",
+      "fingerprint": "1333e2da1876253dab1a4d32e41d8597074471942921c347943933c660e7cb55",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:34c476a285f9d2d0",
+      "fingerprint": "34c476a285f9d2d08576774671362fe5cc3cf993a8a72d80351b175a110b2011",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:3e7feb9fadaa488a",
+      "fingerprint": "3e7feb9fadaa488a7dc430f58011f1a65366e6ad3087ef0ac449af968ea7caee",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:481b5a9d77a45cd4",
+      "fingerprint": "481b5a9d77a45cd464340f33eb9c7976963a36053cf0e58f7f88a68f09f65852",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:4f254029584adac3",
+      "fingerprint": "4f254029584adac37c6e526dd4fa0a9d23c6862aa8eb564724583c57fd91adb3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:503fb126af108135",
+      "fingerprint": "503fb126af10813540e8d294b856915baf9651a2e6e4ad98014a5541a4be7534",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:6c003798e860b304",
+      "fingerprint": "6c003798e860b3048860da8ccbeb27bc611c2437e3786721311601b508dd027c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:7b556266cafe7783",
+      "fingerprint": "7b556266cafe77834b8e2f7826f5fa1a3f355ab6d80af925d9e75a436848f98b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:90c74f8088e3c0ad",
+      "fingerprint": "90c74f8088e3c0ade6a25dacad08ec49c472fc78c8d2c823d177216b76cd6636",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:module:LogicalExpression:ea42251c21c8f12b",
+      "fingerprint": "ea42251c21c8f12bd5b8b2f9a83b9517725353353a11903c146eb9d2b6b83f57",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:module",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:0a123c3c7ed6639a",
+      "fingerprint": "0a123c3c7ed6639ac914db415bd3d89c37f6ebc3cf08353dda430a3665ba800e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:0a123c3c7ed6639a:1",
+      "fingerprint": "0a123c3c7ed6639ac914db415bd3d89c37f6ebc3cf08353dda430a3665ba800e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:22a36cbcd70eb7b2",
+      "fingerprint": "22a36cbcd70eb7b2bdb0111a194425be67c798d35e3e9b88d0fc26b7f859fc19",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:31fb8820ce3b6343",
+      "fingerprint": "31fb8820ce3b6343e21401abf712daf1576658d99ac8f91f62561c581cd8156c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:5002015346f84886",
+      "fingerprint": "5002015346f848864c5177916e1500b96200d9483c009cfd2155d384b1df9dc2",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:5440a97d0c1fd74b",
+      "fingerprint": "5440a97d0c1fd74bad38b16f0209972852d70f95a156a5d18b1209efbf4c8c71",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:7a104371331d2f1c",
+      "fingerprint": "7a104371331d2f1c792004248a1394ca66aeb9b7e46c248fcf5d98c236e162f7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:8f3bf2301c00d85a",
+      "fingerprint": "8f3bf2301c00d85ae31f713e631cf7320dcaaacfe6ff105bea9c97139d918b82",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:99172290621f23d1",
+      "fingerprint": "99172290621f23d1429bb630b8646d9f891af8468f8b3f8b61cc15ce1ddcf00a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:bd67c9342379aa1a",
+      "fingerprint": "bd67c9342379aa1ab777029f529dd80632b028540679978f65931face0aaeb07",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:e386ca98e958f164",
+      "fingerprint": "e386ca98e958f1645eb26c56106bc1f14941a7fe35d297213bfb6937258c7631",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:e4fec688043bda04",
+      "fingerprint": "e4fec688043bda04f48551ce025aef7da80432914ffac93a1abf9ed56c005e53",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:ConditionalExpression:fc92fa542f3c6719",
+      "fingerprint": "fc92fa542f3c6719b956d288826a8b1638902dfe9dce2d025bdd1d225141b487",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:IfStatement:0d0e769ae95961cd",
+      "fingerprint": "0d0e769ae95961cdccfb56682336814a476d4aeb98f01ce7fbda36b10eed2685",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:IfStatement:3147585880b0c15f",
+      "fingerprint": "3147585880b0c15f0419842bc89807281372c00754036ba2ff356fb0f4d42351",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:IfStatement:3ca7709bd7890864",
+      "fingerprint": "3ca7709bd78908646711c151b23d7c80ed50f406bba41e7d955e262e4f44df8e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:3cdfb457d785f46f",
+      "fingerprint": "3cdfb457d785f46f3e22af1e1539b380299522f3648c5d2835a6c3c39464d610",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:949397f8c4ed4a9c",
+      "fingerprint": "949397f8c4ed4a9c1979c5ee60d0924f7cd635bc0c2eac7b4e92e729d2f54b55",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:99bab5128c75aedb",
+      "fingerprint": "99bab5128c75aedbe25ebc0b8f1fa01833238f19b7815aa1b90046e800fd3eda",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:9edf07c7737fe100",
+      "fingerprint": "9edf07c7737fe100f016b2b33ad026e745c663ef535188884eeaf97c09bc6a63",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:d1fa5fe08a7dc0c9",
+      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:d1fa5fe08a7dc0c9:1",
+      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:d1fa5fe08a7dc0c9:2",
+      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:d1fa5fe08a7dc0c9:3",
+      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:ovenFormatRegistry:LogicalExpression:d940a4b58d02a9e7",
+      "fingerprint": "d940a4b58d02a9e7702fc8c268999f20fa41cecb2278f34455ab421744013ce7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:ovenFormatRegistry",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "ovenFormatRegistry",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:IfStatement:1ac0e3755d446808",
+      "fingerprint": "1ac0e3755d446808bcc70190c4b2e32808d1578e6c5473723984be79d8335b9f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:IfStatement:6b7b2e884e1d3404",
+      "fingerprint": "6b7b2e884e1d34041c7b2af47809ec542ff6e8b460ec34b053fe4ca30043d411",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:IfStatement:6b8306f7c922c490",
+      "fingerprint": "6b8306f7c922c4909d6d0f2eecbb5729d5cc9df04846492ce0e031f2867ef02a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:IfStatement:cc3acdb3252d8bc0",
+      "fingerprint": "cc3acdb3252d8bc0624fd3359cfa9aea96192df6ef0e213cd0234bad5be38b97",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:IfStatement:d506c3e38dc394e0",
+      "fingerprint": "d506c3e38dc394e0d62ca7dd287a8fe95fc69613e1d7c8c95e5dfb81eb0834f8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:5cdaaa17a74ae498",
+      "fingerprint": "5cdaaa17a74ae4985253476a518b25d6e84e3251c1ae1bd1fdc066efddc834e9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:8070e306dadc1ac2",
+      "fingerprint": "8070e306dadc1ac2b49f4b512365e00505ca50313bfca56289b778e4a2afef0b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:9f3d1e7b29770554",
+      "fingerprint": "9f3d1e7b29770554e522f459fa38593a56c39e9b6c63a006872c428d2406532b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:ce91e9a51265cdf5",
+      "fingerprint": "ce91e9a51265cdf595aaa39ab33cadae0a83bfdd37cb1d957a2c040bea3ea25d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:d1fa5fe08a7dc0c9",
+      "fingerprint": "d1fa5fe08a7dc0c9abab868076a125280c8582444e68a0332f458e06a439d1ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:e42ad523f91b5b20",
+      "fingerprint": "e42ad523f91b5b20785d23e79523eef8c77191b0f6e659d8f9c0340703de032f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:src/ovens/oven-value-runtime.mjs:resolveOvenPointer:LogicalExpression:ffaad42e1e73bd69",
+      "fingerprint": "ffaad42e1e73bd693fddc6248fc2adf7df41cf4a33ac5c790556687c0c099fda",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "src/ovens/oven-value-runtime.mjs:resolveOvenPointer",
+        "path": "src/ovens/oven-value-runtime.mjs",
+        "export": "resolveOvenPointer",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "registry:componentRegistry:Box",
       "fingerprint": "512fd3c6042cd1d9150d46fa59b5911a1f97b8275d73eb0a841daa31e93bd349",
       "classification": "closed-shared-adapter",
@@ -25299,7 +25611,7 @@
     },
     {
       "id": "registry:formatRegistry:delta",
-      "fingerprint": "87907029a60f7baf4bc48267bc3ea7f279304a0ebf80c355aaf4c97c97aba034",
+      "fingerprint": "68da7d29464afe697d5dca6548929256b88d534452055c86365bdc3181763e10",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25311,7 +25623,7 @@
     },
     {
       "id": "registry:formatRegistry:identity",
-      "fingerprint": "eae5f36e1789dd18e3a5772ebe99e2a73c861a07c19bcd550365cd304ed0adf1",
+      "fingerprint": "6858db659abfafecfcdf0a860e54e6df399610878b5ba82dcfe814976c17898b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25323,79 +25635,79 @@
     },
     {
       "id": "registry:formatRegistry:index-by-id",
-      "fingerprint": "6b1e5148803cfcf4cf979ac29a67aacbd76cdb6694726dae69fdd46da25e3243",
+      "fingerprint": "8e7859526ee2d6f2cf2aad5c1b0701976a2af46c5f25e3df94bb70e17499a871",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:last-delta-percent",
-      "fingerprint": "5ca754f32627257325733feb59830d5a59a60037bac6febbad0684193ea2c6fb",
+      "fingerprint": "1fa9360cc150cf5cae159e2c3598c8da05c7fbe68265f8f93f63069b3838fb07",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:last-failed-count",
-      "fingerprint": "703ee410e73ed40a63f0893b40f7df82f48a77ac2774919c78da009439464afc",
+      "fingerprint": "ca06d334e2869f0954968ba912e74ed1a44f9fd2fa43006dbd0d2bbb9a43644d",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:last-failed-percent",
-      "fingerprint": "26dc95bf96bb1945373e750bd0f9cc6ae002f39861e84d06787bdfd98551c842",
+      "fingerprint": "f1fffc984d288fa762e2e5bbeacea2a704b1dce3cb25c83cb0fcfd9e50d90ff7",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:last-frame-delta",
-      "fingerprint": "8dd7260a4abc248e4165462c8abc56d57e67bbeb163781f46f9ade3e6b750bff",
+      "fingerprint": "a8277d4406218e0fa7954aef46697e33dd9c0813848db2e01bfff4026415cae6",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:last-progress-percent",
-      "fingerprint": "4e54718296f5397d01a93bcfa18d6043346c4da02842066f92eada94cb35ed56",
+      "fingerprint": "7a267a14c6bbe086419514551bc417945fe84a9aeb80b8e443e857eb164dbbaf",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:length",
-      "fingerprint": "0f82aca66af91493b1ff401de5f1f7e3e24e14560df3f6f7e465dbc915b9947d",
+      "fingerprint": "e28813777d8f0de526f804c18439750f5dc72fecc332164b8b1336a1384bc91b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25407,7 +25719,7 @@
     },
     {
       "id": "registry:formatRegistry:number",
-      "fingerprint": "12886f9d00055adf24c40579e22d31b2b45f2023f892954ffd5567beb60825f8",
+      "fingerprint": "c7336de4e41b122683ec5a38a5b58b9df4748b35c3f235d07428f08cfc567ee1",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25419,7 +25731,7 @@
     },
     {
       "id": "registry:formatRegistry:percent",
-      "fingerprint": "874e3946da68c72c79f4de329ad2396a8d1a98266d0a14b1f74e82642a16deff",
+      "fingerprint": "55e3a5ec00f4ac61ad84cf53c04fb8b3ab8c671030d485e3e70b1d0163e40512",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25431,7 +25743,7 @@
     },
     {
       "id": "registry:formatRegistry:plain",
-      "fingerprint": "89f7df460685c78326a6e7e9fe98e2421c0c1ba9f8456d43a914120fac53cb6f",
+      "fingerprint": "30ebd3c2c2b4bdda2084c0f07e88700b58a40f6979d269ee690e6c6974b468b5",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25443,19 +25755,19 @@
     },
     {
       "id": "registry:formatRegistry:progress-headline",
-      "fingerprint": "f15d060a59ae47a5d2922874032346ecdc6ba2e691f8e1c37f28b5900c3bc31e",
+      "fingerprint": "4eaa34950a216fe3a31d2176cca12f25552f95f6edc027ffc373e809440fffa1",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:ratio-to-percent",
-      "fingerprint": "0f06440093566e1205b8c09fb9839923f3752a73991fcf7cc9e6e2cb5ef77fd6",
+      "fingerprint": "f6ec54a095359395430006ead19b05608dfaa1ab5242d05f091d305e873a976e",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25467,7 +25779,7 @@
     },
     {
       "id": "registry:formatRegistry:relative-age",
-      "fingerprint": "e6b36e45cb4330d0f5457911260ed4f19dcd28def8e8ca266705c42aaf36f6e7",
+      "fingerprint": "a2bb023494ebb6c7bace97620a51de6f364e7a8469d316300e5d2b0bdf0ad889",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25479,19 +25791,19 @@
     },
     {
       "id": "registry:formatRegistry:telemetry-availability",
-      "fingerprint": "6bfb9c64aeca8b3a7609fc084e2ebe301a2b3713e4b0e3b7fb9137b450856347",
+      "fingerprint": "7f3510c77ab430d064a5f08ebeef6fccf7b9504b4cfbe2cce582530859491584",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/differential-testing-formats.ts:differentialFormatRegistry",
-        "path": "dashboard/src/oven/runtime/differential-testing-formats.ts",
-        "export": "differentialFormatRegistry",
+        "ownerTarget": "dashboard/src/oven/OvenView/registries.ts:formatRegistry",
+        "path": "dashboard/src/oven/OvenView/registries.ts",
+        "export": "formatRegistry",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
     {
       "id": "registry:formatRegistry:time-only",
-      "fingerprint": "899b5a9f1eb85904017b8142fe7bd432d0123fc9bef7d7d79b1e1a2fdec6ee44",
+      "fingerprint": "679272ac4b7d64f8a1ff6890d44742e91305f26a1c1ec0b571eeef1ec83a51da",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
