@@ -138,9 +138,10 @@ test("landing projections share matching invalidations and the manual-write fall
 
 test("loop projection uses its dedicated snapshot URL and coalesces conditional event/reset refreshes", async () => {
   const timers = fakeTimers(), sources = [], calls = [], states = [];
-  const selected = { repoKey: "aaaaaaaaaaaa", id: "260722-001" };
+  const selected = { repoKey: "aaaaaaaaaaaa", id: "260722-001", item: "M7" };
   const config = dashboardLoopProjectionSnapshotConfig(true, selected);
-  assert.equal(config.makeUrl(), "/api/loop-projection?repoKey=aaaaaaaaaaaa&id=260722-001");
+  assert.equal(config.makeUrl(), "/api/loop-projection?repoKey=aaaaaaaaaaaa&id=260722-001&item=M7");
+  assert.equal(config.subjectId, "item:260722-001#M7");
   assert.deepEqual(config.events, [{ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }]);
   const client = createOvenSnapshotClient({
     timers, focusTarget: null,

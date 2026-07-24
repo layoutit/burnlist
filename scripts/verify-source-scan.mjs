@@ -1,5 +1,6 @@
 const EXCLUDED_PREFIXES = [
   ".git/",
+  ".burnlist/",
   ".claude/",
   ".local/",
   ".playwright-cli/",

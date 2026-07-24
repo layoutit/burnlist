@@ -8,6 +8,7 @@ import { loadBoundPolicy } from "./run-artifacts.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { ownerClaimId } from "./run-claim.mjs";
 import { runStore } from "./run-store.mjs";
+import { presentRun } from "./read-projection.mjs";
 import { createProductionRunAuthority, fixtureItemRef, fixtureRunId } from "./run-test-fixtures.mjs";
 
 test("production creation binds direct Stage One profiles without Docker artifacts", async (t) => {
@@ -106,6 +107,12 @@ test("stored production repair binds a fresh repository candidate and gives each
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const { repo } = createProductionRunAuthority(join(directory, "repo")), store = runStore(repo);
   const created = await createProductionRun({ repoRoot: repo, store, itemRef: fixtureItemRef, runId: fixtureRunId });
+  const publicRun = presentRun(store.read(fixtureRunId));
+  assert.deepEqual(publicRun.graph.nodes.find((node) => node.id === "implement").execution,
+    { profileId: "maker", model: "gpt-5.3-codex-spark", effort: "medium", authority: "write" });
+  assert.deepEqual(publicRun.graph.nodes.find((node) => node.id === "review").execution,
+    { profileId: "reviewer", model: "gpt-5.3-codex-spark", effort: "medium", authority: "read" });
+  assert.doesNotMatch(JSON.stringify(publicRun), /\/bin\/sh|executableDigest|adapter/u);
   const outcomes = ["complete", "reject", "complete", "approve"], reviewerPrompts = []; let writes = 0;
   const startAgent = ({ prompt }) => {
     const values = Object.fromEntries(prompt.split("\n").filter((line) => line.includes("=")).map((line) => line.split(/=(.*)/su).slice(0, 2)));

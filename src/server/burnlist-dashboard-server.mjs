@@ -36,7 +36,8 @@ import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
-import { readLatestRunForItem } from "../loops/run/read-projection.mjs";
+import { presentGraph, readLatestRunForItem } from "../loops/run/read-projection.mjs";
+import { assignmentStore } from "../loops/assignment/store.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { createOvenJsonSnapshotStore, OVEN_JSON_CACHE_MAX_BYTES } from "./oven-json-snapshot.mjs";
 import { discoverBurnlistSummaries } from "./burnlist-discovery.mjs";
@@ -993,7 +994,7 @@ function selectedBurnlist(url) {
   return { error: active.length ? "Select a Burnlist." : "No active Burnlist found.", burnlists };
 }
 
-function payloadForPlan(selection) {
+function payloadForPlan(selection, selectedItemId = null) {
   const plan = parsePlan(selection.planPath, maxPlanBytes);
   const goal = documentPayloadForPlan(selection.planPath, "goal.md", "Goal", maxPlanBytes);
   const completedLog = documentPayloadForPlan(selection.planPath, "completed.md", "Completed log", maxPlanBytes);
@@ -1035,13 +1036,36 @@ function payloadForPlan(selection) {
     title: plan.title,
     planPath: selection.planPath,
     planLabel: plan.planLabel,
+    selectedItemId: plan.items.some((item) => item.id === selectedItemId) ? selectedItemId : plan.items[0]?.id ?? null,
     total,
     done,
     remaining,
     percent,
     warnings: issues,
     goal,
-    active: plan.items,
+    active: plan.items.map((item) => {
+      let assignment = null;
+      try { assignment = loopAssignmentForItem(plan.markdown, item.id); } catch {}
+      let graph = null;
+      if (assignment) {
+        try {
+          const artifact = assignmentStore(selection.repoRoot).load(assignment["Assignment-Id"]);
+          if (artifact.itemRef === `item:${burnlistId}#${item.id}`
+            && artifact.executionRevision === assignment["Execution-Revision"]
+            && artifact.packageRevision === assignment["Package-Revision"]) graph = presentGraph(artifact.frozen.ir);
+        } catch {}
+      }
+      return {
+        ...item,
+        loop: assignment ? {
+          selector: assignment.Selector,
+          assignmentId: assignment["Assignment-Id"],
+          executionRevision: assignment["Execution-Revision"],
+          packageRevision: assignment["Package-Revision"],
+          graph,
+        } : null,
+      };
+    }),
     completed: plan.completed.map((entry) => ({
       ...entry,
       detail: completedDetails.get(entry.id)?.detail ?? "",
@@ -1053,9 +1077,12 @@ function payloadForPlan(selection) {
   };
 }
 
-function loopProjectionForPlan(selection) {
+function loopProjectionForPlan(selection, requestedItemId = null) {
   const plan = parsePlan(selection.planPath, maxPlanBytes);
-  const currentItem = plan.items[0];
+  const currentItem = requestedItemId
+    ? plan.items.find((item) => item.id === requestedItemId)
+    : plan.items.find((item) => loopAssignmentForItem(plan.markdown, item.id));
+  if (requestedItemId && !currentItem) throw Object.assign(new Error("Loop item is not active in the selected Burnlist"), { code: "EITEM" });
   const assignment = currentItem ? loopAssignmentForItem(plan.markdown, currentItem.id) : null;
   if (!currentItem || !assignment) return null;
   return readLatestRunForItem({
@@ -1282,7 +1309,7 @@ const server = createServer(async (req, res) => {
         return;
       }
       try {
-        json(res, 200, payloadForPlan(selected.burnlist));
+        json(res, 200, payloadForPlan(selected.burnlist, url.searchParams.get("item")));
       } catch (err) {
         json(res, 500, { error: err.message });
       }
@@ -1294,10 +1321,10 @@ const server = createServer(async (req, res) => {
       if (!selected.burnlist) return json(res, 409, { error: selected.error });
       try {
         // This representation is deliberately only the sanitized canonical projection.
-        serveLoopProjection(req, res, loopProjectionForPlan(selected.burnlist));
+        serveLoopProjection(req, res, loopProjectionForPlan(selected.burnlist, url.searchParams.get("item")));
       } catch (error) {
-        const status = error?.code === "EAMBIGUOUS" || error?.code === "ECORRUPT" || error?.code === "ERUN_PROJECTION" || error?.code === "EAUTHORITY" ? 409 : 500;
-        json(res, status, { error: status === 409 ? "Loop projection is unavailable; retaining the last verified projection." : "Loop projection is unavailable." });
+        const status = error?.code === "EITEM" ? 404 : error?.code === "EAMBIGUOUS" || error?.code === "ECORRUPT" || error?.code === "ERUN_PROJECTION" || error?.code === "EAUTHORITY" ? 409 : 500;
+        json(res, status, { error: status === 404 ? error.message : status === 409 ? "Loop projection is unavailable; retaining the last verified projection." : "Loop projection is unavailable." });
       }
       return;
     }

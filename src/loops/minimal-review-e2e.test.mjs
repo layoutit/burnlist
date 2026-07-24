@@ -55,8 +55,14 @@ async function dashboardRenderer(t) {
       latestMaker: loopRun.latestMaker && { ...loopRun.latestMaker, at: base + 1_000, candidateId: alias(loopRun.latestMaker.candidateId) },
       latestCheck: loopRun.latestCheck && { ...loopRun.latestCheck, at: base + 2_000, candidateId: alias(loopRun.latestCheck.candidateId) },
       latestReviewer: loopRun.latestReviewer && { ...loopRun.latestReviewer, at: base + 3_000, candidateId: alias(loopRun.latestReviewer.candidateId) } };
+    const active = stableRun ? [{
+      id: stableRun.itemRef.split("#").at(-1),
+      title: "Loop-assigned item",
+      fields: {},
+      loop: { selector: `loop:builtin:${stableRun.loopId}` },
+    }] : [];
     const dom = serializeCanonical(normalize(parseHtml(withDeterministicTime(() =>
-      renderToStaticMarkup(createElement(ChecklistDashboard, { data: { ...checklistFixture, loopRun: stableRun } })) ))));
+      renderToStaticMarkup(createElement(ChecklistDashboard, { data: { ...checklistFixture, active, loopRun: stableRun } })) ))));
     return { record: { checkpoint, domBytes: Buffer.byteLength(dom), domSha256: digest(dom) }, dom };
   };
 }
@@ -90,7 +96,8 @@ test("M9 no-network CLI slice exposes interruption, repair, invalidation refetch
     assert.equal(escalationHttp.status, 200); const escalationProjection = JSON.parse(escalationHttp.body).loopRun;
     assert.deepEqual(escalationProjection, escalationInspection);
     const needsHumanUi = render("needs-human", escalationProjection);
-    assert.match(needsHumanUi.dom, /aria-label="Loop state: Needs human review"/u);
+    assert.match(needsHumanUi.dom, /<section aria-label="Loop for item L29" class="panel checklist-current" id="L29">/u);
+    assert.match(needsHumanUi.dom, /aria-current="step"/u);
     assert.equal(existsSync(join(repo, ".local", "burnlist", "loop", "m2", "runs", Buffer.from(escalation).toString("hex"), "completion-receipt.json")), false);
     assert.match(readFileSync(planPath, "utf8"), /- \[ \] L29/u);
 

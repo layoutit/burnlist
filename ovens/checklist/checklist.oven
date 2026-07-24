@@ -11,5 +11,6 @@
   </kpi-strip>
   <checklist-ledger source="/raw"/>
   <checklist-burn-panel source="/raw"/>
+  <checklist-current source="/raw"/>
   <checklist-event-cards source="/raw"/>
 </oven>

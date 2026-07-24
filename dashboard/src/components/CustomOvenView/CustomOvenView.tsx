@@ -27,7 +27,7 @@ export function CustomOvenView({ error, loading, progress, stale }: { error: str
   if (selection.burnlistId && loading && !progress) return <EmptyState title="Loading Oven" detail="Reading canonical Burnlist data." />;
   if (selection.burnlistId && !progress) return error ? <DashboardError message={error} /> : <EmptyState title="Loading Oven" detail="Reading canonical Burnlist data." />;
   return <>
-    {selection.burnlistId && (error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}
+    {selection.burnlistId && (error || stale) && <DashboardError floating message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}
     <OvenDefinition id={selection.id} repoKey={selection.repoKey}>{(ir) => (
       <CustomOvenRuntime
         burnlistId={selection.burnlistId ?? undefined}

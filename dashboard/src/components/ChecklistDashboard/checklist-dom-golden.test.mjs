@@ -18,6 +18,16 @@ const goldenPath = new URL("./checklist-dom.golden.html", import.meta.url);
 const loopGoldenPath = new URL("./checklist-loop-progression.golden.json", import.meta.url);
 const loopStateGoldenPath = new URL("./checklist-loop-states.golden.json", import.meta.url);
 const digest = (value) => createHash("sha256").update(value).digest("hex");
+const itemData = (projection) => ({
+  ...checklistFixture,
+  active: [{
+    id: projection.itemRef.split("#").at(-1),
+    title: "Loop-assigned item",
+    fields: {},
+    loop: { selector: `loop:builtin:${projection.loopId}` },
+  }],
+  loopRun: projection,
+});
 
 test("checklist detail static DOM matches the frozen byte golden", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".checklist-dom-golden-test-"));
@@ -70,7 +80,7 @@ test("real M4 projections advance the full Checklist DOM through the frozen Loop
     const actual = selected.map((projection) => {
       const projectionBytes = JSON.stringify({ ...projection, revision: "<canonical-revision>" });
       const markup = withDeterministicTime(() =>
-        renderToStaticMarkup(createElement(ChecklistDashboard, { data: { ...checklistFixture, loopRun: projection } })));
+        renderToStaticMarkup(createElement(ChecklistDashboard, { data: itemData(projection) })));
       const domBytes = serializeCanonical(normalize(parseHtml(markup)));
       return {
         checkpoint: `${projection.currentNode}/${projection.attempt}/${projection.latestResult?.kind ?? "none"}`,
@@ -112,7 +122,7 @@ test("terminal, paused, stale, and corrupt Loop states retain frozen full Checkl
     ];
     const actual = variants.map(([checkpoint, patch]) => {
       const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(ChecklistDashboard, {
-        data: { ...checklistFixture, loopRun: { ...final, ...patch } },
+        data: itemData({ ...final, ...patch }),
       })));
       const domBytes = serializeCanonical(normalize(parseHtml(markup)));
       return { checkpoint, domBytes: Buffer.byteLength(domBytes), domSha256: digest(domBytes) };

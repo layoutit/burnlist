@@ -49,6 +49,13 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     assert.equal(left.budget.limits.maxRounds, 3);
     assert.equal(left.state, "converged");
     assert.equal(left.currentNode, "completed");
+    const itemId = fixtureItemRef.split("#")[1];
+    const scoped = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}&item=${encodeURIComponent(itemId)}`, { method: "GET" });
+    assert.equal(scoped.status, 200);
+    assert.equal(JSON.parse(scoped.body).loopRun.itemRef, fixtureItemRef);
+    const unknown = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}&item=NOT-ACTIVE`, { method: "GET" });
+    assert.equal(unknown.status, 404);
+    assert.match(JSON.parse(unknown.body).error, /not active/u);
     assert.deepEqual(left.latestResult, { kind: "approve", summary: "approve" });
     for (const result of [left.latestMaker, left.latestCheck, left.latestReviewer]) {
       assert.equal(typeof result?.summary, "string");
@@ -66,7 +73,10 @@ test("selected progress remains independent from the sanitized read-only Loop pr
       { from: "converged", outcome: "pass", to: "completed" },
     ]);
     const serialized = JSON.stringify(left);
-    for (const forbidden of ["invocationId", "lease", "prompt", "route", "authority"]) assert.doesNotMatch(serialized, new RegExp(forbidden, "u"));
+    assert.equal(left.graph.nodes.find((node) => node.id === "implement").authority, "write");
+    assert.equal(left.graph.nodes.find((node) => node.id === "review").authority, "read");
+    assert.equal(left.graph.nodes.find((node) => node.id === "verify").capability, "repo-verify");
+    for (const forbidden of ["invocationId", "lease", "prompt", "route", "binary", "adapter"]) assert.doesNotMatch(serialized, new RegExp(forbidden, "u"));
     assert.equal((await httpRequest(baseUrl, url, { method: "POST" })).status, 405);
     const etag = projection.headers.etag;
     assert.match(etag, /^W\/"loop-[a-f0-9]{64}"$/u);

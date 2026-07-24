@@ -2,3 +2,18 @@
 .dashboard-error-content { display: flex; gap: 12px; padding: 0 20px; }
 .dashboard-error-icon { width: 20px; height: 20px; flex: 0 0 auto; }
 .dashboard-error-message { margin: 0; font-size: 14px; }
+.dashboard-error--floating {
+  position: fixed;
+  z-index: 60;
+  top: 58px;
+  right: 16px;
+  width: min(480px, calc(100vw - 32px));
+  padding: 10px 0;
+  border-color: rgba(239, 68, 68, .28);
+  background: rgba(36, 18, 18, .96);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .38);
+  pointer-events: none;
+}
+.dashboard-error--floating .dashboard-error-content { align-items: center; padding: 0 12px; }
+.dashboard-error--floating .dashboard-error-icon { width: 16px; height: 16px; }
+.dashboard-error--floating .dashboard-error-message { font-size: 12px; line-height: 1.35; }

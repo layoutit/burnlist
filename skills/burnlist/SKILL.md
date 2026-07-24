@@ -204,6 +204,19 @@ Run lease. For live foreground work, the owner handles Ctrl-C: first interrupt
 requests pause after its child exits, second requests controlled stop. Do not
 claim that a separate CLI invocation can take over a live Run.
 
+The canonical Checklist Oven keeps the progress-row Loop bound to the first
+active item; inspecting another `#<item-id>` changes only the three-column
+Events / Items / Item detail workspace below it. A Loop-assigned current item
+shows its compact topology beside Completion with the active node highlighted
+and a graph-derived legend; a direct current item collapses that panel. Item
+detail shows the selected item's contract, Loop preview or live Run, labelled
+return paths, and a graph-derived node legend. Ovens may compose Burnlist's
+core box-drawing renderer declaratively with
+`<loop-graph source="/raw/loopRun"/>`, or with
+`<loop-graph source="@item/loopRun"/>` inside a collection. The widget never
+fetches, executes, or imports custom code; core transport refreshes it after
+item-keyed Loop invalidation events.
+
 Stage 1 labels fresh reviewer process, graph grammar, budgets, closed outcomes,
 and atomic canonical CLI writes `enforced`; ordinary drift checks are
 `detected-at-boundaries`; reviewer filesystem write denial is `supervised`.

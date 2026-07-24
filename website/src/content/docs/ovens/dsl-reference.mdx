@@ -29,12 +29,28 @@ description: The declarative vocabulary, bindings, controls, and registries for 
 | `<refresh-status>` | Refresh state. |
 | `<streaming-diff-heading>` | Streaming Diff heading and return link. |
 | `<checklist-burn-panel>` / `<checklist-ledger>` / `<checklist-event-cards>` | Checklist-specific detail views. |
+| `<loop-graph>` | Core box-drawing Loop renderer. Bind `source` to a Run projection at the Oven root, or use `@item/loopRun` inside `<each>`. |
 | `<domain-tabs>` / `<domain-note>` | Domain selection and its visual-parity explanation. |
 | `<differential-kpi-strip>` / `<differential-log-table>` | Differential Testing headline and log views. |
 | `<progress-chart>` / `<frame-delta-chart>` | Differential Testing charts. |
 | `<differential-empty-state>` | Differential Testing empty state. |
 
 `<icon>` uses a registered icon and `<text>` supplies literal or bound text. `<bind>` supplies a named component property; it is described with bindings below.
+
+`<loop-graph>` is core-owned: an Oven may position it but cannot inject renderer
+code or perform its own fetch. The dashboard transport supplies fresh canonical
+Run projections after item-keyed invalidation events:
+
+```xml
+<loop-graph source="/raw/loopRun" title="Current item Loop"/>
+
+<collection id="items" source="/items" item-key="/id"
+            paging="client" page-size="20">
+  <each>
+    <loop-graph source="@item/loopRun"/>
+  </each>
+</collection>
+```
 
 ## Interactivity
 

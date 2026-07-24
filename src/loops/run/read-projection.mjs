@@ -11,8 +11,34 @@ import { runStore } from "./run-store.mjs";
 const MAX_RUNS = 128;
 const fail = (message) => { throw Object.assign(new Error(`Run projection: ${message}`), { code: "ERUN_PROJECTION" }); };
 
-function publicNode(node) {
-  return { id: node.id, kind: node.kind };
+function publicNode(node, routes = []) {
+  const common = { id: node.id, kind: node.kind };
+  if (node.kind === "agent") {
+    const resolved = routes.find((entry) => entry.route === node.route);
+    return {
+      ...common,
+      role: node.role,
+      authority: node.authority,
+      execution: resolved ? {
+        profileId: resolved.profileId,
+        model: resolved.model,
+        effort: resolved.effort,
+        authority: resolved.authority,
+      } : null,
+    };
+  }
+  if (node.kind === "check") return { ...common, capability: node.capability };
+  if (node.kind === "gate") return { ...common, gateKind: node.gateKind };
+  if (node.kind === "terminal") return { ...common, terminalState: node.state };
+  return common;
+}
+
+export function presentGraph(graph, routes = []) {
+  return Object.freeze({
+    entry: graph.entry,
+    nodes: graph.nodes.map((node) => publicNode(node, routes)),
+    edges: graph.edges.map(({ from, on, to }) => ({ from, on, to })),
+  });
 }
 
 export function presentRun(replay) {
@@ -50,11 +76,7 @@ export function presentRun(replay) {
       elapsedMilliseconds: replay.execution.budget.elapsedMilliseconds,
       journal: replay.execution.budget.journal,
     },
-    graph: {
-      entry: replay.graph.entry,
-      nodes: replay.graph.nodes.map(publicNode),
-      edges: replay.graph.edges.map(({ from, on, to }) => ({ from, on, to })),
-    },
+    graph: presentGraph(replay.graph, replay.agentRoutes),
     transitions,
   });
 }
@@ -107,6 +129,8 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
   }
   if (current && !selected) fail("current Run is unavailable", "ECURRENT");
   if (!selected) return null;
-  selected.loopIdentity = runStore(repoRoot).read(selected.projection.runId).loopIdentity;
+  const stored = runStore(repoRoot).read(selected.projection.runId);
+  selected.loopIdentity = stored.loopIdentity;
+  selected.agentRoutes = stored.agentRoutes;
   return presentRun(selected);
 }

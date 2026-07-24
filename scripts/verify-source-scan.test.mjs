@@ -6,6 +6,7 @@ test("source leak scanning excludes local and nested checkout state", () => {
   for (const path of [
     ".git/config",
     ".local/burnlist/state.json",
+    ".burnlist/loop-capabilities.json",
     ".worktrees/feature/.git",
     ".worktrees/feature/src/private.mjs",
     "node_modules/package/index.js",

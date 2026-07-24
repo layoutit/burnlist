@@ -79,9 +79,10 @@ export function receiveLoopProjection(response, json) {
 
 export function dashboardLoopProjectionSnapshotConfig(enabled, selected) {
   const query = selectedQuery(selected);
+  const subjectId = selected?.id && selected?.item ? `item:${selected.id}#${selected.item}` : null;
   return {
     transport: "snapshot", enabled: enabled && Boolean(selected), repoKey: selected?.repoKey ?? null,
-    ovenId: "checklist", subjectId: null, query: `loop/${query}`,
+    ovenId: "checklist", subjectId, query: `loop/${query}`,
     makeUrl: () => `/api/loop-projection?${query}`, receive: receiveLoopProjection,
     fallbackError: "Could not load Loop projection.", initialData: null,
     events: [Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" })], deps: [enabled, query],

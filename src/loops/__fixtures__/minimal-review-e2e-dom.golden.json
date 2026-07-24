@@ -1,7 +1,27 @@
 [
-  {"checkpoint":"needs-human","domBytes":12386,"domSha256":"f1b61d53b386eac2517abb1a8e6f8780c996e884d1a3a9fadb539215f49182dd"},
-  {"checkpoint":"paused","domBytes":11628,"domSha256":"6e2e705700cccc3f90713cbea6d4c99796723c35d39af21597ea69e66469c144"},
-  {"checkpoint":"repair","domBytes":12494,"domSha256":"4eb6984ea066104d1ff2dc84d80f1e40e4db18c25936a97bcab4527721628844"},
-  {"checkpoint":"converged","domBytes":12746,"domSha256":"0f68c9e8e272e2971472ea204e4c6cb5d6595e23c6e4d9a9d3f6a84ed6f79ee6"},
-  {"checkpoint":"post-completion","domBytes":9212,"domSha256":"3d84894369b43754d20a2b134d3509fd8460bfd5dc52c0b52127b5bfc0897cf2"}
+  {
+    "checkpoint": "needs-human",
+    "domBytes": 10217,
+    "domSha256": "716f2668931ac3f80620c2c13cabed72a9b504383c6d5cb7d08daddf9faa013c"
+  },
+  {
+    "checkpoint": "paused",
+    "domBytes": 10215,
+    "domSha256": "133792d445f5283fbe6c5d5385cec4402740cef7b937b179c1d44f5f5db66497"
+  },
+  {
+    "checkpoint": "repair",
+    "domBytes": 10215,
+    "domSha256": "133792d445f5283fbe6c5d5385cec4402740cef7b937b179c1d44f5f5db66497"
+  },
+  {
+    "checkpoint": "converged",
+    "domBytes": 10215,
+    "domSha256": "edb3d07570bf440ec273decce27b5acb31c458247ab4193426b72546f1fd089c"
+  },
+  {
+    "checkpoint": "post-completion",
+    "domBytes": 8510,
+    "domSha256": "e66102e9fc69180db39b08ba34c490b2793216d1cbe102df0c44aa52619337de"
+  }
 ]

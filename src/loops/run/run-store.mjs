@@ -10,6 +10,7 @@ import { parseBoundedObject } from "../contracts/contract.mjs";
 import { publishLoopProjectionInvalidation } from "../events/projection-events.mjs";
 import { currentRunAuthority } from "./current-authority.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
+import { loadBoundPolicy } from "./run-artifacts.mjs";
 
 const fail = (message, code = "ERUN_STORE") => { throw Object.assign(new Error(`Run store: ${message}`), { code }); };
 const runName = (id) => Buffer.from(id).toString("hex");
@@ -24,18 +25,28 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
     const journal = readJournal(journalFor(id)), folded = foldRun(journal);
     if (folded.projection.runId !== id) fail("run identity mismatch");
     let loopIdentity = Object.freeze({ loopId: folded.graph.id, loopRevision: null });
+    let agentRoutes = Object.freeze([]);
     if (existsSync(authorityPath(id))) {
       try {
         const authority = readAuthority(id), frozen = loadFrozenRecipe(Buffer.from(authority.frozenRecipe, "base64"));
         if (authority.itemRef !== folded.projection.itemRef) fail("sealed authority item does not match Run journal", "EAUTHORITY");
         if (JSON.stringify(frozen.ir) !== JSON.stringify(folded.graph)) fail("sealed recipe does not match Run graph", "EAUTHORITY");
+        const policy = loadBoundPolicy(Buffer.from(authority.policy, "base64")).policy;
         loopIdentity = Object.freeze({ loopId: frozen.ir.id, loopRevision: frozen.revisions.executable });
+        agentRoutes = Object.freeze(policy.routes.map(({ route, profile }) => Object.freeze({
+          route,
+          profileId: profile.id,
+          adapter: profile.adapter,
+          model: profile.model,
+          effort: profile.effort,
+          authority: profile.authority,
+        })));
       } catch (error) {
         if (error?.code === "EAUTHORITY") throw error;
         fail("sealed dispatch authority is corrupt", "EAUTHORITY");
       }
     } else if (journal[0].value.payload.authorityRequired) fail("sealed dispatch authority is unavailable", "EAUTHORITY");
-    return Object.freeze({ runId: id, journal, loopIdentity, ...folded });
+    return Object.freeze({ runId: id, journal, loopIdentity, agentRoutes, ...folded });
   };
   const retainsTerminalReserve = (current, writes = 1) => current.projection.sequence + writes < MAX_JOURNAL_RECORDS;
   const terminalKind = { converged: "converged", "needs-human": "lost", failed: "error", stopped: "cancelled", "budget-exhausted": "exhausted" };

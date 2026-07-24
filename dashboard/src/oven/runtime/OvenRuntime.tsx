@@ -62,6 +62,10 @@ export function OvenRuntime({ ir, initialPayload, payload, controls, pages, init
     ? <div className={`oven-runtime-state is-stale${state.refresh.phase === "failed" ? " is-error" : ""}`} role={state.refresh.phase === "failed" ? "alert" : "status"}>{state.refresh.phase === "failed" ? `Showing the last canonical snapshot. ${String(state.refresh.error || "Canonical refresh failed.")}` : "Showing the last canonical snapshot while canonical data refreshes."}</div>
     : null;
   const staticView = !themedView && root.every(isStaticOvenDocument) ? <OvenView def={lowerOvenIr(ir)} payload={state.payload as any} /> : null;
-  const genericView = themedRegions(root, theme, (node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />) ?? <>{root.map((node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />)}</>;
+  const regions = themedRegions(root, theme, (node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />);
+  const genericBody = regions ?? <>{root.map((node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />)}</>;
+  const genericView = regions && (theme?.view.shellClassName || theme?.view.bodyClassName || theme?.view.bodyId)
+    ? <div className={theme.view.shellClassName}><main className={theme.view.bodyClassName} id={theme.view.bodyId}>{genericBody}</main></div>
+    : genericBody;
   return <OvenRuntimeContext.Provider value={value}>{staleState}{emptyState ?? themedView ?? staticView ?? genericView}</OvenRuntimeContext.Provider>;
 }

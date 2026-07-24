@@ -14,7 +14,9 @@ export function useDashboardData({ section, selected }: { section: string; selec
   const enabled = section === "burnlists";
   const projectsState = useOvenLiveData<Project[]>(dashboardProjectsSnapshotConfig(enabled));
   const progressState = useOvenLiveData<ProgressData>(dashboardProgressSnapshotConfig(enabled, selected));
-  const loopState = useOvenLiveData<ProgressData["loopRun"]>(dashboardLoopProjectionSnapshotConfig(enabled, selected));
+  const currentItem = progressState.data && "active" in progressState.data ? progressState.data.active[0]?.id : undefined;
+  const loopSelection = selected && currentItem ? { ...selected, item: currentItem } : selected;
+  const loopState = useOvenLiveData<ProgressData["loopRun"]>(dashboardLoopProjectionSnapshotConfig(enabled, loopSelection));
   const loopDiagnostic = loopState.error.includes("retaining the last verified projection") ? "corrupt"
     : loopState.stale || loopState.error ? "stale" : undefined;
   const loopRun = loopState.data && loopDiagnostic ? { ...loopState.data, diagnostic: loopDiagnostic } : loopState.data;

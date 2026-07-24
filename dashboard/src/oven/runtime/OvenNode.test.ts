@@ -28,6 +28,26 @@ test("OvenNode collection each scopes @item and follows paging and search", () =
   assert.match(render(node, state), /second/); assert.doesNotMatch(render(node, state), /first/);
 });
 
+test("OvenNode composes LoopGraph from root and item-scoped sources", () => {
+  const loopRun = {
+    loopId: "review", state: "running", currentNode: "verify", attempt: 1, cycle: 0,
+    graph: {
+      entry: "implement",
+      nodes: [{ id: "implement", kind: "agent" }, { id: "verify", kind: "check" }],
+      edges: [{ from: "implement", on: "complete", to: "verify" }],
+    },
+    transitions: [{ sequence: 1, from: "implement", outcome: "complete", to: "verify" }],
+  };
+  const rootNode: any = { kind: "loop-graph", attributes: { source: "/loopRun" }, children: [] };
+  assert.match(render(rootNode, initOvenState(base, { loopRun })), /aria-current="step"/);
+  assert.match(render(rootNode, initOvenState(base, { loopRun })), /VERIFY/);
+  const itemNode: any = {
+    kind: "collection", attributes: { id: "items" },
+    children: [{ kind: "each", attributes: {}, children: [{ kind: "loop-graph", attributes: { source: "@item/loopRun" }, children: [] }] }],
+  };
+  assert.match(render(itemNode, initOvenState(base, { items: [{ name: "first", loopRun }] })), /aria-current="step"/);
+});
+
 test("OvenNode sends mode-toggle callbacks through the closed dispatch", () => {
   const actions: OvenAction[] = [];
   const node: any = { kind: "mode-toggle", attributes: { id: "mode", ariaLabel: "Mode" }, children: [{ kind: "option", attributes: { value: "one", label: "One" } }, { kind: "option", attributes: { value: "two", label: "Two" } }] };

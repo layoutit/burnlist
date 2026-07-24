@@ -15,14 +15,16 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-ratio { font-variant-numeric: tabular-nums; }
 .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-progress-donut-segment { transition: stroke-dasharray 160ms ease; }
-
 .checklist-detail-shell #burnlist-detail .checklist-progress-workspace {
   width: 100%;
   height: 232px;
   min-height: 232px;
   max-height: 232px;
   flex: 0 0 232px;
-  grid-template-columns: 30% minmax(0, 70%);
+  grid-template-columns: minmax(220px, 26%) minmax(360px, 48%) minmax(220px, 26%);
+}
+.checklist-detail-shell #burnlist-detail .checklist-progress-workspace:not(:has(.checklist-current)) {
+  grid-template-columns: minmax(220px, 30%) minmax(360px, 70%);
 }
 
 /* The shared Differential Testing shell defaults its top workspace to 310px. */
@@ -43,7 +45,8 @@ body.checklist-detail-view .dashboard-oven-title {
 }
 
 .checklist-detail-shell .checklist-progress-workspace .event-ledger-panel,
-.checklist-detail-shell .checklist-progress-workspace .progress-panel {
+.checklist-detail-shell .checklist-progress-workspace .progress-panel,
+.checklist-detail-shell .checklist-progress-workspace .checklist-current {
   height: 232px;
   min-height: 232px;
   max-height: 232px;

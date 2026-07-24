@@ -142,10 +142,45 @@ checklist and ledger under its lifecycle lock, and records an idempotent
 receipt. Repeating `complete` returns the existing receipt without burning the
 item twice.
 
-The Checklist page is read-only. For a selected Loop item it exposes the graph
-with the current node, attempt and cycle, latest result summary,
-ordered transitions, and paused, error, and terminal states. It has no Run or
-completion controls.
+The canonical Checklist Oven is read-only. Its progress row always follows the
+first active checklist item, even while a different item is inspected through
+an item deep link (`#<item-id>`). A current item with a Loop gets a compact
+box-drawing graph beside Completion; its active node is highlighted and its
+footer legend is derived from the displayed graph. Direct items have no graph,
+so the Loop panel collapses and Completion uses the available width.
+
+Below that row, the Checklist Oven presents three compact columns: completed
+events, the remaining item queue, and the inspected item detail. Selecting an
+item changes only the detail column. The detail includes the item's action,
+completion criterion, validation, file hints, assigned Loop, outcome-labelled
+return paths, and a graph-derived node legend. An assigned item without a Run
+uses its frozen assignment graph as a preview; an unassigned item is explicitly
+labelled as direct execution. Transient stale-snapshot notices float above the
+page so refreshes do not reflow or flicker the layout.
+
+The graph vocabulary is semantic: `S` is Start, a converged terminal is `B` for
+Burn, and agent, check, review, and gate symbols come from the actual topology.
+For example, the built-in review Loop renders `S`, `I`, `V`, `R`, and `B`; a
+custom gate or branch adds its own visible symbol instead of inheriting a
+hard-coded legend. The current node remains highlighted without changing graph
+geometry.
+
+The Checklist Oven declares these regions in
+`ovens/checklist/checklist.oven` through built-in declarative widgets. It does
+not import custom UI or bypass the Oven runtime. It has no Run or completion
+controls. Custom Ovens can compose the same core renderer with
+`<loop-graph source="/raw/loopRun"/>` at the root or
+`<loop-graph source="@item/loopRun"/>` inside an item collection. The widget
+does not fetch or execute code; the dashboard transport refetches canonical
+state after item-keyed Loop invalidations.
+
+The graph distinguishes writing agents (`[W]`), read-only agents (`[R]`),
+deterministic checks, metric or evaluation gates, orchestrators, and terminal
+outputs with separate text shapes. For sealed Runs, agent nodes also show the
+resolved model and effort from their frozen profile; only this safe display
+metadata is projected, never the executable path or private dispatch policy.
+Fan-out Loops are arranged as explicit split, parallel branch, merge, and
+feedback paths.
 
 ## Guarantees and limits
 

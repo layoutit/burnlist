@@ -28,13 +28,12 @@ test("checklist detail renders the split progress surface and event card list", 
       entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node",
       alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18",
     });
-    const { ChecklistDashboard, LoopRunPanel, checklistEventDetailFields } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
+    const { ChecklistDashboard, LoopRunPanel } = await import(`${new URL(`file://${outputPath}`).href}?test=${Date.now()}`);
     const markup = renderToStaticMarkup(createElement(ChecklistDashboard, { data }));
     assert.equal(markup, renderToStaticMarkup(createElement(ChecklistDashboard, { data: { ...data, loopRun: null } })));
 
     assert.match(markup, /aria-label="Burnlist progress KPIs"/u);
-    assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current"/u);
-    assert.match(markup, /<div class="driving-parity-kpi-heading">Current<\/div><div class="driving-parity-kpi-ratio">Complete<\/div>/u);
+    assert.doesNotMatch(markup, /class="panel checklist-current"/u);
     assert.match(markup, /class="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress"/u);
     assert.match(markup, /<div class="driving-parity-kpi-ratio"><span class="pass">2<\/span><span class="separator">·<\/span><span class="total">2<\/span> <span class="pass">\(100%\)<\/span><\/div>/u);
     assert.match(markup, /<div class="driving-parity-kpi-heading">Elapsed<\/div>/u);
@@ -46,27 +45,13 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.match(markup, /<span class="burn-chart-label">Completion<\/span>/u);
     assert.doesNotMatch(markup, /aria-label="Burnlist progress chart view"/u);
     assert.match(markup, /<span>Age<\/span><span>Event<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
-    assert.match(markup, /class="event-card-list"/u);
-    assert.equal((markup.match(/data-event-card="true"/gu) ?? []).length, 2);
+    assert.match(markup, /class="checklist-workspace"/u);
+    assert.match(markup, /aria-label="Completed events"/u);
+    assert.match(markup, /aria-label="Remaining items"/u);
+    assert.match(markup, /class="checklist-workspace__empty">No active item/u);
+    assert.equal((markup.match(/class="checklist-workspace__event"/gu) ?? []).length, 2);
     assert.equal(markup.indexOf("Second event") < markup.indexOf("First event"), true);
-    assert.match(markup, /First proof\./u);
-    assert.match(markup, /Second proof\./u);
-    assert.equal((markup.match(/class="event-card-field-label">Outcome/gu) ?? []).length, 2);
-    assert.equal((markup.match(/class="event-card-summary"/gu) ?? []).length, 2);
-    assert.equal((markup.match(/class="event-card-description"/gu) ?? []).length, 2);
-    assert.match(markup, /<details class="event-card-field event-card-field-collapsible"><summary><span>Changed<\/span><span class="event-card-field-count">1<\/span><\/summary>/u);
-    assert.match(markup, /<details class="event-card-field event-card-field-collapsible"><summary><span>Proof<\/span><span class="event-card-field-count">1<\/span><\/summary>/u);
-    assert.match(markup, /src\/second\.mjs/u);
-    assert.match(markup, /node --test second\.test\.mjs/u);
-    assert.match(markup, /class="event-card-field-label">Follow-up/u);
-    assert.doesNotMatch(markup, /event-card-cell|event-card-content|event-card-expand/u);
-    assert.deepEqual(checklistEventDetailFields(data.completed[1].detail), [
-      { label: "Completed", values: ["2026-07-15T11:50:00Z"] },
-      { label: "Changed", values: ["src/second.mjs"] },
-      { label: "Proof", values: ["node --test second.test.mjs"] },
-      { label: "Outcome", values: ["Second proof."] },
-      { label: "Follow-up", values: ["None."] },
-    ]);
+    assert.doesNotMatch(markup, /data-event-card="true"/u);
     assert.doesNotMatch(markup, /Completed: 2026/u);
     assert.doesNotMatch(markup, />DONE</u);
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);
@@ -79,14 +64,13 @@ test("checklist detail renders the split progress surface and event card list", 
     });
     for (const projection of snapshots) {
       const stage = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: projection } }));
-      assert.match(stage, new RegExp(`<strong>Current</strong> ${projection.currentNode} · attempt ${projection.attempt} · cycle ${projection.cycle}`, "u"));
-      assert.match(stage, /aria-label="Loop graph edges"/u);
-      assert.match(stage, /<strong>implement<\/strong> <span>—complete→<\/span> <strong>verify<\/strong>/u);
+      assert.match(stage, new RegExp(`ACTIVE: ${projection.currentNode.toUpperCase()}`, "u"));
+      assert.match(stage, /IMPLEMENT/u);
+      assert.match(stage, /VERIFY/u);
       assert.match(stage, /aria-current="step"/u);
-      if (projection.latestResult) assert.match(stage, new RegExp(`<strong>Latest</strong> ${projection.latestResult.kind} · ${projection.latestResult.summary}`, "u"));
-      if (projection.currentNode === "implement" && projection.attempt === 2) assert.match(stage, /review <span>—reject→<\/span> implement/u);
-      if (projection.currentNode === "converged") assert.match(stage, /review <span>—approve→<\/span> converged/u);
-      if (projection.currentNode === "completed") assert.match(stage, /converged <span>—pass→<\/span> completed/u);
+      if (projection.currentNode === "implement" && projection.attempt === 2) assert.match(stage, /reject/u);
+      if (projection.currentNode === "converged") assert.match(stage, /approve/u);
+      if (projection.currentNode === "completed") assert.match(stage, /COMPLETED/u);
     }
     const evidence = renderToStaticMarkup(createElement(LoopRunPanel, { data: {
       ...data,
@@ -97,11 +81,8 @@ test("checklist detail renders the split progress surface and event card list", 
         latestReviewer: { summary: "approved", at: Date.parse("2026-07-15T11:50:00Z"), candidateId: "candidate-1" },
       },
     } }));
-    assert.match(evidence, /aria-label="Latest role evidence"/u);
-    assert.match(evidence, /<dt>Maker<\/dt><dd>candidate prepared/u);
-    assert.match(evidence, /<dt>Check<\/dt><dd>verify passed/u);
-    assert.match(evidence, /<dt>Reviewer<\/dt><dd>approved/u);
-    assert.match(evidence, /candidate candidate-1/u);
+    assert.match(evidence, /ACTIVE: COMPLETED/u);
+    assert.match(evidence, /aria-label="Loop state: Converged"/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
     if (repoRoot) await rm(repoRoot, { force: true, recursive: true });
@@ -121,7 +102,6 @@ test("Loop panel exposes every terminal and observer diagnostic state accessibly
       const projection = { ...final, state };
       const markup = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: state === "stale" ? { ...projection, diagnostic: "stale" } : projection } }));
       assert.match(markup, new RegExp(`aria-label="Loop state: ${label}"`, "u"));
-      assert.match(markup, /aria-label="Loop budget"/u);
     }
   } finally {
     await rm(outputDir, { force: true, recursive: true });
