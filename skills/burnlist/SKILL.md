@@ -151,3 +151,79 @@ Burnlist has two independent installable systems. Either or both may be present:
 - **Streaming Diff hooks** (`burnlist hooks install`) install per-repository edit-capture commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` for session/edit events and merge with existing hook entries. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
 
 Install only the system the task needs, or both. Read `references/installation.md` for exact commands, ownership, and shared-versus-local behavior.
+
+## Built-in Review Loop (Stage 1)
+
+Use the built-in `loop:builtin:review` only when a user or active Burnlist
+assigns an item to it. It is one serial foreground path: maker, trusted
+repository check, fresh reviewer, convergence gate, then CLI-owned completion.
+Items without an assignment keep the direct Burnlist workflow.
+
+Before creating a Run, configure distinct local profiles and routes, inspect
+and explicitly trust the repository check capability, then assign the item:
+
+The installed skill includes `references/loop-capability-example.json`. Copy
+its `catalog` object to the repository capability catalog and its `grants`
+object to a private local grants path; the grants file can only narrow the
+catalog. These are the copyable schemas, replacing
+the absolute check command and paths with your repository's reviewed command:
+
+```json
+{"schema":"burnlist-loop-capabilities@1","capabilities":[{"id":"repo-verify","argv":["/absolute/path/to/repository-check","--verify"],"cwd":".","environment":{"inherit":["PATH"],"set":{}},"network":"deny","filesystem":{"read":["src"],"write":[]},"output":{"maxBytes":65536},"maxMilliseconds":60000}]}
+```
+
+```json
+{"argv":["/absolute/path/to/repository-check","--verify"],"cwd":".","environment":{"inherit":["PATH"],"set":{}},"network":"deny","filesystem":{"read":["src"],"write":[]},"output":{"maxBytes":65536},"maxMilliseconds":60000}
+```
+
+Accepted profile models are `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`,
+and `gpt-5.3-codex-spark`; efforts are `minimal`, `low`, `medium`, `high`,
+`xhigh`, and `max`.
+
+```sh
+burnlist agent profile add maker --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority write
+burnlist agent profile add reviewer --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority read
+burnlist route set implementation.standard --profile maker
+burnlist route set review.strong --profile reviewer
+burnlist loop capability inspect repo-verify
+burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants <json-file>
+burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
+```
+
+Run `burnlist loop setup status` before `loop create`. Paste the complete
+`burnlist loop view item:<burnlist-id>#<item-id>` ASCII output into the task
+handoff or review request: it records the frozen graph, retries, completion
+path, and pins. Control a Run only with `loop run|pause|resume|stop`,
+inspect with `loop status|inspect`, use proof-gated `loop reconcile` only for a
+demonstrably lost foreground owner, and apply a converged Run through the
+idempotent `loop complete` command. A valid reconcile proof terminalizes as
+`needs-human`; it never pauses a Run.
+
+Standalone `pause` and `stop` only work while no foreground owner holds the
+Run lease. For live foreground work, the owner handles Ctrl-C: first interrupt
+requests pause after its child exits, second requests controlled stop. Do not
+claim that a separate CLI invocation can take over a live Run.
+
+The canonical Checklist Oven keeps a centered KPI row above the side-by-side
+Progress ledger and Completion trend. Its unified Items list contains current,
+pending, and completed work; inspecting another `#<item-id>` changes only the
+adjacent Item detail. That detail shows the selected active item's contract,
+Loop preview or live Run, labelled return paths, and graph-derived node legend,
+or a completed item's recorded timestamp and outcome. Direct items show no
+Loop graph. Ovens may compose Burnlist's core box-drawing renderer declaratively with
+`<loop-graph source="/raw/loopRun"/>`, or with
+`<loop-graph source="@item/loopRun"/>` inside a collection. The widget never
+fetches, executes, or imports custom code; core transport refreshes it after
+item-keyed Loop invalidation events.
+
+Stage 1 labels fresh reviewer process, graph grammar, budgets, closed outcomes,
+and atomic canonical CLI writes `enforced`; ordinary drift checks are
+`detected-at-boundaries`; reviewer filesystem write denial is `supervised`.
+It is not Docker or an OS sandbox. Parallelism, nested agents, metric gates,
+custom adapters, worktrees, background execution, Docker isolation, and
+forecasting are `unsupported`. The Checklist UI is read-only and displays
+active, paused, error, and terminal Run states; it never controls a Run.
+
+`burnlist install` registers this skill, while `burnlist hooks install` adds
+Streaming Diff edit-capture hooks. These integrations are independent and do
+not configure or start a Review Loop.

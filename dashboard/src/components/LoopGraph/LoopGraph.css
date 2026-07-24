@@ -1,0 +1,117 @@
+.loop-graph {
+  --loop-accent: #38bdf8;
+  color: inherit;
+  max-width: 100%;
+  width: 100%;
+}
+
+.loop-graph--prepared { --loop-accent: #94a3b8; }
+.loop-graph--paused { --loop-accent: #fbbf24; }
+.loop-graph--repair { --loop-accent: #f59e0b; }
+.loop-graph--converged { --loop-accent: #22c55e; }
+.loop-graph--error { --loop-accent: #ef4444; }
+.loop-graph--stale { --loop-accent: #a78bfa; }
+
+.loop-graph__ascii-host {
+  max-width: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
+.loop-graph__ascii,
+.loop-graph__active,
+.loop-graph__diagnostic {
+  background: transparent;
+  color: color-mix(in srgb, currentColor 78%, transparent);
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .75rem;
+  font-style: normal;
+  font-synthesis: none;
+  font-variant-ligatures: none;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.35;
+  margin: 0;
+  overflow: hidden;
+  white-space: pre;
+  width: 100%;
+}
+
+.loop-graph__active {
+  color: var(--loop-accent);
+  margin-bottom: .65rem;
+}
+
+.loop-legend,
+.loop-compact {
+  --loop-accent: #38bdf8;
+  display: grid;
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .75rem;
+  margin: 0;
+}
+
+.loop-legend { gap: .3rem; }
+
+.loop-legend__row {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 2rem 1fr;
+}
+
+.loop-legend dt {
+  color: var(--loop-accent, currentColor);
+}
+
+.loop-legend dd {
+  margin: 0;
+  opacity: .72;
+}
+
+.loop-legend strong { color: inherit; font-weight: 500; }
+
+.loop-compact {
+  line-height: 1.45;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.loop-compact__drawing {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: pre;
+}
+
+.loop-compact mark {
+  background: transparent;
+  color: inherit;
+}
+
+.loop-compact mark[aria-current="step"] {
+  color: var(--loop-accent, currentColor);
+  font-weight: 600;
+}
+
+.loop-graph__ascii-line {
+  display: block;
+  min-height: 1.35em;
+}
+
+.loop-graph__ascii mark {
+  background: color-mix(in srgb, var(--loop-accent) 16%, transparent);
+  color: var(--loop-accent);
+  font-weight: inherit;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--loop-accent) 45%, transparent);
+}
+
+.loop-graph__diagnostic {
+  color: var(--loop-accent);
+  white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loop-graph__ascii mark { text-shadow: none; }
+}

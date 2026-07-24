@@ -14,6 +14,7 @@ const ovenSource = `<oven id="widget-oven" version="0.1.0" contract="checklist-p
   <kpi-strip>
     <kpi-item variant="current" heading="Widget" title="/widget/name" value="/widget/count"/>
   </kpi-strip>
+  <loop-graph source="/loopRun"/>
 </oven>`;
 
 test("custom Oven runtime modes use canonical live snapshots and controlled Burnlist data", { timeout: 20_000 }, async () => {
@@ -36,7 +37,14 @@ test("custom Oven runtime modes use canonical live snapshots and controlled Burn
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const payload = { widget: { name: "Sprockets", count: 42 } };
+    const payload = {
+      widget: { name: "Sprockets", count: 42 },
+      loopRun: {
+        loopId: "review", state: "running", currentNode: "verify", attempt: 1, cycle: 0,
+        graph: { entry: "implement", nodes: [{ id: "implement", kind: "agent" }, { id: "verify", kind: "check" }], edges: [{ from: "implement", on: "complete", to: "verify" }] },
+        transitions: [{ sequence: 1, from: "implement", outcome: "complete", to: "verify" }],
+      },
+    };
     const ir = { ...compiled.ir, refreshSeconds: 7 };
     const standalone = CustomOvenRuntime({ ir });
     assert.equal(standalone.props.ir, ir);
@@ -53,6 +61,8 @@ test("custom Oven runtime modes use canonical live snapshots and controlled Burn
     assert.equal("initialPayload" in controlled.props, false);
     assert.equal(controlled.props.ir.refreshSeconds, undefined);
     assert.equal(controlled.props.adapt, undefined);
+    assert.match(renderToStaticMarkup(burnlist), /aria-current="step"/u);
+    assert.match(renderToStaticMarkup(burnlist), /VERIFY/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
   }

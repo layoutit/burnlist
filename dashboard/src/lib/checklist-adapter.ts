@@ -5,6 +5,7 @@ export type EventDetailField = { label: string; values: string[] };
 
 export type ChecklistOvenPayload = {
   raw: ChecklistProgressData;
+  items: Array<ChecklistProgressData["active"][number] & { loopRun: ChecklistProgressData["loopRun"] }>;
   current: { value: string; title: string };
   progress: { done: number; total: number; percent: number; title: string };
   durations: { elapsed: string; pace: string; timeLeft: string };
@@ -96,6 +97,10 @@ export function adaptChecklist(data: ChecklistProgressData): ChecklistOvenPayloa
   const current = data.active[0];
   return {
     raw: data,
+    items: data.active.map((item) => ({
+      ...item,
+      loopRun: data.loopRun?.itemRef.endsWith(`#${item.id}`) ? data.loopRun : null,
+    })),
     current: { value: current ? `${current.id} · Active` : "Complete", title: current?.title ?? "No active task" },
     progress: { done: data.done, total: data.total, percent: data.percent, title: `${data.done} of ${data.total} tasks complete` },
     durations: { elapsed: formatDuration(durations.elapsed), pace: formatDuration(durations.pace), timeLeft: formatDuration(durations.timeLeft) },

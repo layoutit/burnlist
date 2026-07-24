@@ -6,6 +6,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   rmdirSync,
@@ -25,6 +26,7 @@ import {
   ovenLifecycleChangedInput,
   publishCanonicalMutation,
 } from "../events/oven-canonical-mutations.mjs";
+import { assertDirectBurnAllowed } from "../loops/assignment/assignment.mjs";
 
 export { withLock } from "../server/fs-safe.mjs";
 
@@ -176,6 +178,7 @@ export function startLifecycle(repoRoot, id, eventOptions) {
 
 export function closeLifecycle(repoRoot, id, eventOptions) {
   assertValidBurnlistId(id);
+  assertNoPendingLoopCompletion(repoRoot, id);
   const inprogressDir = join(repoRoot, "notes", "burnlists", "inprogress", id);
   const completedDir = join(repoRoot, "notes", "burnlists", "completed", id);
   if (!safeStat(inprogressDir)?.isDirectory() && safeStat(completedDir)?.isDirectory()) {
@@ -199,6 +202,29 @@ export function closeLifecycle(repoRoot, id, eventOptions) {
     afterMove: appendCompletionDigestIfMissing,
     eventOptions,
   });
+}
+
+// Completion publishes an intent before it rewrites the shrinking plan.  Do
+// not move that plan out from under a recoverable intent: the retry owns the
+// receipt and is the only writer that may clear it.
+function assertNoPendingLoopCompletion(repoRoot, id) {
+  const runs = join(repoRoot, ".local", "burnlist", "loop", "m2", "runs");
+  if (!safeStat(runs)?.isDirectory()) return;
+  for (const entry of readdirSync(runs, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^[a-f0-9]+$/u.test(entry.name)) continue;
+    const intent = join(runs, entry.name, "completion-intent.json"), stat = safeStat(intent);
+    if (!stat?.isFile() || stat.size < 2 || stat.size > 8192) continue;
+    try {
+      const value = JSON.parse(readFileSync(intent, "utf8"));
+      if (typeof value?.itemRef === "string" && value.itemRef.startsWith(`item:${id}#`))
+        throw new Error(`not ready to close: pending Loop completion for ${value.itemRef}`);
+    } catch (error) {
+      if (error?.message?.startsWith("not ready to close:")) throw error;
+      // A corrupt unrelated scratch record cannot be interpreted as a safe
+      // absence.  It is conservative only for the lifecycle being closed.
+      throw new Error("not ready to close: pending Loop completion is unreadable");
+    }
+  }
 }
 
 function assertCloseGate(plan) {
@@ -249,7 +275,7 @@ function appendCompleted(lines, entry) {
   lines.splice(end < 0 ? lines.length : end, 0, entry);
 }
 
-function checklistCompletion(id, item, completedAt, plan) {
+export function checklistCompletion(id, item, completedAt, plan) {
   const total = plan.items.length + plan.completed.length;
   return {
     ovenId: "checklist",
@@ -277,7 +303,7 @@ function printBurnCheck(plan, issues) {
   console.log(`Burnlist check passed: ${plan.items.length} active, ${plan.completed.length} completed.`);
 }
 
-export function burnItem(repoRoot, id, itemId, check = false) {
+export function burnItem(repoRoot, id, itemId, check = false, { hazardAuthority, completedAt: requestedCompletedAt } = {}) {
   assertValidBurnlistId(id);
   const found = findBurnlistDir(repoRoot, id);
   if (found.lifecycle.folder !== "inprogress") {
@@ -296,8 +322,11 @@ export function burnItem(repoRoot, id, itemId, check = false) {
       if (check) printBurnCheck(plan, currentIssues);
       return checklistCompletion(id, completed, completed.completedAt, plan);
     }
+    // Direct lifecycle burns intentionally remain unchanged for unassigned
+    // items, but must never bypass any Loop-shaped metadata.
+    assertDirectBurnAllowed({ repoRoot, itemRef: `item:${id}#${itemId}`, markdown: plan.markdown, hazardAuthority });
     const lines = removeActiveItem(plan.markdown, itemId);
-    const completedAt = localIsoTimestamp();
+    const completedAt = requestedCompletedAt ?? localIsoTimestamp();
     appendCompleted(lines, `- ${item.id} | ${completedAt} | ${item.title}`);
     const nextMarkdown = `${lines.join("\n").replace(/\s*$/u, "")}\n`;
     const temporary = join(dirname(planPath), `.${basename(planPath)}.${randomBytes(8).toString("hex")}.tmp`);

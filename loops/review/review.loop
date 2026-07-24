@@ -1,0 +1,21 @@
+<loop id="review" version="0.1.0" entry="implement">
+  <budget max-rounds="3" max-minutes="60" max-agent-runs="6" max-check-runs="3" max-transitions="16" max-output-bytes="262144"/>
+  <agent id="implement" mode="task" role="maker" route="implementation.standard" authority="write" instructions="implement"/>
+  <check id="verify" capability="repo-verify"/>
+  <agent id="review" mode="review" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="review"/>
+  <gate id="converged" kind="convergence" requires="verify,review"/>
+  <terminal id="completed" state="converged"/>
+  <terminal id="needs-human" state="needs-human"/>
+  <terminal id="failed" state="failed"/>
+  <terminal id="stopped" state="stopped"/>
+  <terminal id="exhausted" state="budget-exhausted"/>
+  <failure-policy error="failed" timeout="failed" cancelled="stopped" lost="needs-human" exhausted="exhausted"/>
+  <edge from="implement" on="complete" to="verify"/>
+  <edge from="verify" on="pass" to="review"/>
+  <edge from="verify" on="fail" to="implement" max-visits="3"/>
+  <edge from="review" on="reject" to="implement" max-visits="3"/>
+  <edge from="review" on="approve" to="converged"/>
+  <edge from="review" on="escalate" to="needs-human"/>
+  <edge from="converged" on="pass" to="completed"/>
+  <edge from="converged" on="fail" to="needs-human"/>
+</loop>

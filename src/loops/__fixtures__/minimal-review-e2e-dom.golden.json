@@ -1,0 +1,27 @@
+[
+  {
+    "checkpoint": "needs-human",
+    "domBytes": 9373,
+    "domSha256": "051bc5760c63e3dc8532e84778dc2b31d87b7674a45f0dbae9ab4c13fb2adea8"
+  },
+  {
+    "checkpoint": "paused",
+    "domBytes": 9373,
+    "domSha256": "c80e10ebd2a0bede8978a933944f0a020baba40ea27815749b303bfc57ffd252"
+  },
+  {
+    "checkpoint": "repair",
+    "domBytes": 9373,
+    "domSha256": "c80e10ebd2a0bede8978a933944f0a020baba40ea27815749b303bfc57ffd252"
+  },
+  {
+    "checkpoint": "converged",
+    "domBytes": 9373,
+    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+  },
+  {
+    "checkpoint": "post-completion",
+    "domBytes": 8982,
+    "domSha256": "bdc604a3d9b34b5e642df92de34205921437f1ffbfc4b10050b18681662c6aae"
+  }
+]

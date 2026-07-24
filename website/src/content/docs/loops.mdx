@@ -1,0 +1,201 @@
+---
+title: Review Loop
+description: Configure and run the built-in serial maker, check, and reviewer Loop.
+---
+
+The built-in `loop:builtin:review` is an optional serial, foreground workflow:
+
+```text
+Item -> maker -> check -> fresh reviewer -> gate -> CLI completion
+             ^             |
+             +-- fail/reject
+```
+
+It does not replace normal Burnlist execution. An unassigned item uses the
+direct workflow, including `burnlist burn <id> <item> [--check]`; an assigned
+item is completed only through its converged Loop Run.
+
+## Configure and assign
+
+Create one profile for each role, then attach the fixed routes. The maker has
+write authority; the reviewer has read authority. `--binary` must be an
+absolute path to the installed Codex CLI. Accepted `--model` values are
+`gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and
+`gpt-5.3-codex-spark`; accepted `--effort` values are `minimal`, `low`,
+`medium`, `high`, `xhigh`, and `max`.
+
+```sh
+burnlist agent profile add maker --adapter builtin:codex-cli --binary /absolute/path/to/codex --model <id> --effort <level> --authority write
+burnlist agent profile add reviewer --adapter builtin:codex-cli --binary /absolute/path/to/codex --model <id> --effort <level> --authority read
+burnlist route set implementation.standard --profile maker
+burnlist route set review.strong --profile reviewer
+burnlist agent doctor maker
+burnlist agent doctor reviewer
+```
+
+The check is a repository-owned declarative capability, not a command in the
+Loop package. Inspect it, review the grants JSON against that capability, then
+trust the exact revision:
+
+First copy the catalog and grants objects below to `.burnlist/loop-capabilities.json`
+and a private local grants path. Replace the absolute command
+path and narrow the read paths to the check your repository actually needs.
+The grants file deliberately repeats every field except `id` and may only
+narrow this policy.
+
+```json title=".burnlist/loop-capabilities.json"
+{
+  "schema": "burnlist-loop-capabilities@1",
+  "capabilities": [{
+    "id": "repo-verify",
+    "argv": ["/absolute/path/to/repository-check", "--verify"],
+    "cwd": ".",
+    "environment": { "inherit": ["PATH"], "set": {} },
+    "network": "deny",
+    "filesystem": { "read": ["src"], "write": [] },
+    "output": { "maxBytes": 65536 },
+    "maxMilliseconds": 60000
+  }]
+}
+```
+
+```json title="grants.json"
+{
+  "argv": ["/absolute/path/to/repository-check", "--verify"],
+  "cwd": ".",
+  "environment": { "inherit": ["PATH"], "set": {} },
+  "network": "deny",
+  "filesystem": { "read": ["src"], "write": [] },
+  "output": { "maxBytes": 65536 },
+  "maxMilliseconds": 60000
+}
+```
+
+```sh
+burnlist loop capability inspect repo-verify
+burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants /absolute/path/to/grants.json
+burnlist loop setup status
+burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
+```
+
+`setup status` reports missing configuration rather than guessing it. An
+assignment freezes the selected Loop authority for that item. View it and paste
+the full output into the handoff or review request:
+
+```sh
+burnlist loop view item:<burnlist-id>#<item-id>
+```
+
+The ASCII view includes the decorative drawing, authoritative adjacency, pins,
+retry limits, and completion path. It is the source of truth for the assigned
+graph; do not redraw or abbreviate it.
+
+## Run and control
+
+Create a Run from the assigned item, then execute it in the foreground. These
+commands return machine-readable status or projection JSON except `view`.
+
+```sh
+burnlist loop create item:<burnlist-id>#<item-id>
+burnlist loop run run:<id>
+burnlist loop status run:<id>
+burnlist loop inspect run:<id>
+```
+
+The maker receives the item and instructions, then the trusted repository
+check runs. A new reviewer process evaluates the candidate. A check failure or
+reviewer rejection returns to the maker within the declared budget; approval
+passes the convergence gate. Escalation becomes `needs-human`; errors,
+timeouts, cancellation, and budget exhaustion use their recorded terminal
+outcomes.
+
+`Ctrl-C` requests a pause after the child exits; a second interrupt requests a
+controlled stop. The standalone `pause` and `stop` commands require an idle
+Run with no active foreground owner; they cannot take over a live Run. Use the
+foreground owner's interrupts for a live Run, then use the standalone commands
+only for recovery while it is idle:
+
+```sh
+burnlist loop pause run:<id>
+burnlist loop resume run:<id>
+burnlist loop stop run:<id>
+burnlist loop reconcile run:<id> --recovery-proof <64-lowercase-hex>
+```
+
+`reconcile` is for a demonstrably lost foreground owner. It folds the frozen
+journal and never re-resolves setup, recompiles the Loop, or reruns work.
+With a valid recovery proof it terminalizes the Run as `needs-human`; it never
+changes a Run to paused.
+Terminal stopped Runs can be replaced with a new `loop create`; executable
+Runs cannot.
+
+## Completion and visibility
+
+Only a converged Run can request item completion:
+
+```sh
+burnlist loop complete run:<id>
+```
+
+The CLI verifies the still-current assignment and Run, updates the shrinking
+checklist and ledger under its lifecycle lock, and records an idempotent
+receipt. Repeating `complete` returns the existing receipt without burning the
+item twice.
+
+The canonical Checklist Oven is read-only. A centered KPI row is followed by
+the existing Progress ledger and Completion trend. Below them, one unified
+Items list contains current, pending, and completed work beside one selected
+Item detail. Selecting any item through the list or an item deep link
+(`#<item-id>`) changes only the detail.
+
+The detail includes an active item's action, completion criterion, validation,
+file hints, assigned Loop, outcome-labelled return paths, and graph-derived
+node legend. The current item's live Run is highlighted there; a future
+assigned item uses its frozen assignment graph as a preview; an unassigned item
+is explicitly labelled as direct execution. Completed items reuse the same list
+and detail surface for their timestamp and recorded outcome, so Events are not
+duplicated as a separate column or card feed. Transient stale-snapshot notices
+float above the page so refreshes do not reflow or flicker the layout.
+
+The graph vocabulary is semantic: `S` is Start, a converged terminal is `B` for
+Burn, and agent, check, review, and gate symbols come from the actual topology.
+For example, the built-in review Loop renders `S`, `I`, `V`, `R`, and `B`; a
+custom gate or branch adds its own visible symbol instead of inheriting a
+hard-coded legend. The current node remains highlighted without changing graph
+geometry.
+
+The Checklist Oven declares these regions in
+`ovens/checklist/checklist.oven` through built-in declarative widgets. It does
+not import custom UI or bypass the Oven runtime. It has no Run or completion
+controls. Custom Ovens can compose the same core renderer with
+`<loop-graph source="/raw/loopRun"/>` at the root or
+`<loop-graph source="@item/loopRun"/>` inside an item collection. The widget
+does not fetch or execute code; the dashboard transport refetches canonical
+state after item-keyed Loop invalidations.
+
+The graph distinguishes writing agents (`[W]`), read-only agents (`[R]`),
+deterministic checks, metric or evaluation gates, orchestrators, and terminal
+outputs with separate text shapes. For sealed Runs, agent nodes also show the
+resolved model and effort from their frozen profile; only this safe display
+metadata is projected, never the executable path or private dispatch policy.
+Fan-out Loops are arranged as explicit split, parallel branch, merge, and
+feedback paths.
+
+## Guarantees and limits
+
+Stage 1 labels graph grammar, fresh reviewer process, budgets, closed outcomes,
+atomic canonical CLI writes, and the dashboard read-only boundary as
+`enforced`. Ordinary configuration and path drift checks are
+`detected-at-boundaries`. Reviewer filesystem write denial and host
+instructions are `supervised`; they are not Docker or an OS sandbox.
+
+Parallelism, nested agents, metric gates, custom adapters, auto-worktrees,
+background execution, Docker isolation, and forecasting are `unsupported`.
+Do not present any of those as shipped Loop features.
+
+## Skills and hooks are separate
+
+`burnlist install` makes the Burnlist skill discoverable. `burnlist hooks
+install` installs optional per-repository Streaming Diff edit-capture hooks.
+They are independent: either, both, or neither can be installed, and neither
+configures or starts a Review Loop. See [Install](/install).

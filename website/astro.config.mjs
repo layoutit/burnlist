@@ -45,7 +45,7 @@ export default defineConfig({
         },
         {
           label: 'Reference',
-          items: [{ slug: 'cli' }, { slug: 'dashboard' }],
+          items: [{ slug: 'cli' }, { slug: 'loops' }, { slug: 'dashboard' }],
         },
         {
           label: 'Ovens',

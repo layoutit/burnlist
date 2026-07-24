@@ -5,6 +5,8 @@ import { checklistEventDetailFields, compactAge, eventRows, formatDuration, prog
 export { checklistEventDetailFields } from "@lib/checklist-adapter";
 import "./ChecklistDashboard.css";
 import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
+import { LoopGraph } from "@/components/LoopGraph";
+import { ChecklistWorkspace } from "@/oven/ChecklistWorkspace";
 
 function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
   const durations = timing(data);
@@ -94,10 +96,19 @@ export function EventCardList({ data }: { data: ChecklistProgressData }) {
   })}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></section>;
 }
 
+export function LoopRunPanel({ data }: { data: ChecklistProgressData }) {
+  return <LoopGraph
+    run={data.loopRun}
+    diagnostic={data.loopRun?.diagnostic ?? data.loopProjectionDiagnostic}
+    message={data.loopProjectionMessage}
+    title="Current item Loop"
+  />;
+}
+
 export function ChecklistDashboard({ data }: { data: ChecklistProgressData }) {
   useEffect(() => {
     document.body.classList.add("driving-parity-view", "checklist-detail-view");
     return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
   }, []);
-  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><EventCardList data={data} /></main></div>;
+  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><ChecklistWorkspace data={data} /></main></div>;
 }

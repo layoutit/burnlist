@@ -4,11 +4,13 @@ export const dashboardProjectEvents = Object.freeze([
   Object.freeze({ ovenId: "*", kind: "definition-changed", phase: "complete" }),
   Object.freeze({ ovenId: "checklist", kind: "item-burned", phase: "completed" }),
   Object.freeze({ ovenId: "checklist", kind: "lifecycle-changed", phase: "complete" }),
+  Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }),
 ]);
 export const dashboardProgressEvents = Object.freeze([
   Object.freeze({ ovenId: "checklist", kind: "data-published", phase: "complete" }),
   Object.freeze({ ovenId: "checklist", kind: "item-burned", phase: "completed" }),
   Object.freeze({ ovenId: "checklist", kind: "lifecycle-changed", phase: "complete" }),
+  Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }),
 ]);
 
 function selectedQuery(selected) {
@@ -57,7 +59,8 @@ export function dashboardProgressSnapshotConfig(enabled, selected) {
     enabled: enabled && Boolean(selected),
     repoKey: selected?.repoKey ?? null,
     ovenId: "checklist",
-    subjectId: selected?.id ?? null,
+    // Loop invalidations are keyed by an itemRef; progress is the owning Burnlist projection.
+    subjectId: null,
     query,
     makeUrl: () => `/api/progress?${query}`,
     receive: receiveProgress,
@@ -65,5 +68,23 @@ export function dashboardProgressSnapshotConfig(enabled, selected) {
     initialData: null,
     events: dashboardProgressEvents,
     deps: [enabled, query],
+  };
+}
+
+export function receiveLoopProjection(response, json) {
+  if (!response.ok) throw new Error(json?.error ?? "Could not load Loop projection.");
+  if (!json || typeof json !== "object" || !("loopRun" in json)) throw new Error("Loop projection data is invalid.");
+  return json.loopRun;
+}
+
+export function dashboardLoopProjectionSnapshotConfig(enabled, selected) {
+  const query = selectedQuery(selected);
+  const subjectId = selected?.id && selected?.item ? `item:${selected.id}#${selected.item}` : null;
+  return {
+    transport: "snapshot", enabled: enabled && Boolean(selected), repoKey: selected?.repoKey ?? null,
+    ovenId: "checklist", subjectId, query: `loop/${query}`,
+    makeUrl: () => `/api/loop-projection?${query}`, receive: receiveLoopProjection,
+    fallbackError: "Could not load Loop projection.", initialData: null,
+    events: [Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" })], deps: [enabled, query],
   };
 }
