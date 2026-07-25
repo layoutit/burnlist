@@ -40,7 +40,7 @@ function normalizedHistory(history) {
 export function buildChecklistProgressChart(history, mode = "done", { width = 640, height = 180 } = {}) {
   const safeWidth = Math.max(360, Math.round(width));
   const safeHeight = Math.max(160, Math.round(height));
-  const plot = { left: 0, top: 0, right: safeWidth, bottom: safeHeight - 24 };
+  const plot = { left: 0, top: 0, right: safeWidth, bottom: safeHeight };
   const points = normalizedHistory(history);
   const fallbackTime = Date.now();
   const series = points.length ? points : [{ time: fallbackTime, done: 0, remaining: 0, total: 0, percent: 0 }];

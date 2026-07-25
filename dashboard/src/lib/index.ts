@@ -1,7 +1,7 @@
 export { formatListTime, formatTime } from "./format";
 export { burnlistHref, burnlistLensContext, currentSection, customOvenSelection, filterFromUrl, listHref, ovenExplainerSelection, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
 export { burnlistOvenHref, differentialTestingScenarioHref, parseRoute, repoOvenHref } from "./route-model.mjs";
-export { BURNLIST_DATA_CONTRACT, fittingOvens, ovenFitsContract, ovenInRepoScope } from "./oven-fit.mjs";
+export { BURNLIST_DATA_CONTRACT, fittingOvens, ovenFitsContract, ovenInRepoScope, ovenLensChoices } from "./oven-fit.mjs";
 export { buildLocalOvenInventory, buildOfficialOvenCatalog, buildOvenCatalog } from "./oven-catalog.mjs";
 export { effectiveOvensForRepo } from "./oven-identity.mjs";
 export { checklistOvenRepoKey } from "./oven-definition.mjs";

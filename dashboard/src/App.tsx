@@ -34,7 +34,7 @@ export function App() {
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
         {section === "differential-testing" ? <OvenDefinition id="differential-testing" repoKey={repoKey}>{(ir) => <DifferentialTestingOvenPage ir={ir} />}</OvenDefinition> : section === "model-lab" ? <OvenDefinition id="model-lab" repoKey={repoKey}>{(ir) => <ModelLabPage ir={ir} />}</OvenDefinition> : section === "performance-tracing" ? <OvenDefinition id="performance-tracing" repoKey={repoKey}>{(ir) => <PerformanceTracingOvenPage ir={ir} />}</OvenDefinition> : section === "streaming-diff" ? <OvenDefinition id="streaming-diff" repoKey={repoKey}>{(ir) => <StreamingDiff ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "visual-parity" ? <OvenDefinition id="visual-parity" repoKey={repoKey}>{(ir) => <VisualParityPage ir={ir} />}</OvenDefinition> : section === "custom-oven" ? <CustomOvenView error={error} loading={loading} progress={progress} stale={stale} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
           loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
-            <>{(error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}<LensSwitcher /><OvenDefinition id="checklist" repoKey={checklistRepoKey}>{(ir) => <ChecklistOvenView data={progress} ir={ir} />}</OvenDefinition></>
+            <>{error && <DashboardError message={error} />}<LensSwitcher /><OvenDefinition id="checklist" repoKey={checklistRepoKey}>{(ir) => <ChecklistOvenView data={progress} ir={ir} />}</OvenDefinition></>
           ) : error ? <DashboardError message={error} /> : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />
         ) : (
           <section className="dashboard-index">
@@ -48,7 +48,7 @@ export function App() {
                 <Filters filter={filter} onFilterChange={updateFilter} />
               </div>
             </div>
-            {(error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist index while fresh data loads."} />}
+            {error && <DashboardError message={error} />}
             {projects.length && visibleBurnlistCount ? (
               <div className="dashboard-project-groups"><BurnlistTable showStatus={filter === "all"}>{projects.map((project) => <ProjectGroup filter={filter} key={project.canonicalRoot} project={project} />)}</BurnlistTable></div>
             ) : projects.length ? <EmptyState title="No Burnlists in this view" detail="Choose another lifecycle filter." /> : error ? null : <EmptyState title="Nothing here yet" detail="Run `burnlist init` to initialize this repository." />}
