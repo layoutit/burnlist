@@ -192,12 +192,14 @@ test("canonical review and branch loops use balanced rows with local feedback", 
     ],
   );
   for (const lines of [review, branch]) {
+    const drawing = lines.join("\n");
     assert.ok(Math.max(...lines.map((line) => line.length)) <= 72);
     assert.ok(lines.length <= 7);
-    assert.doesNotMatch(lines.join("\n"), /^[┌├└]/mu);
+    assert.doesNotMatch(drawing, /^[┌├└]/mu);
+    assert.doesNotMatch(drawing, /rej[│┼├┤┬┴]ect|fa[│┼├┤┬┴]il/u);
     assert.match(lines[0], /^S .*▶/u);
     assert.match(lines.at(-1)!, /^\s*C .*G/u);
   }
   assert.match(review.join("\n"), /fail.*reject/su);
-  assert.match(branch.join("\n"), /fail.*reject|reject.*fail/su);
+  assert.match(branch.join("\n"), /fail.*reject/su);
 });

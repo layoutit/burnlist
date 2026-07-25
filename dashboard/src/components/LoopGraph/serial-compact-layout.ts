@@ -102,6 +102,15 @@ export function layoutSerialCompact(
     const column = row % 2 ? perRow - offset - 1 : offset;
     positions.set(id, { x: column * slot, y: row * rowHeight });
   });
+  const routedFeedback = [...feedback].sort((left, right) => {
+    const leftFrom = positions.get(left.from)!, leftTo = positions.get(left.to)!;
+    const rightFrom = positions.get(right.from)!, rightTo = positions.get(right.to)!;
+    const leftSpan = Math.abs(leftFrom.x - leftTo.x);
+    const rightSpan = Math.abs(rightFrom.x - rightTo.x);
+    return leftSpan - rightSpan
+      || rightTo.x - leftTo.x
+      || pathIndex.get(left.from)! - pathIndex.get(right.from)!;
+  });
   const width = Math.min(available, Math.max(...[...positions.values()].map((point) => point.x)) + slot);
   const graph = canvas(rowCount * rowHeight, width);
 
@@ -121,7 +130,7 @@ export function layoutSerialCompact(
   });
 
   const targetRowOffsets = new Map<number, number>();
-  feedback.forEach((edge) => {
+  routedFeedback.forEach((edge) => {
     const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
     const targetRow = Math.floor(pathIndex.get(edge.to)! / perRow);
     const offset = targetRowOffsets.get(targetRow) ?? 0;
