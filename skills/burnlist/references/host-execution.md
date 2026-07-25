@@ -40,7 +40,21 @@ invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
    a graph edge, declare a destination, or run a deterministic check; Burnlist
    owns all three.
 
-3. Produce one canonical `burnlist-loop-host-report@1` whose `agent-result@1`
+3. For the common successful path, inspect the provider result and report the
+   legal outcome directly. Burnlist copies the sealed identity tuple from the
+   live claim, so the host does not hand-author authority-bearing JSON:
+
+   ```sh
+   burnlist loop report cl1-sha256:<claim-id> --outcome complete
+   burnlist loop report cl1-sha256:<claim-id> --outcome approve
+   ```
+
+   Use `complete` only after successful task execution and `approve` only after
+   an independent read-only review. The command still fails closed on a stale
+   claim, wrong node mode, or candidate drift.
+
+4. Findings, rejection, escalation, or telemetry require one canonical
+   `burnlist-loop-host-report@1` whose `agent-result@1`
    is bound to that same tuple, with only a legal node-mode outcome. Copy the
    identity values exactly from `execution`; do not use these placeholders as
    invented values. A task accepts `complete`; review accepts `approve`,
@@ -66,7 +80,7 @@ invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
    Optional telemetry always uses `burnlist-loop-host-telemetry@1` with
    `provenance: "host-reported"`; unknown values remain `null`, never guessed.
 
-4. Write the report to a regular, non-symlink file no larger than 256 KiB and
+5. Write that detailed report to a regular, non-symlink file no larger than 256 KiB and
    submit it by the claim id:
 
    ```sh
@@ -77,7 +91,11 @@ invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
    claim, workspace/candidate drift, illegal outcome, or identity mismatch fails
    closed. Inspect the Run again rather than editing a rejected report.
 
-5. If the host cannot finish, do not report a made-up result. Resolve its live
+6. If one provider is unavailable before it mutates the workspace, keep the
+   provider-neutral claim and retry through another ready provider after the
+   first process has definitely exited. Do not abandon merely because a quota
+   was exhausted. If the host cannot finish or process cleanup is uncertain,
+   do not report a made-up result. Resolve its live
    claim once:
 
    ```sh

@@ -9,11 +9,12 @@ import { runStore } from "../loops/run/run-store.mjs";
 import { createLoopController } from "../loops/run/controller.mjs";
 import { createProductionRun, createStoredSystemRunRunner } from "../loops/run/binder.mjs";
 import { completeLoopRun } from "../loops/completion/completion.mjs";
+import { validateHostExecutionEnvelope } from "../loops/contracts/host-execution.mjs";
 
 function usageText() { return loopConfigUsage(); }
 function usageError(message = usageText()) { return Object.assign(new Error(message), { exitCode: 2 }); }
 function options(tokens) {
-  const positionals = []; let repo = null, recoveryProof = null, resultFile = null, reason = null;
+  const positionals = []; let repo = null, recoveryProof = null, resultFile = null, reason = null, outcome = null;
   for (let index = 0; index < tokens.length; index += 1) {
     if (tokens[index] === "--repo") {
       if (repo !== null) throw usageError("--repo must be specified at most once.");
@@ -32,15 +33,29 @@ function options(tokens) {
       if (reason !== null) throw usageError("--reason must be specified at most once.");
       reason = tokens[++index]; if (!reason || reason.startsWith("--")) throw usageError("--reason requires host-cancelled, host-lost, or expired.");
     }
+    else if (tokens[index] === "--outcome") {
+      if (outcome !== null) throw usageError("--outcome must be specified at most once.");
+      outcome = tokens[++index];
+      if (!["complete", "approve"].includes(outcome ?? "")) throw usageError("--outcome requires complete or approve.");
+    }
     else if (tokens[index].startsWith("--")) throw usageError(`Unknown option: ${tokens[index]}`);
     else positionals.push(tokens[index]);
   }
-  return { positionals, recoveryProof, resultFile, reason, repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
+  return { positionals, recoveryProof, resultFile, reason, outcome, repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
 }
 function validateVerbOptions(verb, opts) {
   if (opts.recoveryProof && verb !== "reconcile") throw usageError();
-  if (opts.resultFile && verb !== "report" || verb === "report" && !opts.resultFile) throw usageError();
+  if ((opts.resultFile || opts.outcome) && verb !== "report"
+    || verb === "report" && Boolean(opts.resultFile) === Boolean(opts.outcome)) throw usageError();
   if (opts.reason && verb !== "abandon" || verb === "abandon" && !opts.reason) throw usageError();
+}
+function simpleReport(envelopeBytes, outcome) {
+  const execution = validateHostExecutionEnvelope(envelopeBytes).value;
+  const result = Object.fromEntries(["runId", "nodeId", "attempt", "claimId", "assignmentId",
+    "invocationId", "recipeRevision", "policyRevision", "inputCandidate"].map((key) => [key, execution[key]]));
+  return Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-host-report@1", result: {
+    schema: "agent-result@1", ...result, outcome, findings: [], resolvedFindingIds: [],
+  }, telemetry: null })}\n`);
 }
 function resultBytes(path) {
   let fd;
@@ -98,7 +113,9 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
       : verb === "inspect" ? controller.inspect(opts.positionals[0])
       : verb === "next" ? controller.inspect(opts.positionals[0])
       : verb === "claim" ? publicClaim(controller.claim(opts.positionals[0]))
-      : verb === "report" ? await controller.report(opts.positionals[0], resultBytes(opts.resultFile))
+      : verb === "report" ? await controller.report(opts.positionals[0],
+        opts.resultFile ? resultBytes(opts.resultFile) : simpleReport(
+          controller.readClaim(store.resolveClaimRef(opts.positionals[0]))?.envelope, opts.outcome))
       : verb === "abandon" ? (() => {
         const runId = store.resolveClaimRef(opts.positionals[0]);
         if (store.read(runId).execution.terminal) { const error = new Error("ClaimRef is stale"); error.exitCode = 1; throw error; }

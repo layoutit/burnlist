@@ -199,7 +199,13 @@ Run `burnlist loop setup status` before `loop create`. Paste the complete
 `burnlist loop view item:<burnlist-id>#<item-id>` ASCII output into the task
 handoff or review request: it records the frozen graph, retries, completion
 path, and pins. For each agent node use `loop claim`, invoke the selected
-provider through the host, and submit `loop report`. Reporting automatically
+provider through the host, and submit `loop report`. The successful fast path
+is `loop report <ClaimRef> --outcome complete` for a task or `--outcome approve`
+for an independent review; detailed findings and telemetry use `--result`.
+Claims are provider-neutral: if a provider hits quota before changing the
+workspace and its process has exited, retry the same claim with another ready
+provider. Do not write provider wrappers into the candidate repository.
+Reporting automatically
 advances Burnlist-owned checks and gates to the next agent or terminal node.
 Inspect with `loop status|inspect`, control idle Runs with `loop pause|stop`,
 use proof-gated `loop reconcile` only for a demonstrably lost host claim, and

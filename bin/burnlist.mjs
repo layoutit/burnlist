@@ -113,7 +113,7 @@ Usage:
   burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
   burnlist loop create <ItemRef> [--repo <path>]
   burnlist loop next|claim <RunRef> [--repo <path>]
-  burnlist loop report <ClaimRef> --result <file> [--repo <path>]
+  burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
   burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
   burnlist loop list [--repo <path>]
   burnlist loop status|inspect <RunRef> [--repo <path>]

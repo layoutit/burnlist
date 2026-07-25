@@ -48,7 +48,7 @@ test("top-level and Oven help expose the validated use and set flow", () => {
     assert.match(top.stdout, /burnlist loop view <LoopRef\|ItemRef\|review> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop create <ItemRef> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop next\|claim <RunRef> \[--repo <path>\]/u);
-    assert.match(top.stdout, /burnlist loop report <ClaimRef> --result <file> \[--repo <path>\]/u);
+    assert.match(top.stdout, /burnlist loop report <ClaimRef> \(--outcome <complete\|approve> \| --result <file>\) \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop abandon <ClaimRef> --reason <host-cancelled\|host-lost\|expired> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop list \[--repo <path>\]/u);
     assert.doesNotMatch(top.stdout, /burnlist loop run\|resume/u);
@@ -90,7 +90,7 @@ test("nested Loop help snapshots every Stage 1 control", () => {
   try {
     const result = run(context.directory, ["loop", "--help"]);
     assert.equal(result.status, 0, result.stderr);
-    for (const command of ["create", "next|claim", "report <ClaimRef> --result <file>", "abandon <ClaimRef> --reason <host-cancelled|host-lost|expired>", "list", "pause|stop|complete", "status|inspect", "reconcile"]) {
+    for (const command of ["create", "next|claim", "report <ClaimRef> \\(--outcome <complete\\|approve> \\| --result <file>\\)", "abandon <ClaimRef> --reason <host-cancelled|host-lost|expired>", "list", "pause|stop|complete", "status|inspect", "reconcile"]) {
       assert.match(result.stdout, new RegExp(`burnlist loop ${command}`, "u"));
     }
     assert.doesNotMatch(result.stdout, /loop run|resume/u);

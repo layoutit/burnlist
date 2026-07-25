@@ -73,6 +73,20 @@ test("claim and report advance checks and gates without launching a provider", (
   assert.equal(JSON.parse(command(repo, ["complete", runId])).alreadyApplied, true);
 });
 
+test("simple successful outcomes do not require a hand-authored report", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "host-simple-report-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = created(repo);
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    if (JSON.parse(command(repo, ["status", runId])).state === "converged") break;
+    const execution = JSON.parse(command(repo, ["claim", runId])).execution;
+    command(repo, ["report", execution.claimId, "--outcome",
+      ["review", "final-review"].includes(execution.nodeId) ? "approve" : "complete"]);
+  }
+  assert.equal(JSON.parse(command(repo, ["status", runId])).state, "converged");
+});
+
 test("a claimed provider cannot be stolen and reviewer candidate drift rejects its report", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "host-claim-loop-cli-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
