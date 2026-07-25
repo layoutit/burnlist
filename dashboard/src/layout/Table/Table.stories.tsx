@@ -1,12 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Badge } from "../Badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./Table";
 
-const rows = [
-  { project: "dashboard", title: "Observer layout", status: "Active", progress: "27 / 31" },
-  { project: "adapter-kit", title: "Contract acceptance", status: "Ready", progress: "8 / 8" },
-  { project: "render-lab", title: "Release readiness", status: "Draft", progress: "3 / 9" },
-];
+const fixture = componentPairFixture.table;
 
 const meta = {
   title: "UI/Table",
@@ -19,28 +17,23 @@ type Story = StoryObj<typeof meta>;
 
 export const Burnlists = {
   render: () => (
-    <div className="storybook-table-demo">
-      <Table>
-        <TableCaption>Local Burnlists discovered across configured repositories.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Project</TableHead>
-            <TableHead scope="col">Burnlist</TableHead>
-            <TableHead scope="col">Status</TableHead>
-            <TableHead scope="col">Progress</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.title}>
-              <TableCell>{row.project}</TableCell>
-              <TableCell>{row.title}</TableCell>
-              <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
-              <TableCell>{row.progress}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <PairPreview component="table">
+      <div className="storybook-table-demo">
+        <Table>
+          <TableCaption>{fixture.caption}</TableCaption>
+          <TableHeader><TableRow>{fixture.headers.map((header) => <TableHead key={header} scope="col">{header}</TableHead>)}</TableRow></TableHeader>
+          <TableBody>
+            {fixture.rows.map((row) => (
+              <TableRow key={row[1]}>
+                <TableCell>{row[0]}</TableCell>
+                <TableCell>{row[1]}</TableCell>
+                <TableCell><Badge variant="outline">{row[2]}</Badge></TableCell>
+                <TableCell>{row[3]}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </PairPreview>
   ),
 } satisfies Story;

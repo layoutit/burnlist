@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 
+const fixture = componentPairFixture.tabs;
 const meta = {
   title: "UI/Tabs",
   component: Tabs,
@@ -25,7 +28,7 @@ function BurnlistTabs({ variant = "default" }: { variant?: "default" | "line" })
         <TabsTrigger value="blocked">Blocked</TabsTrigger>
       </TabsList>
       <TabsContent className="storybook-tabs-panel" value="active">
-        <p>Three Burnlists are cooking across two projects.</p>
+        <p>{fixture.panel}</p>
       </TabsContent>
       <TabsContent className="storybook-tabs-panel" value="complete">
         <p>Completed Burnlists move out of the active queue.</p>
@@ -38,7 +41,7 @@ function BurnlistTabs({ variant = "default" }: { variant?: "default" | "line" })
 }
 
 export const Default = {
-  render: () => <BurnlistTabs />,
+  render: () => <PairPreview component="tabs"><BurnlistTabs /></PairPreview>,
 } satisfies Story;
 
 export const Line = {

@@ -1,13 +1,16 @@
 import { Inbox } from "lucide-react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
+import { PairPreview } from "../TerminalFrame/TerminalPairPreview";
 import { EmptyState } from "./EmptyState";
 
+const fixture = componentPairFixture.emptyState;
 const meta = {
   title: "Patterns/EmptyState",
   component: EmptyState,
   args: {
-    title: "No active Burnlists",
-    detail: "Draft a Burnlist or change the lifecycle filter to see other work.",
+    title: fixture.title,
+    detail: fixture.detail,
   },
   parameters: { layout: "centered" },
 } satisfies Meta<typeof EmptyState>;
@@ -15,5 +18,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default = {} satisfies Story;
+export const Default = {
+  render: (args) => <PairPreview component="empty-state"><EmptyState {...args} /></PairPreview>,
+} satisfies Story;
 export const CustomIcon = { args: { icon: Inbox, title: "No retained runs" } } satisfies Story;

@@ -33,9 +33,13 @@ async function withLock<T>(work: () => Promise<T>) {
 }
 
 async function provenance(): Promise<{ sourceSha256: string; renderer: RendererProvenance }> {
+  const manifest = JSON.parse(await readFile(resolve(root, "dashboard/src/terminal-component-coverage.json"), "utf8")) as {
+    entries: Array<{ storyFile: string }>;
+  };
   const sources = [
     "dashboard/src/terminal-component-coverage.json",
-    "dashboard/src/stories/ComponentPairs.stories.tsx",
+    ...manifest.entries.map((entry) => entry.storyFile),
+    "dashboard/src/components/TerminalFrame/TerminalPairPreview.tsx",
     "tui/src/catalog/component-frame-renderer.tsx",
     "tui/src/catalog/component-pair-fixture.ts",
     "tui/src/catalog/component-pair-surface.tsx",

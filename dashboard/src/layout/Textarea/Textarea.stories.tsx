@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Field, FieldDescription, FieldLabel } from "../Field";
 import { Textarea } from "./Textarea";
 
+const fixture = componentPairFixture.textarea;
 const meta = {
   title: "UI/Textarea",
   component: Textarea,
@@ -13,12 +16,15 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Objective = {
+  args: { defaultValue: fixture.value },
   render: (args) => (
-    <Field className="storybook-control-demo">
-      <FieldLabel htmlFor="textarea-objective">Objective</FieldLabel>
-      <Textarea {...args} id="textarea-objective" />
-      <FieldDescription>Markdown is supported.</FieldDescription>
-    </Field>
+    <PairPreview component="textarea">
+      <Field className="storybook-control-demo">
+        <FieldLabel htmlFor="textarea-objective">{fixture.label}</FieldLabel>
+        <Textarea {...args} id="textarea-objective" />
+        <FieldDescription>Markdown is supported.</FieldDescription>
+      </Field>
+    </PairPreview>
   ),
 } satisfies Story;
 

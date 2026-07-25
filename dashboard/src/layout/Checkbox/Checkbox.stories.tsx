@@ -1,7 +1,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Checkbox } from "./Checkbox";
 
+const fixture = componentPairFixture.checkbox;
 const meta = {
   title: "UI/Checkbox",
   component: Checkbox,
@@ -13,12 +16,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Interactive = {
   render: () => {
-    const [checked, setChecked] = useState(false);
+    const [checked, setChecked] = useState(fixture.checked);
     return (
-      <label className="storybook-checkbox-row">
-        <Checkbox checked={checked} onCheckedChange={(value) => setChecked(value === true)} />
-        Include completed Burnlists
-      </label>
+      <PairPreview component="checkbox">
+        <label className="storybook-checkbox-row">
+          <Checkbox checked={checked} onCheckedChange={(value) => setChecked(value === true)} />
+          Include completed Burnlists
+        </label>
+      </PairPreview>
     );
   },
 } satisfies Story;

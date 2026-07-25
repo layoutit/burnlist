@@ -1,11 +1,14 @@
 import { CheckCircle2, Info, TriangleAlert, XCircle } from "lucide-react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Alert, AlertDescription, AlertTitle } from "./Alert";
 
+const fixture = componentPairFixture.alert;
 const meta = {
   title: "UI/Alert",
   component: Alert,
-  args: { variant: "info" },
+  args: { variant: "success" },
   parameters: { layout: "centered" },
 } satisfies Meta<typeof Alert>;
 
@@ -14,11 +17,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground = {
   render: (args) => (
-    <Alert {...args} className="storybook-alert-demo">
-      <Info aria-hidden="true" />
-      <AlertTitle>Burn is ready</AlertTitle>
-      <AlertDescription>All required evidence is available for review.</AlertDescription>
-    </Alert>
+    <PairPreview component="alert">
+      <Alert {...args} className="storybook-alert-demo">
+        <CheckCircle2 aria-hidden="true" />
+        <AlertTitle>{fixture.title}</AlertTitle>
+        <AlertDescription>{fixture.detail}</AlertDescription>
+      </Alert>
+    </PairPreview>
   ),
 } satisfies Story;
 

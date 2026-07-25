@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -15,13 +16,16 @@ const run = (args) => new Promise((resolve) => {
 
 test("every renderable Storybook atom has exactly one principled owner", async () => {
   const value = await auditTerminalOvenParity(root), atoms = validateStorybookOwnership(value);
+  const catalog = JSON.parse(await readFile(join(root, "dashboard/src/terminal-component-coverage.json"), "utf8"));
   assert.ok(atoms.length > 0);
   assert.ok(atoms.every((atom) => typeof atom.owner === "string"));
   const terminal = atoms.filter((atom) => atom.owner === "terminal-frame");
   assert.equal(terminal.length, 0);
-  const pairs = atoms.filter((atom) => atom.id.includes("ComponentPairs.stories.tsx"));
-  assert.ok(pairs.length > 0);
-  assert.ok(pairs.every((atom) => atom.owner === "general-display" || atom.owner === "general-interactive"));
+  assert.ok(!atoms.some((atom) => atom.id.includes("ComponentPairs.stories.tsx")));
+  for (const entry of catalog.entries) {
+    const paired = atoms.filter((atom) => atom.id.includes(`${entry.storyFile}#${entry.pairedExport}`));
+    assert.ok(paired.length > 0, `${entry.consoleStory} has no paired canonical atoms`);
+  }
   assert.ok(!atoms.some((atom) => /ChecklistTerminal|VisualParityTerminal|GeneralComponentsTerminal/u.test(atom.id)));
   assert.ok(atoms.some((atom) => atom.owner.startsWith("oven:") && /oven\/|Oven|ModelLab/u.test(atom.id)));
   assert.ok(!atoms.some((atom) => atom.id.endsWith("#FILTERS")));

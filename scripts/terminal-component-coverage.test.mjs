@@ -32,20 +32,28 @@ test("every catalogued console component has one source-backed terminal pair", a
   assert.deepEqual(sorted(consoleTitles), sorted(manifest.entries.map((entry) => entry.consoleStory)));
   assert.equal(new Set(consoleTitles).size, consoleTitles.length);
   assert.equal(titles.some((title) => title.startsWith("Ovens/")), false);
+  assert.equal(titles.some((title) => title.startsWith("Terminal counterparts/")), false);
   assert.equal(titles.some((title) => /General console-terminal|Terminal (?:controls|list|heading)/u.test(title)), false);
 
-  const pairStory = stories.find(({ source }) => source.includes(`title: "${manifest.pairStory}"`));
-  assert.ok(pairStory, "paired component story is missing");
-  const pairExports = [...pairStory.source.matchAll(/export const (\w+)(?:\s*:[^=]+)?\s*=/gu)].map((match) => match[1]);
-  assert.deepEqual(sorted(pairExports), sorted(manifest.entries.map((entry) => entry.pairExport)));
-  assert.match(pairStory.source, /componentPairFixture/u);
-  assert.match(pairStory.source, /componentPairFrameEntries/u);
   for (const entry of manifest.entries) {
-    const consoleStory = stories.find(({ source }) => source.includes(`title: "${entry.consoleStory}"`));
+    const expectedPath = resolve(root, entry.storyFile);
+    const consoleStory = stories.find(({ path }) => path === expectedPath);
     assert.ok(consoleStory, `${entry.consoleStory} is missing`);
+    assert.match(consoleStory.source, new RegExp(`title:\\s*"${entry.consoleStory}"`, "u"));
     assert.match(consoleStory.source, new RegExp(`component:\\s*${entry.consoleComponent}\\b`, "u"));
-    assert.match(pairStory.source, new RegExp(`id="${entry.id}"`, "u"));
+    assert.match(consoleStory.source, /import \{ PairPreview \}/u);
+    assert.match(consoleStory.source, /componentPairFixture/u);
+    const exportStart = consoleStory.source.search(new RegExp(`export const ${entry.pairedExport}\\b`, "u"));
+    assert.notEqual(exportStart, -1, `${entry.consoleStory} has no ${entry.pairedExport} export`);
+    const remainder = consoleStory.source.slice(exportStart);
+    const nextExport = remainder.slice(1).search(/\nexport const \w+\b/u);
+    const pairedSource = nextExport < 0 ? remainder : remainder.slice(0, nextExport + 1);
+    assert.match(pairedSource, new RegExp(`<PairPreview component="${entry.id}"`, "u"));
   }
+
+  const pairPreview = await readFile(resolve(dashboard, "components/TerminalFrame/TerminalPairPreview.tsx"), "utf8");
+  assert.match(pairPreview, /componentPairFrameEntries/u);
+  assert.match(pairPreview, /`component-\$\{component\}:72x10:default`/u);
 
   const terminalSource = await readFile(resolve(root, "tui/src/catalog/component-pair-surface.tsx"), "utf8");
   for (const entry of manifest.entries) {

@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Button } from "../Button";
 import { Spinner } from "./Spinner";
 
+const fixture = componentPairFixture.spinner;
 const meta = {
   title: "UI/Spinner",
   component: Spinner,
@@ -13,11 +16,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Sizes = {
   render: () => (
-    <div className="storybook-row">
-      <Spinner label="Loading small result" size="sm" />
-      <Spinner label="Loading result" />
-      <Spinner label="Loading large result" size="lg" />
-    </div>
+    <PairPreview component="spinner">
+      <div className="storybook-row">
+        <Spinner label="Loading small result" size="sm" />
+        <Spinner label={fixture.label} />
+        <Spinner label="Loading large result" size="lg" />
+      </div>
+    </PairPreview>
   ),
 } satisfies Story;
 

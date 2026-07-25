@@ -1,9 +1,21 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import "../../components/DifferentialTesting/differential-testing.css";
 import { DIFFERENTIAL_STORY_FIELDS } from "../storybook-differential-fixture";
 import { HybridFieldList } from "./HybridFieldList";
 
+const fixture = componentPairFixture.fieldListCards;
+const pairFields = fixture.fields.map((field) => ({
+  id: field.id,
+  label: field.label,
+  trustStatus: "pass",
+  failedSampleCount: field.failures,
+  missingSampleCount: 0,
+  maxDelta: field.delta,
+  samples: [[0, 0, 0, 0], [1, 1, 1 + field.delta, field.failures]],
+}));
 const meta = {
   title: "Patterns/FieldListCards",
   component: HybridFieldList,
@@ -13,7 +25,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function FieldListPreview({ chartMode }: { chartMode: "delta" | "value" }) {
+function FieldListPreview({
+  chartMode,
+  fields = DIFFERENTIAL_STORY_FIELDS,
+}: {
+  chartMode: "delta" | "value";
+  fields?: typeof DIFFERENTIAL_STORY_FIELDS | typeof pairFields;
+}) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
 
   const toggle = (id: string) => setExpanded((current) => {
@@ -25,7 +43,7 @@ function FieldListPreview({ chartMode }: { chartMode: "delta" | "value" }) {
 
   return <div className="shell driving-parity-view storybook-oven-pattern storybook-field-list-pattern">
     <HybridFieldList
-      fields={DIFFERENTIAL_STORY_FIELDS}
+      fields={fields}
       expanded={expanded}
       onToggle={toggle}
       chartMode={chartMode}
@@ -34,7 +52,7 @@ function FieldListPreview({ chartMode }: { chartMode: "delta" | "value" }) {
 }
 
 export const Delta: Story = {
-  render: () => <FieldListPreview chartMode="delta" />,
+  render: () => <PairPreview component="field-list-cards"><FieldListPreview chartMode="delta" fields={pairFields} /></PairPreview>,
 };
 
 export const Value: Story = {
