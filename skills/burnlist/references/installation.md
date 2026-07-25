@@ -20,6 +20,11 @@ By default, `burnlist install` registers the bundled Burnlist skill for both age
 
 The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. A global npm installation of Burnlist automatically registers those global skills for both agents. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--force` permits an untracked managed copy to be downgraded to a symlink; tracked copies must be removed through Git first. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
 
+Codex uses the shared `~/.agents/skills` target. An older manually installed
+`~/.codex/skills/burnlist` can shadow that registration in some clients. If
+both exist, compare them before a Loop trial and remove or rename only the
+stale manual copy; Burnlist never overwrites that foreign directory.
+
 For a Git worktree, the command reports the default mode as `untracked (local, .git/info/exclude)`. For `--commit`, it checks copied content files and reports either `committable (portable copy; run git add to track)` or the actual ignore rule still hiding content. Global registrations report `global symlink (no repo exclude)`. A non-Git directory instead reports `symlink (no git repo to exclude into)` or `portable copy (no git repo)`.
 
 `burnlist uninstall` removes only Burnlist-managed registrations in the matching scope and removes its matching local exclusion entries. `--purge` requires `uninstall --global`, targets both agents, and also uninstalls the global npm package.

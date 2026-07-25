@@ -221,6 +221,8 @@ is not a Loop-visibility milestone.
 Inspect with `loop status|inspect`, control idle Runs with `loop pause|stop`,
 use proof-gated `loop reconcile` only for a demonstrably lost host claim, and
 apply a converged Run through idempotent `loop complete`.
+`loop list` lists created Runs, not assignments; an empty result after
+assignment is expected. Assignment truth is `loop view item:<id>#<item>`.
 
 The canonical Checklist Oven keeps a centered KPI row above the side-by-side
 Progress ledger and Completion trend. Its unified Items list contains current,
@@ -241,6 +243,9 @@ It is not Docker or an OS sandbox. Parallelism, nested agents, metric gates,
 worktrees, background execution, Docker isolation, and
 forecasting are `unsupported`. The Checklist UI is read-only and displays
 active, paused, error, and terminal Run states; it never controls a Run.
+Branch fan-out remains one canonical `branches` node in Stage 1, so N, slice
+names, and native worker state are host evidence rather than dashboard graph
+state.
 
 `burnlist install` registers this skill, while `burnlist hooks install` adds
 Streaming Diff edit-capture hooks. These integrations are independent and do

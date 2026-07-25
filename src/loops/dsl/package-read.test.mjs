@@ -264,9 +264,9 @@ test("descriptor package diagnostics are merged and truncated after discovery, m
     const badCount = 97;
     const extras = Array.from({ length: badCount }, (_, index) => ` bad-${String(index).padStart(3, "0")}="x"`).join("");
     const malformed = files["review.loop"].toString()
-      .replace('version="0.1.0"', "version=\"0\"")
-      .replace('max-rounds="12"', `max-rounds="0"${extras}`)
-      .replace('<edge from="start" on="complete" to="decompose"/>', '<edge from="start" on="error" to="completed"/>');
+      .replace('version="0.2.0"', "version=\"0\"")
+      .replace('max-rounds="6"', `max-rounds="0"${extras}`)
+      .replace('<edge from="implement" on="complete" to="validate"/>', '<edge from="implement" on="error" to="completed"/>');
 
     await writeFile(join(folder, "review.loop"), malformed);
     await writeFile(join(folder, "note.md"), "ignored\n");

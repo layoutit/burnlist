@@ -116,6 +116,13 @@ or execute checks. After a valid report, Burnlist automatically advances its
 trusted checks and graph-only nodes until the next agent claim or terminal
 state. The Checklist Oven only observes these updates.
 
+`loop list` lists created Runs, not item assignments. Immediately after
+assignment it may correctly return `[]`; use `loop view
+item:<burnlist-id>#<item-id>` to verify assignment truth. For shell-driven
+hosts, redirect the large `loop claim` JSON to a private ignored file and
+extract `.claim.claimId` from that file instead of printing the authority
+envelope into chat.
+
 The claim response carries a prepared execution envelope. A host executes that
 exact bounded input through its available mechanism, preserves its full claim
 identity in one `burnlist-loop-host-report@1`, and submits the report by claim

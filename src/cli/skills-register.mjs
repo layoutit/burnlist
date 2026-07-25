@@ -236,7 +236,19 @@ function formatGlobal(registration, dryRun) {
   return `Burnlist: ${verb} ${registration.source} -> ${registration.target}; global symlink (no repo exclude).`;
 }
 
-export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, force = false, log = console.log, stageAtomic = stageAtomicText, beforeTargetMutation, afterExcludeWrite }) {
+function warnLegacyCodexShadows(planned, env, warn) {
+  const home = env.HOME || env.USERPROFILE;
+  if (!home) return;
+  for (const registration of planned.filter(({ agent }) => agent === "codex")) {
+    const legacy = join(home, ".codex", "skills", registration.name);
+    const stat = lstatOrNull(legacy);
+    if (!stat) continue;
+    if (stat.isSymbolicLink() && linkedSource(legacy) === registration.source) continue;
+    warn(`Burnlist: ${legacy} may shadow the managed Codex skill at ${registration.target}; compare and remove or rename only the stale manual copy.`);
+  }
+}
+
+export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd(), env = process.env, agents, dryRun = false, commit = false, force = false, log = console.log, warn = console.warn, stageAtomic = stageAtomicText, beforeTargetMutation, afterExcludeWrite }) {
   if (scope === "global" && commit) throw new Error("--commit is only valid for per-repository skill installs");
   const context = scope === "repo" ? gitContext(cwd) : null;
   const register = () => {
@@ -302,6 +314,7 @@ export function registerSkills({ sourceRoot, scope = "repo", cwd = process.cwd()
       });
     }
     for (const registration of planned) log(scope === "global" ? formatGlobal(registration, dryRun) : formatInstall(registration, dryRun, commit));
+    if (scope === "global") warnLegacyCodexShadows(planned, env, warn);
     return planned;
   };
   if (dryRun) return register();

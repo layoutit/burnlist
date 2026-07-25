@@ -10,12 +10,17 @@ invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
 
    ```sh
    burnlist loop create item:<burnlist-id>#<item-id>
-   burnlist loop claim run:<id>
+   burnlist loop claim run:<id> > .local/burnlist/claim.json
+   node -e 'const c=require(process.argv[1]); console.log(c.claim.claimId)' \
+     .local/burnlist/claim.json
    ```
 
    `claim` returns canonical JSON containing a `claim` and an `execution`
    envelope. Treat both as opaque, bounded, single-use authority. Do not alter
-   or reconstruct their fields.
+   or reconstruct their fields. Capture it to a private ignored file as above
+   instead of printing the large authority envelope into chat. The second
+   command prints the `ClaimRef`; it does not replace the saved execution
+   envelope needed by the provider.
 
 2. Decode, inspect, and execute the exact prepared invocation. `execution` is
    a canonical `burnlist-loop-host-execution@1` object: base64-decode its

@@ -30,6 +30,7 @@ test("install, uninstall, and hooks subcommand help exit successfully with usage
       [["hooks", "install", "--help"], /Usage: burnlist hooks/u],
       [["hooks", "uninstall", "--help"], /Usage: burnlist hooks/u],
       [["hooks", "status", "--help"], /Usage: burnlist hooks/u],
+      [["new", "--help"], /^Usage: burnlist new \[--repo <path>\]/u],
     ]) {
       const result = run(context.directory, args);
       assert.equal(result.status, 0, args.join(" "));

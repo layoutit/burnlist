@@ -36,6 +36,18 @@ function printSkillUsage(command) {
   console.log(`${usage}\n\nInstall and remove Burnlist-managed agent skills for Codex and Claude.`);
 }
 
+function printLifecycleUsage(command) {
+  const usages = {
+    new: "Usage: burnlist new [--repo <path>]",
+    show: "Usage: burnlist show <id>[#<item>] [--repo <path>]",
+    ready: "Usage: burnlist ready <id> [--repo <path>]",
+    start: "Usage: burnlist start <id> [--repo <path>]",
+    close: "Usage: burnlist close <id> [--repo <path>]",
+    burn: "Usage: burnlist burn <id> <item> [--check] [--repo <path>]",
+  };
+  console.log(usages[command]);
+}
+
 async function main() {
 if (args[0] === "install" || args[0] === "uninstall") {
   if (args.includes("--help") || args.includes("-h")) {
@@ -43,6 +55,12 @@ if (args[0] === "install" || args[0] === "uninstall") {
     return;
   }
   process.exitCode = runSkillsInstallCli({ args, packageRoot });
+  return;
+}
+
+if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])
+  && (args.includes("--help") || args.includes("-h"))) {
+  printLifecycleUsage(args[0]);
   return;
 }
 
