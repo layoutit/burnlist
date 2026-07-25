@@ -6,11 +6,19 @@ export const dashboardProjectEvents = Object.freeze([
   Object.freeze({ ovenId: "checklist", kind: "lifecycle-changed", phase: "complete" }),
   Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }),
 ]);
+const dashboardLoopActivityEvents = Object.freeze([
+  "agent-started", "agent-finished", "agent-failed",
+  "subagent-started", "subagent-finished", "subagent-failed",
+  "tool-started", "tool-finished", "tool-failed",
+].map((phase) => Object.freeze({
+  ovenId: "checklist", kind: "loop-agent-observation", phase,
+})));
 export const dashboardProgressEvents = Object.freeze([
   Object.freeze({ ovenId: "checklist", kind: "data-published", phase: "complete" }),
   Object.freeze({ ovenId: "checklist", kind: "item-burned", phase: "completed" }),
   Object.freeze({ ovenId: "checklist", kind: "lifecycle-changed", phase: "complete" }),
   Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }),
+  ...dashboardLoopActivityEvents,
 ]);
 
 function selectedQuery(selected) {
@@ -85,6 +93,10 @@ export function dashboardLoopProjectionSnapshotConfig(enabled, selected) {
     ovenId: "checklist", subjectId, query: `loop/${query}`,
     makeUrl: () => `/api/loop-projection?${query}`, receive: receiveLoopProjection,
     fallbackError: "Could not load Loop projection.", initialData: null,
-    events: [Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" })], deps: [enabled, query],
+    events: [
+      Object.freeze({ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }),
+      ...dashboardLoopActivityEvents,
+    ],
+    deps: [enabled, query],
   };
 }

@@ -76,6 +76,35 @@ test("renders bounded provenance-labelled activity and explicit hook availabilit
   assert.match(unavailable, /No activity reported/u);
 });
 
+test("shows observed model facts and forecast provenance without inventing cost", () => {
+  const html = renderToStaticMarkup(createElement(LoopGraph, { run: projection({
+    activity: {
+      hooks: "available",
+      records: [{
+        at: 2, origin: "host-hook", kind: "agent-started", provider: "codex",
+        nodeId: "verify", attempt: 1, model: "gpt-test", effort: "high",
+      }],
+    },
+    forecast: {
+      schema: "burnlist-loop-forecast@1",
+      key: { role: "reviewer", provider: "codex", model: "gpt-test", effort: "high", complexityBand: "high" },
+      wallTime: { low: 60_000, high: 120_000, sampleCount: 4, unit: "milliseconds" },
+      aggregateWork: { low: 90_000, high: 180_000, sampleCount: 4, unit: "milliseconds" },
+      totalTokens: { low: 2_000, high: 8_000, sampleCount: 3, unit: "tokens" },
+      confidence: "medium",
+      provenance: { kind: "local-observations", matchingObservations: 4, tokenObservations: 3, parallelObservations: 2 },
+      cost: null,
+      costProvenance: "unavailable",
+    },
+  }) }));
+  assert.match(html, /aria-label="Loop forecast"/u);
+  assert.match(html, /OBSERVED codex · gpt-test · effort high/u);
+  assert.match(html, /WALL 1m–2m/u);
+  assert.match(html, /WORK 1.5m–3m/u);
+  assert.match(html, /MEDIUM · 4 local observations/u);
+  assert.doesNotMatch(html, /\$|cost estimate/u);
+});
+
 test("compact topology and legend remain independently composable", () => {
   const run = projection();
   run.graph.edges.push({ from: "verify", on: "fail", to: "implement" });

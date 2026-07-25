@@ -6,6 +6,7 @@
 }
 .loop-progress__now,
 .loop-progress__context article,
+.loop-progress__signals article,
 .loop-progress__loop,
 .loop-progress__map,
 .loop-progress__activity {
@@ -23,6 +24,7 @@
 .loop-progress__now > span,
 .loop-progress__context-head > span,
 .loop-progress__context span,
+.loop-progress__signals span,
 .loop-progress h2 {
   color: var(--muted-foreground, #92a0b3);
   font-size: 11px;
@@ -36,6 +38,9 @@
 .loop-progress__context { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
 .loop-progress__context article { min-width: 0; padding: 12px 14px; }
 .loop-progress__context p { margin: 5px 0 0; overflow-wrap: anywhere; font-size: 13px; line-height: 1.35; }
+.loop-progress__signals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.loop-progress__signals article { min-width: 0; padding: 10px 12px; }
+.loop-progress__signals p { margin: 5px 0 0; overflow-wrap: anywhere; font-size: 12px; line-height: 1.35; }
 .loop-progress__work { display: grid; gap: 12px; }
 .loop-progress__loop, .loop-progress__map { min-width: 0; padding: 14px; }
 .loop-progress h2 { margin: 0 0 12px; }
@@ -64,6 +69,7 @@
 .loop-progress footer > span { font-weight: 800; letter-spacing: .08em; }
 @media (max-width: 900px) {
   .loop-progress__context { grid-template-columns: 1fr 1fr; }
+  .loop-progress__signals { grid-template-columns: 1fr 1fr; }
   .loop-progress__work { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
@@ -71,6 +77,7 @@
   .loop-progress__now { grid-template-columns: auto 1fr; }
   .loop-progress__now small { grid-column: 2; }
   .loop-progress__context { grid-template-columns: 1fr; }
+  .loop-progress__signals { grid-template-columns: 1fr; }
   .loop-progress__map ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
   .loop-progress__map li b { display: none; }
   .loop-progress__activity li { grid-template-columns: 10ch minmax(0, 1fr); }

@@ -66,7 +66,35 @@ export type LoopRunProjection = {
       subagentId?: string;
       tool?: string;
       observedPath?: string;
+      observedPaths?: string[];
+      model?: string | null;
+      effort?: string | null;
+      inputTokens?: number | null;
+      outputTokens?: number | null;
+      durationMilliseconds?: number | null;
     }>;
+  };
+  forecast?: null | {
+    schema: "burnlist-loop-forecast@1";
+    key: {
+      role: string;
+      provider: string | null;
+      model: string | null;
+      effort: string | null;
+      complexityBand: "low" | "medium" | "high";
+    };
+    wallTime: { low: number; high: number; sampleCount: number; unit: "milliseconds" };
+    aggregateWork: { low: number; high: number; sampleCount: number; unit: "milliseconds" };
+    totalTokens: { low: number; high: number; sampleCount: number; unit: "tokens" };
+    confidence: "low" | "medium" | "high";
+    provenance: {
+      kind: "built-in-prior" | "local-observations";
+      matchingObservations: number;
+      tokenObservations: number;
+      parallelObservations: number;
+    };
+    cost: null;
+    costProvenance: "unavailable";
   };
   revision: string;
   budget: {

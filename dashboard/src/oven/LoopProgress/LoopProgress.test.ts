@@ -98,6 +98,35 @@ test("renders only bounded provenance-labelled sanitized activity", () => {
   assert.equal((markup.match(/subagent child-/gu) ?? []).length + (markup.match(/node-test/gu) ?? []).length, 10);
 });
 
+test("shows observed agent facts, elapsed time, and forecast provenance", () => {
+  const data = fixture("O0");
+  data.loopRun.activity = { hooks: "available", records: [{
+    at: 1, origin: "host-hook", kind: "agent-started", provider: "codex",
+    nodeId: "review", attempt: 1, model: "gpt-test", effort: "medium",
+  }] };
+  data.loopRun.budget.elapsedMilliseconds = 125_000;
+  data.loopRun.forecast = {
+    schema: "burnlist-loop-forecast@1",
+    key: { role: "reviewer", provider: "codex", model: "gpt-test", effort: "medium", complexityBand: "high" },
+    wallTime: { low: 60_000, high: 180_000, sampleCount: 5, unit: "milliseconds" },
+    aggregateWork: { low: 90_000, high: 240_000, sampleCount: 5, unit: "milliseconds" },
+    totalTokens: { low: 2_000, high: 9_000, sampleCount: 4, unit: "tokens" },
+    confidence: "medium",
+    provenance: { kind: "local-observations", matchingObservations: 5, tokenObservations: 4, parallelObservations: 2 },
+    cost: null,
+    costProvenance: "unavailable",
+  };
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
+  for (const label of ["AGENT", "ELAPSED", "FORECAST", "PROVENANCE"]) {
+    assert.match(markup, new RegExp(`>${label}<`, "u"));
+  }
+  assert.match(markup, /codex · gpt-test · effort medium/u);
+  assert.match(markup, /2.1 min/u);
+  assert.match(markup, /wall 1 min–3 min · work 1.5 min–4 min/u);
+  assert.match(markup, /medium · 5 local observations · tokens 2,000–9,000/u);
+  assert.doesNotMatch(markup, /\$|cost estimate/u);
+});
+
 test("activity viewport has a stable ten-row height", async () => {
   const css = await readFile("dashboard/src/oven/LoopProgress/LoopProgress.css", "utf8");
   assert.match(css, /\.loop-progress__activity ol \{[^}]*block-size: 150px;[^}]*overflow: hidden;/su);

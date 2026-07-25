@@ -50,6 +50,18 @@
   margin: -.4rem 0 .45rem;
 }
 
+.loop-graph__forecast {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1rem;
+  margin-top: .55rem;
+  color: color-mix(in srgb, currentColor 56%, transparent);
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .68rem;
+}
+
+.loop-graph__forecast span:last-child { color: var(--loop-accent); }
+
 .loop-legend,
 .loop-compact {
   --loop-accent: #38bdf8;

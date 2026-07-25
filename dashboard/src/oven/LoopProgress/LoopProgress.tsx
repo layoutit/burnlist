@@ -88,6 +88,21 @@ function activityText(record: NonNullable<LoopRunProjection["activity"]>["record
   return [where, record.kind.replaceAll("-", " "), detail].filter(Boolean).join(" · ");
 }
 
+function duration(milliseconds: number | null | undefined) {
+  if (milliseconds === null || milliseconds === undefined) return "Unavailable";
+  if (milliseconds < 1_000) return `${milliseconds} ms`;
+  if (milliseconds < 60_000) return `${Math.round(milliseconds / 100) / 10} s`;
+  return `${Math.round(milliseconds / 6_000) / 10} min`;
+}
+
+function durationRange(range: { low: number; high: number } | null | undefined) {
+  return range ? `${duration(range.low)}–${duration(range.high)}` : "Unavailable";
+}
+
+function tokenRange(range: { low: number; high: number } | null | undefined) {
+  return range ? `${range.low.toLocaleString("en-US")}–${range.high.toLocaleString("en-US")}` : "Unavailable";
+}
+
 export function LoopProgress({ data }: { data: ChecklistProgressData }) {
   const item = selectedItem(data);
   const system = subsystem(item);
@@ -97,7 +112,22 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
   const runningSystem = runSubsystem(authoritativeRun);
   const activity = authoritativeRun?.activity;
   const recentActivity = activity?.records.slice(-10) ?? [];
-  const observedPaths = [...new Set(recentActivity.flatMap((record) => record.observedPath ? [record.observedPath] : []))];
+  const observedPaths = [...new Set(recentActivity.flatMap((record) => [
+    ...(record.observedPath ? [record.observedPath] : []),
+    ...(record.observedPaths ?? []),
+  ]))];
+  const observation = [...recentActivity].reverse().find((record) =>
+    record.provider || record.model || record.effort);
+  const observedAgent = observation
+    ? [observation.provider, observation.model, observation.effort ? `effort ${observation.effort}` : null]
+      .filter(Boolean).join(" · ")
+    : "Unavailable";
+  const forecast = authoritativeRun?.forecast;
+  const provenance = forecast
+    ? forecast.provenance.kind === "local-observations"
+      ? `${forecast.confidence} · ${forecast.provenance.matchingObservations} local observations`
+      : `${forecast.confidence} · built-in prior`
+    : "Unavailable";
   return <section className="loop-progress" aria-label="Loop progress">
     <header className="loop-progress__now">
       <span>NOW</span>
@@ -110,6 +140,12 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
       <article><span>WHY</span><p>{plainWhy(item, system)}</p></article>
       <article><span>SYSTEM</span><p>{system.label}</p></article>
       <article><span>HOOKS</span><p>{activity?.hooks ?? "Unavailable"}</p></article>
+    </div>
+    <div className="loop-progress__signals" aria-label="Live Loop signals">
+      <article><span>AGENT</span><p>{observedAgent}</p></article>
+      <article><span>ELAPSED</span><p>{duration(authoritativeRun?.budget.elapsedMilliseconds)}</p></article>
+      <article><span>FORECAST</span><p>wall {durationRange(forecast?.wallTime)} · work {durationRange(forecast?.aggregateWork)}</p></article>
+      <article><span>PROVENANCE</span><p>{provenance} · tokens {tokenRange(forecast?.totalTokens)}</p></article>
     </div>
 
     <div className="loop-progress__work">

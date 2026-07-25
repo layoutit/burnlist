@@ -142,7 +142,8 @@ test("loop projection uses its dedicated snapshot URL and coalesces conditional 
   const config = dashboardLoopProjectionSnapshotConfig(true, selected);
   assert.equal(config.makeUrl(), "/api/loop-projection?repoKey=aaaaaaaaaaaa&id=260722-001&item=M7");
   assert.equal(config.subjectId, "item:260722-001#M7");
-  assert.deepEqual(config.events, [{ ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" }]);
+  assert.deepEqual(config.events[0], { ovenId: "checklist", kind: "loop-projection-changed", phase: "complete" });
+  assert.equal(config.events.filter((event) => event.kind === "loop-agent-observation").length, 9);
   const client = createOvenSnapshotClient({
     timers, focusTarget: null,
     eventSourceFactory(url) { const source = new FakeEventSource(url); sources.push(source); return source; },
@@ -166,11 +167,19 @@ test("loop projection uses its dedicated snapshot URL and coalesces conditional 
   assert.deepEqual(calls[1].headers, { "If-None-Match": '"loop-v1"' });
   assert.equal(states.at(-1).outcome, "unchanged", "304 retains the canonical loop snapshot");
 
+  sources[0].publish({
+    repoKey: selected.repoKey, ovenId: "checklist", subjectId: "item:260722-001#M7",
+    kind: "loop-agent-observation", phase: "tool-finished",
+  });
+  timers.flush();
+  await settle();
+  assert.equal(calls.length, 3, "native hook observations refetch the read-only projection");
+
   sources[0].reset({ repoKey: selected.repoKey, ovenId: "checklist", reason: "retention-gap" });
   timers.flush();
   await settle();
-  assert.equal(calls.length, 3, "a matching retention gap resets the loop snapshot");
-  assert.deepEqual(calls[2].headers, { "If-None-Match": '"loop-v1"' });
+  assert.equal(calls.length, 4, "a matching retention gap resets the loop snapshot");
+  assert.deepEqual(calls[3].headers, { "If-None-Match": '"loop-v1"' });
   client.stop();
 });
 

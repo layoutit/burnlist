@@ -29,7 +29,18 @@ export type LoopGraphProjection = {
   attempt: number;
   cycle: number;
   execution?: LoopRunProjectionExecution;
-  activity?: { hooks: "unavailable" | "available"; records: Array<{ at: number; origin: "runner" | "host-hook" | "agent-reported"; kind: string; provider?: "claude" | "codex"; nodeId?: string; attempt?: number; correlation?: string; mode?: "managed" | "host-reported" | "unavailable"; capability?: string; outcome?: string; state?: string; from?: string; to?: string; reason?: string; truncated?: boolean; parentAgentId?: string; subagentId?: string; tool?: string; observedPath?: string }> };
+  activity?: { hooks: "unavailable" | "available"; records: Array<{ at: number; origin: "runner" | "host-hook" | "agent-reported"; kind: string; provider?: "claude" | "codex"; nodeId?: string; attempt?: number; correlation?: string; mode?: "managed" | "host-reported" | "unavailable"; capability?: string; outcome?: string; state?: string; from?: string; to?: string; reason?: string; truncated?: boolean; parentAgentId?: string; subagentId?: string; tool?: string; observedPath?: string; observedPaths?: string[]; model?: string | null; effort?: string | null; durationMilliseconds?: number | null }> };
+  forecast?: null | {
+    schema: "burnlist-loop-forecast@1";
+    key: { role: string; provider: string | null; model: string | null; effort: string | null; complexityBand: "low" | "medium" | "high" };
+    wallTime: { low: number; high: number; sampleCount: number; unit: "milliseconds" };
+    aggregateWork: { low: number; high: number; sampleCount: number; unit: "milliseconds" };
+    totalTokens: { low: number; high: number; sampleCount: number; unit: "tokens" };
+    confidence: "low" | "medium" | "high";
+    provenance: { kind: "built-in-prior" | "local-observations"; matchingObservations: number; tokenObservations: number; parallelObservations: number };
+    cost: null;
+    costProvenance: "unavailable";
+  };
   graph: { entry?: string; nodes: LoopGraphNode[]; edges: LoopGraphEdge[] };
   transitions?: LoopGraphTransition[];
   latestResult?: null | { kind: string; summary: string };
@@ -53,6 +64,33 @@ type LoopRunProjectionExecution = {
     startedAt: number | null; completedAt: number | null; inputTokens: number | null; outputTokens: number | null;
   };
 };
+
+function duration(milliseconds: number) {
+  if (milliseconds < 1_000) return `${milliseconds}ms`;
+  if (milliseconds < 60_000) return `${Math.round(milliseconds / 100) / 10}s`;
+  return `${Math.round(milliseconds / 6_000) / 10}m`;
+}
+
+function Forecast({ run }: { run: LoopGraphProjection }) {
+  const forecast = run.forecast;
+  const observed = [...(run.activity?.records ?? [])].reverse().find((record) =>
+    record.model || record.effort || record.provider);
+  const selection = observed
+    ? [observed.provider, observed.model, observed.effort ? `effort ${observed.effort}` : null].filter(Boolean).join(" · ")
+    : "model / effort unavailable";
+  if (!forecast) return <div className="loop-graph__forecast">
+    <span>OBSERVED {selection}</span><span>FORECAST unavailable for this node</span>
+  </div>;
+  const provenance = forecast.provenance.kind === "local-observations"
+    ? `${forecast.provenance.matchingObservations} local observations`
+    : "built-in prior";
+  return <div className="loop-graph__forecast" aria-label="Loop forecast">
+    <span>OBSERVED {selection}</span>
+    <span>WALL {duration(forecast.wallTime.low)}–{duration(forecast.wallTime.high)}</span>
+    <span>WORK {duration(forecast.aggregateWork.low)}–{duration(forecast.aggregateWork.high)}</span>
+    <span>{forecast.confidence.toUpperCase()} · {provenance}</span>
+  </div>;
+}
 
 export type LoopGraphProps = {
   run?: LoopGraphProjection | null;
@@ -148,6 +186,7 @@ export function LoopGraph({ run, diagnostic, message, title = "Loop Run" }: Loop
   const viewState = presentationState(run, diagnostic);
   return <div className={`loop-graph loop-graph--${viewState}`} data-loop-state={viewState}>
     <GraphCanvas label={title} run={run} state={stateLabel(run, diagnostic)} />
+    <Forecast run={run} />
     <Activity activity={run.activity} />
   </div>;
 }
