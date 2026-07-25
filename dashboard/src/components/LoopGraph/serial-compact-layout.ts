@@ -35,6 +35,21 @@ function canvas(rows: number, columns: number) {
   return { cells, put, horizontal, vertical, text };
 }
 
+function paddedLabel(value: string) {
+  return ` ${value} `;
+}
+
+function placeHorizontalLabel(
+  graph: ReturnType<typeof canvas>, from: number, to: number, y: number, value: string,
+) {
+  const label = paddedLabel(value);
+  const left = Math.min(from, to), right = Math.max(from, to);
+  const room = right - left - 3;
+  if (room < label.length) return false;
+  graph.text(left + Math.floor((right - left - label.length) / 2), y, label);
+  return true;
+}
+
 /**
  * A small Sugiyama-style specialisation for the common workflow shape:
  * rank the success spine, wrap it into balanced serpentine rows, then route
@@ -59,7 +74,7 @@ export function layoutSerialCompact(
   const symbols = loopSymbols(run.graph.nodes, options.symbols);
   const labelWidth = options.showLabels
     ? Math.max(0, ...primary.map((edge) => edge.on.length)) : 0;
-  const slot = Math.max(7, labelWidth + 5, ...path.map((id) => symbols.get(id)!.length + 5));
+  const slot = Math.max(9, labelWidth + 9, ...path.map((id) => symbols.get(id)!.length + 7));
   const available = Math.max(24, options.availableCharacters ?? 72);
   const destinations = [...new Set(feedback.map((edge) => edge.to))];
   const leftMargin = destinations.length ? destinations.length * 2 + 2 : 0;
@@ -102,7 +117,7 @@ export function layoutSerialCompact(
       graph.horizontal(from.x + (right ? 2 : -2), to.x + (right ? -2 : 2), from.y);
       graph.put(to.x + (right ? -2 : 2), to.y, right ? "▶" : "◀");
       if (options.showLabels)
-        graph.text(Math.min(from.x, to.x) + 3, from.y, edge.on);
+        placeHorizontalLabel(graph, from.x, to.x, from.y, edge.on);
     } else {
       graph.vertical(from.x, from.y + 1, to.y - 1);
       graph.put(to.x, to.y - 1, "▼");
@@ -123,7 +138,8 @@ export function layoutSerialCompact(
     graph.vertical(railX, to.y + 1, sourceY);
     graph.horizontal(railX, to.x, to.y + 1);
     graph.put(to.x, to.y + 1, "▲");
-    if (options.showLabels) graph.text(Math.min(from.x, width - edge.on.length), sourceY, edge.on);
+    if (options.showLabels)
+      placeHorizontalLabel(graph, railX, from.x, sourceY, edge.on);
   });
 
   for (const [id, position] of positions) graph.text(position.x, position.y, symbols.get(id)!);

@@ -132,9 +132,11 @@ test("compact topology keeps the serial dogfood Loop labelled within tablet widt
   for (const symbol of ["S", "D", "I1", "V", "R", "I2", "F1", "F2", "G", "B"])
     assert.match(compact, new RegExp(symbol, "u"));
   assert.match(compact, /reject/u);
+  assert.match(compact, /─ complete ─/u);
+  assert.match(compact, /─ reject ─/u);
   const drawing = compact.replace(/<[^>]+>/gu, "");
   assert.ok(Math.max(...drawing.split("\n").map((line) => line.length)) <= 72);
-  assert.ok(drawing.split("\n").length < 14);
+  assert.ok(drawing.split("\n").length < 20);
   assert.doesNotMatch(drawing, /┬─┬/u);
   const wide = layoutCompactLoop(run, { availableCharacters: 100, showLabels: true });
   const extraWide = layoutCompactLoop(run, { availableCharacters: 180, showLabels: true });
