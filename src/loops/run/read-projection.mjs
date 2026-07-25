@@ -9,6 +9,7 @@ import { currentRunAuthority } from "./current-authority.mjs";
 import { runStore } from "./run-store.mjs";
 import { projectRunActivity } from "../events/activity-projection.mjs";
 import { readLoopObservationRecords } from "../events/hook-observation.mjs";
+import { forecastLoopRun } from "../forecast/forecast.mjs";
 
 const MAX_RUNS = 128;
 const RECEIPT_KEYS = ["schema", "runId", "itemRef", "assignmentId", "completedAt", "title", "planDigest"];
@@ -46,7 +47,7 @@ export function presentGraph(graph, routes = []) {
   });
 }
 
-export function presentRun(replay, { optionalRecords = [] } = {}) {
+export function presentRun(replay, { optionalRecords = [], forecast = null } = {}) {
   const records = replay.journal;
   let latestResult = null;
   const transitions = [];
@@ -85,6 +86,7 @@ export function presentRun(replay, { optionalRecords = [] } = {}) {
     activity: projectRunActivity({
       runId: replay.projection.runId, graph: replay.graph, journal: records, optionalRecords,
     }),
+    forecast,
     latestResult,
     latestMaker: replay.projection.latestMaker,
     latestCheck: replay.projection.latestCheck,
@@ -153,8 +155,10 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
   const stored = runStore(repoRoot).read(selected.projection.runId);
   selected.loopIdentity = stored.loopIdentity;
   selected.agentRoutes = stored.agentRoutes;
+  const optionalRecords = readLoopObservationRecords(root, selected.projection.runId);
   return presentRun(selected, {
-    optionalRecords: readLoopObservationRecords(root, selected.projection.runId),
+    optionalRecords,
+    forecast: forecastLoopRun({ repoRoot: root, replay: selected, optionalRecords }),
   });
 }
 

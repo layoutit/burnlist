@@ -97,6 +97,10 @@ test("next and submit hide claim mechanics while advancing the Run", (t) => {
     visited.push(task.nodeId);
     assert.equal(task.schema, "burnlist-loop-host-task@1");
     assert.match(task.prompt, /Assigned item:/u);
+    assert.equal(task.forecast.schema, "burnlist-loop-forecast@1");
+    assert.equal(task.forecast.confidence, "low");
+    assert.equal(task.forecast.provenance.kind, "built-in-prior");
+    assert.equal(task.forecast.cost, null);
     assert.doesNotMatch(raw, /claimId|invocationId|assignmentId|dispatchAuthority|invocationInput/u);
     command(repo, ["submit", runId, "--outcome",
       task.mode === "review" ? "approve" : "complete"]);

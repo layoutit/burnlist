@@ -241,8 +241,11 @@ and atomic canonical CLI writes `enforced`; ordinary drift checks are
 `detected-at-boundaries`; reviewer filesystem write denial is `supervised`.
 It is not Docker or an OS sandbox. Parallelism, nested agents, metric gates,
 worktrees, background execution, Docker isolation, and
-forecasting are `unsupported`. The Checklist UI is read-only and displays
+automatic provider scheduling are `unsupported`. The Checklist UI is read-only and displays
 active, paused, error, and terminal Run states; it never controls a Run.
+Its duration, aggregate-work, and token forecasts are bounded estimates with
+explicit confidence and provenance. Missing usage or pricing remains
+unavailable rather than becoming fabricated cost.
 Branch fan-out remains one canonical `branches` node in Stage 1, so N, slice
 names, and native worker state are host evidence rather than dashboard graph
 state.

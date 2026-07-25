@@ -248,8 +248,14 @@ remain Burnlist-owned and declared by the frozen Loop authority.
 Hosts return one terminal `burnlist-loop-host-report@1` for their claim. Its
 bound agent result carries one legal node-mode `outcome` and no `destination`.
 
+Run projections and `loop next` include bounded local duration, aggregate-work,
+and token ranges keyed by role, observed provider/model, effort, and complexity
+band. The projection labels confidence and whether it used built-in priors or
+truthful completed local observations. Missing usage stays unavailable; the
+CLI does not infer subscription pricing or cost.
+
 Parallelism, nested agents, metric gates, auto-worktrees,
-background execution, Docker isolation, and forecasting are `unsupported`.
+background execution, and Docker isolation are `unsupported`.
 Do not present any of those as shipped Loop features.
 
 ## Skills and hooks are separate

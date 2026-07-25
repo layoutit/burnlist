@@ -172,8 +172,9 @@ Burnlist stores no agent profile, provider route, subscription, or login. Run
 `burnlist loop view <item-ref>`
 and paste its complete ASCII output into the work handoff; it is the frozen
 graph, pin, and completion-path record for that item. Create a Run with `loop
-create`; for each agent node, claim it, invoke a native subagent or external
-provider CLI from the host, and submit a bound report. Burnlist automatically
+create`; for each agent node, use `loop next`, invoke a native subagent or
+external provider CLI from the host with its small task, and use `loop submit`
+for the semantic result. Burnlist automatically
 advances its trusted checks and gates to the next agent or terminal node.
 Inspect with `loop status|inspect`; `pause` and `stop` are idle-Run controls,
 and proof-gated `reconcile` handles a demonstrably lost claim. Only a
@@ -190,11 +191,14 @@ or launches an agent provider. Host execution remains independent from
 Streaming Diff hooks.
 
 The Checklist UI is read-only and shows the active node, attempt, results,
-transition history, and paused, error, or terminal state. Burnlist enforces
+transition history, recent correlated hook activity, and a local forecast
+range with confidence and provenance. Forecasts are bounded private history
+learned only after accepted semantic completion; missing token facts remain
+missing and subscription pricing never becomes an invented cost. Burnlist enforces
 the graph, claim identity, trusted checks, budgets, closed outcomes, and atomic
 CLI writes. Provider permissions remain host-supervised, not an OS sandbox.
 Burnlist-native parallel scheduling, Docker isolation, metrics gates,
-forecasting, worktrees, and background execution are deliberately unsupported
+worktrees, and background execution are deliberately unsupported
 in Stage 1. The Branch host uses native or CLI subagents when available and
 falls back to the same slices sequentially. Items with no Loop assignment keep the ordinary direct
 `burnlist burn` workflow.

@@ -5,6 +5,7 @@ import { deriveCandidate } from "./candidate.mjs";
 import { validateHostExecutionEnvelope, validateHostSemanticResult } from "../contracts/host-execution.mjs";
 import { activateLoopHookContext } from "../events/hook-context.mjs";
 import { readLoopObservationRecords } from "../events/hook-observation.mjs";
+import { forecastLoopRun, recordAcceptedLoopObservation } from "../forecast/forecast.mjs";
 
 const fail = (message, code = "ELOOP_CONTROL") => { throw Object.assign(new Error(`Loop control: ${message}`), { code }); };
 const stable = (value) => `${JSON.stringify(value)}\n`;
@@ -14,9 +15,14 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
   if (!store?.read || !store?.list || !store?.acquireLease || !store?.terminalize || !store?.bindExternalClaim || !store?.readExternalClaim || !store?.abandonExternalClaim || !store?.acceptExternalReport || !store?.resolveClaimRef) fail("invalid controller input");
   const check = (runId) => { if (!isRunRef(runId)) fail("invalid RunRef"); return runId; };
   const read = (runId) => store.read(check(runId));
-  const presented = (runId) => presentRun(read(runId), {
-    optionalRecords: repoRoot ? readLoopObservationRecords(repoRoot, runId) : [],
-  });
+  const observations = (runId) => repoRoot ? readLoopObservationRecords(repoRoot, runId) : [];
+  const presented = (runId) => {
+    const replay = read(runId), optionalRecords = observations(runId);
+    return presentRun(replay, {
+      optionalRecords,
+      forecast: forecastLoopRun({ repoRoot, replay, optionalRecords }),
+    });
+  };
   const inspect = (runId) => Object.freeze(presented(runId));
   // Status is a compact public projection, never the internal fold object.
   // This keeps frozen Loop identity and journal timestamps available to CLI
@@ -61,12 +67,22 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     activateLoopHookContext(repoRoot, {
       replay: read(runId), claim: prepared.claim, envelope: envelope.value,
     });
-    return presentHostTask(prepared.envelope);
+    const replay = read(runId), optionalRecords = observations(runId);
+    return Object.freeze({
+      ...presentHostTask(prepared.envelope),
+      forecast: forecastLoopRun({ repoRoot, replay, optionalRecords }),
+    });
   }
   async function report(claimRef, bytes) {
     const runId = store.resolveClaimRef(claimRef), current = read(runId);
-    store.acceptExternalReport(runId, current.execution.lease, bytes,
+    const accepted = store.acceptExternalReport(runId, current.execution.lease, bytes,
       () => deriveCandidate({ repoRoot }));
+    try {
+      recordAcceptedLoopObservation({
+        repoRoot, replay: accepted, claimId: claimRef,
+        optionalRecords: observations(runId),
+      });
+    } catch {}
     if (typeof runnerFor !== "function") fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
     const runner = runnerFor(runId);
     if (!runner?.runToHostBoundary) fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");

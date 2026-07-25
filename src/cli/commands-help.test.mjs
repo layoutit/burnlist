@@ -232,7 +232,8 @@ test("Review Loop documentation preserves Stage 1 boundaries", () => {
   assert.match(files, /[Pp]arallelism.*unsupported/us);
   assert.match(files, /Docker isolation.*unsupported/us);
   assert.match(files, /never .*launches an? .*provider/us);
-  assert.match(files, /forecasting.*unsupported/us);
+  assert.match(files, /forecast.*confidence.*provenance/us);
+  assert.match(files, /pricing.*cost/us);
   assert.match(files, /skill.*hooks.*independent/us);
   assert.match(files, /loop-capability-example\.json/us);
   assert.match(files, /loop-provider-setup\.md/us);

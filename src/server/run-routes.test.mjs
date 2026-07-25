@@ -39,8 +39,9 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     const projection = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}`, { method: "GET" });
     assert.equal(projection.status, 200);
     const left = JSON.parse(projection.body).loopRun;
-    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "execution", "activity", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
+    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "execution", "activity", "forecast", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
     assert.equal(left.activity.hooks, "unavailable");
+    assert.equal(left.forecast, null, "terminal nodes do not advertise an agent forecast");
     assert.ok(left.activity.records.length <= 10);
     assert.equal(left.execution.mode, "unavailable");
     assert.equal(left.loopId, "review");
