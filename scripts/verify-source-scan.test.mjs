@@ -9,6 +9,7 @@ test("source leak scanning excludes local and nested checkout state", () => {
     ".burnlist/loop-capabilities.json",
     ".worktrees/feature/.git",
     ".worktrees/feature/src/private.mjs",
+    "burnlist-tests/test-001/.burnlist/loop-capabilities.json",
     "node_modules/package/index.js",
   ]) {
     assert.equal(shouldScanSourceRelativePath(path), false, path);

@@ -67,9 +67,10 @@ test("checklist detail renders the split progress surface and event card list", 
     for (const projection of snapshots) {
       const stage = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: projection } }));
       assert.match(stage, new RegExp(`ACTIVE: ${projection.currentNode.toUpperCase()}`, "u"));
-      assert.match(stage, /START/u);
-      assert.match(stage, /DECOMPO/u);
-      assert.match(stage, /FINAL-R/u);
+      assert.match(stage, /INPUT/u);
+      assert.match(stage, /IMPLEMENT/u);
+      assert.match(stage, /VALIDATE/u);
+      assert.match(stage, /REVIEW/u);
       assert.match(stage, /aria-current="step"/u);
       if (projection.currentNode === "converged") assert.match(stage, /approve/u);
       if (projection.currentNode === "completed") assert.match(stage, /COMPLETED/u);

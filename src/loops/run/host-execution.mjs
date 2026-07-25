@@ -82,7 +82,7 @@ export function presentHostTask(envelopeBytes) {
     ? `\n\nOpen review findings:\n${JSON.stringify(input.openFindings, null, 2)}`
     : "";
   const prompt = [
-    `Act as the ${input.role} for this ${input.mode} task. Your workspace authority is ${input.authority}.`,
+    `Act as the ${input.role} for this ${input.mode === "task" ? "implementation" : input.mode} task. Your workspace authority is ${input.authority}.`,
     instruction.trimEnd(),
     `Assigned item:\n${item.trimEnd()}`,
     `Candidate context:\n${context.trimEnd()}${findings}`,

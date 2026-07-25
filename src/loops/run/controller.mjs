@@ -52,7 +52,14 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     const lease = idleLease(runId);
     try {
       const prepared = prepareHostClaim({ repoRoot, replay: read(runId), authority: store.readAuthority(runId) });
-      return store.bindExternalClaim(runId, lease, prepared);
+      const bound = store.bindExternalClaim(runId, lease, prepared);
+      try {
+        const envelope = validateHostExecutionEnvelope(bound.envelope);
+        activateLoopHookContext(repoRoot, {
+          replay: read(runId), claim: bound.claim, envelope: envelope.value,
+        });
+      } catch {}
+      return bound;
     }
     catch (error) {
       // A failed preparation has not started a host. Releasing this private
@@ -63,10 +70,6 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
   }
   function next(runId) {
     const prepared = claim(runId);
-    const envelope = validateHostExecutionEnvelope(prepared.envelope);
-    activateLoopHookContext(repoRoot, {
-      replay: read(runId), claim: prepared.claim, envelope: envelope.value,
-    });
     const replay = read(runId), optionalRecords = observations(runId);
     return Object.freeze({
       ...presentHostTask(prepared.envelope),

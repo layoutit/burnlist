@@ -128,6 +128,12 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
       ? `${forecast.confidence} · ${forecast.provenance.matchingObservations} local observations`
       : `${forecast.confidence} · built-in prior`
     : "Unavailable";
+  const observedElapsed = authoritativeRun
+    ? Math.max(
+      authoritativeRun.budget.elapsedMilliseconds,
+      ...recentActivity.map((record) => Math.max(0, record.at - authoritativeRun.createdAt)),
+    )
+    : null;
   return <section className="loop-progress" aria-label="Loop progress">
     <header className="loop-progress__now">
       <span>NOW</span>
@@ -143,7 +149,7 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
     </div>
     <div className="loop-progress__signals" aria-label="Live Loop signals">
       <article><span>AGENT</span><p>{observedAgent}</p></article>
-      <article><span>ELAPSED</span><p>{duration(authoritativeRun?.budget.elapsedMilliseconds)}</p></article>
+      <article><span>ELAPSED</span><p>{duration(observedElapsed)}</p></article>
       <article><span>FORECAST</span><p>wall {durationRange(forecast?.wallTime)} · work {durationRange(forecast?.aggregateWork)}</p></article>
       <article><span>PROVENANCE</span><p>{provenance} · tokens {tokenRange(forecast?.totalTokens)}</p></article>
     </div>

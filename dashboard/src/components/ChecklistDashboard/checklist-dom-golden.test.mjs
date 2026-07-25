@@ -70,7 +70,7 @@ test("real M4 projections advance the full Checklist DOM through the frozen Loop
     });
     const selected = [
       snapshots.find((snapshot) => snapshot.currentNode === "review" && snapshot.attempt === 1 && snapshot.latestResult?.kind === "reject"),
-      snapshots.find((snapshot) => snapshot.currentNode === "decompose" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "reject"),
+      snapshots.find((snapshot) => snapshot.currentNode === "implement" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "complete"),
       snapshots.find((snapshot) => snapshot.currentNode === "review" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "approve"),
       snapshots.find((snapshot) => snapshot.currentNode === "converged" && snapshot.attempt === 1),
       snapshots.filter((snapshot) => snapshot.currentNode === "completed").at(-1),

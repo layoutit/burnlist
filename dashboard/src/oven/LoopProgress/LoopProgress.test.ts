@@ -127,6 +127,19 @@ test("shows observed agent facts, elapsed time, and forecast provenance", () => 
   assert.doesNotMatch(markup, /\$|cost estimate/u);
 });
 
+test("live hook time extends elapsed display without mutating Run budget state", () => {
+  const data = fixture("O0");
+  data.loopRun.createdAt = 1_000;
+  data.loopRun.budget.elapsedMilliseconds = 2_000;
+  data.loopRun.activity = { hooks: "available", records: [{
+    at: 91_000, origin: "host-hook", kind: "tool-finished", provider: "codex",
+    nodeId: "review", attempt: 1,
+  }] };
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
+  assert.match(markup, />ELAPSED<\/span><p>1.5 min<\/p>/u);
+  assert.equal(data.loopRun.budget.elapsedMilliseconds, 2_000);
+});
+
 test("activity viewport has a stable ten-row height", async () => {
   const css = await readFile("dashboard/src/oven/LoopProgress/LoopProgress.css", "utf8");
   assert.match(css, /\.loop-progress__activity ol \{[^}]*block-size: 150px;[^}]*overflow: hidden;/su);

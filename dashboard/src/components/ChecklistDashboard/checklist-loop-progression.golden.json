@@ -1,37 +1,37 @@
 [
   {
     "checkpoint": "review/1/reject",
-    "projectionBytes": 4926,
-    "projectionSha256": "b3f77d4de6155c04bf6383fb4236ff6ff59554948fc6c8d4f7268ce863373ca6",
-    "domBytes": 11411,
-    "domSha256": "4a9c82ddb85f33914f70d05fb9791bcf07cad1fa987f27c55edd3d1fc24405b3"
+    "projectionBytes": 3538,
+    "projectionSha256": "b36c496aad25169a88a0c84dd9ed75a7cfd6aec5d0093515f67606baf7bf8e9d",
+    "domBytes": 11233,
+    "domSha256": "672d6a50706cf2b2c5a481fa84da147ef36247d283d7e0a3c2f8c587599fc278"
   },
   {
-    "checkpoint": "decompose/2/reject",
-    "projectionBytes": 4942,
-    "projectionSha256": "ae98eb5c311d9e76eb3b4aa654a0a870444f44e1d381e75a5b92cf86bd71dd0d",
-    "domBytes": 11371,
-    "domSha256": "3cc0268cf7e1f9a709c85aba98308f9dd4488e9e4921462dd799a70bd02e21d2"
+    "checkpoint": "implement/2/complete",
+    "projectionBytes": 3807,
+    "projectionSha256": "7be746531fcad9c4af563facce1ad6731a4dce27b9770d518abd5489e9eaa401",
+    "domBytes": 11420,
+    "domSha256": "2b1859f6eca476950866f07ce8921b0f60abb3e5fa8be7135970bffe073a1d04"
   },
   {
     "checkpoint": "review/2/approve",
-    "projectionBytes": 5209,
-    "projectionSha256": "c82308d4a5c20257f6de806fbc46a8857d95ec5719a13717d5f6124461c9fabd",
-    "domBytes": 11413,
-    "domSha256": "427a07db4545b487cae3f9cb79cae75fb0148d866372880b65e62c1e046094cf"
+    "projectionBytes": 3941,
+    "projectionSha256": "52f34c71dc728e640d0750c4f2ecb51524ca53accb2efa478781a30e73c13833",
+    "domBytes": 11412,
+    "domSha256": "442d5b3285a9289e4f0db15931a2455b1855934050446838df82501edbca7a2d"
   },
   {
     "checkpoint": "converged/1/approve",
-    "projectionBytes": 5506,
-    "projectionSha256": "4446c290d2959a6d28c6f56eeee834cafb8459e61b0af18b83a32119d5eed8cb",
-    "domBytes": 11390,
-    "domSha256": "a189ee185d39cc7ea1dcac894c352c90e99e7108fd924a6538320da0b435814e"
+    "projectionBytes": 3961,
+    "projectionSha256": "4b85c361bff58ca9d57f89b91ae4fab8d589ae2742b4647f962f1df1d2a60809",
+    "domBytes": 11365,
+    "domSha256": "bc0912d4e9b5cf7f243ad1f4c5dac5d91f400b6082e0f470b2a242f205aab725"
   },
   {
     "checkpoint": "completed/1/approve",
-    "projectionBytes": 5507,
-    "projectionSha256": "d83e0cd1d8a9243647e1e04e36dd6d09627ef6a270803739005d0e898ec1474e",
-    "domBytes": 11343,
-    "domSha256": "34c70f62d314366aeb3e34d0ed9013bc5e938b4702719695b6df97e5c914c891"
+    "projectionBytes": 3963,
+    "projectionSha256": "8cd03ed5d8249b91c0f348c5b722752db7b1a54534898a29516a9337bc2043b0",
+    "domBytes": 11319,
+    "domSha256": "c0849c59f8d32fc6ffddc1775ee614e0c7fcfd9a83a2e4b779305f75f8ec1043"
   }
 ]

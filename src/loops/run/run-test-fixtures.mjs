@@ -15,8 +15,7 @@ export const d = (prefix, char) => `${prefix}:${char.repeat(64)}`;
 export const fixtureRunId = "run:01arz3ndektsv4rrffq69g5fav";
 export const fixtureItemRef = "item:260722-001#L29";
 export const m4ProgressOutcomes = [
-  "complete", "complete", "complete", "pass", "reject",
-  "complete", "complete", "pass", "approve", "complete", "pass", "approve",
+  "complete", "pass", "reject", "complete", "pass", "approve",
 ];
 let frozenPromise;
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -67,7 +66,7 @@ export async function runM4ProgressFixture({
     if (!permitted.includes(outcome)) throw new Error(`run fixture: ${outcome} is not valid for ${nodeId}`);
     return { kind: outcome, summary: outcome, outputBytes: 1 };
   };
-  const runner = createRunRunner({ store, runId, invoke, executePreparedAgent: async ({ lease, node }) => {
+  const runner = createRunRunner({ store, runId, invoke, allowTestAgentExecution: true, executePreparedAgent: async ({ lease, node }) => {
     const current = store.replay(runId), attempt = current.execution.attempt + 1;
     store.append(runId, lease, "node-started", { nodeId: node.id, attempt });
     const invocationId = `${String(attempt).padStart(2, "0")}${"0".repeat(30)}`;

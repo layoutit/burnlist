@@ -3,12 +3,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createRunRunner } from "./runner.mjs";
+import { createRunRunner as createCoreRunRunner } from "./runner.mjs";
 import { gateDecision } from "./state-machine.mjs";
 import { normalizeIr } from "../dsl/canonical.mjs";
 import { outcomesFor } from "../dsl/grammar.mjs";
 import { runStore } from "./run-store.mjs";
 import { testGraph, testRunId } from "./m2-test-fixtures.mjs";
+
+const createRunRunner = (options) => createCoreRunRunner({
+  ...options,
+  allowTestAgentExecution: true,
+});
 
 function fixture(t, graph = testGraph) { const root = mkdtempSync(join(os.tmpdir(), "m2-runner-")); t.after(() => rmSync(root, { recursive: true, force: true })); let at = 0; const store = runStore(root, { clock: () => at++ }); store.createRun({ runId: testRunId, itemRef: "item:260722-001#M2", graph }); return store; }
 function renamedGraph() { const names = { verify: "audit", review: "tests" }, graph = JSON.parse(JSON.stringify(testGraph)); graph.nodes = graph.nodes.map((node) => node.kind === "agent" ? { ...node, id: names[node.id] ?? node.id, independentFrom: node.independentFrom ? names[node.independentFrom] ?? node.independentFrom : null } : node.kind === "check" ? { ...node, id: names[node.id] ?? node.id } : node.kind === "gate" ? { ...node, requires: node.requires.map((id) => names[id] ?? id) } : node); graph.edges = graph.edges.map((edge) => ({ ...edge, from: names[edge.from] ?? edge.from, to: names[edge.to] ?? edge.to })); return normalizeIr(graph, outcomesFor); }

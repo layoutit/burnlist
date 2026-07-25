@@ -101,6 +101,7 @@ export const verificationTestFiles = [
   "src/loops/run/run-clock.test.mjs",
   "src/loops/events/projection-events.test.mjs",
   "src/loops/events/activity-projection.test.mjs",
+  "src/loops/forecast/forecast.test.mjs",
   "src/loops/run/run-journal.test.mjs",
   "src/loops/run/run-fold.test.mjs",
   "src/loops/run/state-machine.test.mjs",

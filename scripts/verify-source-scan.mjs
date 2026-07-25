@@ -6,6 +6,7 @@ const EXCLUDED_PREFIXES = [
   ".playwright-cli/",
   ".worktrees/",
   "build/",
+  "burnlist-tests/",
   "dist/",
   "node_modules/",
   "notes/burnlists/",

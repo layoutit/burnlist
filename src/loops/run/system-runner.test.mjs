@@ -16,7 +16,11 @@ test("system runner stops at host agents and never invokes a provider", async (t
   const runner = createStoredSystemRunRunner({ repoRoot: repo, store, runId: fixtureRunId,
     runCheck: async () => { throw new Error("check must not run before a host result"); } });
   const result = await runner.runToHostBoundary();
-  assert.equal(result.execution.nodeId, "start");
+  assert.equal(result.execution.nodeId, result.graph.entry);
+  assert.equal(result.execution.node.kind, "agent");
   assert.equal(result.execution.started, false);
   assert.equal(result.execution.invocation, null);
+  const foreground = await runner.run();
+  assert.equal(foreground.execution.nodeId, result.graph.entry);
+  assert.equal(foreground.execution.lease, null, "ordinary run also returns at the host boundary");
 });

@@ -73,7 +73,8 @@ function withoutCanonicalTemplateVocabulary(text) {
     .replaceAll(/driving parity/giu, "")
     .replaceAll(/visual-parity/giu, "")
     .replaceAll(/visual parity/giu, "")
-    .replaceAll(/parity progress/giu, "");
+    .replaceAll(/parity progress/giu, "")
+    .replaceAll(/renderer into parity/giu, "");
 }
 
 const leakPatterns = [

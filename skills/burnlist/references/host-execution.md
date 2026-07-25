@@ -18,6 +18,8 @@ invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
    agent or provider. The packet contains the role, read/write authority, legal
    outcomes, and prepared task context; it does not expose claim, invocation,
    assignment, dispatch-authority, or graph-edge mechanics.
+   Its optional forecast is a bounded planning range with explicit confidence
+   and provenance. It is not proof, a deadline, or a billing estimate.
 
 2. Execute the supplied prompt against the assigned repository. The worker
    needs no Burnlist skill, CLI commands, claim identity, graph knowledge, or
@@ -93,7 +95,7 @@ the transition authority.
 The host owns every provider invocation and optional best-effort telemetry.
 Burnlist owns the frozen graph, claim authority, validation, deterministic
 checks, transition selection, canonical journal, and item completion. After
-`loop report`, Burnlist automatically advances trusted checks and graph-only
+`loop submit` (or recovery `loop report`), Burnlist automatically advances trusted checks and graph-only
 nodes until the next host agent claim or a terminal state. It never launches a
 provider process.
 

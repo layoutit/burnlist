@@ -32,7 +32,8 @@ Read references only when their trigger applies:
 - `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
-- `references/host-execution.md`: generic host claim/execute/report protocol for a prepared Loop Run; read before a host executes a claimed agent node.
+- `references/host-execution.md`: generic host next/execute/submit protocol for a prepared Loop Run; read before a host executes an agent node.
+- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
 
@@ -157,99 +158,42 @@ Install only the system the task needs, or both. Read `references/installation.m
 
 ## Built-in Loops (Stage 1)
 
-Use only the execution choice assigned by the user or active Burnlist:
+Honor the choice already assigned by the user or active item:
 
-- no assignment: direct implementation and ordinary `burnlist burn`
-- `loop:builtin:review`: implement, trusted check, independent review, Burn
-- `loop:builtin:gate`: implement, trusted check, Burn
-- `loop:builtin:branch`: plan, host-orchestrated N smaller-agent slices, merge,
-  trusted check, independent review, Burn
+- no assignment: implement directly and use ordinary `burnlist burn`
+- `loop:builtin:gate`: maker, trusted repository check, Burn
+- `loop:builtin:review`: maker, trusted check, independent reviewer, Burn
+- `loop:builtin:branch`: plan, host-selected slices, merge, trusted check,
+  independent reviewer, Burn
 
-Do not substitute one built-in for another. Branch fan-out is host-owned:
-use native or CLI subagents when available, otherwise execute the declared
-slices sequentially. Burnlist does not fabricate per-branch runtime authority.
+Do not substitute a different Loop because it is more convenient. Read
+`references/host-execution.md` for the core CLI protocol; it is intentionally
+not duplicated here.
 
-Before creating a Run, inspect and explicitly trust the repository check
-capability, then assign the item. Burnlist stores no provider profile, route,
-subscription, binary, model, or login:
+The host—not Burnlist—chooses and supervises each native agent or provider CLI.
+If provider availability is unknown, read `references/loop-provider-setup.md`,
+show the safe inventory, and ask what the user wants enabled. Then read only
+the selected provider recipe. Give workers the prepared task, not this skill:
+workers need no Burnlist commands, claim identities, graph knowledge, or
+lifecycle authority.
 
-The installed skill includes `references/loop-capability-example.json`. Copy
-its `catalog` object to the repository capability catalog and its `grants`
-object to a private local grants path; the grants file can only narrow the
-catalog. These are the copyable schemas, replacing
-the absolute check command and paths with your repository's reviewed command:
+Make semantic decisions only from evidence:
 
-```json
-{"schema":"burnlist-loop-capabilities@1","capabilities":[{"id":"repo-verify","argv":["/absolute/path/to/repository-check","--verify"],"cwd":".","environment":{"inherit":["PATH"],"set":{}},"network":"deny","filesystem":{"read":["src"],"write":[]},"output":{"maxBytes":65536},"maxMilliseconds":60000}]}
-```
+- submit `complete` after the maker has implemented and checked its work
+- submit `approve` only from a fresh independent read-only review with no open blocker
+- submit `reject` with specific findings that the next maker can resolve
+- submit `escalate` when evidence cannot support approval or bounded repair
 
-```json
-{"argv":["/absolute/path/to/repository-check","--verify"],"cwd":".","environment":{"inherit":["PATH"],"set":{}},"network":"deny","filesystem":{"read":["src"],"write":[]},"output":{"maxBytes":65536},"maxMilliseconds":60000}
-```
+Never invent an outcome, choose a graph edge, run the trusted check on the
+worker's behalf, or treat hooks/forecasts as proof. Burnlist owns those checks,
+transitions, budgets, and completion.
 
-Every agent node is host-orchestrated. The host owns every provider invocation.
-Read `references/host-execution.md`
-before claiming it. If available subscriptions are unknown, read
-`references/loop-provider-setup.md`, show the user the safe inventory, and ask
-which ready providers to use or help set up. Then read the selected provider
-recipe. The host may use native subagents or the Codex, AGY, Grok, or another
-CLI, but it—not Burnlist—launches and supervises them. Never invent a
-transition or execute a managed check.
+For Branch, choose genuinely separable slices and use independent workers when
+available; otherwise execute the same slices sequentially. Keep integration
+with one owner. Burnlist records the canonical branch node, while slice names
+and native worker state remain host evidence.
 
-```sh
-burnlist loop capability inspect repo-verify
-burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants <json-file>
-burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:<review|gate|branch>
-```
-
-Run `burnlist loop setup status` before `loop create`. Paste the complete
-`burnlist loop view item:<burnlist-id>#<item-id>` ASCII output into the task
-handoff or review request: it records the frozen graph, retries, completion
-path, and pins. For each agent node use `loop claim`, invoke the selected
-provider through the host, and submit `loop report`. The successful fast path
-is `loop report <ClaimRef> --outcome complete` for a task or `--outcome approve`
-for an independent review; detailed findings and telemetry use `--result`.
-Claims are provider-neutral: if a provider hits quota before changing the
-workspace and its process has exited, retry the same claim with another ready
-provider. Do not write provider wrappers into the candidate repository.
-Reporting automatically
-advances Burnlist-owned checks and gates to the next agent or terminal node.
-When the user wants to watch a Loop, assign every intended item first and
-verify each with `loop view`; announce the dashboard as Loop-ready only after
-the item projections expose those assignments. Repository registration alone
-is not a Loop-visibility milestone.
-Inspect with `loop status|inspect`, control idle Runs with `loop pause|stop`,
-use proof-gated `loop reconcile` only for a demonstrably lost host claim, and
-apply a converged Run through idempotent `loop complete`.
-`loop list` lists created Runs, not assignments; an empty result after
-assignment is expected. Assignment truth is `loop view item:<id>#<item>`.
-
-The canonical Checklist Oven keeps a centered KPI row above the side-by-side
-Progress ledger and Completion trend. Its unified Items list contains current,
-pending, and completed work; inspecting another `#<item-id>` changes only the
-adjacent Item detail. That detail shows the selected active item's contract,
-Loop preview or live Run, labelled return paths, and graph-derived node legend,
-or a completed item's recorded timestamp and outcome. Direct items show no
-Loop graph. Ovens may compose Burnlist's core box-drawing renderer declaratively with
-`<loop-graph source="/raw/loopRun"/>`, or with
-`<loop-graph source="@item/loopRun"/>` inside a collection. The widget never
-fetches, executes, or imports custom code; core transport refreshes it after
-item-keyed Loop invalidation events.
-
-Stage 1 labels fresh reviewer process, graph grammar, budgets, closed outcomes,
-and atomic canonical CLI writes `enforced`; ordinary drift checks are
-`detected-at-boundaries`; reviewer filesystem write denial is `supervised`.
-It is not Docker or an OS sandbox. Parallelism, nested agents, metric gates,
-worktrees, background execution, Docker isolation, and
-automatic provider scheduling are `unsupported`. The Checklist UI is read-only and displays
-active, paused, error, and terminal Run states; it never controls a Run.
-Its duration, aggregate-work, and token forecasts are bounded estimates with
-explicit confidence and provenance. Missing usage or pricing remains
-unavailable rather than becoming fabricated cost.
-Branch fan-out remains one canonical `branches` node in Stage 1, so N, slice
-names, and native worker state are host evidence rather than dashboard graph
-state.
-
-`burnlist install` registers this skill, while `burnlist hooks install` adds
-native observability hooks for Streaming Diff and active Loop activity. These
-integrations are independent and do not configure or start a Review Loop.
+If a provider fails before changing the workspace and its process has
+definitely exited, retry the same provider-neutral task with another ready
+provider. If cleanup or candidate state is uncertain, stop and use the
+recovery guidance instead of submitting a made-up result.

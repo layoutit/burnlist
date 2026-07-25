@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 10876,
-    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
+    "domBytes": 11319,
+    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
   }
 ]

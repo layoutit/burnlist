@@ -69,7 +69,7 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     const transitions = left.transitions.map(({ from, outcome, to }) => ({ from, outcome, to }));
     assert.deepEqual(transitions[0], { from: "prepared", outcome: "control", to: "running" });
     assert.equal(transitions.some((entry) => entry.from === "review" && entry.outcome === "reject"), true);
-    assert.equal(transitions.some((entry) => entry.from === "final-review" && entry.outcome === "approve" && entry.to === "converged"), true);
+    assert.equal(transitions.some((entry) => entry.from === "review" && entry.outcome === "approve" && entry.to === "converged"), true);
     assert.deepEqual(transitions.at(-1), { from: "converged", outcome: "pass", to: "completed" });
     const serialized = JSON.stringify(left);
     assert.equal(left.graph.nodes.find((node) => node.id === "implement").authority, "write");

@@ -6,7 +6,7 @@ import test from "node:test";
 import { assignLoopItem } from "../assignment/assignment.mjs";
 import { resolveLoopAuthority } from "../assignment/resolver.mjs";
 import { compileLoopPackage } from "./compile.mjs";
-import { createRunRunner } from "../run/runner.mjs";
+import { createRunRunner as createCoreRunRunner } from "../run/runner.mjs";
 import { runStore } from "../run/run-store.mjs";
 import { renderResolvedLoopView } from "../view/render.mjs";
 
@@ -15,6 +15,10 @@ const runId = "run:01arz3ndektsv4rrffq69g5fav";
 const terminals = `<gate id="converged" kind="convergence" requires="final-validate,final-review"/><terminal id="completed" state="converged"/><terminal id="needs-human" state="needs-human"/><terminal id="failed" state="failed"/><terminal id="stopped" state="stopped"/><terminal id="exhausted" state="budget-exhausted"/><failure-policy error="failed" timeout="failed" cancelled="stopped" lost="needs-human" exhausted="exhausted"/>`;
 const finish = `<edge from="integrate" on="complete" to="final-validate"/><edge from="final-validate" on="pass" to="final-review"/><edge from="final-validate" on="fail" to="integrate" max-visits="3"/><edge from="final-review" on="approve" to="converged"/><edge from="final-review" on="reject" to="integrate" max-visits="3"/><edge from="final-review" on="escalate" to="needs-human"/><edge from="converged" on="pass" to="completed"/><edge from="converged" on="fail" to="needs-human"/>`;
 const sharedEnd = `<agent id="integrate" mode="task" execution="host" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="integrate"/><check id="final-validate" capability="repo-verify"/><agent id="final-review" mode="review" execution="host" intelligence="critical" role="reviewer" route="review.strong" authority="read" independent-from="integrate" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="final-review"/>`;
+const createRunRunner = (options) => createCoreRunRunner({
+  ...options,
+  allowTestAgentExecution: true,
+});
 
 function strategyPackage(name) {
   if (name === "whole-first") {

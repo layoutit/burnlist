@@ -11,9 +11,13 @@ function boundedSummary(value) {
   while (end > 0 && (bytes[end] & 0xc0) === 0x80) end -= 1;
   return bytes.subarray(0, end).toString("utf8");
 }
-export function createRunRunner({ store, runId, invoke, bindCandidate = null, executePreparedAgent = null }) {
+export function createRunRunner({
+  store, runId, invoke, bindCandidate = null, executePreparedAgent = null,
+  allowTestAgentExecution = false,
+}) {
   if (!store?.replay || !store?.append || !store?.acquireLease || !store?.terminalize || typeof invoke !== "function") fail("invalid runner input");
   if (executePreparedAgent !== null && typeof executePreparedAgent !== "function") fail("invalid prepared agent executor");
+  if (typeof allowTestAgentExecution !== "boolean") fail("invalid test agent execution flag");
   let lease = null, pauseRequested = false, stopRequested = false, cancelRequested = false, cancelWake = null;
   const read = () => store.replay(runId), append = (type, payload) => store.append(runId, lease, type, payload);
   function transition(to, cause) { const execution = read().execution; return append("state-changed", { from: execution.state, to, cause }); }
@@ -33,7 +37,8 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null, ex
         if (completed?.released) lease = null;
         return { kind: "prepared-agent" };
       }
-      if (node.kind === "agent" && node.execution === "host") return { kind: "awaiting-host" };
+      if (node.kind === "agent" && node.execution === "host" && !allowTestAgentExecution)
+        return { kind: "awaiting-host" };
       return append("node-started", { nodeId: node.id, attempt: execution.attempt + 1 });
     }
     if (node.kind === "terminal") return transition(node.state, "graph");
@@ -88,7 +93,13 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null, ex
   }
   async function run() { for (;;) {
     if (stopRequested) return stop();
-    await step();
+    const result = await step();
+    if (result?.kind === "awaiting-host") {
+      const current = read();
+      if (lease && current.execution.lease) store.releaseLease(runId, lease);
+      lease = null;
+      return read();
+    }
     // A second SIGINT upgrades a pending pause to stop while the invocation
     // settles.  Check it before the pause branch so terminal control wins.
     if (stopRequested) return stop();
