@@ -1,6 +1,7 @@
 import type { GlyphNode, GlyphScreen } from "../../src/glyph/glyph-compile.mjs";
 import { CatalogOvenDetail, CatalogOvenRuntime } from "./catalog-view";
 import { BrandHeader, DetailSummary } from "./detail-view";
+import { DetailItemList } from "./detail-item-list";
 import { ItemDetail } from "./item-view";
 import { BurnlistList, LandingSectionHeading, OvenList } from "./landing-view";
 import { genericOvens } from "./oven-fit";
@@ -34,6 +35,7 @@ export interface ScreenRuntimeProps {
   ovenLenses: OvenSummary[];
   ovenData: OvenDataSnapshot | null;
   selectedItem: DetailItem | null;
+  items: DetailItem[];
   itemIndex: number;
   itemDetailScroll?: number;
   domainIndex: number;
@@ -58,11 +60,12 @@ function DetailSplit({ node, props, width, height, chrome }: {
 }) {
   const palette = useTerminalPalette();
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
-  const summary = node.children.find((child) => child.kind === "detail-summary");
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
   const contentHeight = Math.max(1, height - 3);
   const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
   const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: collapsed ? width : summaryWidth, height: Math.max(1, sidebarHeight - 5) } } }) : null;
+  const checklist = props.activeOven?.id === "checklist";
+  const listHeight = Math.max(3, sidebarHeight - 6);
   return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : summaryWidth}
@@ -74,18 +77,20 @@ function DetailSplit({ node, props, width, height, chrome }: {
       borderColor={chrome.line}
       flexDirection="column"
     >
-      <box height={5}>
+      <box height={6}>
         <DetailSummary
           burnlist={props.selectedBurnlist}
           progress={props.progress}
-          fireWidth={Number(summary?.attributes.fireWidth ?? 12)}
-          fireHeight={Number(summary?.attributes.fireHeight ?? 7)}
-          fps={Number(summary?.attributes.fps ?? 12)}
           compact
           width={collapsed ? width : summaryWidth}
         />
       </box>
-      {runtime ? <TerminalOvenViewport
+      {checklist ? <DetailItemList
+        items={props.items}
+        selected={props.itemIndex}
+        width={collapsed ? width : summaryWidth}
+        height={listHeight}
+      /> : runtime ? <TerminalOvenViewport
         result={runtime}
         footer="q:back"
       /> : <box padding={2} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", Math.max(1, width - 6)).trimEnd()}</text></box>}

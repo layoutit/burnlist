@@ -82,7 +82,7 @@ function parsed(source: string) {
 function props(overrides: Partial<ScreenRuntimeProps> = {}): ScreenRuntimeProps {
   return {
     screen: parsed(homeSource), landing, progress: null, selectedBurnlist: null, activeOven: null,
-    ovenDetail: null, ovenLenses: [], ovenData: null, selectedItem: null, itemIndex: 0, domainIndex: 0,
+    ovenDetail: null, ovenLenses: [], ovenData: null, items: [], selectedItem: null, itemIndex: 0, domainIndex: 0,
     focusId: "burnlists", selections: { burnlists: 0, ovens: 0 }, streamStatus: "live", ...overrides,
   };
 }
@@ -147,15 +147,18 @@ describe("dashboard-shaped .glyph runtime", () => {
     const items = detailItems(ovens[0]!, progress, null);
     const { frame, root } = await renderFrame(120, 36, props({
       screen: parsed(burnlistSource), progress, selectedBurnlist: checklistBurnlist,
-      activeOven: ovens[0]!, ovenLenses: [ovens[0]!], itemIndex: 1, selectedItem: items[1]!,
+      activeOven: ovens[0]!, ovenLenses: [ovens[0]!], items, itemIndex: 1, selectedItem: items[1]!,
       ovenRuntime: checklistRuntime(progress),
     }));
-    expect(frame).toContain("Current");
     expect(frame).toContain("Build shell");
     expect(frame).toContain("Render the fire");
     expect(frame).toContain("LATEST");
     expect(frame).toContain("50%");
-    expect(frame).toMatch(/[.:;+=xX#%@]/u);
+    expect(frame).toContain("STATE");
+    expect(frame).toContain("2 / 3");
+    const selectedLine = frame.split("\n").find((line) => line.includes("▎DONE") && line.includes("Render the fire"));
+    expect(selectedLine).toBeDefined();
+    expect(selectedLine!.indexOf("Render the fire")).toBeLessThan(selectedLine!.indexOf("│"));
     root.unmount();
   });
 
@@ -191,12 +194,13 @@ describe("dashboard-shaped .glyph runtime", () => {
         selectedBurnlist: checklistBurnlist,
         activeOven: ovens[0]!,
         ovenLenses: [ovens[0]!],
+        items: detailItems(ovens[0]!, longProgress, null),
         itemIndex: 19,
         selectedItem: detailItems(ovens[0]!, longProgress, null)[19]!,
         ovenRuntime: checklistRuntime(longProgress),
       }));
       const lines = frame.split("\n");
-      const selectedRow = lines.findIndex((line) => line.includes("task-19"));
+      const selectedRow = lines.findIndex((line) => line.includes("▎ACTIVE") && line.includes("task-19") && line.indexOf("task-19") < line.indexOf("│"));
       const footerRow = lines.findIndex((line) => line.includes("↑/↓:inspect"));
       expect(selectedRow).toBeGreaterThan(-1);
       expect(selectedRow).toBeLessThan(footerRow);
@@ -210,7 +214,7 @@ describe("dashboard-shaped .glyph runtime", () => {
       ...checklistBurnlist,
       repo: "a-project-name-that-is-far-too-long-for-the-sidebar",
       id: "a-burnlist-identifier-that-cannot-fit",
-      title: "A deliberately enormous Burnlist title that must never run into the animated fire",
+      title: "A deliberately enormous Burnlist title that must never run into adjacent content",
       ovenName: "An exceptionally verbose Oven display name",
     };
     const longOven = {
@@ -227,7 +231,7 @@ describe("dashboard-shaped .glyph runtime", () => {
         ovenLenses: [longOven, { ...ovens[1]!, name: "Another Oven lens with a very long name" }],
       }));
       const lines = frame.split("\n");
-      expect(lines[0]).toContain("…");
+      expect(Array.from(lines[0] ?? "").length).toBeLessThanOrEqual(width);
       expect(lines.filter((line) => line.includes("deliberately enormous")).length).toBeLessThanOrEqual(2);
       expect(lines.filter((line) => line.includes("exceptionally verbose")).length).toBeLessThanOrEqual(3);
       expect(lines.at(-2)).toContain("↑/↓:inspect");

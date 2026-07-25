@@ -1,5 +1,4 @@
 import { BrandMark } from "./brand-mark";
-import { GlyphFire } from "./glyph-fire";
 import { compactTime, fitText, progressLabel } from "./theme";
 import { useTerminalLoadingGlyph } from "./loading-cadence";
 import { useTerminalPalette } from "./terminal-accessibility";
@@ -37,12 +36,9 @@ function progressBar(percent: number | null, width: number): string {
   return `${"━".repeat(done)}${"─".repeat(width - done)}`;
 }
 
-export function DetailSummary({ burnlist, progress, fireWidth, fireHeight, fps, compact, width }: {
+export function DetailSummary({ burnlist, progress, compact, width }: {
   burnlist: BurnlistSummary | null;
   progress: ProgressSnapshot | null;
-  fireWidth: number;
-  fireHeight: number;
-  fps: number;
   compact: boolean;
   width: number;
 }) {
@@ -54,11 +50,8 @@ export function DetailSummary({ burnlist, progress, fireWidth, fireHeight, fps, 
   const goal = progress?.goal?.sections.find((section) => section.title.toLowerCase() === "goal")?.body
     ?? progress?.goal?.sections[0]?.body
     ?? "";
-  const showFire = !compact || width >= 44;
-  const actualFireWidth = showFire ? compact ? Math.min(9, fireWidth) : fireWidth : 0;
-  const actualFireHeight = compact ? Math.min(5, fireHeight) : fireHeight;
-  const textWidth = compact ? Math.max(8, width - actualFireWidth - (showFire ? 4 : 2)) : width - 4;
-  return <box flexDirection={compact ? "row" : "column"} paddingLeft={compact ? 2 : 2} paddingRight={compact ? 1 : 2} gap={showFire ? 1 : 0} overflow="hidden">
+  const textWidth = Math.max(8, width - 4);
+  return <box flexDirection="column" paddingLeft={2} paddingRight={2} overflow="hidden">
     <box width={compact ? textWidth : undefined} flexGrow={compact ? 0 : 1} flexShrink={0} minWidth={0} flexDirection="column" overflow="hidden">
       <text fg={palette.dim}>{fitText(`${burnlist.repo}  /  ${burnlist.id}`, textWidth).trimEnd()}</text>
       <text fg={palette.foreground}>{fitText(burnlist.title, textWidth).trimEnd()}</text>
@@ -68,8 +61,5 @@ export function DetailSummary({ burnlist, progress, fireWidth, fireHeight, fps, 
       {!compact && goal ? <text fg={palette.muted}>{fitText(goal, 34).trimEnd()}</text> : null}
       {!compact ? <text fg={palette.dim}>{`Updated ${compactTime(burnlist.updatedAt)}`}</text> : null}
     </box>
-    {showFire ? <box width={actualFireWidth} height={actualFireHeight} flexShrink={0} alignItems="center" justifyContent="center" overflow="hidden">
-      <GlyphFire width={actualFireWidth} height={actualFireHeight} fps={fps} />
-    </box> : null}
   </box>;
 }

@@ -429,6 +429,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     ovenDetail={ovenDetail}
     ovenLenses={lenses}
     ovenData={ovenData}
+    items={items}
     selectedItem={selectedItem}
     itemIndex={safeItemIndex}
     itemDetailScroll={itemDetailScroll}
