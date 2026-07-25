@@ -2,6 +2,9 @@ import type { CellGrid } from "glyphcss";
 import { paletteFor, type TerminalPalette } from "../terminal-accessibility";
 import { terminalLoadingGlyph } from "../loading-cadence";
 import { progressGlyphFrame } from "../oven-runtime/components/progress-glyph";
+import { terminalKpiFrame } from "../oven-runtime/components/kpi-frame";
+import { terminalFieldListFrame } from "../oven-runtime/components/field-list-frame";
+import { terminalMetricTilesFrame } from "../oven-runtime/components/metric-tiles-frame";
 import { imageGlyphFrame } from "../image-glyph-grid";
 import { type NormalizedTerminalSeries, type TerminalChartPoint } from "../terminal-series-chart-model";
 // @ts-expect-error Shared pure chart authority is JavaScript by design.
@@ -16,7 +19,7 @@ import {
   type CellCanvas,
   type PairPalette,
 } from "./component-cell-canvas";
-import { fieldCardPairLayout, topCardPairLayout } from "./component-pair-layout";
+import { topCardPairLayout } from "./component-pair-layout";
 import { componentMediaImages, componentMediaPixelsForSource, type ComponentMediaImage } from "./component-media-fixture";
 import {
   PAIR_RUN_LOG_COLUMNS,
@@ -205,18 +208,19 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
   if (id === "field-list-cards") {
     const chartMode = text(value(args, "chartMode", "delta")).toLowerCase();
     const fields = list<Record<string, unknown>>(args.fields, fixture.fieldListCards.fields as unknown as readonly Record<string, unknown>[]);
-    const layout = fieldCardPairLayout(canvas.width);
-    fields.slice(0, 2).forEach((field, index) => {
-      const top = layout.starts[index]!;
+    pasteCellGrid(canvas, terminalFieldListFrame(fields.map((field) => {
       const failures = numeric(field.failures ?? field.failedSampleCount);
-      const delta = numeric(field.delta ?? field.maxDelta);
-      const model = seriesModel(field.samples, chartMode);
-      const status = text(field.status, failures ? "failed" : "pass").toUpperCase();
-      writeCanvasText(canvas, layout.metadataX, top, text(field.label, "Field"), palette.foreground, layout.metadataWidth - 2);
-      writeCanvasText(canvas, layout.metadataX, top + 1, `${status} · ${failures} fail${layout.narrow ? ` · Δ ${delta}` : ""}`, failures ? palette.red : palette.green, layout.metadataWidth - 2);
-      if (!layout.narrow) writeCanvasText(canvas, layout.metadataX, top + 2, `max Δ ${delta}`, palette.muted, layout.metadataWidth - 2);
-      renderPairSeriesChart(canvas, model, layout.chartX, top + layout.chartOffsetY, layout.chartWidth, layout.chartHeight, palette);
-    });
+      return {
+        id: text(field.id),
+        label: text(field.label, "Field"),
+        failed: text(field.status, failures ? "failed" : "pass") !== "pass",
+        blocked: bool(field.blocked),
+        failures,
+        missing: numeric(field.missingSampleCount),
+        delta: numeric(field.delta ?? field.maxDelta),
+        samples: list(field.samples, []),
+      };
+    }), { width: canvas.width, height: canvas.height, mode: chartMode, palette }), 0, 0);
   } else if (id === "top-card" || id === "line-chart") {
     const source = id === "top-card" ? fixture.topCard : fixture.lineChart;
     const samples = chartSamples(args.points ?? args.chart, source === fixture.topCard ? fixture.topCard.chart : fixture.lineChart.points);
@@ -227,11 +231,11 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
       const layout = topCardPairLayout(canvas.width, canvas.height);
       renderPairHeader(canvas, title, published, palette);
       renderPairKpiStrip(canvas, [
-        { heading: "Scenario", value: "135b7578" },
-        { heading: "Progress", value: "3 · 2 (67%)", tone: "good" },
-        { heading: "Results", value: "1 · 0 · 0 · 0" },
-        { heading: "Fields", value: "2 · 1 (50%)", tone: "bad" },
-        { heading: "Frames", value: "6 · 1 (17%)", tone: "bad" },
+        { heading: "SCENARIO", value: "135b7578" },
+        { heading: "PROGRESS", value: "3 · 2 (67%)", tone: "good" },
+        { heading: "RESULTS", value: "1 · 0 · 0 · 0" },
+        { heading: "FIELDS", value: "2 · 1 (50%)", tone: "bad" },
+        { heading: "FRAMES", value: "6 · 1 (17%)", tone: "bad" },
       ], 1, 1, canvas.width - 2, palette);
       fillCanvasRow(canvas, layout.dividerY, 0, canvas.width, "─", palette.dim);
       const columns = PAIR_RUN_LOG_COLUMNS;
@@ -252,9 +256,16 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
     }
   } else if (id === "kpi-item" || id === "progress-donut") {
     const percent = numeric(value(args, "percent", id === "kpi-item" ? fixture.kpiItem.percent : fixture.progressDonut.percent));
-    write(canvas, 0, value(args, "heading", id === "kpi-item" ? fixture.kpiItem.heading : "Progress"), palette.foreground);
+    if (id === "kpi-item") {
+      const metric = progressGlyphFrame("progress-donut", percent, 4, palette as TerminalPalette, 2);
+      pasteCellGrid(canvas, terminalKpiFrame({
+        items: [{ heading: text(value(args, "heading", fixture.kpiItem.heading)), value: text(value(args, "label", fixture.kpiItem.value)), frame: metric }],
+      }, canvas.width, canvas.height, palette), 0, 0);
+      return;
+    }
+    write(canvas, 0, value(args, "heading", "Progress"), palette.foreground);
     const frame = progressGlyphFrame("progress-donut", percent, 4, palette as TerminalPalette, 2);
-    renderMetric(canvas, frame, 1, 1, text(value(args, "label", id === "kpi-item" ? fixture.kpiItem.value : `${Math.round(percent)}% complete`)), palette);
+    renderMetric(canvas, frame, 1, 1, text(value(args, "label", `${Math.round(percent)}% complete`)), palette);
   } else if (id === "waffle-metric") {
     const metric = value(args, "metric", fixture.waffleMetric.metric);
     const frame = progressGlyphFrame("waffle-metric", metric, 5, palette as TerminalPalette, 4);
@@ -271,24 +282,19 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
       ["Changed", `${(numeric(value(args, "ratio", fixture.metricTiles.ratio)) * 100).toFixed(2)}%`],
       ["Mean RGB", numeric(value(args, "meanAbsoluteDelta", fixture.metricTiles.meanAbsoluteDelta)).toFixed(3)],
       ["Max delta", text(value(args, "maximumAbsoluteDelta", fixture.metricTiles.maximumAbsoluteDelta))],
-    ];
-    values.forEach(([heading, metric], index) => {
-      const x = 1 + index * Math.floor((canvas.width - 2) / values.length);
-      writeCanvasText(canvas, x, 1, heading, palette.muted, 15);
-      writeCanvasText(canvas, x, 3, metric, palette.foreground, 15);
-    });
+    ] as const;
+    pasteCellGrid(canvas, terminalMetricTilesFrame(values, canvas.width, canvas.height, palette), 0, 0);
   } else if (id === "kpi-strip") {
-    write(canvas, 0, value(args, "title", fixture.kpiStrip.title), palette.muted);
     const percent = numeric(value(args, "percent", fixture.progressDonut.percent));
-    const cellWidth = Math.max(12, Math.floor((canvas.width - 2) / 3));
-    [["Progress", "progress-donut"], ["Results", "burn-donut"], ["Fields", "waffle-metric"]].forEach(([heading, kind], index) => {
-      const x = 1 + index * cellWidth;
-      writeCanvasText(canvas, x, 1, heading, palette.foreground, cellWidth - 1);
+    const items = [["Progress", "progress-donut"], ["Results", "burn-donut"], ["Fields", "waffle-metric"]].map(([heading, kind], index) => {
       const raw = kind === "progress-donut" ? percent : kind === "burn-donut" ? value(args, "entries", fixture.burnDonut.entries) : value(args, "metric", fixture.waffleMetric.metric);
       const frame = progressGlyphFrame(kind as "progress-donut" | "burn-donut" | "waffle-metric", raw, kind === "waffle-metric" ? 5 : 4, palette as TerminalPalette, kind === "progress-donut" ? 2 : kind === "waffle-metric" ? 4 : 1);
-      pasteCellGrid(canvas, frame, x, 2);
-      writeCanvasText(canvas, x + frame.cols + 1, 2, fixture.kpiStrip.items[index]!.value, palette.muted, Math.max(1, cellWidth - frame.cols - 2));
+      return { heading, value: fixture.kpiStrip.items[index]!.value, frame };
     });
+    pasteCellGrid(canvas, terminalKpiFrame({
+      title: text(value(args, "title", fixture.kpiStrip.title)),
+      items,
+    }, canvas.width, canvas.height, palette), 0, 0);
   } else if (id === "visual-parity-media") {
     const images = mediaImages(args);
     write(canvas, 0, `${text(value(args, "label", fixture.visualParityMedia.label))} · Frame ${numeric(value(args, "frame", fixture.visualParityMedia.frame))}`, palette.foreground);

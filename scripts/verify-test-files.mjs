@@ -3,6 +3,7 @@ export const verificationTestFiles = [
   "scripts/audit-terminal-oven-parity.test.mjs",
   "scripts/terminal-component-coverage.test.mjs",
   "scripts/oven-component-inventory.test.mjs",
+  "scripts/terminal-production-ownership.test.mjs",
   "scripts/live-terminal-pairing.test.mjs",
   "scripts/terminal-pair-layout.test.mjs",
   "dashboard/src/layout/layout-library.test.mjs",

@@ -1,9 +1,11 @@
 import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette, type TerminalPalette } from "../../terminal-accessibility";
 import { useTerminalChrome } from "../../terminal-chrome";
+import "../../glyph-surface";
 import type { ListColumn, ListRow } from "../../catalog/list-fixture";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding, resolveOvenPointer } from "../value-runtime";
+import { canvasCellGrid, createCellCanvas, renderPairTable, writeCanvasText, type PairTableColumn } from "./paired-cell";
 
 export type TerminalListModel = Readonly<{
   columns: readonly ListColumn[];
@@ -14,6 +16,33 @@ export type TerminalListModel = Readonly<{
   height: number;
   emptyText?: string;
 }>;
+
+/** Pure table frame shared by production log roots and catalog previews. */
+export function terminalTableFrame(model: TerminalListModel, palette: TerminalPalette, title?: string) {
+  const canvas = createCellCanvas(model.width, model.height);
+  const columns: PairTableColumn[] = model.columns.map((column) => ({
+    id: column.id,
+    label: column.label,
+    minWidth: column.width ?? column.minWidth ?? 6,
+    grow: column.width ? 1 : 2,
+  }));
+  renderPairTable(
+    canvas,
+    columns,
+    model.rows.map((row) => ({
+      cells: row.cells,
+      tone: row.tone === "good" ? "good" : row.tone === "bad" || row.tone === "warn" ? "bad" : "neutral",
+    })),
+    0,
+    0,
+    model.width,
+    model.height,
+    palette,
+    title,
+  );
+  if (!model.rows.length && model.emptyText) writeCanvasText(canvas, 0, title ? 3 : 2, model.emptyText, palette.dim, model.width);
+  return canvasCellGrid(canvas);
+}
 
 const toneFor = (row: ListRow, palette: TerminalPalette) => row.tone === "bad" ? palette.red : row.tone === "warn" ? palette.amber : row.tone === "good" ? palette.green : palette.muted;
 
@@ -110,5 +139,7 @@ export function logTableModel(node: TerminalNode, payload: JsonValue | undefined
 
 /** Generic compiled `log-table` projection; columns and rows come only from the IR/payload. */
 export function TerminalLogTable({ node, payload, width, height = 8 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
-  return <TerminalList model={logTableModel(node, payload, width, height)} />;
+  const palette = useTerminalPalette();
+  const frame = terminalTableFrame(logTableModel(node, payload, width, height), palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }

@@ -1,7 +1,11 @@
 import { fitText } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
+import "../../glyph-surface";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
+import { terminalKpiFrame } from "./kpi-frame";
+import { terminalTableFrame, type TerminalListModel } from "./list-components";
+import { progressGlyphFrame } from "./progress-glyph";
 
 const record = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, JsonValue> : {};
 const rows = (value: unknown) => Array.isArray(value) ? value : [];
@@ -12,13 +16,32 @@ const completed = (data: Record<string, JsonValue>) => rows(data.completed);
 export function TerminalChecklistLedger({ node, payload, width, height = 5 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
   const data = raw(node, payload), all = completed(data), entries = all.slice(-Math.max(1, height - 1)).reverse(), total = Math.max(1, Number(data.total) || all.length);
-  return <box width={width} height={height} flexDirection="column" overflow="hidden"><text fg={palette.dim}>{fitText("AGE  EVENT  RESULT  DONE", width)}</text>{entries.length ? entries.map((entry, index) => { const item = record(entry), age = Math.max(0, Math.round((Date.parse(text(data.generatedAt)) - Date.parse(text(item.completedAt))) / 60000)), ordinal = all.length - index; return <text key={`${text(item.id)}-${index}`} fg={palette.green}>{fitText(`${age}m ${text(item.id)} Done ${Math.round(ordinal / total * 100)}%`, width)}</text>; }) : <text fg={palette.dim}>No completed events</text>}</box>;
+  const model: TerminalListModel = {
+    width,
+    height,
+    columns: [
+      { id: "age", label: "AGE", minWidth: 5 },
+      { id: "event", label: "EVENT", minWidth: 8 },
+      { id: "result", label: "RESULT", minWidth: 7 },
+      { id: "done", label: "DONE", minWidth: 5 },
+    ],
+    rows: entries.map((entry, index) => {
+      const item = record(entry), age = Math.max(0, Math.round((Date.parse(text(data.generatedAt)) - Date.parse(text(item.completedAt))) / 60000)), ordinal = all.length - index;
+      return { id: `${text(item.id)}-${index}`, cells: { age: `${age}m`, event: text(item.id), result: "Done", done: `${Math.round(ordinal / total * 100)}%` }, tone: "good" };
+    }),
+    emptyText: "No completed events",
+  };
+  const frame = terminalTableFrame(model, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 export function TerminalChecklistBurnPanel({ node, payload, width, height = 3 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
   const data = raw(node, payload), total = Number(data.total) || 0, done = Number(data.done) || 0, percent = Number(data.percent) || 0;
-  return <box width={width} height={height} flexDirection="column" overflow="hidden"><text>{fitText(`Completion ${done}/${total} (${percent}%)`, width)}</text><text fg={palette.green}>{fitText(`${"●".repeat(Math.round(Math.max(0, Math.min(100, percent)) / 100 * Math.max(1, width - 4)))} ${percent}%`, width)}</text></box>;
+  const frame = terminalKpiFrame({
+    items: [{ heading: "Completion", value: `${done}/${total} (${percent}%)`, frame: progressGlyphFrame("progress-donut", percent, 4, palette, 2), tone: "good" }],
+  }, width, height, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 export function TerminalChecklistEventCards({ node, payload, width, height = 5, expanded = false }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean }) {

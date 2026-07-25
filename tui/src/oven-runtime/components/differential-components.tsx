@@ -1,9 +1,14 @@
 import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import { TerminalLineChart, type TerminalChartPoint } from "../../terminal-line-chart";
+import "../../glyph-surface";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
-import { burnDonutCounts, waffleMetricText } from "./progress-components";
+import { terminalFieldListFrame, type TerminalFieldCard } from "./field-list-frame";
+import { terminalKpiFrame } from "./kpi-frame";
+import { terminalTableFrame, type TerminalListModel } from "./list-components";
+import { progressGlyphFrame } from "./progress-glyph";
+import { burnDonutCounts } from "./progress-components";
 
 type RecordValue = Record<string, JsonValue>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
@@ -20,18 +25,18 @@ export function differentialKpiModel(payload?: JsonValue) {
   return { selected, scenarioCount: scenarios.length, total, done, percent: total ? Math.round(done / total * 100) : 0, logs, counts, fields, frames };
 }
 
-export function TerminalDifferentialKpiStrip({ payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+export function TerminalDifferentialKpiStrip({ payload, width, height = width < 56 ? 6 : 3 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
-  const model = differentialKpiModel(payload), compact = width < 56, title = text(record(payload).title);
+  const model = differentialKpiModel(payload), title = text(record(payload).title);
   const items = [
-    `◎ Scenario ${model.selected}${model.scenarioCount > 1 ? ` (${model.scenarioCount})` : ""}`,
-    `◒ Progress ${model.done}/${model.total} ${model.percent}%`,
-    `◉ Results +${model.counts.improved} -${model.counts.worsened} ·${model.counts.unchanged} !${model.counts.reverted}`,
-    `▦ Fields ${waffleMetricText(model.fields, compact ? 7 : 10)}`,
-    `▤ Frames ${waffleMetricText(model.frames, compact ? 7 : 10)}`,
+    { heading: "◎ Scenario", value: `${model.selected}${model.scenarioCount > 1 ? ` (${model.scenarioCount})` : ""}` },
+    { heading: "Progress", value: `${model.done}/${model.total} ${model.percent}%`, frame: progressGlyphFrame("progress-donut", model.percent, 4, palette, 2), tone: "good" as const },
+    { heading: "Results", value: `+${model.counts.improved} -${model.counts.worsened} ·${model.counts.unchanged} !${model.counts.reverted}`, frame: progressGlyphFrame("burn-donut", model.logs, 4, palette, 1) },
+    { heading: "Fields", value: `${number(model.fields.passed)}/${number(model.fields.total)}`, frame: progressGlyphFrame("waffle-metric", model.fields, 5, palette, 4), tone: number(model.fields.failed) ? "bad" as const : "good" as const },
+    { heading: "Frames", value: `${number(model.frames.passed)}/${number(model.frames.total)}`, frame: progressGlyphFrame("waffle-metric", model.frames, 5, palette, 4), tone: number(model.frames.failed) ? "bad" as const : "good" as const },
   ];
-  if (compact) return <box width={width} height={6} flexDirection="column" overflow="hidden"><text fg={palette.foreground}>{fitText(title, width)}</text>{items.map((item) => <text key={item} fg={palette.muted}>{fitText(item, width)}</text>)}</box>;
-  return <box width={width} height={3} flexDirection="column" overflow="hidden"><text fg={palette.foreground}>{fitText(title, width)}</text><box flexDirection="row" width={width} overflow="hidden">{items.map((item) => <box key={item} width={Math.max(8, Math.floor(width / items.length))} overflow="hidden"><text fg={palette.muted}>{fitText(item, Math.max(8, Math.floor(width / items.length)))}</text></box>)}</box></box>;
+  const frame = terminalKpiFrame({ title, items }, width, height, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 export function TerminalDifferentialChart({ node, payload, width, height = 2 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
@@ -53,8 +58,35 @@ export function TerminalDifferentialChart({ node, payload, width, height = 2 }: 
 
 export function TerminalDifferentialLogTable({ node, payload, width, height = 8 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
-  const allEntries = list(source(node, payload)), entries = visibleWindow([...allEntries], Math.max(0, allEntries.length - Math.max(1, height - 1)), Math.max(1, height - 1)).items;
-  return <box width={width} height={height} flexDirection="column" overflow="hidden"><text fg={palette.dim}>{fitText("AGE  FRAME RESULT  DELTA DONE", width)}</text>{entries.length ? entries.map((entry, index) => { const row = record(entry), delta = number(row.frameDelta), frames = number(row.frames), frame = number(row.frame), marker = delta > 0 ? "▲" : delta < 0 ? "▼" : "·"; return <text key={`${text(row.timestamp)}-${index}`} fg={delta < 0 ? palette.red : delta > 0 ? palette.green : palette.muted}>{fitText(`${text(row.timestamp)} ${frame}/${frames} ${marker} ${typeof row.frameDelta === "number" ? Math.abs(delta) : "—"} ${frames ? `${Math.round(frame / frames * 100)}%` : "—"}`, width)}</text>; }) : <text fg={palette.dim}>{fitText("No log entries.", width)}</text>}</box>;
+  const allEntries = list(source(node, payload));
+  const entries = visibleWindow([...allEntries], Math.max(0, allEntries.length - Math.max(1, height - 2)), Math.max(1, height - 2)).items;
+  const model: TerminalListModel = {
+    width,
+    height,
+    columns: [
+      { id: "age", label: "AGE", minWidth: 5 },
+      { id: "frame", label: "FRAME", minWidth: 6 },
+      { id: "result", label: "RESULT", minWidth: 7 },
+      { id: "delta", label: "DELTA", minWidth: 6 },
+      { id: "done", label: "DONE", minWidth: 5 },
+    ],
+    rows: entries.map((entry, index) => {
+      const row = record(entry), delta = number(row.frameDelta), frames = number(row.frames), frame = number(row.frame);
+      return {
+        id: `${text(row.timestamp)}-${index}`,
+        cells: {
+          age: text(row.timestamp),
+          frame: `${frame}/${frames}`,
+          result: delta > 0 ? "improved" : delta < 0 ? "worsened" : "same",
+          delta: typeof row.frameDelta === "number" ? `${delta >= 0 ? "+" : ""}${delta}` : "—",
+          done: frames ? `${Math.round(frame / frames * 100)}%` : "—",
+        },
+        tone: delta < 0 ? "bad" as const : delta > 0 ? "good" as const : undefined,
+      };
+    }),
+  };
+  const frame = terminalTableFrame(model, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 /** Field rows deliberately keep unavailable telemetry explicit instead of inventing a chart. */
@@ -62,9 +94,26 @@ export function TerminalHybridFieldList({ node, payload, width, height = 8, expa
   const palette = useTerminalPalette();
   const sourceFields = list(resolveOvenPointer(payload, "/fields")), allFields = pageSize ? sourceFields.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize) : sourceFields, telemetry = record(resolveOvenPointer(payload, "/telemetry"));
   const availability = typeof telemetry.status === "string" ? String(telemetry.status) : "absent";
-  if (!allFields.length) return <box width={width} height={height} overflow="hidden"><text fg={palette.dim}>{fitText(availability === "comparable" ? "No changed fields in this telemetry." : "No fields match the current view.", width)}</text></box>;
+  if (!allFields.length) {
+    return <box width={width} height={height} overflow="hidden"><text fg={palette.dim}>{fitText(availability === "comparable" ? "No changed fields in this telemetry." : "No fields match the current view.", width)}</text></box>;
+  }
   const chosen = selectedId || text(record(allFields.find((value) => { const sample = list(record(value).samples).at(-1); return Array.isArray(sample) && typeof sample[1] === "number" && typeof sample[2] === "number"; }) ?? allFields[0]).id);
   const selectedIndex = Math.max(0, allFields.findIndex((value) => text(record(value).id) === chosen));
-  const fields = visibleWindow([...allFields], selectedIndex, Math.max(1, height)).items;
-  return <box width={width} height={height} flexDirection="column" overflow="hidden">{fields.map((value) => { const field = record(value), id = text(field.id), failed = number(field.failedSampleCount) > 0, missing = number(field.missingSampleCount) > 0, blocked = text(field.trustStatus) === "blocked", selected = id === chosen, sample = list(field.samples).at(-1), limit = Array.isArray(sample) ? sample[1] : null, actual = Array.isArray(sample) ? sample[2] : null, unit = text(field.unit) === "—" ? "" : text(field.unit), measure = typeof actual === "number" && typeof limit === "number" ? `actual ${actual}${unit} / limit ${limit}${unit}` : "", detail = selected && width < 56 && unit === "ms" && measure; const state = missing || blocked ? "blocked" : failed ? "failed" : "pass"; const line = `${selected ? "›" : " "} ${text(field.label)} · ${state} ${number(field.failedSampleCount)}/${number(field.missingSampleCount)}${detail ? "" : measure ? ` · ${measure}` : ""}`; return <box key={id} height={selected && (expanded || detail) ? 2 : 1} flexDirection="column" overflow="hidden"><text fg={missing || blocked ? palette.amber : failed ? palette.red : palette.green}>{fitText(line, width)}</text>{selected && (expanded || detail) ? <text fg={palette.dim}>{fitText(detail ? `↳ ${measure}` : `↳ ${text(record(field.semantics).meaning)} · telemetry ${availability}`, width)}</text> : null}</box>; })}</box>;
+  const fields = visibleWindow([...allFields], selectedIndex, height <= 6 ? 3 : 2).items.map((value): TerminalFieldCard => {
+    const field = record(value), sample = list(field.samples).at(-1), limit = Array.isArray(sample) ? sample[1] : null, actual = Array.isArray(sample) ? sample[2] : null;
+    const unit = text(field.unit) === "—" ? "" : text(field.unit);
+    return {
+      id: text(field.id),
+      label: text(field.label),
+      failed: number(field.failedSampleCount) > 0,
+      blocked: number(field.missingSampleCount) > 0 || text(field.trustStatus) === "blocked",
+      failures: number(field.failedSampleCount),
+      missing: number(field.missingSampleCount),
+      delta: number(field.maxDelta),
+      samples: list(field.samples),
+      detail: typeof actual === "number" && typeof limit === "number" ? `telemetry ${availability} · actual ${actual}${unit} / limit ${limit}${unit}` : `${text(record(field.semantics).meaning)} · telemetry ${availability}`,
+    };
+  });
+  const frame = terminalFieldListFrame(fields, { width, height, mode: "delta", selectedId: chosen, expanded, palette });
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }

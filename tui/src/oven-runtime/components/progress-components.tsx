@@ -3,9 +3,9 @@ import type { CellGrid } from "glyphcss";
 import "../../glyph-surface";
 // @ts-expect-error Shared pure metric authority is JavaScript by design.
 import { allocateBurnCells, burnDonutCounts as sharedBurnCounts, clampProgressPercent, waffleMetricData as sharedWaffleData } from "../../../../src/ovens/oven-progress-metrics.mjs";
-import { fitLayoutText } from "../layout/layout-runtime";
 import type { JsonValue, TerminalBinding, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding } from "../value-runtime";
+import { terminalKpiFrame } from "./kpi-frame";
 import { progressGlyphFrame, type ProgressGlyphKind } from "./progress-glyph";
 import { useTerminalPalette, type TerminalPalette } from "../../terminal-accessibility";
 
@@ -118,39 +118,32 @@ export function kpiStripModel(node: TerminalNode, payload: JsonValue | undefined
 }
 export const kpiStripFromNodes = (nodes: readonly TerminalNode[], payload: JsonValue | undefined, width: number) => nodes.filter((node) => node.kind === "kpi-item").map((node) => kpiFromNode(node, payload, Math.max(8, Math.floor(width / Math.max(1, nodes.length)))));
 
-function KpiCell({ item, width }: { item: TerminalKpi; width: number }) {
+function frameItem(item: TerminalKpi) {
   const variants = { current: "›", scenario: "◎", burns: "◉", fields: "▦", frames: "▤" } as Record<string, string>;
   const prefix = item.icon ? `${iconText(item.icon)} ` : item.variant ? `${variants[item.variant] ?? "◆"} ` : "";
   const frameHasLabel = item.visualFrame?.char.some((char) => /[0-9]/u.test(char));
   const visualLabel = item.visualFrame ? frameHasLabel ? undefined : item.visual?.trim().split(/\s+/u).at(-1) : item.visual;
-  const footer = item.value || item.title || visualLabel;
-  if (item.visualFrame) {
-    const textWidth = Math.max(1, width - item.visualFrame.cols - 1);
-    return <box width={width} height={Math.max(2, item.visualFrame.rows)} flexDirection="row" overflow="hidden">
-      <glyphSurface frame={item.visualFrame} width={item.visualFrame.cols} height={item.visualFrame.rows} />
-      <box width={textWidth} height={2} flexDirection="column" overflow="hidden">
-        <text>{fitLayoutText(`${prefix}${item.heading}`, textWidth)}</text>
-        {footer ? <text>{fitLayoutText(footer, textWidth)}</text> : null}
-      </box>
-    </box>;
-  }
-  return <box width={width} height={3} overflow="hidden"><text>{fitLayoutText(`${prefix}${item.heading}`, width)}</text>{item.visual ? <text>{fitLayoutText(item.visual, width)}</text> : null}{footer ? <text>{fitLayoutText(footer, width)}</text> : null}</box>;
+  return {
+    heading: `${prefix}${item.heading}`,
+    value: item.value || item.title || visualLabel || "",
+    frame: item.visualFrame,
+  };
 }
 
-export function TerminalKpiItem({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+export function TerminalKpiItem({ node, payload, width, height = 4 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
-  return <KpiCell item={kpiFromNode(node, payload, width, palette)} width={width} />;
+  const frame = terminalKpiFrame({ items: [frameItem(kpiFromNode(node, payload, width, palette))] }, width, height, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 /** Generic OpenTUI projection of a compiled kpi-strip; no Oven identity branches. */
-export function TerminalKpiStrip({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
+export function TerminalKpiStrip({ node, payload, width, height = 6 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
-  const model = kpiStripModel(node, payload, width, palette), narrow = width < model.items.length * 18, metadata = model.title ?? model.ariaLabel;
-  if (!model.items.length) return <text>{fitLayoutText(metadata || "No metrics", width)}</text>;
-  const cellWidth = narrow ? width : Math.max(8, Math.floor(width / model.items.length));
-  return <box flexDirection="column" width={width} overflow="hidden">{metadata ? <text>{fitLayoutText(metadata, width)}</text> : null}<box flexDirection={narrow ? "column" : "row"} width={width} overflow="hidden">{model.items.map((item, index) => <KpiCell key={`${item.heading}-${index}`} item={item} width={cellWidth} />)}</box></box>;
+  const model = kpiStripModel(node, payload, width, palette);
+  const frame = terminalKpiFrame({ title: model.title ?? model.ariaLabel, items: model.items.map(frameItem) }, width, height, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 export function ProgressComponentText({ node, payload, width = 24 }: { node: TerminalNode; payload?: JsonValue; width?: number }): ReactNode {
-  return <text>{fitLayoutText(componentText(node, payload, width), width)}</text>;
+  return <text>{componentText(node, payload, width)}</text>;
 }

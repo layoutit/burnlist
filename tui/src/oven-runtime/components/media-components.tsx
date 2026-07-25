@@ -2,8 +2,10 @@ import { GlyphImage } from "../../glyph-image";
 import { decodePngDataUri } from "../../png-glyph";
 import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
+import "../../glyph-surface";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding, resolveOvenPointer } from "../value-runtime";
+import { terminalMetricTilesFrame } from "./metric-tiles-frame";
 
 type RecordValue = Readonly<Record<string, JsonValue>>;
 type Image = Readonly<{ label: string; src: string | null }>;
@@ -81,8 +83,8 @@ export function TerminalVerdictHeader({ node, payload, width }: { node: Terminal
 
 export function TerminalMetricTiles({ model, width }: { model: MediaModel; width: number }) {
   const palette = useTerminalPalette();
-  const compact = model.metrics.map(([label, metric]) => `${label} ${metric}`).join(" · ");
-  return <box width={width} height={width < 48 ? 4 : 2} flexDirection="column" overflow="hidden">{width < 48 ? model.metrics.map(([label, metric]) => <text key={label}>{fitText(`${label}: ${metric}`, width)}</text>) : <text>{fitText(compact, width)}</text>}</box>;
+  const frame = terminalMetricTilesFrame(model.metrics, width, width < 48 ? 4 : 2, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
 function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; width: number; height: number }) {
@@ -94,7 +96,7 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
   </box>;
   const imageWidth = Math.max(4, Math.floor((width - 4) / 3));
   const imageHeight = Math.max(1, Math.min(7, height - 3));
-  return <box width={width} height={height} flexDirection="column" overflow="hidden" border={height > 3 ? ["top"] : undefined} borderColor={palette.dim}>
+  return <box width={width} height={height} flexDirection="column" overflow="hidden">
     <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
     <box height={1} flexDirection="row">{frame.images.map((image) => <text key={image.label} width={imageWidth}>{fitText(image.label, imageWidth)}</text>)}</box>
     <box height={imageHeight} flexDirection="row">{frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)}</box>
@@ -102,9 +104,8 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
 }
 
 export function TerminalFrameCards({ model, width, height, selectedIndex = 0 }: { model: MediaModel; width: number; height: number; selectedIndex?: number }) {
-  const rows = Math.max(1, Math.floor((height - 1) / 3));
-  const window = visibleWindow([...model.frames], selectedIndex, rows);
-  const frameHeight = Math.max(3, Math.floor((height - 1) / Math.max(1, window.items.length)));
+  const window = visibleWindow([...model.frames], selectedIndex, 1);
+  const frameHeight = Math.max(3, height - 1);
   return <box width={width} height={height} flexDirection="column" overflow="hidden"><text>{fitText(`Frame ${Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1))) + 1}/${model.frames.length}`, width)}</text>{window.items.map((item, index) => <Frame key={`${item.frame}-${item.label}`} frame={{ ...item, label: window.start + index === selectedIndex ? `${item.label} · selected` : item.label }} width={width} height={frameHeight} />)}</box>;
 }
 
