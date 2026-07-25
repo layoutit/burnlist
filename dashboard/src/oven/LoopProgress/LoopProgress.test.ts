@@ -35,77 +35,95 @@ function fixture(selectedItemId: string) {
       hostTask: "claimed",
       budget: { limits: { maxRounds: 1, maxMinutes: 1, maxAgentRuns: 1, maxCheckRuns: 1, maxTransitions: 1, maxOutputBytes: 1 },
         counters: { rounds: 0, agentRuns: 0, checkRuns: 0, transitions: 0, outputBytes: 0 },
-        elapsedMilliseconds: 1, journal: { maximum: 1, used: 0, remaining: 1 } },
+        elapsedMilliseconds: 0, journal: { maximum: 1, used: 0, remaining: 1 } },
       latestResult: null, graph, transitions: [],
     },
   } as any;
 }
 
-test("shows low-text canonical context and never fabricates hook activity", () => {
-  const markup = renderToStaticMarkup(createElement(LoopProgress, { data: fixture("O0") }));
-  for (const label of ["NOW", "WHY", "SYSTEM", "FILES", "HOOKS"]) assert.match(markup, new RegExp(`>${label}<`, "u"));
-  for (const label of ["LOOP", "SYSTEM FLOW"]) assert.match(markup, new RegExp(`>${label} `, "u"));
-  assert.match(markup, />O0 · Review</u);
-  assert.match(markup, />Observer</u);
-  assert.match(markup, /Makes truthful progress easy to see/u);
-  assert.doesNotMatch(markup, /Show the work simply/u);
-  assert.match(markup, /Unavailable/u);
-  assert.doesNotMatch(markup, /recently touched|observed file/u);
-});
-
-test("selection changes declared context without changing the authoritative Run node", () => {
+test("pending assigned work answers what is happening and hides every empty telemetry section", () => {
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data: fixture("H3") }));
-  assert.match(markup, />O0 · Review</u);
-  assert.match(markup, />CONTEXT</u);
   assert.match(markup, />H3 · Accept reports</u);
-  assert.match(markup, /src\/loops\/run\//u);
-  assert.match(markup, /Keeps each step controlled and verifiable/u);
-  assert.doesNotMatch(markup, /Bind results safely/u);
-  assert.match(markup, /Run remains authoritative for another item/u);
-  assert.match(markup, /Loop for H3/u);
-  assert.match(markup, /<li class=" is-running"><span><strong>Validate \+ review<\/strong>/u);
-  assert.match(markup, /<li class=""><span><strong>Agent \+ workspace<\/strong>/u);
-  assert.match(markup, /class="is-active"/u);
+  assert.match(markup, />PENDING</u);
+  assert.match(markup, /No agent is working on this item yet\. Its Review Loop is assigned and ready to start\./u);
+  assert.match(markup, />ASSIGNED LOOP <small>Review Loop</u);
+  assert.match(markup, /aria-label="Assigned Loop for H3"/u);
+  for (const clutter of ["RIGHT NOW", "More details", "AGENT", "TIME", "TOKENS", "ACTIVITY", "PROVENANCE", "SYSTEM FLOW", "Declared files"]) {
+    assert.doesNotMatch(markup, new RegExp(clutter, "u"));
+  }
+  assert.doesNotMatch(markup, /O0 · Review|Run remains authoritative/u);
 });
 
-test("technical host-report actions become simple subsystem WHY text", () => {
-  const data = fixture("H3");
-  data.active[1].fields.Action = "Validate an external report against its durable claim, rederive candidate identity, append the result exactly once, and select a declared edge.";
+test("pending direct work stays equally small and plain", () => {
+  const data = fixture("O0");
+  data.loopRun = null;
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  assert.match(markup, /Keeps each step controlled and verifiable/u);
-  assert.doesNotMatch(markup, /durable claim|candidate identity|declared edge/u);
+  assert.match(markup, /No agent is working on this item yet\. It is waiting to be started as direct work\./u);
+  assert.match(markup, />ASSIGNED LOOP <small>Direct work</u);
+  assert.match(markup, /This item uses direct work; no Loop is assigned\./u);
+  assert.doesNotMatch(markup, /More details|Unavailable|observational|forecast/u);
 });
 
-test("renders only bounded provenance-labelled sanitized activity", () => {
+test("active work reveals only populated decision-useful facts", () => {
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data: fixture("O0") }));
+  assert.match(markup, />ACTIVE</u);
+  assert.match(markup, /Work is active at Review\. No recent activity is available\./u);
+  assert.match(markup, />RIGHT NOW</u);
+  assert.match(markup, />Current step <small>canonical<\/small><\/dt><dd>Review</u);
+  assert.match(markup, />Proof <small>canonical<\/small><\/dt><dd>review waiting</u);
+  assert.match(markup, />More details</u);
+  assert.match(markup, />Run <small>canonical<\/small><\/dt><dd>run-1 · running · claim claimed</u);
+  assert.doesNotMatch(markup, />Agent <small>|>Latest activity <small>|>Tokens <small>|>Estimate <small>|>Retries <small>/u);
+});
+
+test("waiting work explains the next human action without inventing an active agent", () => {
+  const data = fixture("O0");
+  data.loopRun.hostTask = "awaiting-claim";
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
+  assert.match(markup, />WAITING</u);
+  assert.match(markup, /Review is ready and waiting for an agent to claim it\./u);
+  assert.match(markup, />Current step <small>canonical/u);
+  assert.doesNotMatch(markup, />Agent <small>|recent activity<\/em>/u);
+});
+
+test("blocked work puts the canonical blocker before all secondary detail", () => {
+  const data = fixture("O0");
+  data.loopRun.diagnostic = "stale";
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
+  assert.match(markup, />BLOCKED</u);
+  assert.match(markup, /Work is blocked: Canonical Run projection is unavailable\./u);
+  assert.match(markup, />Needs attention <small>canonical<\/small><\/dt><dd>Canonical Run projection is unavailable\./u);
+  assert.match(markup, />More details</u);
+  assert.doesNotMatch(markup, />Agent <small>|>Latest activity <small>|Unavailable/u);
+});
+
+test("bounded activity and observed agent facts appear only when present", () => {
   const data = fixture("O0");
   data.loopRun.activity = { hooks: "available", records: Array.from({ length: 12 }, (_, index) => ({
     at: index, origin: index % 2 ? "host-hook" : "agent-reported", kind: index % 2 ? "subagent-started" : "tool-finished",
-    nodeId: "review", attempt: 1, provider: index % 2 ? "claude" : "codex", subagentId: index % 2 ? `child-${index}` : undefined,
-    tool: index % 2 ? undefined : "node-test", observedPath: index % 2 ? `src/subagents/${index}.mjs` : "src/loops/run/binder.mjs", truncated: index === 11,
+    nodeId: "review", attempt: 1, provider: index % 2 ? "claude" : "codex", model: index === 11 ? "model-x" : undefined,
+    effort: index === 11 ? "medium" : undefined, subagentId: index % 2 ? `child-${index}` : undefined,
+    tool: index % 2 ? undefined : "node-test", observedPath: index % 2 ? `src/subagents/${index}.mjs` : "src/loops/run/binder.mjs",
+    truncated: index === 11,
   })) };
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  assert.match(markup, />ACTIVITY </u);
-  assert.match(markup, />HOOKS<\/span><p>available</u);
-  assert.match(markup, /host-hook/u);
-  assert.match(markup, /subagent child-11/u);
-  assert.match(markup, /agent-reported/u);
-  assert.match(markup, /node-test/u);
-  assert.match(markup, /truncated/u);
-  assert.match(markup, />10 recent</u);
-  assert.match(markup, />CODE CHANGES</u);
+  assert.match(markup, />Agent <small>observed<\/small><\/dt><dd>claude · model-x · effort medium</u);
+  assert.match(markup, />Latest activity <small>observed/u);
+  assert.match(markup, /Recent observed activity/u);
+  assert.match(markup, />Changed paths <small>observed/u);
   assert.match(markup, /src\/loops\/run\/binder\.mjs/u);
-  assert.doesNotMatch(markup, /FILES<\/span>.*src\/loops\/run\/binder\.mjs/u);
+  assert.equal((markup.match(/subagent child-/gu) ?? []).length + (markup.match(/node-test/gu) ?? []).length, 11);
   assert.equal((markup.match(/class="loop-progress__activity"/gu) ?? []).length, 1);
-  assert.equal((markup.match(/subagent child-/gu) ?? []).length + (markup.match(/node-test/gu) ?? []).length, 10);
 });
 
-test("shows observed agent facts, elapsed time, and forecast provenance", () => {
+test("timing, reported tokens, and forecasts remain labelled secondary facts", () => {
   const data = fixture("O0");
   data.loopRun.activity = { hooks: "available", records: [{
-    at: 1, origin: "host-hook", kind: "agent-started", provider: "codex",
-    nodeId: "review", attempt: 1, model: "gpt-test", effort: "medium",
+    at: 91_000, origin: "host-hook", kind: "agent-started", provider: "codex",
+    nodeId: "review", attempt: 1, model: "gpt-test", effort: "medium", inputTokens: 1_200, outputTokens: 300,
   }] };
-  data.loopRun.budget.elapsedMilliseconds = 125_000;
+  data.loopRun.createdAt = 1_000;
+  data.loopRun.budget.elapsedMilliseconds = 2_000;
   data.loopRun.forecast = {
     schema: "burnlist-loop-forecast@1",
     key: { role: "reviewer", provider: "codex", model: "gpt-test", effort: "medium", complexityBand: "high" },
@@ -118,38 +136,15 @@ test("shows observed agent facts, elapsed time, and forecast provenance", () => 
     costProvenance: "unavailable",
   };
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  for (const label of ["STATE", "AGENT", "NODE / BRANCH", "ACTIVITY", "TIME", "TOKENS", "CHECK / GATE / REVIEW", "BLOCKER / RETRIES", "PROVENANCE"]) {
-    assert.match(markup, new RegExp(`>${label}<`, "u"));
-  }
-  assert.match(markup, /codex · gpt-test · effort medium/u);
-  assert.match(markup, /elapsed 2.1 min · forecast 1 min–3 min/u);
-  assert.match(markup, /forecast 2,000–9,000/u);
-  assert.match(markup, /Forecast: medium · 5 local observations/u);
+  assert.match(markup, />Elapsed <small>observed<\/small><\/dt><dd>1\.5 min</u);
+  assert.match(markup, />Tokens <small>reported<\/small><\/dt><dd>1,500 reported</u);
+  assert.match(markup, />Estimate <small>forecast<\/small><\/dt><dd>1 min–3 min · 2,000–9,000 tokens · medium · 5 local observations</u);
+  assert.match(markup, /Status, current step, proof, blocker, and retries come from the canonical Burnlist Run/u);
   assert.doesNotMatch(markup, /\$|cost estimate/u);
-});
-
-test("live hook time extends elapsed display without mutating Run budget state", () => {
-  const data = fixture("O0");
-  data.loopRun.createdAt = 1_000;
-  data.loopRun.budget.elapsedMilliseconds = 2_000;
-  data.loopRun.activity = { hooks: "available", records: [{
-    at: 91_000, origin: "host-hook", kind: "tool-finished", provider: "codex",
-    nodeId: "review", attempt: 1,
-  }] };
-  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  assert.match(markup, />TIME<\/span><p>elapsed 1.5 min · forecast Unavailable<\/p>/u);
   assert.equal(data.loopRun.budget.elapsedMilliseconds, 2_000);
 });
 
-test("a stale canonical projection is blocked, never merely waiting", () => {
-  const data = fixture("O0");
-  data.loopRun.diagnostic = "stale";
-  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  assert.match(markup, /Run · running · BLOCKED/u);
-  assert.match(markup, />BLOCKED</u);
-});
-
-test("activity viewport has a stable ten-row height", async () => {
+test("activity viewport retains its bounded ten-row height inside details", async () => {
   const css = await readFile("dashboard/src/oven/LoopProgress/LoopProgress.css", "utf8");
   assert.match(css, /\.loop-progress__activity ol \{[^}]*block-size: 150px;[^}]*overflow: hidden;/su);
   assert.match(css, /\.loop-progress__activity li \{[^}]*min-height: 15px;[^}]*line-height: 15px;/su);

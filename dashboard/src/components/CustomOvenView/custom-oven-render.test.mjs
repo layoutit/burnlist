@@ -85,15 +85,13 @@ test("custom Oven runtime modes use canonical live snapshots and controlled Burn
     assert.equal(pageRuntime.props.ir.refreshSeconds, undefined);
     const pageMarkup = renderToStaticMarkup(page);
     assert.match(pageMarkup, /Seed the Loop Progress Oven/u);
-    assert.match(pageMarkup, /Makes truthful progress easy to see/u);
-    assert.match(pageMarkup, /SYSTEM FLOW/u);
-    assert.match(pageMarkup, /Plan/u);
-    assert.match(pageMarkup, /Loop control/u);
-    assert.match(pageMarkup, /Agent \+ workspace/u);
-    assert.match(pageMarkup, /Validate \+ review/u);
-    assert.match(pageMarkup, /ovens\/ dashboard\/src\/oven\//u);
-    assert.match(pageMarkup, /HOOKS/u);
-    assert.match(pageMarkup, /Unavailable/u);
+    assert.match(pageMarkup, /No agent is working on this item yet/u);
+    assert.match(pageMarkup, /ASSIGNED LOOP/u);
+    assert.match(pageMarkup, /Direct work/u);
+    assert.doesNotMatch(pageMarkup, /RIGHT NOW/u);
+    assert.doesNotMatch(pageMarkup, /More details/u);
+    assert.doesNotMatch(pageMarkup, /ovens\/ dashboard\/src\/oven\//u);
+    assert.doesNotMatch(pageMarkup, /HOOKS|Unavailable/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
   }

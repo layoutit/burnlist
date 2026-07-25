@@ -1,36 +1,10 @@
 import type { ChecklistItem, ChecklistProgressData, LoopRunProjection } from "@lib";
+import { effectiveItemWork } from "@lib/checklist-adapter";
 import { LoopCompact } from "@/components/LoopGraph";
 import "./LoopProgress.css";
 
-const architecture = [
-  { id: "plan", label: "Plan", detail: "item contract", hint: ["notes/burnlists", "plan-model"], why: "Keeps the work clear and ordered." },
-  { id: "loops", label: "Loop control", detail: "claim · route", hint: ["src/loops", ".burnlist/loops", "LoopGraph", "src/cli/loop"], why: "Keeps each step controlled and verifiable." },
-  { id: "work", label: "Agent + workspace", detail: "make the change", hint: ["adapters", "workspace", "provider"], why: "Gives the work a bounded place to happen." },
-  { id: "proof", label: "Validate + review", detail: "prove · decide", hint: ["validate", "review", "test", "capabilities"], why: "Checks the result before it can move forward." },
-  { id: "burn", label: "Burn", detail: "complete item", hint: ["completion", "lifecycle"], why: "Finishes work only after its proof is complete." },
-  { id: "observe", label: "Observer", detail: "Oven · events", hint: ["ovens/", "src/ovens", "src/server", "dashboard/src/oven", "src/events", "hooks", "streaming-diff"], why: "Makes truthful progress easy to see." },
-] as const;
-
 function selectedItem(data: ChecklistProgressData) {
   return data.active.find((item) => item.id === data.selectedItemId) ?? data.active[0] ?? null;
-}
-
-function subsystem(item: ChecklistItem | null) {
-  const surface = `${item?.fields["Files/search"] ?? ""} ${item?.title ?? ""}`.toLowerCase();
-  let best = architecture[0];
-  let score = 0;
-  for (const candidate of architecture) {
-    const matches = candidate.hint.filter((hint) => surface.includes(hint.toLowerCase())).length;
-    if (matches > score) {
-      best = candidate;
-      score = matches;
-    }
-  }
-  return best;
-}
-
-function plainWhy(item: ChecklistItem | null, system: (typeof architecture)[number]) {
-  return item ? system.why : "No active work remains.";
 }
 
 function preview(item: ChecklistItem): LoopRunProjection | null {
@@ -60,25 +34,18 @@ function preview(item: ChecklistItem): LoopRunProjection | null {
   };
 }
 
-function displayNode(run: LoopRunProjection | null | undefined) {
-  if (!run) return "Direct work";
+function loopLabel(item: ChecklistItem | null, run: LoopRunProjection | null = null) {
+  const selector = run?.loopId ?? item?.loop?.selector;
+  if (!selector) return "Direct work";
+  if (selector.endsWith(":review")) return "Review Loop";
+  if (selector.endsWith(":gate")) return "Gate Loop";
+  if (selector.endsWith(":branch")) return "Branch Loop";
+  return selector;
+}
+
+function displayNode(run: LoopRunProjection) {
   const node = run.graph.nodes.find((candidate) => candidate.id === run.currentNode);
   return node?.role ?? node?.capability ?? run.currentNode;
-}
-
-function runItemId(run: LoopRunProjection) {
-  const marker = run.itemRef.lastIndexOf("#");
-  return marker >= 0 ? run.itemRef.slice(marker + 1) : run.itemRef;
-}
-
-function runSubsystem(run: LoopRunProjection | null) {
-  if (!run) return null;
-  const node = run.graph.nodes.find((candidate) => candidate.id === run.currentNode);
-  const meaning = `${run.currentNode} ${node?.role ?? ""} ${node?.capability ?? ""}`;
-  if (node?.kind === "check" || node?.kind === "gate" || /review|verify|validate/u.test(meaning)) return "proof";
-  if (node?.kind === "agent") return "work";
-  if (node?.kind === "terminal" || /converg|complete|burn/u.test(run.currentNode)) return "burn";
-  return "loops";
 }
 
 function activityText(record: NonNullable<LoopRunProjection["activity"]>["records"][number]) {
@@ -95,12 +62,12 @@ function duration(milliseconds: number | null | undefined) {
   return `${Math.round(milliseconds / 6_000) / 10} min`;
 }
 
-function durationRange(range: { low: number; high: number } | null | undefined) {
-  return range ? `${duration(range.low)}–${duration(range.high)}` : "Unavailable";
+function durationRange(range: { low: number; high: number }) {
+  return `${duration(range.low)}–${duration(range.high)}`;
 }
 
-function tokenRange(range: { low: number; high: number } | null | undefined) {
-  return range ? `${range.low.toLocaleString("en-US")}–${range.high.toLocaleString("en-US")}` : "Unavailable";
+function tokenRange(range: { low: number; high: number }) {
+  return `${range.low.toLocaleString("en-US")}–${range.high.toLocaleString("en-US")}`;
 }
 
 function observedTokens(run: LoopRunProjection | null, records: NonNullable<LoopRunProjection["activity"]>["records"]) {
@@ -110,136 +77,144 @@ function observedTokens(run: LoopRunProjection | null, records: NonNullable<Loop
     || record.outputTokens !== null && record.outputTokens !== undefined);
   const input = telemetry?.inputTokens ?? observed?.inputTokens ?? null;
   const output = telemetry?.outputTokens ?? observed?.outputTokens ?? null;
-  if (input === null && output === null) return "Unavailable";
+  if (input === null && output === null) return null;
   return `${((input ?? 0) + (output ?? 0)).toLocaleString("en-US")} reported`;
 }
 
 function proofSignals(run: LoopRunProjection | null) {
-  if (!run) return "Unavailable";
+  if (!run) return null;
   const labels = run.transitions.flatMap((transition) => {
     const node = run.graph.nodes.find((candidate) => candidate.id === transition.from);
     if (node?.kind === "check") return [`check ${transition.outcome}`];
     if (node?.kind === "gate") return [`gate ${transition.outcome}`];
-    if (node?.kind === "agent" && /review/u.test(node.role ?? node.id)) return [`review ${transition.outcome}`];
+    if (node?.kind === "agent" && /review/iu.test(node.role ?? node.id)) return [`review ${transition.outcome}`];
     return [];
   });
   const active = run.graph.nodes.find((candidate) => candidate.id === run.currentNode);
   if (active?.kind === "check") labels.push("check running");
   if (active?.kind === "gate") labels.push("gate running");
-  if (active?.kind === "agent" && /review/u.test(active.role ?? active.id)) labels.push("review waiting");
-  return labels.slice(-3).join(" · ") || "No check, gate, or review result yet";
+  if (active?.kind === "agent" && /review/iu.test(active.role ?? active.id)) labels.push("review waiting");
+  return labels.slice(-3).join(" · ") || null;
 }
 
-function canonicalState(run: LoopRunProjection | null, item: ChecklistItem | null) {
-  const work = item?.work;
-  if (work) return { state: work.state, progressing: work.progressing, reason: work.reason };
-  if (!run) return { state: "PENDING", progressing: false, reason: "No canonical Run or claim." };
-  if (run.diagnostic || ["needs-human", "failed", "stopped", "budget-exhausted", "corrupt"].includes(run.state)) {
-    return { state: "BLOCKED", progressing: false, reason: `Run ${run.state}.` };
+function nowMessage(
+  item: ChecklistItem | null,
+  state: "PENDING" | "ACTIVE" | "WAITING" | "BLOCKED" | "COMPLETED",
+  run: LoopRunProjection | null,
+  progressing: boolean,
+  reason: string,
+) {
+  if (!item || state === "COMPLETED") return "This item is recorded as complete in the Burnlist.";
+  if (state === "PENDING") {
+    return item.loop
+      ? `No agent is working on this item yet. Its ${loopLabel(item)} is assigned and ready to start.`
+      : "No agent is working on this item yet. It is waiting to be started as direct work.";
   }
-  if (run.state === "running" && (run.hostTask === "claimed" || run.hostTask === "not-applicable")) {
-    return { state: "ACTIVE", progressing: false, reason: "Canonical Run is active." };
+  const step = run ? displayNode(run) : item.work?.run?.node ?? "next step";
+  if (state === "ACTIVE") return progressing
+    ? `Work is active at ${step}, with recent observed activity.`
+    : `Work is active at ${step}. No recent activity is available.`;
+  if (state === "WAITING") {
+    if (run?.hostTask === "awaiting-claim") return `${step} is ready and waiting for an agent to claim it.`;
+    if (run?.state === "converged") return "The Loop has converged and is waiting for the item to be burned.";
+    return `${step} is waiting for the next action.`;
   }
-  return { state: "WAITING", progressing: false, reason: `Run ${run.state}.` };
+  return `Work is blocked: ${run?.latestResult?.summary ?? reason}`;
 }
 
 export function LoopProgress({ data }: { data: ChecklistProgressData }) {
   const item = selectedItem(data);
-  const system = subsystem(item);
   const authoritativeRun = data.loopRun ?? null;
-  const runItem = authoritativeRun
-    ? data.active.find((candidate) => authoritativeRun.itemRef.endsWith(`#${candidate.id}`)) ?? item
-    : item;
-  const workState = canonicalState(authoritativeRun, runItem);
-  const itemRun = item && authoritativeRun?.itemRef.endsWith(`#${item.id}`) ? authoritativeRun : item ? preview(item) : null;
+  const selectedRun = item && authoritativeRun?.itemRef.endsWith(`#${item.id}`) ? authoritativeRun : null;
+  const workState = item ? effectiveItemWork(data, item) : null;
+  const state = workState?.state ?? "COMPLETED";
+  const itemRun = selectedRun ?? (item ? preview(item) : null);
   const files = item?.fields["Files/search"] ?? "No declared file surface";
-  const runningSystem = runSubsystem(authoritativeRun);
-  const activity = authoritativeRun?.activity;
-  const recentActivity = activity?.records.slice(-10) ?? [];
+  const recentActivity = selectedRun?.activity?.records.slice(-10) ?? [];
   const observedPaths = [...new Set(recentActivity.flatMap((record) => [
     ...(record.observedPath ? [record.observedPath] : []),
     ...(record.observedPaths ?? []),
   ]))];
   const observation = [...recentActivity].reverse().find((record) =>
     record.provider || record.model || record.effort);
-  const observedAgent = observation
-    ? [observation.provider, observation.model, observation.effort ? `effort ${observation.effort}` : null]
-      .filter(Boolean).join(" · ")
-    : "Unavailable";
-  const forecast = authoritativeRun?.forecast;
-  const provenance = forecast
+  const telemetry = selectedRun?.execution?.telemetry;
+  const effort = observation?.effort ?? telemetry?.effort;
+  const observedAgent = observation || telemetry
+    ? [observation?.provider ?? telemetry?.provider, observation?.model ?? telemetry?.model,
+      effort ? `effort ${effort}` : null].filter(Boolean).join(" · ")
+    : null;
+  const forecast = selectedRun?.forecast;
+  const forecastProvenance = forecast
     ? forecast.provenance.kind === "local-observations"
       ? `${forecast.confidence} · ${forecast.provenance.matchingObservations} local observations`
       : `${forecast.confidence} · built-in prior`
-    : "Unavailable";
-  const observedElapsed = authoritativeRun
+    : null;
+  const observedElapsed = selectedRun
     ? Math.max(
-      authoritativeRun.budget.elapsedMilliseconds,
-      ...recentActivity.map((record) => Math.max(0, record.at - authoritativeRun.createdAt)),
+      selectedRun.budget.elapsedMilliseconds,
+      ...recentActivity.map((record) => Math.max(0, record.at - selectedRun.createdAt)),
     )
     : null;
-  const activeNode = authoritativeRun?.graph.nodes.find((node) => node.id === authoritativeRun.currentNode);
-  const branch = authoritativeRun?.loopId.endsWith(":branch") || authoritativeRun?.loopId === "branch"
-    ? authoritativeRun.currentNode : "not branched";
-  const activityStatus = workState.state === "ACTIVE"
-    ? workState.progressing ? "progressing" : "active · no recent hook"
-    : workState.state.toLowerCase();
-  const blocker = workState.state === "BLOCKED"
-    ? authoritativeRun?.latestResult?.summary ?? workState.reason
-    : "None canonical";
-  const retries = authoritativeRun
-    ? `attempt ${authoritativeRun.attempt || 1} · cycle ${authoritativeRun.cycle || 0}`
-    : "Unavailable";
-  return <section className="loop-progress" aria-label="Loop progress">
-    <header className="loop-progress__now">
-      <span>NOW</span>
-      <strong>{authoritativeRun ? `${runItemId(authoritativeRun)} · ${displayNode(authoritativeRun)}` : item ? `${item.id} · ${item.title}` : "Complete"}</strong>
-      <small>{authoritativeRun ? `Run · ${authoritativeRun.state} · ${workState.state}` : `${workState.state} · canonical checklist`}</small>
+  const proof = proofSignals(selectedRun);
+  const tokens = observedTokens(selectedRun, recentActivity);
+  const currentStep = selectedRun ? displayNode(selectedRun) : workState?.run?.node ?? null;
+  const latestActivity = recentActivity.at(-1) ?? null;
+  const blocker = state === "BLOCKED"
+    ? selectedRun?.latestResult?.summary ?? workState?.reason ?? "Human action is required."
+    : null;
+  const retries = selectedRun && (selectedRun.attempt > 1 || selectedRun.cycle > 0)
+    ? `attempt ${selectedRun.attempt || 1} · repair cycle ${selectedRun.cycle || 0}`
+    : null;
+  const hasDetails = state !== "PENDING" && Boolean(item);
+
+  return <section className={`loop-progress loop-progress--${state.toLowerCase()}`} aria-label="Loop progress">
+    <header className="loop-progress__item">
+      <div><span>ITEM</span><strong>{item ? `${item.id} · ${item.title}` : "No active item"}</strong></div>
+      <b className="loop-progress__state">{state}</b>
+      {workState?.progressing ? <em>recent activity</em> : null}
     </header>
+    <p className="loop-progress__summary">
+      {nowMessage(item, state, selectedRun, workState?.progressing ?? false, workState?.reason ?? "")}
+    </p>
 
-    <div className="loop-progress__context-head"><span>CONTEXT</span><strong>{item ? `${item.id} · ${item.title}` : "None"}</strong></div>
-    <div className="loop-progress__context">
-      <article><span>WHY</span><p>{plainWhy(item, system)}</p></article>
-      <article><span>SYSTEM</span><p>{system.label}</p></article>
-      <article><span>HOOKS</span><p>{activity?.hooks ?? "Unavailable"}</p></article>
-    </div>
-    <div className="loop-progress__signals" aria-label="Live Loop signals">
-      <article><span>STATE</span><p>{workState.state}{workState.progressing ? " · progressing" : ""}</p></article>
-      <article><span>AGENT</span><p>{observedAgent}</p></article>
-      <article><span>NODE / BRANCH</span><p>{activeNode?.role ?? activeNode?.capability ?? authoritativeRun?.currentNode ?? "Unavailable"} · {branch}</p></article>
-      <article><span>ACTIVITY</span><p>{activityStatus} · hooks {activity?.hooks ?? "unavailable"}</p></article>
-      <article><span>TIME</span><p>elapsed {duration(observedElapsed)} · forecast {durationRange(forecast?.wallTime)}</p></article>
-      <article><span>TOKENS</span><p>{observedTokens(authoritativeRun, recentActivity)} · forecast {tokenRange(forecast?.totalTokens)}</p></article>
-      <article><span>CHECK / GATE / REVIEW</span><p>{proofSignals(authoritativeRun)}</p></article>
-      <article><span>BLOCKER / RETRIES</span><p>{blocker} · {retries}</p></article>
-    </div>
-    <div className="loop-progress__provenance">
-      <b>PROVENANCE</b>
-      <span>State, node, claim, checks, gates, and reviews: canonical Run. Activity, agent facts, paths, timing, and reported tokens: bounded observation only. Forecast: {provenance}.</span>
-    </div>
-
-    <div className="loop-progress__work">
-      <section className="loop-progress__map" aria-label="Burnlist architecture">
-        <h2>SYSTEM FLOW <small>whole Burnlist</small></h2>
-        <ol>
-          {architecture.map((part, index) => <li className={`${part.id === system.id ? "is-active" : ""}${part.id === runningSystem ? " is-running" : ""}`} key={part.id}>
-            <span><strong>{part.label}</strong><small>{part.detail}</small>{part.id === runningSystem && <em>NOW</em>}{part.id === system.id && <em>CONTEXT</em>}</span>{index < architecture.length - 1 && <b aria-hidden="true">→</b>}
-          </li>)}
-        </ol>
-      </section>
-      <section className="loop-progress__loop" aria-label="Assigned Loop">
-        <h2>LOOP <small>{item?.loop?.selector ?? "direct"}</small></h2>
-        {itemRun ? <LoopCompact run={itemRun} labels="outcomes" title={`Loop for ${item?.id ?? "current item"}`} variant={item?.loop?.graph ? "topology" : "burn-cycle"} />
-          : <p className="loop-progress__empty">No Loop assigned</p>}
-      </section>
-    </div>
-    <section className="loop-progress__activity" aria-label="Recent observed activity">
-      <h2>ACTIVITY <small>{activity ? `${recentActivity.length} recent` : "unavailable"}</small></h2>
-      <ol>{recentActivity.length ? recentActivity.slice().reverse().map((record, index) => <li key={`${record.at}/${record.kind}/${index}`}>
-        <b>{record.origin}</b><span>{activityText(record)}</span>{record.provider ? <small>{record.provider}</small> : null}{record.truncated ? <small>truncated</small> : null}
-      </li>) : <li className="loop-progress__activity-empty">No observed hook activity. Runner state remains canonical.</li>}</ol>
-      <div className="loop-progress__observed"><b>CODE CHANGES</b><span>{observedPaths.length ? observedPaths.join(" · ") : "Unavailable · observational only"}</span></div>
+    <section className="loop-progress__loop" aria-label="Assigned Loop">
+      <h2>ASSIGNED LOOP <small>{loopLabel(item, selectedRun)}</small></h2>
+      {itemRun
+        ? <LoopCompact run={itemRun} labels="hidden" title={`Assigned Loop for ${item?.id ?? "current item"}`} variant={selectedRun || item?.loop?.graph ? "topology" : "burn-cycle"} />
+        : <p className="loop-progress__direct">This item uses direct work; no Loop is assigned.</p>}
     </section>
-    <footer><span>FILES</span> {files}<br/>Selected · {item ? `${item.id} ${item.title}` : "none"}{authoritativeRun && item && !authoritativeRun.itemRef.endsWith(`#${item.id}`) ? " · Run remains authoritative for another item" : ""}</footer>
+
+    {state !== "PENDING" && (currentStep || observedAgent || latestActivity || proof || blocker) ? <section className="loop-progress__current" aria-label="Current item facts">
+      <h2>RIGHT NOW</h2>
+      <dl>
+        {currentStep ? <div><dt>Current step <small>canonical</small></dt><dd>{currentStep}</dd></div> : null}
+        {blocker ? <div className="is-blocker"><dt>Needs attention <small>canonical</small></dt><dd>{blocker}</dd></div> : null}
+        {proof ? <div><dt>Proof <small>canonical</small></dt><dd>{proof}</dd></div> : null}
+        {observedAgent ? <div><dt>Agent <small>observed</small></dt><dd>{observedAgent}</dd></div> : null}
+        {latestActivity ? <div><dt>Latest activity <small>observed</small></dt><dd>{activityText(latestActivity)}</dd></div> : null}
+      </dl>
+    </section> : null}
+
+    {hasDetails ? <details className="loop-progress__details">
+      <summary>More details</summary>
+      <div className="loop-progress__details-body">
+        {selectedRun ? <dl>
+          <div><dt>Run <small>canonical</small></dt><dd>{selectedRun.runId} · {selectedRun.state} · claim {selectedRun.hostTask ?? "unavailable"}</dd></div>
+          {retries ? <div><dt>Retries <small>canonical</small></dt><dd>{retries}</dd></div> : null}
+          {observedElapsed && observedElapsed > 0 ? <div><dt>Elapsed <small>observed</small></dt><dd>{duration(observedElapsed)}</dd></div> : null}
+          {tokens ? <div><dt>Tokens <small>reported</small></dt><dd>{tokens}</dd></div> : null}
+          {forecast ? <div><dt>Estimate <small>forecast</small></dt><dd>{durationRange(forecast.wallTime)} · {tokenRange(forecast.totalTokens)} tokens · {forecastProvenance}</dd></div> : null}
+          {observedPaths.length ? <div><dt>Changed paths <small>observed</small></dt><dd>{observedPaths.join(" · ")}</dd></div> : null}
+        </dl> : null}
+        {recentActivity.length ? <section className="loop-progress__activity" aria-label="Recent observed activity">
+          <h3>Recent observed activity</h3>
+          <ol>{recentActivity.slice().reverse().map((record, index) => <li key={`${record.at}/${record.kind}/${index}`}>
+            <b>{record.origin}</b><span>{activityText(record)}</span>{record.truncated ? <small>truncated</small> : null}
+          </li>)}</ol>
+        </section> : null}
+        <p className="loop-progress__files"><b>Declared files</b> {files}</p>
+        <p className="loop-progress__provenance">Status, current step, proof, blocker, and retries come from the canonical Burnlist Run. Agent, activity, paths, elapsed time, and reported tokens are bounded observations. Estimates are forecasts.</p>
+      </div>
+    </details> : null}
   </section>;
 }
