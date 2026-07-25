@@ -15,25 +15,22 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-ratio { font-variant-numeric: tabular-nums; }
 .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-progress-donut-segment { transition: stroke-dasharray 160ms ease; }
-.checklist-detail-shell #burnlist-detail {
-  width: min(100%, 1440px);
-  margin-inline: auto;
-}
+
 .checklist-detail-shell #burnlist-detail .checklist-progress-workspace {
   width: 100%;
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
-  flex: 0 0 260px;
-  grid-template-columns: minmax(320px, 38%) minmax(0, 62%);
+  height: 232px;
+  min-height: 232px;
+  max-height: 232px;
+  flex: 0 0 232px;
+  grid-template-columns: 30% minmax(0, 70%);
 }
 
 /* The shared Differential Testing shell defaults its top workspace to 310px. */
 @media (min-width: 1101px) {
   body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-overview:not([hidden]) + .checklist-progress-workspace {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
+    height: 232px;
+    min-height: 232px;
+    max-height: 232px;
   }
 }
 
@@ -47,13 +44,12 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .checklist-detail-shell .checklist-progress-workspace .event-ledger-panel,
 .checklist-detail-shell .checklist-progress-workspace .progress-panel {
-  height: 260px;
-  min-height: 260px;
-  max-height: 260px;
+  height: 232px;
+  min-height: 232px;
+  max-height: 232px;
 }
 
 .checklist-detail-shell .checklist-progress-workspace .work-panel-body { min-height: 0; }
-.checklist-detail-shell .checklist-progress-workspace .progress-panel .panel-title-row { flex: 0 0 auto; }
 .checklist-detail-shell .checklist-progress-workspace .progress-panel .score {
   display: flex;
   height: auto;
@@ -68,7 +64,6 @@ body.checklist-detail-view .dashboard-oven-title {
   flex: 1 1 auto;
 }
 .checklist-detail-shell .checklist-progress-workspace .progress-panel .chart { height: 100%; min-height: 0; }
-.checklist-detail-shell .burn-chart-label { margin-left: auto; color: var(--text); font-size: 12px; }
 .checklist-detail-view .chart .progress-line { stroke: var(--status-green); }
 .checklist-detail-view .chart .progress-dot { fill: var(--status-green); }
 
@@ -183,6 +178,7 @@ body.checklist-detail-view .dashboard-oven-title {
 }
 
 .event-card-field:last-child { border-bottom: 0; }
+.event-card-field-outcome { grid-template-columns: minmax(0, 1fr); }
 .event-card-field-label,
 .event-card-field-collapsible summary { color: rgba(168, 168, 168, .58); }
 .event-card-field-value { min-width: 0; color: rgba(210, 216, 224, .68); overflow-wrap: anywhere; }
@@ -216,71 +212,43 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .event-card:hover .event-card-summary { background: #1c1c1c; }
 
-@media (min-width: 761px) and (max-width: 1000px) {
-  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip,
-  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip.has-burns {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    column-gap: 0;
-  }
-  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-section {
-    padding-inline: 6px;
-    grid-template-columns: 28px minmax(0, 1fr);
-    column-gap: 6px;
-  }
-  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-heading { font-size: 11px; }
-  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-ratio { font-size: 11px; }
-  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-scenario-icon { width: 28px; height: 28px; }
-}
-
-/* Keep Progress and Completion side by side through tablet widths. */
-@media (min-width: 521px) and (max-width: 640px) {
-  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-overview:not([hidden]) + .checklist-progress-workspace {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
-    grid-template-columns: minmax(240px, 38%) minmax(0, 62%);
-    grid-template-rows: minmax(0, 1fr);
-  }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .event-ledger-panel {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .progress-panel {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
-    grid-column: 2;
-    grid-row: 1;
-  }
-}
-
-@media (max-width: 520px) {
-  body.checklist-detail-view .dashboard-oven-title { max-width: calc(100% - 190px); font-size: 14px; }
-  .dashboard-detail-time { display: none; }
-  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-overview:not([hidden]) + .checklist-progress-workspace {
-    height: 532px;
-    min-height: 532px;
-    max-height: 532px;
+@media (max-width: 1100px) {
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-overview:not([hidden]) + .checklist-progress-workspace,
+  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace {
+    height: auto;
+    min-height: 0;
+    max-height: none;
     flex: none;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 260px 260px;
+    grid-template-rows: auto 200px;
     gap: 12px;
+    margin-top: 12px;
   }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace::before { display: none; }
+
   .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .event-ledger-panel,
   .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .progress-panel {
     width: 100%;
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
-    border-radius: 8px;
-    background: var(--card);
+    height: auto;
+    min-height: 0;
+    max-height: none;
   }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .event-ledger-panel { grid-column: 1; grid-row: 1; }
-  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .progress-panel { grid-column: 1; grid-row: 2; }
+
+  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .event-ledger-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .checklist-detail-shell #burnlist-detail .checklist-progress-workspace .progress-panel {
+    height: 200px;
+    min-height: 200px;
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  body.checklist-detail-view .dashboard-oven-title { max-width: calc(100% - 190px); font-size: 14px; }
+  .dashboard-detail-time { display: none; }
   .event-card-summary { grid-template-columns: max-content minmax(0, 1fr) max-content; padding: 0 10px; gap: 8px; }
   .event-card-description { padding: 0 10px 8px; }
   .event-card-field { grid-template-columns: 1fr; gap: 3px; }
