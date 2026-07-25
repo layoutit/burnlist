@@ -50,18 +50,15 @@ function serialCompact(run: LoopGraphProjection, path: string[], options: Compac
 
   const symbols = loopSymbols(run.graph.nodes, options.symbols);
   const loopbacks = alternate.filter((edge) => pathIds.has(edge.from) && pathIds.has(edge.to) && path.indexOf(edge.to) < path.indexOf(edge.from));
-  const width = Math.max(
-    28,
-    ...path.map((id) => symbols.get(id)!.length + 2),
-    ...run.graph.edges.map((edge) => edge.on.length + 5),
-  );
+  const feedbackLabelWidth = Math.max(0, ...loopbacks.map((edge) => edge.on.length));
+  const railX = Math.max(10, feedbackLabelWidth + 5);
+  const width = Math.max(14, railX + 2, ...path.map((id) => symbols.get(id)!.length + 2));
   const graph = drawing(path.length * 2 + detours.length * 3, width);
   const positions = new Map<string, Position>();
 
   path.forEach((id, index) => {
     const y = index * 2;
     positions.set(id, { x: 0, y });
-    graph.text(0, y, symbols.get(id)!);
     if (index + 1 < path.length) {
       const edge = run.graph.edges.find((candidate) => candidate.from === id && candidate.to === path[index + 1])!;
       graph.put(0, y + 1, "▼");
@@ -90,15 +87,20 @@ function serialCompact(run: LoopGraphProjection, path: string[], options: Compac
     graph.put(2, to.y, "◀");
     if (options.showLabels) graph.text(from.x + 2, from.y, edge.on);
   });
-  loopbacks.forEach((edge, index) => {
+  if (loopbacks.length) {
+    const top = Math.min(...loopbacks.map((edge) => positions.get(edge.to)!.y));
+    const bottom = Math.max(...loopbacks.map((edge) => positions.get(edge.from)!.y));
+    graph.vertical(railX, top, bottom);
+  }
+  loopbacks.forEach((edge) => {
     const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
-    const rail = width - 2 - index * 2;
-    graph.horizontal(2, rail, from.y);
-    graph.vertical(rail, to.y, from.y);
-    graph.horizontal(2, rail, to.y);
+    graph.horizontal(2, railX, from.y);
+    graph.horizontal(2, railX, to.y);
     graph.put(2, to.y, "◀");
     if (options.showLabels) graph.text(4, from.y, edge.on);
   });
+  for (const [id, position] of positions)
+    graph.text(position.x, position.y, symbols.get(id)!);
   return {
     lines: graph.cells.map((line) => line.join("").trimEnd()),
     positions,
