@@ -7,6 +7,7 @@ import { createTestRenderer, ManualClock } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { componentPairIds, type ComponentPairId } from "./component-pair-fixture";
 import { TerminalComponentPair } from "./component-pair-surface";
+import { TERMINAL_LOADING_CAPTURE } from "../loading-cadence";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame } from "./frame-contract";
 import { cellsFromFrame } from "./frame-renderer";
 import { orderedSemanticText } from "../terminal-accessibility";
@@ -43,6 +44,14 @@ async function provenance(): Promise<{ sourceSha256: string; renderer: RendererP
     "tui/src/catalog/component-frame-renderer.tsx",
     "tui/src/catalog/component-pair-fixture.ts",
     "tui/src/catalog/component-pair-surface.tsx",
+    "tui/src/catalog/component-media-fixture.ts",
+    "tui/src/glyph-image.tsx",
+    "tui/src/loading-cadence.ts",
+    "tui/src/loading-star.tsx",
+    "tui/src/png-glyph.ts",
+    "tui/src/terminal-line-chart.tsx",
+    "tui/src/oven-runtime/components/media-components.tsx",
+    "tui/src/oven-runtime/components/progress-glyph.ts",
     "tui/src/catalog/frame-renderer.tsx",
     "tui/src/terminal-accessibility.ts",
     "tui/src/terminal-chrome.tsx",
@@ -72,6 +81,7 @@ async function provenance(): Promise<{ sourceSha256: string; renderer: RendererP
 
 async function render(id: ComponentPairId, renderer: RendererProvenance, fixtureSha256: string): Promise<TerminalFrame> {
   const width = 72, height = 10;
+  const checkpoint = id === "spinner" ? TERMINAL_LOADING_CAPTURE.checkpoint : "default";
   const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false });
   const rootNode = createRoot(setup.renderer);
   let recorded: { frame: string; buffers: { char: Uint32Array; fg: Uint16Array; bg: Uint16Array; attributes: Uint32Array } } | undefined;
@@ -87,7 +97,7 @@ async function render(id: ComponentPairId, renderer: RendererProvenance, fixture
   };
   setup.renderer.on("frame", snapshot);
   try {
-    flushSync(() => rootNode.render(<TerminalComponentPair id={id} width={width} />));
+    flushSync(() => rootNode.render(<TerminalComponentPair id={id} width={width} animationPhase={id === "spinner" ? TERMINAL_LOADING_CAPTURE.phase : undefined} />));
     await setup.renderOnce();
     const snapshotData = recorded;
     if (!snapshotData) throw new Error(`terminal component frames: ${id} produced no OpenTUI frame`);
@@ -95,7 +105,7 @@ async function render(id: ComponentPairId, renderer: RendererProvenance, fixture
     const frame: TerminalFrame = {
       schema: FRAME_SCHEMA,
       fixture: `component-${id}`,
-      checkpoint: "default",
+      checkpoint,
       viewport: { width, height },
       semanticText: orderedSemanticText(snapshotData.frame),
       cells: cellsFromFrame(snapshotData.frame, width, height, snapshotData.buffers),
@@ -119,12 +129,12 @@ async function desired() {
   const entries = frames.map((frame) => {
     const text = JSON.stringify(frame);
     const digest = sha(text);
-    const path = `${frame.fixture}.72x10.default.${digest.slice(0, 16)}.json`;
+    const path = `${frame.fixture}.72x10.${frame.checkpoint}.${digest.slice(0, 16)}.json`;
     files[path] = text;
     return {
-      id: `${frame.fixture}:72x10:default`, fixture: frame.fixture, path,
+      id: `${frame.fixture}:72x10:${frame.checkpoint}`, fixture: frame.fixture, path,
       sha256: digest, fixtureSha256: frame.fixtureSha256,
-      checkpoint: "default", viewport: frame.viewport,
+      checkpoint: frame.checkpoint, viewport: frame.viewport,
     };
   }).sort((left, right) => left.id.localeCompare(right.id));
   const index = `${JSON.stringify({

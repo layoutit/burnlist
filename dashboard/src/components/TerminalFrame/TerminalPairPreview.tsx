@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ComponentPairId } from "../../../../tui/src/catalog/component-pair-fixture";
+import { TERMINAL_LOADING_CAPTURE } from "../../../../tui/src/loading-cadence";
 import {
   PairedPreview,
   TerminalFrame,
@@ -13,7 +14,8 @@ export function PairPreview({
   children: ReactNode;
   component: ComponentPairId;
 }) {
-  const id = `component-${component}:72x10:default`;
+  const checkpoint = component === "spinner" ? TERMINAL_LOADING_CAPTURE.checkpoint : "default";
+  const id = `component-${component}:72x10:${checkpoint}`;
   const entry = componentPairFrameEntries.find((candidate) => candidate.id === id);
   if (!entry) return <p role="status">No source-backed OpenTUI frame exists for {component}.</p>;
   return (

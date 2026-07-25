@@ -14,7 +14,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Sizes = {
+export const Playground = {
   render: () => (
     <PairPreview component="spinner">
       <div className="storybook-row">

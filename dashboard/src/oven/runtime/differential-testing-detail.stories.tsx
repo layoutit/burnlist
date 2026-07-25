@@ -21,6 +21,10 @@ const payload = {
   primaryChartTitle: fixture.title,
   publishedAt: fixture.publishedAt,
 };
+const pairChartField = {
+  ...DIFFERENTIAL_POSITION_FIELD,
+  samples: fixture.chart.map((point, index) => [index, 0, point.value, point.state === "fail" ? 1 : 0] as [number, number, number, number]),
+};
 const meta = {
   title: "Patterns/TopCard",
   component: DifferentialTestingDetail,
@@ -42,13 +46,13 @@ function TopCardPreview() {
       refresh={<RefreshStatusChip refresh={{ status: "idle" }} />}
       kpis={<DifferentialKpiStrip payload={payload} />}
       chart={<div id="progress-chart" className="chart hybrid-chart" role="img" aria-label={fixture.title}>
-        <FieldMiniChart field={DIFFERENTIAL_POSITION_FIELD} showFrameLabels chartMode={chartMode} />
+        <FieldMiniChart field={pairChartField} showFrameLabels chartMode={chartMode} />
       </div>}
       log={<DifferentialLogTable entries={DIFFERENTIAL_STORY_LOG} now={DIFFERENTIAL_STORY_NOW} />}
     />
   </div>;
 }
 
-export const DifferentialTesting: Story = {
+export const Playground: Story = {
   render: () => <PairPreview component="top-card"><TopCardPreview /></PairPreview>,
 };

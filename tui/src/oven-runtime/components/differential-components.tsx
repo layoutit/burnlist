@@ -1,8 +1,9 @@
 import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
+import { TerminalLineChart, type TerminalChartPoint } from "../../terminal-line-chart";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
-import { burnDonutCounts, progressDonutText, waffleMetricText } from "./progress-components";
+import { burnDonutCounts, waffleMetricText } from "./progress-components";
 
 type RecordValue = Record<string, JsonValue>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
@@ -33,11 +34,21 @@ export function TerminalDifferentialKpiStrip({ payload, width }: { node: Termina
   return <box width={width} height={3} flexDirection="column" overflow="hidden"><text fg={palette.foreground}>{fitText(title, width)}</text><box flexDirection="row" width={width} overflow="hidden">{items.map((item) => <box key={item} width={Math.max(8, Math.floor(width / items.length))} overflow="hidden"><text fg={palette.muted}>{fitText(item, Math.max(8, Math.floor(width / items.length)))}</text></box>)}</box></box>;
 }
 
-export function TerminalDifferentialChart({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {
-  const palette = useTerminalPalette();
-  const points = list(source(node, payload)), latest = record(points.at(-1)), total = Math.max(0, number(latest.frames)), done = Math.max(0, Math.min(total, number(latest.frame))), hasDelta = typeof latest.frameDelta === "number", delta = number(latest.frameDelta);
-  const label = node.kind === "frame-delta-chart" ? hasDelta ? `Δ frame ${delta >= 0 ? "+" : ""}${delta}` : "Δ frame —" : `Progress ${done}/${total}`;
-  return <box width={width} height={2} flexDirection="column" overflow="hidden"><text>{fitText(label, width)}</text><text fg={delta < 0 ? palette.red : palette.green}>{fitText(node.kind === "frame-delta-chart" ? hasDelta ? `${delta < 0 ? "▼" : "▲"} ${"▰".repeat(Math.min(Math.max(1, width - 4), Math.abs(delta) || 1))}` : "Δ unavailable: insufficient history" : progressDonutText(total ? done / total * 100 : 0, Math.max(3, width - 7)), width)}</text></box>;
+export function TerminalDifferentialChart({ node, payload, width, height = 2 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
+  const sourcePoints = list(source(node, payload)), latest = record(sourcePoints.at(-1));
+  const total = Math.max(0, number(latest.frames)), done = Math.max(0, Math.min(total, number(latest.frame)));
+  const chartPoints: TerminalChartPoint[] = sourcePoints.map((entry, index) => {
+    const point = record(entry), delta = number(point.frameDelta), pointTotal = Math.max(0, number(point.frames)), pointDone = Math.max(0, Math.min(pointTotal, number(point.frame)));
+    return {
+      label: `F${text(point.frame) === "—" ? index : text(point.frame)}`,
+      value: node.kind === "frame-delta-chart" ? delta : pointTotal ? pointDone / pointTotal * 100 : 0,
+      state: delta < 0 ? "fail" : "pass",
+    };
+  });
+  const label = node.kind === "frame-delta-chart"
+    ? typeof latest.frameDelta === "number" ? `Frame delta · latest ${number(latest.frameDelta) >= 0 ? "+" : ""}${number(latest.frameDelta)}` : "Frame delta · unavailable"
+    : `Progress · latest ${done}/${total}`;
+  return <TerminalLineChart title={label} points={chartPoints} width={width} height={height} />;
 }
 
 export function TerminalDifferentialLogTable({ node, payload, width, height = 8 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {

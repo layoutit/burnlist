@@ -14,7 +14,7 @@ const pairFields = fixture.fields.map((field) => ({
   failedSampleCount: field.failures,
   missingSampleCount: 0,
   maxDelta: field.delta,
-  samples: [[0, 0, 0, 0], [1, 1, 1 + field.delta, field.failures]],
+  samples: field.samples.map((sample) => [...sample] as [number, number, number, number]),
 }));
 const meta = {
   title: "Patterns/FieldListCards",
@@ -51,7 +51,7 @@ function FieldListPreview({
   </div>;
 }
 
-export const Delta: Story = {
+export const Playground: Story = {
   render: () => <PairPreview component="field-list-cards"><FieldListPreview chartMode="delta" fields={pairFields} /></PairPreview>,
 };
 

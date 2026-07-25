@@ -45,7 +45,7 @@ test("hostile Differential payload cannot make control text or unavailable telem
 test("compiled Differential progress-mode defaults to delta and reducer selects the progress chart", async () => {
   const initial = initTerminalRuntime(compiled.ir, differentialFixture.payload);
   expect(initial.controls["progress-mode"]).toBe("delta");
-  for (const [state, label] of [[initial, "Δ frame"], [reduceTerminalRuntime(initial, { type: "modeSelected", id: "progress-mode", value: "progress" }, compiled.ir), "Progress"]] as const) {
+  for (const [state, label] of [[initial, "Frame delta"], [reduceTerminalRuntime(initial, { type: "modeSelected", id: "progress-mode", value: "progress" }, compiled.ir), "Progress"]] as const) {
     const result = admitTerminalOven(compiled.ir, { status: "ready", payload: differentialFixture.payload }, { viewport: { width: 78, height: 22 }, controls: state.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
     const setup = await createTestRenderer({ width: 78, height: 22, useThread: false }), root = createRoot(setup.renderer); flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain(label); root.unmount(); setup.renderer.destroy();
   }

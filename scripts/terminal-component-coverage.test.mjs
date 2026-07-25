@@ -34,6 +34,10 @@ test("every catalogued console component has one source-backed terminal pair", a
   assert.equal(titles.some((title) => title.startsWith("Ovens/")), false);
   assert.equal(titles.some((title) => title.startsWith("Terminal counterparts/")), false);
   assert.equal(titles.some((title) => /General console-terminal|Terminal (?:controls|list|heading)/u.test(title)), false);
+  for (const story of stories.filter(({ source }) => /\btitle:\s*"(?:UI|Patterns)\//u.test(source) && /\bexport const Playground\b/u.test(source))) {
+    assert.match(story.source, /<PairPreview component="[^"]+"/u, `${story.path} -- Playground is not paired`);
+    assert.ok(manifest.entries.some((entry) => resolve(root, entry.storyFile) === story.path), `${story.path} -- Playground is outside closed coverage`);
+  }
 
   for (const entry of manifest.entries) {
     const expectedPath = resolve(root, entry.storyFile);
@@ -53,7 +57,7 @@ test("every catalogued console component has one source-backed terminal pair", a
 
   const pairPreview = await readFile(resolve(dashboard, "components/TerminalFrame/TerminalPairPreview.tsx"), "utf8");
   assert.match(pairPreview, /componentPairFrameEntries/u);
-  assert.match(pairPreview, /`component-\$\{component\}:72x10:default`/u);
+  assert.match(pairPreview, /`component-\$\{component\}:72x10:\$\{checkpoint\}`/u);
 
   const terminalSource = await readFile(resolve(root, "tui/src/catalog/component-pair-surface.tsx"), "utf8");
   for (const entry of manifest.entries) {
@@ -68,7 +72,7 @@ test("every catalogued console component has one source-backed terminal pair", a
   const frameRoot = resolve(dashboard, "generated/terminal-component-frames");
   const index = JSON.parse(await readFile(resolve(frameRoot, "index.json"), "utf8"));
   const entries = index.entries.filter((entry) => entry.fixture.startsWith("component-"));
-  assert.deepEqual(sorted(entries.map((entry) => entry.id)), sorted(manifest.entries.map((entry) => `component-${entry.id}:72x10:default`)));
+  assert.deepEqual(sorted(entries.map((entry) => entry.id)), sorted(manifest.entries.map((entry) => `component-${entry.id}:72x10:${entry.id === "spinner" ? "spark" : "default"}`)));
   for (const entry of entries) {
     const frame = JSON.parse(await readFile(resolve(frameRoot, entry.path), "utf8"));
     assert.equal(frame.fixtureSha256, entry.fixtureSha256);

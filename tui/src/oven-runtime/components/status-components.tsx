@@ -1,4 +1,5 @@
 import { fitText } from "../../theme";
+import { useTerminalLoadingGlyph } from "../../loading-cadence";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { evaluateOvenBinding } from "../value-runtime";
@@ -30,19 +31,20 @@ export function statusSurfaceModel(node: TerminalNode, payload: JsonValue | unde
   return { title: text(read(node, "title", payload) ?? read(node, "source", payload)), count: text(read(node, "count", payload)), activity: phase, activityText: labels[phase] };
 }
 
-export function statusActivityText(model: StatusSurfaceModel, width: number) {
+export function statusActivityText(model: StatusSurfaceModel, width: number, loadingGlyph = "·") {
   // Always reserve this cell range so a status transition cannot move siblings.
-  return fitText(model.activityText ? `${model.activity === "failed" ? "!" : model.activity === "running" ? "↻" : "…"} ${model.activityText}` : "", Math.max(1, width)).padEnd(Math.max(1, width));
+  return fitText(model.activityText ? `${model.activity === "failed" ? "!" : model.activity === "idle" ? "·" : loadingGlyph} ${model.activityText}` : "", Math.max(1, width)).padEnd(Math.max(1, width));
 }
 
 /** Fixed-height terminal-native heading/status/note/empty projection. */
 export function TerminalStatusSurface({ node, payload, width, height = 2 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
   const model = statusSurfaceModel(node, payload), lineWidth = Math.max(1, Math.floor(width)), rows = Math.max(1, Math.floor(height));
+  const loadingGlyph = useTerminalLoadingGlyph(!["idle", "failed"].includes(model.activity));
   const tone = model.activity === "failed" ? palette.red : model.activity === "idle" ? palette.dim : model.activity === "running" ? palette.blue : palette.amber;
-  if (node.kind === "refresh-status") return <box width={lineWidth} height={rows} overflow="hidden"><text fg={tone}>{statusActivityText(model, lineWidth)}</text></box>;
+  if (node.kind === "refresh-status") return <box width={lineWidth} height={rows} overflow="hidden"><text fg={tone}>{statusActivityText(model, lineWidth, loadingGlyph)}</text></box>;
   if (node.kind === "domain-note") return <box width={lineWidth} height={rows} flexDirection="column" overflow="hidden"><text fg={palette.blue}>{fitText(`› ${model.title}`, lineWidth)}</text>{rows > 1 ? <text fg={palette.muted}>{fitText(model.note || "", lineWidth)}</text> : null}</box>;
   if (node.kind === "differential-empty-state") return <box width={lineWidth} height={rows} flexDirection="column" overflow="hidden"><text fg={palette.foreground}>{fitText(model.title, lineWidth)}</text>{rows > 1 ? <text fg={palette.dim}>{fitText(`○ ${model.empty}`, lineWidth)}</text> : null}</box>;
   const reserve = Math.min(14, Math.max(6, Math.floor(lineWidth / 3))), titleWidth = Math.max(1, lineWidth - reserve);
-  return <box width={lineWidth} height={rows} flexDirection="column" overflow="hidden"><box height={1} flexDirection="row"><text fg={palette.foreground}>{fitText(`${model.title}${model.count ? ` (${model.count})` : ""}`, titleWidth)}</text><text fg={tone}>{statusActivityText(model, reserve)}</text></box>{rows > 1 ? <text fg={palette.muted}>{fitText(model.note || "", lineWidth)}</text> : null}</box>;
+  return <box width={lineWidth} height={rows} flexDirection="column" overflow="hidden"><box height={1} flexDirection="row"><text fg={palette.foreground}>{fitText(`${model.title}${model.count ? ` (${model.count})` : ""}`, titleWidth)}</text><text fg={tone}>{statusActivityText(model, reserve, loadingGlyph)}</text></box>{rows > 1 ? <text fg={palette.muted}>{fitText(model.note || "", lineWidth)}</text> : null}</box>;
 }

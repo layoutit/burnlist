@@ -22,6 +22,14 @@ export const componentPairIds = [
   "filters",
   "field-list-cards",
   "top-card",
+  "kpi-strip",
+  "kpi-item",
+  "metric-tiles",
+  "progress-donut",
+  "burn-donut",
+  "waffle-metric",
+  "visual-parity-media",
+  "line-chart",
 ] as const;
 
 export type ComponentPairId = typeof componentPairIds[number];
@@ -55,7 +63,7 @@ export const componentPairFixture = {
   },
   separator: { before: "Current run", after: "Retained history" },
   skeleton: { label: "Loading Burnlist summary", rows: [18, 30, 22] },
-  spinner: { label: "Loading result", frame: "✦" },
+  spinner: { label: "Loading result" },
   table: {
     caption: "Local Burnlists",
     headers: ["Project", "Burnlist", "Status", "Progress"],
@@ -96,8 +104,14 @@ export const componentPairFixture = {
   },
   fieldListCards: {
     fields: [
-      { id: "position", label: "Position", status: "failed", failures: 1, delta: 0.1 },
-      { id: "active", label: "Active", status: "pass", failures: 0, delta: 0 },
+      {
+        id: "position", label: "Position", status: "failed", failures: 2, delta: 0.3,
+        samples: [[0, 0, 0, 0], [1, 1, 1, 0], [2, 2, 2.1, 1], [3, 3, 3.3, 1], [4, 4, 4.05, 0], [5, 5, 5, 0]],
+      },
+      {
+        id: "active", label: "Active", status: "pass", failures: 0, delta: 0,
+        samples: [[0, 0, 0, 0], [1, 1, 1, 0], [2, 1, 1, 0], [3, 0, 0, 0], [4, 1, 1, 0], [5, 1, 1, 0]],
+      },
     ],
   },
   topCard: {
@@ -108,5 +122,49 @@ export const componentPairFixture = {
     pace: "10m",
     done: "67%",
     log: "Frame 2 unchanged",
+    chart: [
+      { label: "F0", value: 0, state: "pass" },
+      { label: "F1", value: 0.01, state: "pass" },
+      { label: "F2", value: 0.1, state: "fail" },
+      { label: "F3", value: 0.28, state: "fail" },
+      { label: "F4", value: 0.04, state: "pass" },
+      { label: "F5", value: 0, state: "pass" },
+    ],
+  },
+  kpiStrip: {
+    title: "Burnlist progress KPIs",
+    items: [
+      { heading: "Progress", value: "17 / 25", kind: "progress" },
+      { heading: "Results", value: "6 · 2 · 1", kind: "burns" },
+      { heading: "Fields", value: "2 / 12 failed", kind: "waffle" },
+    ],
+  },
+  kpiItem: { heading: "Progress", value: "17 / 25 · 68%", percent: 68 },
+  metricTiles: { passed: 17, total: 25, ratio: 0.08, meanAbsoluteDelta: 0.125, maximumAbsoluteDelta: 8 },
+  progressDonut: { percent: 68, label: "68% complete" },
+  burnDonut: {
+    entries: [{ result: "improved" }, { result: "improved" }, { result: "unchanged" }, { result: "worsened" }, { result: "reverted" }],
+    label: "2 improved · 1 worsened · 1 unchanged · 1 reverted",
+  },
+  waffleMetric: { metric: { total: 12, failed: 2, blocked: 1 }, label: "3 of 12 non-passing" },
+  visualParityMedia: {
+    label: "Homepage",
+    frame: 7,
+    images: [
+      { label: "Current", source: "current", width: 2, height: 2 },
+      { label: "Reference", source: "reference", width: 2, height: 2 },
+      { label: "Difference", source: "difference", width: 2, height: 2 },
+    ],
+  },
+  lineChart: {
+    title: "Exact delta by frame",
+    points: [
+      { label: "F0", value: 0, state: "pass" },
+      { label: "F1", value: 0.01, state: "pass" },
+      { label: "F2", value: 0.1, state: "fail" },
+      { label: "F3", value: 0.28, state: "fail" },
+      { label: "F4", value: 0.04, state: "pass" },
+      { label: "F5", value: 0, state: "pass" },
+    ],
   },
 } as const;

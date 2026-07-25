@@ -1,6 +1,7 @@
 import { BrandMark } from "./brand-mark";
 import { GlyphFire } from "./glyph-fire";
 import { compactTime, fitText, progressLabel } from "./theme";
+import { useTerminalLoadingGlyph } from "./loading-cadence";
 import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
 import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
@@ -15,7 +16,8 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
   const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
   const { width } = useCoalescedTerminalDimensions();
-  const right = activity?.tone === "info" ? "✦ Refreshing" : activity?.message ?? (center ? subtitle : "");
+  const loadingGlyph = useTerminalLoadingGlyph(activity?.tone === "info");
+  const right = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? (center ? subtitle : "");
   const innerWidth = Math.max(0, width - 4);
   const leftWidth = Math.min(12, innerWidth);
   const rightWidth = right && width >= 42 ? Math.min(24, Math.max(10, Math.floor(width * 0.22))) : 0;

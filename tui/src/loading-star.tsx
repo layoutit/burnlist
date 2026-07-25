@@ -1,15 +1,12 @@
-import { useState } from "react";
-import { useTerminalAnimation } from "./animation-governor";
+import { useTerminalLoadingGlyph } from "./loading-cadence";
 import { useTerminalPalette } from "./terminal-accessibility";
 
-const frames = ["·", "✧", "✦", "✧"];
-
-export function LoadingStar({ label }: { label: string }) {
+export function LoadingStar({ active = true, label, phase }: { active?: boolean; label: string; phase?: number }) {
   const palette = useTerminalPalette();
-  const [frame, setFrame] = useState(0);
-  useTerminalAnimation(() => setFrame((value) => (value + 1) % frames.length), 1000 / 120);
+  const glyph = useTerminalLoadingGlyph(active, phase);
+  if (!active) return null;
   return <box flexDirection="row" gap={1}>
-    <text fg={palette.blue}>{frames[frame]}</text>
+    <text fg={palette.blue}>{glyph}</text>
     <text fg={palette.dim}>{label}</text>
   </box>;
 }

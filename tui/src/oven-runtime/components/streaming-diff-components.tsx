@@ -1,4 +1,5 @@
 import { fitText, visibleWindow } from "../../theme";
+import { useTerminalLoadingGlyph } from "../../loading-cadence";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import { useTerminalChrome } from "../../terminal-chrome";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
@@ -66,9 +67,10 @@ export function TerminalStreamingDiffHeading({ node, payload, width }: { node: T
 export function TerminalStreamingFeedList({ payload, width, height = 6, selectedFeed = -1 }: { payload?: JsonValue; width: number; height?: number; selectedFeed?: number }) {
   const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
+  const loadingGlyph = useTerminalLoadingGlyph(asRow(payload).loading === true);
   const root = asRow(payload), allFeeds = Array.isArray(root.feeds) ? root.feeds : [], feeds = visibleWindow([...allFeeds], Math.max(0, selectedFeed), Math.max(1, Math.floor((height - 1) / 3))).items;
   if (string(root.error)) return <box width={width} height={height}><text fg={palette.red}>{fitText(string(root.error), width)}</text></box>;
-  if (root.loading === true) return <box width={width} height={height}><text fg={palette.dim}>{fitText("Loading recent feeds.", width)}</text></box>;
+  if (root.loading === true) return <box width={width} height={height}><text fg={palette.dim}>{fitText(`${loadingGlyph} Loading recent feeds.`, width)}</text></box>;
   if (!feeds.length) return <box width={width} height={height}><text fg={palette.dim}>{fitText("No recent feeds.", width)}</text></box>;
   const start = visibleWindow([...allFeeds], Math.max(0, selectedFeed), Math.max(1, Math.floor((height - 1) / 3))).start;
   return <box width={width} height={height} flexDirection="column" overflow="hidden"><text fg={palette.foreground}>{fitText("Streaming Diff feeds", width)}</text>{feeds.map((item, index) => { const feed = asRow(item), identity = asRow(feed.identity), selected = start + index === selectedFeed; return <box key={start + index} height={3} flexDirection="column" overflow="hidden" backgroundColor={selected ? chrome.surface : chrome.background}><text fg={selected ? palette.blue : palette.muted}>{fitText(`${selected ? "› " : "  "}${string(identity.session)} · worktree ${string(identity.worktreeKey)}`, width)}</text>{root.showRepository === true ? <text fg={palette.muted}>{fitText(`  repository ${string(feed.repoLabel)}`, width)}</text> : null}<text fg={palette.dim}>{fitText(`  ${string(feed.updatedAt)}`, width)}</text></box>; })}</box>;

@@ -1,9 +1,16 @@
 import { fitText } from "../theme";
+import { LoadingStar } from "../loading-star";
 import { useTerminalPalette } from "../terminal-accessibility";
 import { useTerminalChrome } from "../terminal-chrome";
+import { TerminalLineChart, type TerminalChartPoint } from "../terminal-line-chart";
+import { GlyphImage } from "../glyph-image";
+import { progressGlyphFrame } from "../oven-runtime/components/progress-glyph";
+import { TerminalMetricTiles } from "../oven-runtime/components/media-components";
 import { componentPairFixture, type ComponentPairId } from "./component-pair-fixture";
+import { componentMediaPng } from "./component-media-fixture";
+import "../glyph-surface";
 
-type SurfaceProps = { width: number };
+type SurfaceProps = { width: number; animationPhase?: number };
 
 function Frame({ children, width }: React.PropsWithChildren<SurfaceProps>) {
   const chrome = useTerminalChrome();
@@ -68,9 +75,9 @@ export function TerminalSkeleton({ width }: SurfaceProps) {
   return <Frame width={width}><text fg={palette.muted}>{value.label}</text>{value.rows.map((row) => <text key={row} fg={palette.dim}>{"▒".repeat(Math.min(row, width - 2))}</text>)}</Frame>;
 }
 
-export function TerminalSpinner({ width }: SurfaceProps) {
+export function TerminalSpinner({ width, animationPhase }: SurfaceProps) {
   const palette = useTerminalPalette(), value = componentPairFixture.spinner;
-  return <Frame width={width}><text><span fg={palette.blue}>{value.frame}</span> {value.label}</text><text fg={palette.dim}>animated glyph frame</text></Frame>;
+  return <Frame width={width}><LoadingStar label={value.label} phase={animationPhase} /><text fg={palette.dim}>· × + * ✦ · shared loading cadence</text></Frame>;
 }
 
 export function TerminalTable({ width }: SurfaceProps) {
@@ -121,12 +128,110 @@ export function TerminalFilters({ width }: SurfaceProps) {
 
 export function TerminalFieldListCards({ width }: SurfaceProps) {
   const palette = useTerminalPalette(), value = componentPairFixture.fieldListCards;
-  return <Frame width={width}><text fg={palette.dim}>FIELD          RESULT  FAIL  Δ</text>{value.fields.map((field) => <text key={field.id}><span fg={field.status === "pass" ? palette.green : palette.red}>{field.status === "pass" ? "✓" : "×"} {field.label.padEnd(12)}</span> {field.status.padEnd(6)} {String(field.failures).padStart(3)}  {field.delta}</text>)}</Frame>;
+  const points = (field: typeof value.fields[number]): TerminalChartPoint[] => field.samples.map((sample) => ({
+    label: `F${sample[0]}`,
+    value: sample[2] - sample[1],
+    state: sample[3] ? "fail" : "pass",
+  }));
+  return <Frame width={width}>
+    <text fg={palette.dim}>FIELD PATH · exact delta by frame</text>
+    {value.fields.map((field, index) => <TerminalLineChart
+      key={field.id}
+      width={width - 2}
+      height={index === 0 ? 6 : 3}
+      title={`${field.status === "pass" ? "✓" : "×"} ${field.label} · ${field.failures} fail · Δ ${field.delta}`}
+      points={points(field)}
+    />)}
+  </Frame>;
 }
 
 export function TerminalTopCard({ width }: SurfaceProps) {
-  const palette = useTerminalPalette(), chrome = useTerminalChrome(), value = componentPairFixture.topCard;
-  return <Frame width={width}><box border={["top", "bottom"]} borderColor={chrome.line} flexDirection="column" paddingLeft={1}><text>{value.title}</text><text fg={palette.dim}>{value.publishedAt}</text><text>Tasks <span fg={palette.blue}>{value.tasks}</span>  Elapsed {value.elapsed}  Pace {value.pace}  Done <span fg={palette.green}>{value.done}</span></text><text>{"━".repeat(14)}{"·".repeat(7)}</text><text fg={palette.muted}>{value.log}</text></box></Frame>;
+  const palette = useTerminalPalette(), value = componentPairFixture.topCard;
+  return <Frame width={width}>
+    <text>{value.title}  <span fg={palette.dim}>{value.publishedAt}</span></text>
+    <text>Tasks <span fg={palette.blue}>{value.tasks}</span>  Elapsed {value.elapsed}  Pace {value.pace}  Done <span fg={palette.green}>{value.done}</span></text>
+    <TerminalLineChart width={width - 2} height={7} title={value.log} points={value.chart} />
+  </Frame>;
+}
+
+function MetricGlyph({ kind, value, width }: { kind: "progress-donut" | "burn-donut" | "waffle-metric"; value: unknown; width: number }) {
+  const palette = useTerminalPalette();
+  const frame = progressGlyphFrame(kind, value, width, palette);
+  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
+}
+
+export function TerminalKpiStripPair({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.kpiStrip;
+  const cellWidth = Math.max(10, Math.floor((width - 2) / value.items.length));
+  const visuals = [
+    <MetricGlyph key="progress" kind="progress-donut" value={componentPairFixture.progressDonut.percent} width={cellWidth - 2} />,
+    <MetricGlyph key="burns" kind="burn-donut" value={componentPairFixture.burnDonut.entries} width={cellWidth - 2} />,
+    <MetricGlyph key="waffle" kind="waffle-metric" value={componentPairFixture.waffleMetric.metric} width={cellWidth - 2} />,
+  ];
+  return <Frame width={width}>
+    <text fg={palette.muted}>{value.title}</text>
+    <box flexDirection={width < 48 ? "column" : "row"} overflow="hidden">
+      {value.items.map((item, index) => <box key={item.heading} width={width < 48 ? width - 2 : cellWidth} height={3} flexDirection="column" overflow="hidden">
+        <text>{item.heading}</text>
+        {visuals[index]}
+        <text fg={palette.muted}>{item.value}</text>
+      </box>)}
+    </box>
+  </Frame>;
+}
+
+export function TerminalKpiItemPair({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.kpiItem;
+  return <Frame width={width}>
+    <text>{value.heading}</text>
+    <MetricGlyph kind="progress-donut" value={value.percent} width={Math.min(24, width - 2)} />
+    <text fg={palette.muted}>{value.value}</text>
+  </Frame>;
+}
+
+export function TerminalMetricTilesPair({ width }: SurfaceProps) {
+  const value = componentPairFixture.metricTiles;
+  const model = {
+    domains: ["desktop"], selected: "desktop", note: "", frames: [],
+    metrics: [
+      ["Frames", `${value.passed}/${value.total}`],
+      ["Changed", `${(value.ratio * 100).toFixed(2)}%`],
+      ["Mean RGB", value.meanAbsoluteDelta.toFixed(3)],
+      ["Max delta", String(value.maximumAbsoluteDelta)],
+    ] as Array<[string, string]>,
+  };
+  return <Frame width={width}><TerminalMetricTiles model={model} width={width - 2} /></Frame>;
+}
+
+export function TerminalProgressDonutPair({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.progressDonut;
+  return <Frame width={width}><text>Progress donut</text><MetricGlyph kind="progress-donut" value={value.percent} width={Math.min(32, width - 2)} /><text fg={palette.muted}>{value.label}</text></Frame>;
+}
+
+export function TerminalBurnDonutPair({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.burnDonut;
+  return <Frame width={width}><text>Result distribution</text><MetricGlyph kind="burn-donut" value={value.entries} width={Math.min(32, width - 2)} /><text fg={palette.muted}>{fitText(value.label, width - 2)}</text></Frame>;
+}
+
+export function TerminalWaffleMetricPair({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.waffleMetric;
+  return <Frame width={width}><text>Field parity</text><MetricGlyph kind="waffle-metric" value={value.metric} width={Math.min(32, width - 2)} /><text fg={palette.muted}>{value.label}</text></Frame>;
+}
+
+export function TerminalVisualParityMedia({ width }: SurfaceProps) {
+  const palette = useTerminalPalette(), value = componentPairFixture.visualParityMedia;
+  const imageWidth = Math.max(4, Math.floor((width - 4) / value.images.length));
+  return <Frame width={width}>
+    <text>{value.label} · Frame {value.frame}</text>
+    <box height={1} flexDirection="row">{value.images.map((image) => <text key={image.label} width={imageWidth}>{fitText(image.label, imageWidth)}</text>)}</box>
+    <box height={6} flexDirection="row">{value.images.map((image) => <GlyphImage key={image.label} source={componentMediaPng[image.source]} width={imageWidth} height={6} />)}</box>
+    <text fg={palette.muted}>glyphcss image cells · source / reference / difference</text>
+  </Frame>;
+}
+
+export function TerminalLineChartPair({ width }: SurfaceProps) {
+  const value = componentPairFixture.lineChart;
+  return <Frame width={width}><TerminalLineChart width={width - 2} height={9} title={value.title} points={value.points} /></Frame>;
 }
 
 const surfaces: Record<ComponentPairId, (props: SurfaceProps) => React.ReactNode> = {
@@ -153,9 +258,17 @@ const surfaces: Record<ComponentPairId, (props: SurfaceProps) => React.ReactNode
   filters: TerminalFilters,
   "field-list-cards": TerminalFieldListCards,
   "top-card": TerminalTopCard,
+  "kpi-strip": TerminalKpiStripPair,
+  "kpi-item": TerminalKpiItemPair,
+  "metric-tiles": TerminalMetricTilesPair,
+  "progress-donut": TerminalProgressDonutPair,
+  "burn-donut": TerminalBurnDonutPair,
+  "waffle-metric": TerminalWaffleMetricPair,
+  "visual-parity-media": TerminalVisualParityMedia,
+  "line-chart": TerminalLineChartPair,
 };
 
-export function TerminalComponentPair({ id, width }: SurfaceProps & { id: ComponentPairId }) {
+export function TerminalComponentPair({ id, width, animationPhase }: SurfaceProps & { id: ComponentPairId }) {
   const Surface = surfaces[id];
-  return <Surface width={width} />;
+  return <Surface width={width} animationPhase={animationPhase} />;
 }
