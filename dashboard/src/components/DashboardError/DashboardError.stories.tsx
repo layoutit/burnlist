@@ -16,7 +16,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default = {
   render: (args) => (
-    <PairPreview component="dashboard-error">
+    <PairPreview component="dashboard-error" terminalArgs={args}>
       <div className="storybook-pattern-demo"><DashboardError {...args} /></div>
     </PairPreview>
   ),

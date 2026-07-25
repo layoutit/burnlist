@@ -10,15 +10,16 @@ const fixture = componentPairFixture.field;
 const meta = {
   title: "UI/Field",
   component: Field,
+  args: { ...fixture, invalid: true },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Field>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const FormComposition = {
-  render: () => (
-    <PairPreview component="field">
+  render: (args) => (
+    <PairPreview component="field" terminalArgs={args}>
       <FieldGroup className="storybook-form-demo">
         <Field>
           <FieldLabel htmlFor="field-name">Oven name</FieldLabel>
@@ -38,10 +39,10 @@ export const FormComposition = {
           <Textarea id="field-objective" placeholder="Describe the measurable outcome." />
         </Field>
         <Field>
-          <FieldLabel htmlFor="field-invalid">{fixture.label}</FieldLabel>
-          <Input aria-describedby="field-invalid-error" aria-invalid="true" defaultValue={fixture.value} id="field-invalid" />
-          <FieldDescription>{fixture.detail}</FieldDescription>
-          <FieldError id="field-invalid-error">{fixture.error}</FieldError>
+          <FieldLabel htmlFor="field-invalid">{String(args.label)}</FieldLabel>
+          <Input aria-describedby="field-invalid-error" aria-invalid={Boolean(args.invalid)} value={String(args.value)} readOnly id="field-invalid" />
+          <FieldDescription>{String(args.detail)}</FieldDescription>
+          <FieldError id="field-invalid-error">{String(args.error)}</FieldError>
         </Field>
       </FieldGroup>
     </PairPreview>

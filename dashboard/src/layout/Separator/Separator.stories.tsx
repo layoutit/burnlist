@@ -8,6 +8,8 @@ const meta = {
   title: "UI/Separator",
   component: Separator,
   args: {
+    before: fixture.before,
+    after: fixture.after,
     decorative: true,
     orientation: "horizontal",
   },
@@ -20,12 +22,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Horizontal = {
-  render: () => (
-    <PairPreview component="separator">
-      <div className="storybook-separator-demo" data-orientation="horizontal">
-        <span>{fixture.before}</span>
-        <Separator />
-        <span>{fixture.after}</span>
+  render: (args) => (
+    <PairPreview component="separator" terminalArgs={args}>
+      <div className="storybook-separator-demo" data-orientation={args.orientation}>
+        <span>{String(args.before)}</span>
+        <Separator decorative={args.decorative} orientation={args.orientation} />
+        <span>{String(args.after)}</span>
       </div>
     </PairPreview>
   ),

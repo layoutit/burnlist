@@ -59,7 +59,7 @@ export const componentPairFixture = {
   select: {
     label: "Lifecycle",
     value: "active",
-    options: ["draft", "active", "complete"],
+    options: ["draft", "ready", "active", "complete"],
   },
   separator: { before: "Current run", after: "Retained history" },
   skeleton: { label: "Loading Burnlist summary", rows: [18, 30, 22] },
@@ -109,13 +109,14 @@ export const componentPairFixture = {
         samples: [[0, 0, 0, 0], [1, 1, 1, 0], [2, 2, 2.1, 1], [3, 3, 3.3, 1], [4, 4, 4.05, 0], [5, 5, 5, 0]],
       },
       {
-        id: "active", label: "Active", status: "pass", failures: 0, delta: 0,
-        samples: [[0, 0, 0, 0], [1, 1, 1, 0], [2, 1, 1, 0], [3, 0, 0, 0], [4, 1, 1, 0], [5, 1, 1, 0]],
+        id: "active", label: "Active", status: "pass", failures: 0, delta: 0.02,
+        samples: [[0, 0, 0, 0], [1, 1, 1.02, 0], [2, 1, 1.01, 0], [3, 0, 0, 0], [4, 1, 1.01, 0], [5, 1, 1, 0]],
       },
     ],
   },
   topCard: {
     title: "Exact delta",
+    historyTitle: "Run log",
     publishedAt: "2026-01-01T12:00:00.000Z",
     tasks: "2/3",
     elapsed: "30m",
@@ -158,6 +159,7 @@ export const componentPairFixture = {
   },
   lineChart: {
     title: "Exact delta by frame",
+    chartMode: "delta",
     points: [
       { label: "F0", value: 0, state: "pass" },
       { label: "F1", value: 0.01, state: "pass" },

@@ -19,6 +19,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default = {
-  render: (args) => <PairPreview component="empty-state"><EmptyState {...args} /></PairPreview>,
+  render: (args) => <PairPreview component="empty-state" terminalArgs={args}><EmptyState {...args} /></PairPreview>,
 } satisfies Story;
 export const CustomIcon = { args: { icon: Inbox, title: "No retained runs" } } satisfies Story;

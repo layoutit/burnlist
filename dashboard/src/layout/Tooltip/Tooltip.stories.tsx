@@ -9,21 +9,22 @@ const fixture = componentPairFixture.tooltip;
 const meta = {
   title: "UI/Tooltip",
   component: TooltipContent,
+  args: { label: fixture.label, detail: fixture.detail, open: true },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof TooltipContent>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default = {
-  render: () => (
-    <PairPreview component="tooltip">
+  render: (args) => (
+    <PairPreview component="tooltip" terminalArgs={args}>
       <TooltipProvider delayDuration={0}>
-        <Tooltip defaultOpen>
+        <Tooltip open={Boolean(args.open)}>
           <TooltipTrigger asChild>
-            <Button aria-label={fixture.label} size="icon" variant="outline"><Info aria-hidden="true" /></Button>
+            <Button aria-label="Tooltip information" size="icon" variant="outline"><Info aria-hidden="true" /></Button>
           </TooltipTrigger>
-          <TooltipContent>{fixture.detail}</TooltipContent>
+          <TooltipContent>{String(args.detail)}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </PairPreview>

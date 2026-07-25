@@ -15,26 +15,27 @@ const fixture = componentPairFixture.card;
 const meta = {
   title: "UI/Card",
   component: Card,
+  args: { title: fixture.title, detail: fixture.detail, meta: fixture.meta, status: "ready", action: "Open Oven" },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Card>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OvenSummary = {
-  render: () => (
-    <PairPreview component="card">
+  render: (args) => (
+    <PairPreview component="card" terminalArgs={args}>
       <Card className="storybook-card-demo">
         <CardHeader>
-          <CardTitle>{fixture.title}</CardTitle>
-          <CardDescription>{fixture.detail}</CardDescription>
+          <CardTitle>{String(args.title)}</CardTitle>
+          <CardDescription>{String(args.detail)}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="storybook-card-copy">{fixture.meta}</p>
+          <p className="storybook-card-copy">{String(args.meta)}</p>
         </CardContent>
         <CardFooter className="storybook-card-footer">
-          <Badge>ready</Badge>
-          <Button size="sm" variant="outline">Open Oven</Button>
+          <Badge>{String(args.status)}</Badge>
+          <Button aria-label="Card action" size="sm" variant="outline">{String(args.action)}</Button>
         </CardFooter>
       </Card>
     </PairPreview>

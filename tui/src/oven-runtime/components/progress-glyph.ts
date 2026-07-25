@@ -26,15 +26,26 @@ const colorsFor = (palette?: ProgressGlyphPalette) => palette ? {
   failed: palette.red,
 } : defaults;
 
-const grid = (chars: string[], cellColors: Array<string | null>, cols: number): CellGrid =>
-  buildCellGrid(chars, cellColors, Float64Array.from({ length: cols }, () => 0), cols, 1);
+const grid = (chars: string[], cellColors: Array<string | null>, cols: number, rows = 1): CellGrid =>
+  buildCellGrid(chars, cellColors, Float64Array.from({ length: cols * rows }, () => 0), cols, rows);
 
-function progress(value: unknown, cols: number, colors: ProgressGlyphColors): CellGrid {
-  const done = Math.round(clampProgressPercent(value) / 100 * cols);
+function progressQuadrants(value: unknown, requestedCols: number, colors: ProgressGlyphColors): CellGrid {
+  const cols = requestedCols < 4 ? 2 : 4;
+  const rows = 2;
+  const cells = cols * rows;
+  const exact = clampProgressPercent(value) / 100 * cells;
+  const full = Math.floor(exact);
+  const remainder = exact - full;
+  const chars = Array.from({ length: cells }, (_, index) => {
+    if (index < full) return "█";
+    if (index > full || remainder === 0) return "░";
+    return remainder >= 2 / 3 ? "▓" : remainder >= 1 / 3 ? "▒" : "░";
+  });
   return grid(
-    Array.from({ length: cols }, (_, index) => index < done ? "━" : "·"),
-    Array.from({ length: cols }, (_, index) => index < done ? colors.done : colors.empty),
+    chars,
+    chars.map((char) => char === "░" ? colors.worsened : colors.done),
     cols,
+    rows,
   );
 }
 
@@ -46,21 +57,29 @@ function burns(value: unknown, cols: number, colors: ProgressGlyphColors): CellG
   return grid(expanded.map(() => "━"), expanded.map((name) => colors[name]), cols);
 }
 
-function waffle(value: unknown, cols: number, colors: ProgressGlyphColors): CellGrid {
+function waffle(value: unknown, requestedCols: number, colors: ProgressGlyphColors): CellGrid {
   const metric = value && typeof value === "object" && !Array.isArray(value) ? value as ProgressMetric : {};
   const data = waffleMetricData(metric) as { failedCells: number; empty: boolean };
-  const failed = data.empty ? 0 : Math.round(data.failedCells / 96 * cols);
+  const cols = requestedCols < 5 ? Math.max(2, requestedCols) : 5;
+  const rows = cols < 5 ? 3 : 4;
+  const cells = cols * rows;
+  const failed = data.empty ? 0 : Math.round(data.failedCells / 80 * cells);
+  const failedAt = (index: number) => {
+    const row = Math.floor(index / cols), column = index % cols;
+    return (cols - 1 - column) * rows + (rows - 1 - row) < failed;
+  };
   return grid(
-    Array.from({ length: cols }, (_, index) => index < failed ? "■" : "□"),
-    Array.from({ length: cols }, (_, index) => index < failed ? colors.failed : colors.empty),
+    Array.from({ length: cells }, (_, index) => data.empty ? "▫" : failedAt(index) ? "▪" : "▫"),
+    Array.from({ length: cells }, (_, index) => data.empty ? colors.empty : failedAt(index) ? colors.failed : colors.done),
     cols,
+    rows,
   );
 }
 
 /** Real glyphcss CellGrid used by the production OpenTUI GlyphSurface. */
-export function progressGlyphFrame(kind: ProgressGlyphKind, value: unknown, width: number, palette?: ProgressGlyphPalette): CellGrid {
-  const cols = Math.max(3, Math.floor(width)), colors = colorsFor(palette);
-  if (kind === "progress-donut") return progress(value, cols, colors);
+export function progressGlyphFrame(kind: ProgressGlyphKind, value: unknown, width: number, palette?: ProgressGlyphPalette, height = 1): CellGrid {
+  const cols = Math.max(2, Math.floor(width)), colors = colorsFor(palette);
+  if (kind === "progress-donut") return progressQuadrants(value, cols, colors);
   if (kind === "burn-donut") return burns(value, cols, colors);
   return waffle(value, cols, colors);
 }

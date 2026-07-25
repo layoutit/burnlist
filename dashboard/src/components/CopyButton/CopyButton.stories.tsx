@@ -15,7 +15,5 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default = {
-  decorators: [
-    (Story) => <PairPreview component="copy-button"><Story /></PairPreview>,
-  ],
+  render: (args) => <PairPreview component="copy-button" terminalArgs={{ ...args, value: args.text }}><CopyButton aria-label="Copy instructions" text={String(args.text)} /></PairPreview>,
 } satisfies Story;

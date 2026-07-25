@@ -5,10 +5,10 @@ import "../../components/VisualParity/visual-parity.css";
 import { MetricTiles } from "./MetricTiles";
 
 const fixture = componentPairFixture.metricTiles;
-const meta = { title: "Patterns/MetricTiles", component: MetricTiles, parameters: { layout: "centered", terminalParityOwner: "oven:visual-parity" } } satisfies Meta<typeof MetricTiles>;
+const meta = { title: "Patterns/MetricTiles", component: MetricTiles, args: fixture, parameters: { layout: "centered", terminalParityOwner: "oven:visual-parity" } } satisfies Meta<typeof MetricTiles>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
-  render: () => <PairPreview component="metric-tiles"><MetricTiles {...fixture} /></PairPreview>,
+  render: (args) => <PairPreview component="metric-tiles" terminalArgs={args}><MetricTiles {...args} /></PairPreview>,
 };

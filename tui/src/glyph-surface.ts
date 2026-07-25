@@ -10,6 +10,14 @@ import type { CellGrid } from "glyphcss";
 
 export interface GlyphSurfaceOptions extends RenderableOptions<GlyphSurfaceRenderable> {
   frame?: CellGrid;
+  cellBackground?: string;
+  cellBackgroundRegions?: readonly Readonly<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: string;
+  }>[];
 }
 
 const transparent = RGBA.fromInts(0, 0, 0, 0);
@@ -17,11 +25,15 @@ const fallback = RGBA.fromInts(255, 120, 32, 255);
 
 export class GlyphSurfaceRenderable extends Renderable {
   private currentFrame?: CellGrid;
+  private currentCellBackground?: string;
+  private currentCellBackgroundRegions: GlyphSurfaceOptions["cellBackgroundRegions"] = [];
   private readonly colors = new Map<string, RGBA>();
 
   constructor(ctx: RenderContext, options: GlyphSurfaceOptions) {
     super(ctx, options);
     this.currentFrame = options.frame;
+    this.currentCellBackground = options.cellBackground;
+    this.currentCellBackgroundRegions = options.cellBackgroundRegions ?? [];
   }
 
   set frame(value: CellGrid | undefined) {
@@ -33,6 +45,24 @@ export class GlyphSurfaceRenderable extends Renderable {
     return this.currentFrame;
   }
 
+  set cellBackground(value: string | undefined) {
+    this.currentCellBackground = value;
+    this.requestRender();
+  }
+
+  get cellBackground(): string | undefined {
+    return this.currentCellBackground;
+  }
+
+  set cellBackgroundRegions(value: GlyphSurfaceOptions["cellBackgroundRegions"]) {
+    this.currentCellBackgroundRegions = value ?? [];
+    this.requestRender();
+  }
+
+  get cellBackgroundRegions(): GlyphSurfaceOptions["cellBackgroundRegions"] {
+    return this.currentCellBackgroundRegions;
+  }
+
   private color(value: string | null): RGBA {
     if (!value) return fallback;
     const existing = this.colors.get(value);
@@ -40,6 +70,17 @@ export class GlyphSurfaceRenderable extends Renderable {
     const parsed = RGBA.fromHex(value);
     this.colors.set(value, parsed);
     return parsed;
+  }
+
+  private background(col: number, row: number): RGBA {
+    const region = this.currentCellBackgroundRegions?.find((entry) => (
+      col >= entry.x
+      && col < entry.x + entry.width
+      && row >= entry.y
+      && row < entry.y + entry.height
+    ));
+    const color = region?.color ?? this.currentCellBackground;
+    return !color || color === "transparent" ? transparent : this.color(color);
   }
 
   protected renderSelf(buffer: OptimizedBuffer): void {
@@ -55,7 +96,7 @@ export class GlyphSurfaceRenderable extends Renderable {
           this.y + row,
           frame.char[index] ?? " ",
           this.color(frame.color[index] ?? null),
-          transparent,
+          this.background(col, row),
         );
       }
     }

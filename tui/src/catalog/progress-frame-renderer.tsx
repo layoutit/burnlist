@@ -86,7 +86,7 @@ async function render(width: number, checkpoint: string, payload: JsonValue, sou
     if (!recorded) fail("OpenTUI produced no frame");
     const semanticText = orderedSemanticText(recorded.frame), cells = cellsFromFrame(recorded.frame, width, height, recorded.buffers), text = semanticText.join("\n");
     if (checkpoint === "required-error") { if (!text.includes("Missing required")) fail("required binding fallback missing"); }
-    else if (!targetKind && (!text.includes("Burnlist progress") || !cells.some((cell) => ["━", "■", "□"].includes(cell.char)))) fail("support semantics missing");
+    else if (!targetKind && (!text.includes("Burnlist progress") || !cells.some((cell) => ["━", "█", "░", "▪", "▫"].includes(cell.char)))) fail("support semantics missing");
     const fixture = targetKind ? `progress-target-${targetKind}` : "progress-components";
     const base: TerminalFrame = { schema: FRAME_SCHEMA, fixture, checkpoint, viewport: { width, height }, semanticText, cells, renderer, fixtureSha256: sourceSha256 };
     if (!targetKind) return base;

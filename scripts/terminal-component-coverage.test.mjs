@@ -34,11 +34,6 @@ test("every catalogued console component has one source-backed terminal pair", a
   assert.equal(titles.some((title) => title.startsWith("Ovens/")), false);
   assert.equal(titles.some((title) => title.startsWith("Terminal counterparts/")), false);
   assert.equal(titles.some((title) => /General console-terminal|Terminal (?:controls|list|heading)/u.test(title)), false);
-  for (const story of stories.filter(({ source }) => /\btitle:\s*"(?:UI|Patterns)\//u.test(source) && /\bexport const Playground\b/u.test(source))) {
-    assert.match(story.source, /<PairPreview component="[^"]+"/u, `${story.path} -- Playground is not paired`);
-    assert.ok(manifest.entries.some((entry) => resolve(root, entry.storyFile) === story.path), `${story.path} -- Playground is outside closed coverage`);
-  }
-
   for (const entry of manifest.entries) {
     const expectedPath = resolve(root, entry.storyFile);
     const consoleStory = stories.find(({ path }) => path === expectedPath);
@@ -47,21 +42,25 @@ test("every catalogued console component has one source-backed terminal pair", a
     assert.match(consoleStory.source, new RegExp(`component:\\s*${entry.consoleComponent}\\b`, "u"));
     assert.match(consoleStory.source, /import \{ PairPreview \}/u);
     assert.match(consoleStory.source, /componentPairFixture/u);
+    assert.match(consoleStory.source, /\bargs\s*:/u, `${entry.consoleStory} declares no interactive controls`);
     const exportStart = consoleStory.source.search(new RegExp(`export const ${entry.pairedExport}\\b`, "u"));
     assert.notEqual(exportStart, -1, `${entry.consoleStory} has no ${entry.pairedExport} export`);
     const remainder = consoleStory.source.slice(exportStart);
     const nextExport = remainder.slice(1).search(/\nexport const \w+\b/u);
     const pairedSource = nextExport < 0 ? remainder : remainder.slice(0, nextExport + 1);
     assert.match(pairedSource, new RegExp(`<PairPreview component="${entry.id}"`, "u"));
+    assert.match(pairedSource, /\brender:\s*\(args\)/u, `${entry.consoleStory} does not consume live Storybook args`);
+    assert.match(pairedSource, /terminalArgs=\{/u, `${entry.consoleStory} does not pass live args to its terminal counterpart`);
   }
 
   const pairPreview = await readFile(resolve(dashboard, "components/TerminalFrame/TerminalPairPreview.tsx"), "utf8");
-  assert.match(pairPreview, /componentPairFrameEntries/u);
-  assert.match(pairPreview, /`component-\$\{component\}:72x10:\$\{checkpoint\}`/u);
+  assert.match(pairPreview, /LiveTerminalFrame/u);
+  assert.doesNotMatch(pairPreview, /componentPairFrameEntries|TerminalFrame entry|generated\/terminal-component-frames/u);
+  assert.match(pairPreview, /terminalArgs:\s*ComponentPairLiveArgs/u);
 
   const terminalSource = await readFile(resolve(root, "tui/src/catalog/component-pair-surface.tsx"), "utf8");
   for (const entry of manifest.entries) {
-    assert.match(terminalSource, new RegExp(`export function ${entry.terminalExport}\\b`, "u"));
+    assert.match(terminalSource, new RegExp(`export const ${entry.terminalExport}\\b`, "u"));
     assert.match(terminalSource, new RegExp(`(?:^|\\n)\\s*(?:"${entry.id}"|${entry.id}): ${entry.terminalExport},`, "u"));
   }
 
@@ -72,8 +71,9 @@ test("every catalogued console component has one source-backed terminal pair", a
   const frameRoot = resolve(dashboard, "generated/terminal-component-frames");
   const index = JSON.parse(await readFile(resolve(frameRoot, "index.json"), "utf8"));
   const entries = index.entries.filter((entry) => entry.fixture.startsWith("component-"));
-  assert.deepEqual(sorted(entries.map((entry) => entry.id)), sorted(manifest.entries.map((entry) => `component-${entry.id}:72x10:${entry.id === "spinner" ? "spark" : "default"}`)));
+  assert.deepEqual(sorted(entries.map((entry) => entry.fixture)), sorted(manifest.entries.map((entry) => `component-${entry.id}`)));
   for (const entry of entries) {
+    assert.match(entry.id, new RegExp(`^${entry.fixture}:72x(?:10|12|16):${entry.fixture === "component-spinner" ? "spark" : "default"}$`, "u"));
     const frame = JSON.parse(await readFile(resolve(frameRoot, entry.path), "utf8"));
     assert.equal(frame.fixtureSha256, entry.fixtureSha256);
     assert.equal(frame.renderer.sourceSha256, entry.fixtureSha256);

@@ -19,8 +19,10 @@ const pairFields = fixture.fields.map((field) => ({
 const meta = {
   title: "Patterns/FieldListCards",
   component: HybridFieldList,
+  args: { chartMode: "delta", fields: pairFields },
+  argTypes: { chartMode: { control: "inline-radio", options: ["delta", "value"] } },
   parameters: { layout: "fullscreen", terminalParityOwner: "oven:differential-testing" },
-} satisfies Meta<typeof HybridFieldList>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -52,7 +54,10 @@ function FieldListPreview({
 }
 
 export const Playground: Story = {
-  render: () => <PairPreview component="field-list-cards"><FieldListPreview chartMode="delta" fields={pairFields} /></PairPreview>,
+  render: (args) => {
+    const fields = Array.isArray(args.fields) ? args.fields as typeof pairFields : pairFields;
+    return <PairPreview component="field-list-cards" terminalArgs={{ ...args, fields }}><FieldListPreview chartMode={String(args.chartMode) as "delta" | "value"} fields={fields} /></PairPreview>;
+  },
 };
 
 export const Value: Story = {

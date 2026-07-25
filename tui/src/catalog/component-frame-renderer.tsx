@@ -7,6 +7,7 @@ import { createTestRenderer, ManualClock } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { componentPairIds, type ComponentPairId } from "./component-pair-fixture";
 import { TerminalComponentPair } from "./component-pair-surface";
+import { componentPairViewport } from "./component-pair-live-model";
 import { TERMINAL_LOADING_CAPTURE } from "../loading-cadence";
 import { FRAME_INDEX_SCHEMA, FRAME_SCHEMA, type RendererProvenance, type TerminalFrame } from "./frame-contract";
 import { cellsFromFrame } from "./frame-renderer";
@@ -43,6 +44,9 @@ async function provenance(): Promise<{ sourceSha256: string; renderer: RendererP
     "dashboard/src/components/TerminalFrame/TerminalPairPreview.tsx",
     "tui/src/catalog/component-frame-renderer.tsx",
     "tui/src/catalog/component-pair-fixture.ts",
+    "tui/src/catalog/component-cell-canvas.ts",
+    "tui/src/catalog/component-pair-live-model.ts",
+    "tui/src/catalog/component-pair-layout.ts",
     "tui/src/catalog/component-pair-surface.tsx",
     "tui/src/catalog/component-media-fixture.ts",
     "tui/src/glyph-image.tsx",
@@ -50,6 +54,8 @@ async function provenance(): Promise<{ sourceSha256: string; renderer: RendererP
     "tui/src/loading-star.tsx",
     "tui/src/png-glyph.ts",
     "tui/src/terminal-line-chart.tsx",
+    "tui/src/terminal-series-chart-model.ts",
+    "src/ovens/series-chart-model.mjs",
     "tui/src/oven-runtime/components/media-components.tsx",
     "tui/src/oven-runtime/components/progress-glyph.ts",
     "tui/src/catalog/frame-renderer.tsx",
@@ -80,7 +86,7 @@ async function provenance(): Promise<{ sourceSha256: string; renderer: RendererP
 }
 
 async function render(id: ComponentPairId, renderer: RendererProvenance, fixtureSha256: string): Promise<TerminalFrame> {
-  const width = 72, height = 10;
+  const { width, height } = componentPairViewport(id);
   const checkpoint = id === "spinner" ? TERMINAL_LOADING_CAPTURE.checkpoint : "default";
   const setup = await createTestRenderer({ width, height, clock: new ManualClock(), targetFps: 60, useThread: false });
   const rootNode = createRoot(setup.renderer);
@@ -129,10 +135,10 @@ async function desired() {
   const entries = frames.map((frame) => {
     const text = JSON.stringify(frame);
     const digest = sha(text);
-    const path = `${frame.fixture}.72x10.${frame.checkpoint}.${digest.slice(0, 16)}.json`;
+    const path = `${frame.fixture}.${frame.viewport.width}x${frame.viewport.height}.${frame.checkpoint}.${digest.slice(0, 16)}.json`;
     files[path] = text;
     return {
-      id: `${frame.fixture}:72x10:${frame.checkpoint}`, fixture: frame.fixture, path,
+      id: `${frame.fixture}:${frame.viewport.width}x${frame.viewport.height}:${frame.checkpoint}`, fixture: frame.fixture, path,
       sha256: digest, fixtureSha256: frame.fixtureSha256,
       checkpoint: frame.checkpoint, viewport: frame.viewport,
     };

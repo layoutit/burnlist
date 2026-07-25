@@ -19,6 +19,7 @@ const fixture = componentPairFixture.topCard;
 const payload = {
   ...DIFFERENTIAL_STORY_PAYLOAD,
   primaryChartTitle: fixture.title,
+  historyTitle: fixture.historyTitle,
   publishedAt: fixture.publishedAt,
 };
 const pairChartField = {
@@ -28,25 +29,29 @@ const pairChartField = {
 const meta = {
   title: "Patterns/TopCard",
   component: DifferentialTestingDetail,
+  args: { ...fixture },
   parameters: { layout: "fullscreen", terminalParityOwner: "oven:differential-testing" },
-} satisfies Meta<typeof DifferentialTestingDetail>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function TopCardPreview() {
+function TopCardPreview({ args }: { args: Record<string, unknown> }) {
   const [mode, setMode] = useState<"progress" | "failed" | "delta">("delta");
   const chartMode = mode === "delta" ? "delta" : "value";
+  const storyPayload = { ...payload, primaryChartTitle: String(args.title), historyTitle: String(args.historyTitle), publishedAt: String(args.publishedAt) };
+  const points = Array.isArray(args.chart) ? args.chart as typeof fixture.chart : fixture.chart;
+  const storyField = { ...pairChartField, samples: points.map((point, index) => [index, 0, point.value, point.state === "fail" ? 1 : 0] as [number, number, number, number]) };
 
   return <div className="shell driving-parity-view storybook-oven-pattern storybook-top-card-pattern">
     <DifferentialTestingDetail
-      payload={payload}
+      payload={storyPayload}
       progressMode={mode}
       onProgressModeChange={setMode}
       refresh={<RefreshStatusChip refresh={{ status: "idle" }} />}
-      kpis={<DifferentialKpiStrip payload={payload} />}
-      chart={<div id="progress-chart" className="chart hybrid-chart" role="img" aria-label={fixture.title}>
-        <FieldMiniChart field={pairChartField} showFrameLabels chartMode={chartMode} />
+      kpis={<DifferentialKpiStrip payload={storyPayload} />}
+      chart={<div id="progress-chart" className="chart hybrid-chart" role="img" aria-label={String(args.title)}>
+        <FieldMiniChart field={storyField} showFrameLabels chartMode={chartMode} />
       </div>}
       log={<DifferentialLogTable entries={DIFFERENTIAL_STORY_LOG} now={DIFFERENTIAL_STORY_NOW} />}
     />
@@ -54,5 +59,5 @@ function TopCardPreview() {
 }
 
 export const Playground: Story = {
-  render: () => <PairPreview component="top-card"><TopCardPreview /></PairPreview>,
+  render: (args) => <PairPreview component="top-card" terminalArgs={args}><TopCardPreview args={args} /></PairPreview>,
 };

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
 import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
@@ -8,27 +9,31 @@ const fixture = componentPairFixture.select;
 const meta = {
   title: "UI/Select",
   component: Select,
+  args: { label: fixture.label, value: fixture.value, options: fixture.options, disabled: false },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Select>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Lifecycle = {
-  render: () => (
-    <PairPreview component="select">
+  render: (args) => {
+    const [selected, setSelected] = useState(String(args.value));
+    useEffect(() => setSelected(String(args.value)), [args.value]);
+    const options = Array.isArray(args.options) ? args.options.map(String) : [...fixture.options];
+    return <PairPreview component="select" terminalArgs={{ ...args, value: selected, options }}>
       <Field className="storybook-control-demo">
-        <FieldLabel htmlFor="select-lifecycle">{fixture.label}</FieldLabel>
-        <Select defaultValue="active" id="select-lifecycle">
-          <option value="draft">Draft</option>
-          <option value="ready">Ready</option>
-          <option value="active">Active</option>
-          <option value="complete">Complete</option>
+        <FieldLabel htmlFor="select-lifecycle">{String(args.label)}</FieldLabel>
+        <Select disabled={Boolean(args.disabled)} id="select-lifecycle" value={selected} onChange={(event) => setSelected(event.currentTarget.value)}>
+          <option value="draft">{options[0] ?? "draft"}</option>
+          <option value="ready">{options[1] ?? "ready"}</option>
+          <option value="active">{options[2] ?? "active"}</option>
+          <option value="complete">{options[3] ?? "complete"}</option>
         </Select>
         <FieldDescription>Controls which Burnlists are included.</FieldDescription>
       </Field>
-    </PairPreview>
-  ),
+    </PairPreview>;
+  },
 } satisfies Story;
 
 export const Disabled = {

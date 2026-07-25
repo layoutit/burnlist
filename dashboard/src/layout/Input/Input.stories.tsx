@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 export const Playground = {
   args: { "aria-label": fixture.label, defaultValue: fixture.value },
   render: (args) => (
-    <PairPreview component="input">
+    <PairPreview component="input" terminalArgs={{ ...args, label: args["aria-label"], value: args.value ?? args.defaultValue }}>
       <Input {...args} className="storybook-control-demo" />
     </PairPreview>
   ),

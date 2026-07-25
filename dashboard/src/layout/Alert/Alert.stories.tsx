@@ -17,9 +17,9 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground = {
   render: (args) => (
-    <PairPreview component="alert">
+    <PairPreview component="alert" terminalArgs={{ ...args, title: fixture.title, detail: fixture.detail }}>
       <Alert {...args} className="storybook-alert-demo">
-        <CheckCircle2 aria-hidden="true" />
+        {args.variant === "destructive" ? <XCircle aria-hidden="true" /> : args.variant === "warning" ? <TriangleAlert aria-hidden="true" /> : args.variant === "info" ? <Info aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
         <AlertTitle>{fixture.title}</AlertTitle>
         <AlertDescription>{fixture.detail}</AlertDescription>
       </Alert>

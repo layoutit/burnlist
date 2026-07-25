@@ -102,3 +102,34 @@ test("burn apportionment is bounded, deterministic, and retains active classes w
   const frame = progressGlyphFrame("burn-donut", skew, 4);
   expect(new Set(frame.color)).toEqual(new Set(["#55b987", "#e06c75", "#d19a66", "#8b8b8b"]));
 });
+
+test("progress quadrants are compact, partial-aware, and preserve fill versus track colors", () => {
+  const empty = progressGlyphFrame("progress-donut", 0, 40);
+  const partial = progressGlyphFrame("progress-donut", 37, 40);
+  const complete = progressGlyphFrame("progress-donut", 100, 40);
+  for (const frame of [empty, partial, complete]) {
+    expect(frame.cols).toBe(4);
+    expect(frame.rows).toBe(2);
+  }
+  expect(new Set(empty.char)).toEqual(new Set(["░"]));
+  expect(partial.char).toContain("█");
+  expect(partial.char.join("")).toMatch(/[▓▒]/u);
+  expect(new Set(complete.char)).toEqual(new Set(["█"]));
+  expect(new Set(partial.color)).toEqual(new Set(["#55b987", "#e06c75"]));
+});
+
+test("waffle cells keep the console aspect, fill direction, and pass/fail colors", () => {
+  const frame = progressGlyphFrame("waffle-metric", { total: 10, failed: 4 }, 40);
+  expect(frame.cols).toBe(5);
+  expect(frame.rows).toBe(4);
+  expect(frame.char).toContain("▪");
+  expect(frame.char).toContain("▫");
+  expect(new Set(frame.color)).toEqual(new Set(["#55b987", "#e06c75"]));
+  const rows = Array.from({ length: frame.rows }, (_, row) => frame.char.slice(row * frame.cols, (row + 1) * frame.cols).join(""));
+  expect(rows.at(-1)?.at(-1)).toBe("▪");
+  expect(rows[0]?.[0]).toBe("▫");
+
+  const narrow = progressGlyphFrame("waffle-metric", { total: 10, failed: 4 }, 4);
+  expect(narrow.cols).toBe(4);
+  expect(narrow.rows).toBe(3);
+});

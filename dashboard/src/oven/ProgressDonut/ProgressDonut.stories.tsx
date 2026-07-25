@@ -5,10 +5,10 @@ import "../../components/DifferentialTesting/differential-testing.css";
 import { ProgressDonut } from "./ProgressDonut";
 
 const fixture = componentPairFixture.progressDonut;
-const meta = { title: "Patterns/ProgressDonut", component: ProgressDonut, parameters: { layout: "centered", terminalParityOwner: "oven:grammar" } } satisfies Meta<typeof ProgressDonut>;
+const meta = { title: "Patterns/ProgressDonut", component: ProgressDonut, args: fixture, parameters: { layout: "centered", terminalParityOwner: "oven:grammar" } } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
-  render: () => <PairPreview component="progress-donut"><figure><ProgressDonut percent={fixture.percent} /><figcaption>{fixture.label}</figcaption></figure></PairPreview>,
+  render: (args) => <PairPreview component="progress-donut" terminalArgs={args}><figure><ProgressDonut percent={Number(args.percent)} /><figcaption>{String(args.label)}</figcaption></figure></PairPreview>,
 };

@@ -12,17 +12,23 @@ const fixture = componentPairFixture.kpiStrip;
 const meta = {
   title: "Patterns/KpiStrip",
   component: KpiStrip,
+  args: {
+    title: fixture.title,
+    percent: componentPairFixture.progressDonut.percent,
+    entries: componentPairFixture.burnDonut.entries,
+    metric: componentPairFixture.waffleMetric.metric,
+  },
   parameters: { layout: "centered", terminalParityOwner: "oven:grammar" },
-} satisfies Meta<typeof KpiStrip>;
+} satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
-  render: () => <PairPreview component="kpi-strip"><KpiStrip className="driving-parity-kpi-strip has-burns" ariaLabel={fixture.title}>
+  render: (args) => <PairPreview component="kpi-strip" terminalArgs={args}><KpiStrip className="driving-parity-kpi-strip has-burns" ariaLabel={String(args.title)}>
     {fixture.items.map((item, index) => <KpiItem key={item.heading} className="driving-parity-kpi-item driving-parity-kpi-section" heading={item.heading} value={item.value} visual={index === 0
-      ? <ProgressDonut percent={componentPairFixture.progressDonut.percent} />
+      ? <ProgressDonut percent={Number(args.percent)} />
       : index === 1
-        ? <BurnDonut entries={[...componentPairFixture.burnDonut.entries]} />
-        : <WaffleCanvas metric={componentPairFixture.waffleMetric.metric} />} />)}
+        ? <BurnDonut entries={[...(args.entries as typeof componentPairFixture.burnDonut.entries)]} />
+        : <WaffleCanvas metric={args.metric as typeof componentPairFixture.waffleMetric.metric} />} />)}
   </KpiStrip></PairPreview>,
 };

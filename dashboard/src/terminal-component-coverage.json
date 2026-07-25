@@ -31,6 +31,6 @@
     { "id": "burn-donut", "consoleStory": "Patterns/BurnDonut", "storyFile": "dashboard/src/oven/BurnDonut/BurnDonut.stories.tsx", "pairedExport": "Playground", "consoleComponent": "BurnDonut", "terminalExport": "TerminalBurnDonutPair" },
     { "id": "waffle-metric", "consoleStory": "Patterns/WaffleMetric", "storyFile": "dashboard/src/oven/WaffleMetric/WaffleMetric.stories.tsx", "pairedExport": "Playground", "consoleComponent": "WaffleMetric", "terminalExport": "TerminalWaffleMetricPair" },
     { "id": "visual-parity-media", "consoleStory": "Patterns/VisualParityMedia", "storyFile": "dashboard/src/oven/ImageTriptych/ImageTriptych.stories.tsx", "pairedExport": "Playground", "consoleComponent": "ImageTriptych", "terminalExport": "TerminalVisualParityMedia" },
-    { "id": "line-chart", "consoleStory": "Patterns/LineChart", "storyFile": "dashboard/src/oven/FieldMiniChart/FieldMiniChart.stories.tsx", "pairedExport": "Playground", "consoleComponent": "FieldMiniChart", "terminalExport": "TerminalLineChartPair" }
+    { "id": "line-chart", "consoleStory": "Patterns/SeriesChart", "storyFile": "dashboard/src/oven/FieldMiniChart/FieldMiniChart.stories.tsx", "pairedExport": "Playground", "consoleComponent": "FieldMiniChart", "terminalExport": "TerminalSeriesChartPair" }
   ]
 }

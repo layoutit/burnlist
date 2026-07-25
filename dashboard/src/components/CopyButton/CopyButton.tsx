@@ -3,7 +3,7 @@ import { Check, Copy } from "lucide-react";
 import { Button } from "@layout";
 import "./CopyButton.css";
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ "aria-label": ariaLabel, text }: { "aria-label"?: string; text: string }) {
   const [isCopied, setIsCopied] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -24,7 +24,7 @@ export function CopyButton({ text }: { text: string }) {
 
   return (
     <Button
-      aria-label={isCopied ? "Instructions copied" : "Copy instructions"}
+      aria-label={ariaLabel ?? (isCopied ? "Instructions copied" : "Copy instructions")}
       className="copy-btn oven-catalog-copy-button"
       onClick={() => void copy()}
       size="xs"

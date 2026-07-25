@@ -9,21 +9,24 @@ const fixture = componentPairFixture.table;
 const meta = {
   title: "UI/Table",
   component: Table,
+  args: { caption: fixture.caption, headers: fixture.headers, rows: fixture.rows },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Table>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Burnlists = {
-  render: () => (
-    <PairPreview component="table">
+  render: (args) => {
+    const headers = Array.isArray(args.headers) ? args.headers.map(String) : [...fixture.headers];
+    const rows = Array.isArray(args.rows) ? args.rows as unknown as string[][] : fixture.rows.map((row) => [...row]);
+    return <PairPreview component="table" terminalArgs={{ ...args, headers, rows }}>
       <div className="storybook-table-demo">
         <Table>
-          <TableCaption>{fixture.caption}</TableCaption>
-          <TableHeader><TableRow>{fixture.headers.map((header) => <TableHead key={header} scope="col">{header}</TableHead>)}</TableRow></TableHeader>
+          <TableCaption>{String(args.caption)}</TableCaption>
+          <TableHeader><TableRow>{headers.map((header) => <TableHead key={header} scope="col">{header}</TableHead>)}</TableRow></TableHeader>
           <TableBody>
-            {fixture.rows.map((row) => (
+            {rows.map((row) => (
               <TableRow key={row[1]}>
                 <TableCell>{row[0]}</TableCell>
                 <TableCell>{row[1]}</TableCell>
@@ -34,6 +37,6 @@ export const Burnlists = {
           </TableBody>
         </Table>
       </div>
-    </PairPreview>
-  ),
+    </PairPreview>;
+  },
 } satisfies Story;

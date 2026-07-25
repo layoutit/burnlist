@@ -5,10 +5,10 @@ import "../../components/DifferentialTesting/differential-testing.css";
 import { BurnDonut } from "./BurnDonut";
 
 const fixture = componentPairFixture.burnDonut;
-const meta = { title: "Patterns/BurnDonut", component: BurnDonut, parameters: { layout: "centered", terminalParityOwner: "oven:grammar" } } satisfies Meta<typeof BurnDonut>;
+const meta = { title: "Patterns/BurnDonut", component: BurnDonut, args: fixture, parameters: { layout: "centered", terminalParityOwner: "oven:grammar" } } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {
-  render: () => <PairPreview component="burn-donut"><figure><BurnDonut entries={[...fixture.entries]} /><figcaption>{fixture.label}</figcaption></figure></PairPreview>,
+  render: (args) => <PairPreview component="burn-donut" terminalArgs={args}><figure><BurnDonut entries={[...(args.entries as typeof fixture.entries)]} /><figcaption>{String(args.label)}</figcaption></figure></PairPreview>,
 };

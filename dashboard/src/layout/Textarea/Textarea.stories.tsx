@@ -8,20 +8,19 @@ const fixture = componentPairFixture.textarea;
 const meta = {
   title: "UI/Textarea",
   component: Textarea,
-  args: { placeholder: "Describe the measurable outcome and required evidence." },
+  args: { label: fixture.label, value: fixture.value, placeholder: "Describe the measurable outcome and required evidence.", disabled: false },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Textarea>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Objective = {
-  args: { defaultValue: fixture.value },
   render: (args) => (
-    <PairPreview component="textarea">
+    <PairPreview component="textarea" terminalArgs={args}>
       <Field className="storybook-control-demo">
-        <FieldLabel htmlFor="textarea-objective">{fixture.label}</FieldLabel>
-        <Textarea {...args} id="textarea-objective" />
+        <FieldLabel htmlFor="textarea-objective">{String(args.label)}</FieldLabel>
+        <Textarea disabled={Boolean(args.disabled)} id="textarea-objective" placeholder={String(args.placeholder)} readOnly value={String(args.value)} />
         <FieldDescription>Markdown is supported.</FieldDescription>
       </Field>
     </PairPreview>

@@ -4,10 +4,18 @@ import { resolveOvenPointer } from "../value-runtime";
 export type ComponentRoot = Readonly<{ path: string; node: TerminalNode }>;
 const source = Object.freeze({ offset: 0, line: 1, column: 1 });
 const row = (): TerminalNode => ({ kind: "text", attributes: { text: " " }, bindings: {}, children: [], source });
+const visualRows = (node: TerminalNode, width: number) => node.children.some((child) => child.kind === "progress-donut")
+  ? 2
+  : node.children.some((child) => child.kind === "waffle-metric")
+    ? width - 4 >= 5 ? 4 : 3
+    : 1;
+const kpiRows = (node: TerminalNode, width: number) => node.children.some((child) => ["progress-donut", "waffle-metric"].includes(child.kind))
+  ? visualRows(node, width)
+  : visualRows(node, width) + 2;
 
 function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(10, Math.floor(width / 8))) }, row), source: node.source };
-  if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
+  if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: kpiRows(node, width) }, row), source: node.source };
   if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: node.kind === "refresh-status" ? 1 : 2 }, row), source: node.source };
   if (["metric-tiles", "frame-card", "domain-tabs", "verdict-header"].includes(node.kind)) {
     const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(7, Math.min(12, Math.floor(width / 7)));
@@ -24,9 +32,12 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "checklist-event-cards") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(6, Math.floor(width / 10))) }, row), source: node.source };
   if (node.kind === "model-lab-view") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(14, Math.min(24, Math.floor(width / 3))) }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
-  const items = node.children.filter((child) => child.kind === "kpi-item").length;
+  const items = node.children.filter((child) => child.kind === "kpi-item");
   const metadata = node.attributes.title || node.attributes.ariaLabel ? 1 : 0;
-  const narrow = width < items * 18, height = Math.max(1, metadata + (narrow ? items * 3 : 3));
+  const narrow = width < items.length * 18, itemWidth = Math.max(8, Math.floor(width / Math.max(1, items.length)));
+  const height = Math.max(1, metadata + (narrow
+    ? items.reduce((total, item) => total + kpiRows(item, itemWidth), 0)
+    : Math.max(3, ...items.map((item) => kpiRows(item, itemWidth)))));
   return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: height }, row), source: node.source };
 }
 

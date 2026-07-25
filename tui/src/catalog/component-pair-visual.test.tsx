@@ -5,15 +5,17 @@ import { TerminalAccessibilityProvider, orderedSemanticText } from "../terminal-
 import { TerminalChromeProvider } from "../terminal-chrome";
 import { TerminalComponentPair } from "./component-pair-surface";
 import type { ComponentPairId } from "./component-pair-fixture";
+import { componentPairViewport } from "./component-pair-live-model";
 
 async function capture(id: ComponentPairId, width: number) {
-  const setup = await createTestRenderer({ width, height: 10, useThread: false });
+  const height = componentPairViewport(id).height;
+  const setup = await createTestRenderer({ width, height, useThread: false });
   const root = createRoot(setup.renderer);
   try {
     flushSync(() => root.render(
       <TerminalAccessibilityProvider value={{ color: "truecolor", light: false, reducedMotion: true }}>
         <TerminalChromeProvider>
-          <TerminalComponentPair id={id} width={width} />
+          <TerminalComponentPair id={id} width={width} height={height} />
         </TerminalChromeProvider>
       </TerminalAccessibilityProvider>,
     ));
@@ -30,11 +32,11 @@ describe("canonical Oven-derived component pairs", () => {
     for (const id of ["field-list-cards", "top-card"] as const) {
       const wide = (await capture(id, 72)).join("\n"), narrow = (await capture(id, 36)).join("\n");
       for (const frame of [wide, narrow]) {
-        expect(frame).toMatch(/pass/iu);
-        expect(frame).toMatch(/fail/iu);
+        expect(frame).toMatch(id === "field-list-cards" ? /fail/iu : /Exact delta/iu);
+        expect(frame).not.toMatch(/[│┼]/u);
       }
-      expect(wide).toMatch(/[│└╱╲]/u);
-      expect(narrow).not.toContain("▰▰▰");
+      expect(wide).toMatch(/[█▁]/u);
+      expect(narrow).not.toMatch(/[╱╲]/u);
     }
   });
 
@@ -47,7 +49,7 @@ describe("canonical Oven-derived component pairs", () => {
       ["burn-donut", "improved"],
       ["waffle-metric", "non-passing"],
       ["visual-parity-media", "Difference"],
-      ["line-chart", "failing path"],
+      ["line-chart", "Exact delta by frame"],
     ] as const;
     for (const [id, expected] of cases) for (const width of [72, 36]) {
       expect((await capture(id, width)).join("\n")).toContain(expected);

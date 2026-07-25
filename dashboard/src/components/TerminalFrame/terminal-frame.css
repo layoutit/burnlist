@@ -6,13 +6,14 @@
 
 .terminal-pair {
   display: grid;
-  grid-template-columns: minmax(16rem, 0.7fr) minmax(0, 1.3fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--pair-min-pane, 34rem)), 1fr));
   gap: 1rem;
   align-items: start;
 }
 
 .terminal-pair > section {
   min-width: 0;
+  overflow: hidden;
 }
 
 .terminal-frame-scroll {
@@ -25,7 +26,32 @@
   width: max-content;
   padding: 0.75rem;
   background: #151719;
+  --terminal-pair-surface: #202024;
   font: 14px/1 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.terminal-frame-live {
+  contain: layout paint;
+}
+
+.terminal-pair .storybook-field-list-pattern {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.terminal-pair .storybook-field-list-pattern .hybrid-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.terminal-pair .storybook-field-list-pattern .hybrid-row {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 .terminal-cell {

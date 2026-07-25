@@ -330,7 +330,7 @@
       },
       {
         "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "fingerprint": "002ea1dfc8ca21796459a68914e703a10d8abc4226642f5641e620667233a6f7"
+        "fingerprint": "b66d9c6a9019f99a0e659fc18136cf29cb245339943eb055ae3c3d36dc1bef8e"
       },
       {
         "path": "dashboard/src/oven/FieldMiniChart/FieldMiniChart.tsx",
@@ -22144,46 +22144,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:ConditionalExpression:0c26f6e1f000bb47",
-      "fingerprint": "0c26f6e1f000bb47173a897c72abd2830dfe5ac8710adc086a2410e91b2d2b14",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "ConditionalExpression",
-        "predicate": "rows[index]",
-        "nodeKinds": [],
-        "fingerprint": "0c26f6e1f000bb47173a897c72abd2830dfe5ac8710adc086a2410e91b2d2b14"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:ConditionalExpression:0d8ee39c0c7b083f",
-      "fingerprint": "0d8ee39c0c7b083fae360c2eb4a351e9856436683744345eee66f32a598f872d",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "ConditionalExpression",
-        "predicate": "row.reference === null || row.candidate === null",
-        "nodeKinds": [],
-        "fingerprint": "0d8ee39c0c7b083fae360c2eb4a351e9856436683744345eee66f32a598f872d"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:ConditionalExpression:11980beda7f017b2",
       "fingerprint": "11980beda7f017b2480f5b74cddc4e2ede463d69b43284d9c27816dd76e7f907",
       "classification": "closed-shared-adapter",
@@ -22584,6 +22544,26 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:2a0396bfb6082e42",
+      "fingerprint": "2a0396bfb6082e42995d9594f66c4fc083386d8dec695a888135c2f80f050b4a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "IfStatement",
+        "predicate": "failed && referenceStart && referenceEnd",
+        "nodeKinds": [],
+        "fingerprint": "2a0396bfb6082e42995d9594f66c4fc083386d8dec695a888135c2f80f050b4a"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:41829f6c3433b2d3",
       "fingerprint": "41829f6c3433b2d33a676fcd6d09fbc87ad84c66f7f256c60a809e3c314c9cb5",
       "classification": "closed-shared-adapter",
@@ -22601,6 +22581,26 @@
         "predicate": "allMatch",
         "nodeKinds": [],
         "fingerprint": "41829f6c3433b2d33a676fcd6d09fbc87ad84c66f7f256c60a809e3c314c9cb5"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:539affb9f03c63cc",
+      "fingerprint": "539affb9f03c63cc8f35e65c798c01193ab10ec475624563883c71b2b30c9bec",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "IfStatement",
+        "predicate": "!startPoint || !endPoint",
+        "nodeKinds": [],
+        "fingerprint": "539affb9f03c63cc8f35e65c798c01193ab10ec475624563883c71b2b30c9bec"
       }
     },
     {
@@ -22644,8 +22644,28 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:7dd2736927f586df",
-      "fingerprint": "7dd2736927f586dfc97702dde88836a1a9bca950aff466960ed8003fc14a4bfa",
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:87572207ca308eed",
+      "fingerprint": "87572207ca308eed8d099b735319c248bcca71fcd497a906c010e39f9173e78b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "IfStatement",
+        "predicate": "candidateStart && candidateEnd",
+        "nodeKinds": [],
+        "fingerprint": "87572207ca308eed8d099b735319c248bcca71fcd497a906c010e39f9173e78b"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:b4490ecc7baa7ec2",
+      "fingerprint": "b4490ecc7baa7ec2e6a3d2bb88702f37476e7cfcc615ec5e2369f938c78a436b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -22660,7 +22680,7 @@
         "node": "IfStatement",
         "predicate": "mode === \"delta\"",
         "nodeKinds": [],
-        "fingerprint": "7dd2736927f586dfc97702dde88836a1a9bca950aff466960ed8003fc14a4bfa"
+        "fingerprint": "b4490ecc7baa7ec2e6a3d2bb88702f37476e7cfcc615ec5e2369f938c78a436b"
       }
     },
     {
@@ -22681,26 +22701,6 @@
         "predicate": "step >= raw",
         "nodeKinds": [],
         "fingerprint": "b699a4006964bfaf84a844f1dc5416ceb78167d41d8a8991e7e3ed3cc1ab7881"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:bd71b1658b022911",
-      "fingerprint": "bd71b1658b02291165b6a91cace2f4f1d83e8c869bb741a853a5f2841f16d992",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "IfStatement",
-        "predicate": "candidate[index] && candidate[index + 1]",
-        "nodeKinds": [],
-        "fingerprint": "bd71b1658b02291165b6a91cace2f4f1d83e8c869bb741a853a5f2841f16d992"
       }
     },
     {
@@ -22744,46 +22744,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:f06d45c955916606",
-      "fingerprint": "f06d45c955916606bc2a592f6a609f68e46e16953095dcfca7e6dc050bfa88bc",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "IfStatement",
-        "predicate": "failed && reference[index] && reference[index + 1]",
-        "nodeKinds": [],
-        "fingerprint": "f06d45c955916606bc2a592f6a609f68e46e16953095dcfca7e6dc050bfa88bc"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:IfStatement:f329b107a0fc6501",
-      "fingerprint": "f329b107a0fc650197ada9b227776a8c2aa4572dae7a5c0b41f6d0a754371f48",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "IfStatement",
-        "predicate": "!points[index] || !points[index + 1]",
-        "nodeKinds": [],
-        "fingerprint": "f329b107a0fc650197ada9b227776a8c2aa4572dae7a5c0b41f6d0a754371f48"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:0b45172ed7bfb795",
       "fingerprint": "0b45172ed7bfb7954a8ef248539ebd8d988f64f66af662031d357db17dae4930",
       "classification": "closed-shared-adapter",
@@ -22801,6 +22761,26 @@
         "predicate": "!isFailed && index > 0 && intervalFails(index - 1)",
         "nodeKinds": [],
         "fingerprint": "0b45172ed7bfb7954a8ef248539ebd8d988f64f66af662031d357db17dae4930"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:1045a8174cf1f0a7",
+      "fingerprint": "1045a8174cf1f0a718d56903290f658ac62606a1bde9012b5c0ac546c4d10e04",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "LogicalExpression",
+        "predicate": "failed && referenceStart",
+        "nodeKinds": [],
+        "fingerprint": "1045a8174cf1f0a718d56903290f658ac62606a1bde9012b5c0ac546c4d10e04"
       }
     },
     {
@@ -22864,6 +22844,26 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:30994e0ff5d684f5",
+      "fingerprint": "30994e0ff5d684f5563bf38f28e4212abaeb46d92425af5a10a59b8452fb0879",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "LogicalExpression",
+        "predicate": "!startPoint || !endPoint",
+        "nodeKinds": [],
+        "fingerprint": "30994e0ff5d684f5563bf38f28e4212abaeb46d92425af5a10a59b8452fb0879"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:3f0bb144860694fe",
       "fingerprint": "3f0bb144860694fef5a31bd3f7bf4b0870d752928c29d329c7e7c0e1a00714ad",
       "classification": "closed-shared-adapter",
@@ -22884,46 +22884,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:7843b509e7897a29",
-      "fingerprint": "7843b509e7897a29c2772f510f80f693c5350714617630d18a71e49def5fd5a9",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "max || min",
-        "nodeKinds": [],
-        "fingerprint": "7843b509e7897a29c2772f510f80f693c5350714617630d18a71e49def5fd5a9"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:7876e5daca8b6dfd",
-      "fingerprint": "7876e5daca8b6dfd9cca33c668375b6036e195f1c31d9b875d9db67604de2478",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "!points[index] || !points[index + 1]",
-        "nodeKinds": [],
-        "fingerprint": "7876e5daca8b6dfd9cca33c668375b6036e195f1c31d9b875d9db67604de2478"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:81c0aa48b0d6efc2",
       "fingerprint": "81c0aa48b0d6efc22304bf036362d4bf1485de4d125d9166a219cb3c97ccd174",
       "classification": "closed-shared-adapter",
@@ -22941,26 +22901,6 @@
         "predicate": "!isFailed && index + 1 < rows.length - 1 && intervalFails(index + 1)",
         "nodeKinds": [],
         "fingerprint": "81c0aa48b0d6efc22304bf036362d4bf1485de4d125d9166a219cb3c97ccd174"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:89345feb2494200f",
-      "fingerprint": "89345feb2494200f5cd803b6a05d2f0084010a836eba5d35dcf5f0150a65a919",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "candidate[index] && candidate[index + 1]",
-        "nodeKinds": [],
-        "fingerprint": "89345feb2494200f5cd803b6a05d2f0084010a836eba5d35dcf5f0150a65a919"
       }
     },
     {
@@ -23001,26 +22941,6 @@
         "predicate": "index + 1 < rows.length - 1 && intervalFails(index + 1) === failed && points[index + 1] && points[index + 2]",
         "nodeKinds": [],
         "fingerprint": "961657c87b068719b2c93cbdfe197a1615f971aa5f4e9b449791d6eb04281248"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:a2935dbb281a94eb",
-      "fingerprint": "a2935dbb281a94eb9e4eddb04c15bcb035bcee235cd0c3a7a3ddb9ebe22172f4",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "failed && reference[index]",
-        "nodeKinds": [],
-        "fingerprint": "a2935dbb281a94eb9e4eddb04c15bcb035bcee235cd0c3a7a3ddb9ebe22172f4"
       }
     },
     {
@@ -23084,46 +23004,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:c03f62548ee576cc",
-      "fingerprint": "c03f62548ee576cc81c6d00ce144e01524e66f7e034ef9c596026661f55ae45a",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "max || min || 1",
-        "nodeKinds": [],
-        "fingerprint": "c03f62548ee576cc81c6d00ce144e01524e66f7e034ef9c596026661f55ae45a"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:c20a6b3d19e2c3c7",
-      "fingerprint": "c20a6b3d19e2c3c73cf86cd1c1bb0c33c7326f004f048b5ad210ff973cf53bbe",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "buildFieldMiniChart",
-        "node": "LogicalExpression",
-        "predicate": "row.reference === null || row.candidate === null",
-        "nodeKinds": [],
-        "fingerprint": "c20a6b3d19e2c3c73cf86cd1c1bb0c33c7326f004f048b5ad210ff973cf53bbe"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:ce336a2b58ea267e",
       "fingerprint": "ce336a2b58ea267e0c633f0c48c434908ff3e90b93c8ebb4333f134b13b456a3",
       "classification": "closed-shared-adapter",
@@ -23141,6 +23021,26 @@
         "predicate": "exactFailure(index) || exactFailure(index + 1)",
         "nodeKinds": [],
         "fingerprint": "ce336a2b58ea267e0c633f0c48c434908ff3e90b93c8ebb4333f134b13b456a3"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:d4ac2200a2885fc4",
+      "fingerprint": "d4ac2200a2885fc43db5e665750b1fd6d3ce123275fd964b7908b32ed187bf66",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart",
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
+        "export": "buildFieldMiniChart",
+        "node": "LogicalExpression",
+        "predicate": "candidateStart && candidateEnd",
+        "nodeKinds": [],
+        "fingerprint": "d4ac2200a2885fc43db5e665750b1fd6d3ce123275fd964b7908b32ed187bf66"
       }
     },
     {
@@ -23184,8 +23084,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:ef52e19db91cd5e9",
-      "fingerprint": "ef52e19db91cd5e96148a5bb7380cfb5e37760f6c438a1ba540a4e1ab9070bda",
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:buildFieldMiniChart:LogicalExpression:e55d465d92a3e36e",
+      "fingerprint": "e55d465d92a3e36ef01ca14a5d44fd8c992396e885ae0e6bd3f137fe9fa9e034",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -23198,9 +23098,9 @@
         "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
         "export": "buildFieldMiniChart",
         "node": "LogicalExpression",
-        "predicate": "failed && reference[index] && reference[index + 1]",
+        "predicate": "failed && referenceStart && referenceEnd",
         "nodeKinds": [],
-        "fingerprint": "ef52e19db91cd5e96148a5bb7380cfb5e37760f6c438a1ba540a4e1ab9070bda"
+        "fingerprint": "e55d465d92a3e36ef01ca14a5d44fd8c992396e885ae0e6bd3f137fe9fa9e034"
       }
     },
     {
@@ -23224,23 +23124,23 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:ConditionalExpression:bf9b6bade83a19e0",
-      "fingerprint": "bf9b6bade83a19e0b82207a8bc7bd71910bcd42e3d3798228d84c58b3bae544e",
+      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:fieldMiniChartModel:ConditionalExpression:2a9224801471a708",
+      "fingerprint": "2a9224801471a70870f662895c38b99f7d7828d03df85a0c2f3a353275d08e49",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
+        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:fieldMiniChartModel",
         "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
+        "export": "fieldMiniChartModel",
         "version": "burnlist-console-oven-behavior@1"
       },
       "source": {
         "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
+        "export": "fieldMiniChartModel",
         "node": "ConditionalExpression",
-        "predicate": "raw",
+        "predicate": "chartMode === \"delta\"",
         "nodeKinds": [],
-        "fingerprint": "bf9b6bade83a19e0b82207a8bc7bd71910bcd42e3d3798228d84c58b3bae544e"
+        "fingerprint": "2a9224801471a70870f662895c38b99f7d7828d03df85a0c2f3a353275d08e49"
       }
     },
     {
@@ -23284,26 +23184,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:IfStatement:8ea15c856dd71188",
-      "fingerprint": "8ea15c856dd71188cecff76993d3ce66299fc9e8fd8a4ac984e998d0ea7da5b3",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "!categories.has(raw)",
-        "nodeKinds": [],
-        "fingerprint": "8ea15c856dd71188cecff76993d3ce66299fc9e8fd8a4ac984e998d0ea7da5b3"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:IfStatement:9509d91fe4424323",
       "fingerprint": "9509d91fe442432302a31a4ecc198bd2235d11cc9eee590df418ae5a5a7b53d7",
       "classification": "closed-shared-adapter",
@@ -23341,106 +23221,6 @@
         "predicate": "current",
         "nodeKinds": [],
         "fingerprint": "9509d91fe442432302a31a4ecc198bd2235d11cc9eee590df418ae5a5a7b53d7"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:IfStatement:a56c9ad9d45314d1",
-      "fingerprint": "a56c9ad9d45314d1912e8df0618a4f966c4ba8517575ece32544d0318b727ca8",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "typeof raw === \"number\" && Number.isFinite(raw)",
-        "nodeKinds": [],
-        "fingerprint": "a56c9ad9d45314d1912e8df0618a4f966c4ba8517575ece32544d0318b727ca8"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:IfStatement:d60324eb4ba9f20d",
-      "fingerprint": "d60324eb4ba9f20d2e0b69831d811da03d18dea620749d5125ccf73da850fb29",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "typeof raw === \"string\"",
-        "nodeKinds": [],
-        "fingerprint": "d60324eb4ba9f20d2e0b69831d811da03d18dea620749d5125ccf73da850fb29"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:IfStatement:e85e77f2280d9ed8",
-      "fingerprint": "e85e77f2280d9ed81e5ae7844f40bab2a7a0dd74d756512b39432aa8b7f87c07",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "IfStatement",
-        "predicate": "typeof raw === \"boolean\"",
-        "nodeKinds": [],
-        "fingerprint": "e85e77f2280d9ed81e5ae7844f40bab2a7a0dd74d756512b39432aa8b7f87c07"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:LogicalExpression:54c02e2d88437893",
-      "fingerprint": "54c02e2d884378931781effd7b5a81168e067093c3097ac5dd8e2cb5eef9afd6",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "LogicalExpression",
-        "predicate": "categories.get(raw) ?? null",
-        "nodeKinds": [],
-        "fingerprint": "54c02e2d884378931781effd7b5a81168e067093c3097ac5dd8e2cb5eef9afd6"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module:LogicalExpression:ef600694d624b651",
-      "fingerprint": "ef600694d624b65129ba3b406fc2fe38dd3bf7e812a717702a906d1b3f25c0ae",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts:module",
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry.ts",
-        "export": "module",
-        "node": "LogicalExpression",
-        "predicate": "typeof raw === \"number\" && Number.isFinite(raw)",
-        "nodeKinds": [],
-        "fingerprint": "ef600694d624b65129ba3b406fc2fe38dd3bf7e812a717702a906d1b3f25c0ae"
       }
     },
     {

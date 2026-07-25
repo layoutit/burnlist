@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Playground = {
   render: (args) => (
-    <PairPreview component="progress">
+    <PairPreview component="progress" terminalArgs={{ ...args, label: args["aria-label"] }}>
       <div className="storybook-progress-demo"><Progress {...args} /></div>
     </PairPreview>
   ),

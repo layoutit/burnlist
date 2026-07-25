@@ -41,7 +41,9 @@ function childSlot(node: TerminalNode, slot: string, payload: JsonValue | undefi
     else if (child.kind === "icon") value = { icon: String(child.attributes.name) };
     else if (["progress-donut", "burn-donut", "waffle-metric"].includes(child.kind)) {
       const raw = source(child, payload);
-      value = { text: componentText(child, payload, width), frame: progressGlyphFrame(child.kind as ProgressGlyphKind, raw, width, palette) };
+      const visualHeight = child.kind === "progress-donut" ? 2 : child.kind === "waffle-metric" ? 4 : 1;
+      const visualWidth = child.kind === "waffle-metric" ? 5 : 4;
+      value = { text: componentText(child, payload, width), frame: progressGlyphFrame(child.kind as ProgressGlyphKind, raw, visualWidth, palette, visualHeight) };
     } else value = componentText(child, payload, width);
   }
   return value;
@@ -119,7 +121,20 @@ export const kpiStripFromNodes = (nodes: readonly TerminalNode[], payload: JsonV
 function KpiCell({ item, width }: { item: TerminalKpi; width: number }) {
   const variants = { current: "›", scenario: "◎", burns: "◉", fields: "▦", frames: "▤" } as Record<string, string>;
   const prefix = item.icon ? `${iconText(item.icon)} ` : item.variant ? `${variants[item.variant] ?? "◆"} ` : "";
-  return <box width={width} height={3} overflow="hidden"><text>{fitLayoutText(`${prefix}${item.heading}`, width)}</text>{item.visualFrame ? <glyphSurface frame={item.visualFrame} width={item.visualFrame.cols} height={1} /> : item.visual ? <text>{fitLayoutText(item.visual, width)}</text> : null}<text>{fitLayoutText(item.value || item.visual || item.title || "—", width)}</text></box>;
+  const frameHasLabel = item.visualFrame?.char.some((char) => /[0-9]/u.test(char));
+  const visualLabel = item.visualFrame ? frameHasLabel ? undefined : item.visual?.trim().split(/\s+/u).at(-1) : item.visual;
+  const footer = item.value || item.title || visualLabel;
+  if (item.visualFrame) {
+    const textWidth = Math.max(1, width - item.visualFrame.cols - 1);
+    return <box width={width} height={Math.max(2, item.visualFrame.rows)} flexDirection="row" overflow="hidden">
+      <glyphSurface frame={item.visualFrame} width={item.visualFrame.cols} height={item.visualFrame.rows} />
+      <box width={textWidth} height={2} flexDirection="column" overflow="hidden">
+        <text>{fitLayoutText(`${prefix}${item.heading}`, textWidth)}</text>
+        {footer ? <text>{fitLayoutText(footer, textWidth)}</text> : null}
+      </box>
+    </box>;
+  }
+  return <box width={width} height={3} overflow="hidden"><text>{fitLayoutText(`${prefix}${item.heading}`, width)}</text>{item.visual ? <text>{fitLayoutText(item.visual, width)}</text> : null}{footer ? <text>{fitLayoutText(footer, width)}</text> : null}</box>;
 }
 
 export function TerminalKpiItem({ node, payload, width }: { node: TerminalNode; payload?: JsonValue; width: number }) {

@@ -8,19 +8,22 @@ const fixture = componentPairFixture.spinner;
 const meta = {
   title: "UI/Spinner",
   component: Spinner,
+  args: { label: fixture.label, size: "default", reducedMotion: false },
+  argTypes: {
+    size: { control: "inline-radio", options: ["sm", "default", "lg"] },
+    reducedMotion: { control: "boolean" },
+  },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Spinner>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground = {
-  render: () => (
-    <PairPreview component="spinner">
-      <div className="storybook-row">
-        <Spinner label="Loading small result" size="sm" />
-        <Spinner label={fixture.label} />
-        <Spinner label="Loading large result" size="lg" />
+  render: (args) => (
+    <PairPreview component="spinner" terminalArgs={args}>
+      <div className="storybook-row" data-reduced-motion={String(args.reducedMotion)}>
+        <Spinner label={String(args.label)} size={args.size as "sm" | "default" | "lg"} />
       </div>
     </PairPreview>
   ),

@@ -45,7 +45,7 @@ async function capturedItem(accessibility: TerminalAccessibility) {
   }
 }
 async function capturedOvenCore(accessibility: TerminalAccessibility) {
-  const setup = await createTestRenderer({ width: 40, height: 8, useThread: false });
+  const setup = await createTestRenderer({ width: 40, height: 12, useThread: false });
   const root = createRoot(setup.renderer);
   const visual = { kind: "progress-donut", attributes: { source: "/percent" }, bindings: {}, children: [] };
   const item = { kind: "kpi-item", attributes: { heading: "Progress", value: "/percent" }, bindings: {}, children: [visual] };
@@ -53,7 +53,7 @@ async function capturedOvenCore(accessibility: TerminalAccessibility) {
     flushSync(() => root.render(
       <TerminalAccessibilityProvider value={accessibility}>
         <TerminalChromeProvider>
-          <box width={40} height={8} flexDirection="column">
+          <box width={40} height={12} flexDirection="column">
             <TerminalKpiItem node={item as never} payload={{ percent: 50 }} width={16} />
             <TerminalList model={{ columns: [{ id: "state", label: "STATE" }], rows: [{ id: "one", cells: { state: "ACTIVE" }, tone: "good" }], selectedId: "one", width: 40, height: 3 }} />
           </box>

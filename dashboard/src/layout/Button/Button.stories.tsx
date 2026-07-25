@@ -29,7 +29,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground = {
-  render: (args) => <PairPreview component="button"><Button {...args} /></PairPreview>,
+  render: (args) => <PairPreview component="button" terminalArgs={{ ...args, label: args.children }}><Button {...args} /></PairPreview>,
 } satisfies Story;
 
 export const Variants = {
