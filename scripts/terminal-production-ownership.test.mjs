@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(import.meta.dirname, "..");
+const root = fileURLToPath(new URL("../", import.meta.url));
 const readJson = async (path) => JSON.parse(await readFile(resolve(root, path), "utf8"));
 
 test("every component-bearing Oven kind resolves to an exported production owner", async () => {

@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { pairedPreviewRects } from "../dashboard/src/components/TerminalFrame/pair-layout.mjs";
 
-const root = resolve(import.meta.dirname, "..");
+const root = fileURLToPath(new URL("../", import.meta.url));
 
 function overlap(left, right) {
   return left.y === right.y && left.x < right.x + right.width && right.x < left.x + left.width;

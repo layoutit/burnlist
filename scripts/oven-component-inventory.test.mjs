@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { COMPONENTS, ELEMENTS } from "../src/ovens/dsl/oven-grammar.mjs";
 
-const root = resolve(import.meta.dirname, "..");
+const root = fileURLToPath(new URL("../", import.meta.url));
 const sorted = (values) => [...values].sort();
 
 test("Oven grammar and official tags have a finite paired-component classification", async () => {
