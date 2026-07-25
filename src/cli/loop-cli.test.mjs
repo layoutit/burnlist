@@ -39,6 +39,8 @@ function assign(context) {
   const result = runCommand(context.repo, ["loop", "assign", itemRef, "loop:builtin:review", "--repo", context.repo]);
   assert.equal(result.status, 0, result.stderr);
   const [assignmentId, selector, executable] = result.stdout.trimEnd().split("\n");
+  assert.match(result.stdout, /Dashboard: http:\/\/127\.0\.0\.1:4510\/r\/[a-f0-9]{12}\/260722-001\/o\/loop-progress/u);
+  assert.match(result.stdout, /Next: burnlist loop create item:260722-001#BUG-07/u);
   return { assignmentId, selector, executable, path: join(context.repo, ".local", "burnlist", "loop", "v2", "assignments", assignmentId.slice(11)) };
 }
 function pinError(executable) {

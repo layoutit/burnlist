@@ -1,4 +1,10 @@
-import type { ChecklistProgressData, CompletedItem, HistoryPoint } from "./types";
+import type {
+  ChecklistItem,
+  ChecklistItemWork,
+  ChecklistProgressData,
+  CompletedItem,
+  HistoryPoint,
+} from "./types";
 
 export type EventRow = CompletedItem & { ordinal: number; percent: number };
 export type EventDetailField = { label: string; values: string[] };
@@ -15,6 +21,97 @@ export type ChecklistOvenPayload = {
 };
 
 const EVENT_DETAIL_LABELS = new Set(["Completed", "Changed", "Proof", "Outcome", "Follow-up"]);
+const BLOCKED_RUN_STATES = new Set(["needs-human", "failed", "stopped", "budget-exhausted"]);
+const RECENT_ACTIVITY_MS = 120_000;
+
+function pendingWork(): ChecklistItemWork {
+  return {
+    state: "PENDING",
+    reason: "No canonical Run or claim exists; checklist position does not imply execution.",
+    run: null,
+    progressing: false,
+    observation: {
+      source: "bounded-correlated-hooks",
+      authority: "observational",
+      availability: "unavailable",
+      lastAt: null,
+      lastKind: null,
+      ageMilliseconds: null,
+      recent: false,
+      codeChanges: [],
+    },
+    provenance: { state: "canonical-burnlist-and-run-absence", activity: "unavailable" },
+  };
+}
+
+export function effectiveItemWork(data: ChecklistProgressData, item: ChecklistItem): ChecklistItemWork {
+  if (item.work) return item.work;
+  const run = data.loopRun?.itemRef.endsWith(`#${item.id}`) ? data.loopRun : null;
+  if (!run) return pendingWork();
+  if (data.loopProjectionDiagnostic || run.diagnostic) return {
+    ...pendingWork(),
+    state: "BLOCKED",
+    reason: "Canonical Run projection is unavailable.",
+    provenance: {
+      state: "canonical-run-projection",
+      activity: "bounded-correlated-hooks-observational-only",
+    },
+  };
+  const now = Date.parse(data.generatedAt);
+  const records = run.activity?.records.filter((record) =>
+    record.origin === "host-hook" || record.origin === "agent-reported") ?? [];
+  const last = records.at(-1) ?? null;
+  const ageMilliseconds = last && Number.isSafeInteger(last.at) && Number.isFinite(now)
+    ? Math.max(0, now - last.at)
+    : null;
+  const observation = {
+    source: "bounded-correlated-hooks" as const,
+    authority: "observational" as const,
+    availability: run.activity?.hooks ?? "unavailable",
+    lastAt: last?.at ?? null,
+    lastKind: last?.kind ?? null,
+    ageMilliseconds,
+    recent: ageMilliseconds !== null && ageMilliseconds <= RECENT_ACTIVITY_MS,
+    codeChanges: [...new Set(records.flatMap((record) => [
+      ...(record.observedPath ? [record.observedPath] : []),
+      ...(record.observedPaths ?? []),
+    ]))].slice(-16),
+  };
+  const node = run.graph.nodes.find((entry) => entry.id === run.currentNode);
+  const projected = BLOCKED_RUN_STATES.has(run.state)
+    ? { state: "BLOCKED" as const, reason: `Canonical Run is ${run.state}.` }
+    : run.state === "converged"
+      ? { state: "WAITING" as const, reason: "Canonical Run converged and is waiting for atomic Burnlist completion." }
+      : run.state === "prepared"
+        ? { state: "WAITING" as const, reason: "Canonical Run is prepared and waiting for the next host task." }
+        : run.state === "paused"
+          ? { state: "WAITING" as const, reason: "Canonical Run is paused." }
+          : run.state === "running" && node?.kind === "agent" && run.hostTask !== "claimed"
+            ? { state: "WAITING" as const, reason: "Canonical agent node is waiting for a host claim." }
+            : run.state === "running"
+              ? {
+                  state: "ACTIVE" as const,
+                  reason: run.hostTask === "claimed"
+                    ? "Canonical Run has a live host claim."
+                    : "Canonical Run is executing a deterministic node.",
+                }
+              : { state: "BLOCKED" as const, reason: `Canonical Run state ${run.state || "unknown"} is unsupported.` };
+  return {
+    ...projected,
+    run: {
+      runId: run.runId,
+      state: run.state,
+      node: run.currentNode,
+      claim: run.hostTask ?? "unavailable",
+    },
+    progressing: projected.state === "ACTIVE" && observation.recent,
+    observation,
+    provenance: {
+      state: "canonical-run-and-claim",
+      activity: "bounded-correlated-hooks-observational-only",
+    },
+  };
+}
 
 export function formatDuration(milliseconds: number) {
   if (!Number.isFinite(milliseconds) || milliseconds < 0) return "--";
@@ -94,14 +191,18 @@ export function progressHistory(data: ChecklistProgressData): HistoryPoint[] {
 export function adaptChecklist(data: ChecklistProgressData): ChecklistOvenPayload {
   const durations = timing(data);
   const rows = eventRows(data);
-  const current = data.active[0];
+  const current = data.active.find((item) => effectiveItemWork(data, item).state === "ACTIVE")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "BLOCKED")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "WAITING")
+    ?? data.active[0];
+  const currentState = current ? effectiveItemWork(data, current).state : "PENDING";
   return {
     raw: data,
     items: data.active.map((item) => ({
       ...item,
       loopRun: data.loopRun?.itemRef.endsWith(`#${item.id}`) ? data.loopRun : null,
     })),
-    current: { value: current ? `${current.id} · Active` : "Complete", title: current?.title ?? "No active task" },
+    current: { value: current ? `${current.id} · ${currentState}` : "Complete", title: current?.title ?? "No active task" },
     progress: { done: data.done, total: data.total, percent: data.percent, title: `${data.done} of ${data.total} tasks complete` },
     durations: { elapsed: formatDuration(durations.elapsed), pace: formatDuration(durations.pace), timeLeft: formatDuration(durations.timeLeft) },
     ledger: rows.slice(0, 8).map((item) => ({ key: `${item.id}/${item.completedAt}`, age: compactAge(item.completedAt, data.generatedAt), event: item.id, result: "Done", delta: "+1", donePercent: item.percent })),

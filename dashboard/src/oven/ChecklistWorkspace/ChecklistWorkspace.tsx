@@ -1,5 +1,5 @@
 import type { ChecklistItem, ChecklistProgressData, CompletedItem, LoopRunProjection } from "@lib";
-import { checklistEventDetailFields, compactAge, eventRows } from "@lib/checklist-adapter";
+import { checklistEventDetailFields, compactAge, effectiveItemWork, eventRows } from "@lib/checklist-adapter";
 import { itemTopologyProjection, LoopCompact, LoopLegend } from "@/components/LoopGraph";
 import "./ChecklistWorkspace.css";
 
@@ -50,13 +50,17 @@ function ItemsColumn({ data, selected }: { data: ChecklistProgressData; selected
   return <section className="checklist-workspace__column checklist-workspace__items" aria-label="All items">
     <header className="checklist-workspace__heading"><span>Items</span><span>{data.total}</span></header>
     <nav className="checklist-workspace__item-list">
-      {data.active.map((item, index) => {
-        const current = index === 0;
+      {data.active.map((item) => {
+        const work = effectiveItemWork(data, item);
+        const state = work.state;
+        const current = state === "ACTIVE";
         const inspected = selected?.status === "active" && item.id === selected.item.id;
-        return <a className={`checklist-workspace__item${current ? " is-current" : ""}${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={item.id} aria-current={inspected ? "true" : undefined}>
-          <span className="checklist-workspace__item-marker">{current ? "●" : "○"}</span>
+        const marker = state === "ACTIVE" ? "●" : state === "WAITING" ? "◐" : state === "BLOCKED" ? "!" : "○";
+        const label = state === "ACTIVE" && work.progressing ? "progressing" : state.toLowerCase();
+        return <a className={`checklist-workspace__item is-${state.toLowerCase()}${current ? " is-current" : ""}${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={item.id} aria-current={inspected ? "true" : undefined}>
+          <span className="checklist-workspace__item-marker">{marker}</span>
           <span className="checklist-workspace__item-copy"><b>{item.id}</b><span>{item.title}</span></span>
-          <span className="checklist-workspace__loop-label">{current ? "current" : item.loop?.selector.replace(/^loop:builtin:/u, "") ?? "pending"}</span>
+          <span className="checklist-workspace__loop-label">{label}</span>
         </a>;
       })}
       {!!data.active.length && !!completed.length && <div className="checklist-workspace__divider"><span>Completed</span><span>{completed.length}</span></div>}
@@ -96,6 +100,7 @@ function latestEvidence(run: LoopRunProjection) {
 
 function ActiveDetail({ data, item }: { data: ChecklistProgressData; item: ChecklistItem }) {
   const run = previewRun(item, data);
+  const work = effectiveItemWork(data, item);
   const topology = item.loop?.graph ? itemTopologyProjection(run) : null;
   const activeNode = run.graph.nodes.find((node) => node.id === run.currentNode);
   const evidence = latestEvidence(run);
@@ -106,6 +111,11 @@ function ActiveDetail({ data, item }: { data: ChecklistProgressData; item: Check
   } : undefined;
   return <div className="checklist-workspace__detail-body">
       <div className="checklist-workspace__detail-title"><span>{item.id}</span><h2>{item.title}</h2></div>
+      <div className={`checklist-workspace__work-state is-${work.state.toLowerCase()}`}>
+        <strong>{work.state}{work.progressing ? " · progressing" : ""}</strong>
+        <p>{work.reason}</p>
+        <small>State: {work.provenance.state} · Activity: {work.provenance.activity}</small>
+      </div>
       <dl className="checklist-workspace__fields">{detailFields.map(([label, key]) => item.fields[key] ? <div key={key}><dt>{label}</dt><dd>{item.fields[key]}</dd></div> : null)}</dl>
       {item.loop ? <div className="checklist-workspace__detail-loop">
         <div className="checklist-workspace__loop-head"><span>Loop</span><span>{item.loop.selector}</span></div>
@@ -161,7 +171,8 @@ function CompletedDetail({ data, item }: { data: ChecklistProgressData; item: Co
 }
 
 function DetailColumn({ data, selected }: { data: ChecklistProgressData; selected: ItemSelection | null }) {
-  const status = !selected ? "Empty" : selected.status === "completed" ? "Completed" : selected.index === 0 ? "Current" : "Pending";
+  const status = !selected ? "Empty" : selected.status === "completed"
+    ? "Completed" : effectiveItemWork(data, selected.item).state;
   return <section className="checklist-workspace__column checklist-workspace__detail" aria-label={selected ? `Item ${selected.item.id} detail` : "Item detail"}>
     <header className="checklist-workspace__heading"><span>Item detail</span><span>{status}</span></header>
     {!selected ? <p className="checklist-workspace__empty">No items</p>

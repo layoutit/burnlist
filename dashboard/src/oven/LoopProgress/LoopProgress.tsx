@@ -103,10 +103,54 @@ function tokenRange(range: { low: number; high: number } | null | undefined) {
   return range ? `${range.low.toLocaleString("en-US")}–${range.high.toLocaleString("en-US")}` : "Unavailable";
 }
 
+function observedTokens(run: LoopRunProjection | null, records: NonNullable<LoopRunProjection["activity"]>["records"]) {
+  const telemetry = run?.execution?.telemetry;
+  const observed = [...records].reverse().find((record) =>
+    record.inputTokens !== null && record.inputTokens !== undefined
+    || record.outputTokens !== null && record.outputTokens !== undefined);
+  const input = telemetry?.inputTokens ?? observed?.inputTokens ?? null;
+  const output = telemetry?.outputTokens ?? observed?.outputTokens ?? null;
+  if (input === null && output === null) return "Unavailable";
+  return `${((input ?? 0) + (output ?? 0)).toLocaleString("en-US")} reported`;
+}
+
+function proofSignals(run: LoopRunProjection | null) {
+  if (!run) return "Unavailable";
+  const labels = run.transitions.flatMap((transition) => {
+    const node = run.graph.nodes.find((candidate) => candidate.id === transition.from);
+    if (node?.kind === "check") return [`check ${transition.outcome}`];
+    if (node?.kind === "gate") return [`gate ${transition.outcome}`];
+    if (node?.kind === "agent" && /review/u.test(node.role ?? node.id)) return [`review ${transition.outcome}`];
+    return [];
+  });
+  const active = run.graph.nodes.find((candidate) => candidate.id === run.currentNode);
+  if (active?.kind === "check") labels.push("check running");
+  if (active?.kind === "gate") labels.push("gate running");
+  if (active?.kind === "agent" && /review/u.test(active.role ?? active.id)) labels.push("review waiting");
+  return labels.slice(-3).join(" · ") || "No check, gate, or review result yet";
+}
+
+function canonicalState(run: LoopRunProjection | null, item: ChecklistItem | null) {
+  const work = item?.work;
+  if (work) return { state: work.state, progressing: work.progressing, reason: work.reason };
+  if (!run) return { state: "PENDING", progressing: false, reason: "No canonical Run or claim." };
+  if (run.diagnostic || ["needs-human", "failed", "stopped", "budget-exhausted", "corrupt"].includes(run.state)) {
+    return { state: "BLOCKED", progressing: false, reason: `Run ${run.state}.` };
+  }
+  if (run.state === "running" && (run.hostTask === "claimed" || run.hostTask === "not-applicable")) {
+    return { state: "ACTIVE", progressing: false, reason: "Canonical Run is active." };
+  }
+  return { state: "WAITING", progressing: false, reason: `Run ${run.state}.` };
+}
+
 export function LoopProgress({ data }: { data: ChecklistProgressData }) {
   const item = selectedItem(data);
   const system = subsystem(item);
   const authoritativeRun = data.loopRun ?? null;
+  const runItem = authoritativeRun
+    ? data.active.find((candidate) => authoritativeRun.itemRef.endsWith(`#${candidate.id}`)) ?? item
+    : item;
+  const workState = canonicalState(authoritativeRun, runItem);
   const itemRun = item && authoritativeRun?.itemRef.endsWith(`#${item.id}`) ? authoritativeRun : item ? preview(item) : null;
   const files = item?.fields["Files/search"] ?? "No declared file surface";
   const runningSystem = runSubsystem(authoritativeRun);
@@ -134,11 +178,23 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
       ...recentActivity.map((record) => Math.max(0, record.at - authoritativeRun.createdAt)),
     )
     : null;
+  const activeNode = authoritativeRun?.graph.nodes.find((node) => node.id === authoritativeRun.currentNode);
+  const branch = authoritativeRun?.loopId.endsWith(":branch") || authoritativeRun?.loopId === "branch"
+    ? authoritativeRun.currentNode : "not branched";
+  const activityStatus = workState.state === "ACTIVE"
+    ? workState.progressing ? "progressing" : "active · no recent hook"
+    : workState.state.toLowerCase();
+  const blocker = workState.state === "BLOCKED"
+    ? authoritativeRun?.latestResult?.summary ?? workState.reason
+    : "None canonical";
+  const retries = authoritativeRun
+    ? `attempt ${authoritativeRun.attempt || 1} · cycle ${authoritativeRun.cycle || 0}`
+    : "Unavailable";
   return <section className="loop-progress" aria-label="Loop progress">
     <header className="loop-progress__now">
       <span>NOW</span>
       <strong>{authoritativeRun ? `${runItemId(authoritativeRun)} · ${displayNode(authoritativeRun)}` : item ? `${item.id} · ${item.title}` : "Complete"}</strong>
-      <small>{authoritativeRun ? `Run · ${authoritativeRun.state}` : "Canonical checklist"}</small>
+      <small>{authoritativeRun ? `Run · ${authoritativeRun.state} · ${workState.state}` : `${workState.state} · canonical checklist`}</small>
     </header>
 
     <div className="loop-progress__context-head"><span>CONTEXT</span><strong>{item ? `${item.id} · ${item.title}` : "None"}</strong></div>
@@ -148,10 +204,18 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
       <article><span>HOOKS</span><p>{activity?.hooks ?? "Unavailable"}</p></article>
     </div>
     <div className="loop-progress__signals" aria-label="Live Loop signals">
+      <article><span>STATE</span><p>{workState.state}{workState.progressing ? " · progressing" : ""}</p></article>
       <article><span>AGENT</span><p>{observedAgent}</p></article>
-      <article><span>ELAPSED</span><p>{duration(observedElapsed)}</p></article>
-      <article><span>FORECAST</span><p>wall {durationRange(forecast?.wallTime)} · work {durationRange(forecast?.aggregateWork)}</p></article>
-      <article><span>PROVENANCE</span><p>{provenance} · tokens {tokenRange(forecast?.totalTokens)}</p></article>
+      <article><span>NODE / BRANCH</span><p>{activeNode?.role ?? activeNode?.capability ?? authoritativeRun?.currentNode ?? "Unavailable"} · {branch}</p></article>
+      <article><span>ACTIVITY</span><p>{activityStatus} · hooks {activity?.hooks ?? "unavailable"}</p></article>
+      <article><span>TIME</span><p>elapsed {duration(observedElapsed)} · forecast {durationRange(forecast?.wallTime)}</p></article>
+      <article><span>TOKENS</span><p>{observedTokens(authoritativeRun, recentActivity)} · forecast {tokenRange(forecast?.totalTokens)}</p></article>
+      <article><span>CHECK / GATE / REVIEW</span><p>{proofSignals(authoritativeRun)}</p></article>
+      <article><span>BLOCKER / RETRIES</span><p>{blocker} · {retries}</p></article>
+    </div>
+    <div className="loop-progress__provenance">
+      <b>PROVENANCE</b>
+      <span>State, node, claim, checks, gates, and reviews: canonical Run. Activity, agent facts, paths, timing, and reported tokens: bounded observation only. Forecast: {provenance}.</span>
     </div>
 
     <div className="loop-progress__work">
@@ -174,7 +238,7 @@ export function LoopProgress({ data }: { data: ChecklistProgressData }) {
       <ol>{recentActivity.length ? recentActivity.slice().reverse().map((record, index) => <li key={`${record.at}/${record.kind}/${index}`}>
         <b>{record.origin}</b><span>{activityText(record)}</span>{record.provider ? <small>{record.provider}</small> : null}{record.truncated ? <small>truncated</small> : null}
       </li>) : <li className="loop-progress__activity-empty">No observed hook activity. Runner state remains canonical.</li>}</ol>
-      <div className="loop-progress__observed"><b>OBSERVED</b><span>{observedPaths.length ? observedPaths.join(" · ") : "Unavailable"}</span></div>
+      <div className="loop-progress__observed"><b>CODE CHANGES</b><span>{observedPaths.length ? observedPaths.join(" · ") : "Unavailable · observational only"}</span></div>
     </section>
     <footer><span>FILES</span> {files}<br/>Selected · {item ? `${item.id} ${item.title}` : "none"}{authoritativeRun && item && !authoritativeRun.itemRef.endsWith(`#${item.id}`) ? " · Run remains authoritative for another item" : ""}</footer>
   </section>;

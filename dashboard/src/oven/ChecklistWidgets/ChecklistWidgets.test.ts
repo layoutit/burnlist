@@ -54,6 +54,7 @@ test("workspace exposes live execution identity, evidence, and observed paths", 
     currentNode: "implement",
     attempt: 2,
     cycle: 1,
+    hostTask: "claimed",
     revision: "run-revision:test",
     execution: { mode: "host-reported", started: true, usage: "unavailable" },
     budget: {
@@ -68,10 +69,12 @@ test("workspace exposes live execution identity, evidence, and observed paths", 
     transitions: [],
     activity: {
       hooks: "available",
-      records: [{ at: 1, origin: "host-hook", provider: "codex", mode: "host-reported", kind: "tool", nodeId: "implement", attempt: 2, observedPath: "src/example.mjs", truncated: true }],
+      records: [{ at: Date.parse(data.generatedAt) - 1_000, origin: "host-hook", provider: "codex", mode: "host-reported", kind: "tool", nodeId: "implement", attempt: 2, observedPath: "src/example.mjs", truncated: true }],
     },
   };
   const html = renderToStaticMarkup(createElement(ChecklistWorkspace, { data }));
+  assert.match(html, /ACTIVE · progressing/);
+  assert.match(html, /Canonical Run has a live host claim/);
   assert.match(html, /Current Loop execution/);
   assert.match(html, /host-reported/);
   assert.match(html, /1m 5s/);

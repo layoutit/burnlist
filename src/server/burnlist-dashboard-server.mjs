@@ -37,6 +37,10 @@ import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
 import { presentGraph, readCompletedRunForItem, readLatestRunForItem } from "../loops/run/read-projection.mjs";
+import {
+  completedItemWorkState,
+  projectItemWorkState,
+} from "../loops/run/item-work-state.mjs";
 import { assignmentStore } from "../loops/assignment/store.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { createOvenJsonSnapshotStore, OVEN_JSON_CACHE_MAX_BYTES } from "./oven-json-snapshot.mjs";
@@ -1057,8 +1061,28 @@ function payloadForPlan(selection, selectedItemId = null) {
             && artifact.packageRevision === assignment["Package-Revision"]) graph = presentGraph(artifact.frozen.ir);
         } catch {}
       }
+      let run = null;
+      let diagnostic = null;
+      if (assignment) {
+        try {
+          run = readLatestRunForItem({
+            repoRoot: selection.repoRoot,
+            itemRef: `item:${burnlistId}#${item.id}`,
+            markdown: plan.markdown,
+            itemId: item.id,
+            assignmentId: assignment["Assignment-Id"],
+          });
+        } catch (error) {
+          diagnostic = error?.code ?? "unavailable";
+        }
+      }
       return {
         ...item,
+        work: projectItemWorkState({
+          run,
+          now: Date.parse(generatedAt),
+          diagnostic: diagnostic ?? run?.diagnostic ?? null,
+        }),
         loop: assignment ? {
           selector: assignment.Selector,
           assignmentId: assignment["Assignment-Id"],
@@ -1071,6 +1095,7 @@ function payloadForPlan(selection, selectedItemId = null) {
     completed: plan.completed.map((entry) => ({
       ...entry,
       detail: completedDetails.get(entry.id)?.detail ?? "",
+      work: completedItemWorkState(),
     })),
     history,
     // The Run journal is deliberately not read here.  Progress must remain

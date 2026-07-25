@@ -16,6 +16,7 @@ const knownSubcommands = new Set([
   "oven",
   "new",
   "show",
+  "recommend",
   "ready",
   "start",
   "close",
@@ -40,6 +41,7 @@ function printLifecycleUsage(command) {
   const usages = {
     new: "Usage: burnlist new [--repo <path>]",
     show: "Usage: burnlist show <id>[#<item>] [--repo <path>]",
+    recommend: "Usage: burnlist recommend <id>#<item> [--json] [--repo <path>]",
     ready: "Usage: burnlist ready <id> [--repo <path>]",
     start: "Usage: burnlist start <id> [--repo <path>]",
     close: "Usage: burnlist close <id> [--repo <path>]",
@@ -58,7 +60,7 @@ if (args[0] === "install" || args[0] === "uninstall") {
   return;
 }
 
-if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])
+if (["new", "show", "recommend", "ready", "start", "close", "burn"].includes(args[0])
   && (args.includes("--help") || args.includes("-h"))) {
   printLifecycleUsage(args[0]);
   return;
@@ -122,6 +124,7 @@ Usage:
   burnlist oven <list|view|use|set|bind|unbind|bindings|event|create|update|adopt|upgrade|fork> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
+  burnlist recommend <id>#<item> [--json] [--repo <path>]
   burnlist ready <id> [--repo <path>]
   burnlist start <id> [--repo <path>]
   burnlist close <id> [--repo <path>]
@@ -179,7 +182,7 @@ if (args[0] === "oven") {
   await import("../src/cli/streaming-diff-cli.mjs");
 } else if (args[0] === "hooks") {
   await import("../src/cli/hooks-cli.mjs");
-} else if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])) {
+} else if (["new", "show", "recommend", "ready", "start", "close", "burn"].includes(args[0])) {
   await import("../src/cli/lifecycle-cli.mjs");
 } else if (args[0] === "loop") {
   const { runLoopCliEntry } = await import("../src/cli/loop-cli.mjs");

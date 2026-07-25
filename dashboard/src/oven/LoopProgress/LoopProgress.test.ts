@@ -32,6 +32,7 @@ function fixture(selectedItemId: string) {
       schema: "burnlist-loop-read-projection@1", runId: "run-1", itemRef: "item:260724-002#O0",
       loopId: "loop:builtin:review", loopRevision: null, createdAt: 1, updatedAt: 2,
       state: "running", currentNode: "review", attempt: 1, cycle: 0, revision: "r",
+      hostTask: "claimed",
       budget: { limits: { maxRounds: 1, maxMinutes: 1, maxAgentRuns: 1, maxCheckRuns: 1, maxTransitions: 1, maxOutputBytes: 1 },
         counters: { rounds: 0, agentRuns: 0, checkRuns: 0, transitions: 0, outputBytes: 0 },
         elapsedMilliseconds: 1, journal: { maximum: 1, used: 0, remaining: 1 } },
@@ -91,7 +92,7 @@ test("renders only bounded provenance-labelled sanitized activity", () => {
   assert.match(markup, /node-test/u);
   assert.match(markup, /truncated/u);
   assert.match(markup, />10 recent</u);
-  assert.match(markup, />OBSERVED</u);
+  assert.match(markup, />CODE CHANGES</u);
   assert.match(markup, /src\/loops\/run\/binder\.mjs/u);
   assert.doesNotMatch(markup, /FILES<\/span>.*src\/loops\/run\/binder\.mjs/u);
   assert.equal((markup.match(/class="loop-progress__activity"/gu) ?? []).length, 1);
@@ -117,13 +118,13 @@ test("shows observed agent facts, elapsed time, and forecast provenance", () => 
     costProvenance: "unavailable",
   };
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  for (const label of ["AGENT", "ELAPSED", "FORECAST", "PROVENANCE"]) {
+  for (const label of ["STATE", "AGENT", "NODE / BRANCH", "ACTIVITY", "TIME", "TOKENS", "CHECK / GATE / REVIEW", "BLOCKER / RETRIES", "PROVENANCE"]) {
     assert.match(markup, new RegExp(`>${label}<`, "u"));
   }
   assert.match(markup, /codex · gpt-test · effort medium/u);
-  assert.match(markup, /2.1 min/u);
-  assert.match(markup, /wall 1 min–3 min · work 1.5 min–4 min/u);
-  assert.match(markup, /medium · 5 local observations · tokens 2,000–9,000/u);
+  assert.match(markup, /elapsed 2.1 min · forecast 1 min–3 min/u);
+  assert.match(markup, /forecast 2,000–9,000/u);
+  assert.match(markup, /Forecast: medium · 5 local observations/u);
   assert.doesNotMatch(markup, /\$|cost estimate/u);
 });
 
@@ -136,8 +137,16 @@ test("live hook time extends elapsed display without mutating Run budget state",
     nodeId: "review", attempt: 1,
   }] };
   const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
-  assert.match(markup, />ELAPSED<\/span><p>1.5 min<\/p>/u);
+  assert.match(markup, />TIME<\/span><p>elapsed 1.5 min · forecast Unavailable<\/p>/u);
   assert.equal(data.loopRun.budget.elapsedMilliseconds, 2_000);
+});
+
+test("a stale canonical projection is blocked, never merely waiting", () => {
+  const data = fixture("O0");
+  data.loopRun.diagnostic = "stale";
+  const markup = renderToStaticMarkup(createElement(LoopProgress, { data }));
+  assert.match(markup, /Run · running · BLOCKED/u);
+  assert.match(markup, />BLOCKED</u);
 });
 
 test("activity viewport has a stable ten-row height", async () => {

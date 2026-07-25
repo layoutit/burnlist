@@ -180,7 +180,7 @@ if ((bin.mode & 0o111) === 0) {
   process.exit(1);
 }
 
-if (report.entryCount > 220 || report.unpackedSize > 2_500_000) {
+if (report.entryCount > 224 || report.unpackedSize > 2_500_000) {
   console.error(`npm package exceeds its bounded payload budget: ${report.entryCount} files, ${report.unpackedSize} bytes.`);
   process.exit(1);
 }

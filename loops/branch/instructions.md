@@ -18,6 +18,7 @@ finish integration work, and run focused checks before repository validation.
 
 ## review
 Independently review the merged, validated candidate against the original item
-and plan. Approve when integration is coherent. Reject high-priority defects
-and material medium-priority defects back to planning; leave minor refinements
-as follow-up notes.
+and plan. Approve when integration is coherent. Escalate P0 safety, security,
+data-loss, or authority blockers; reject P1 defects and P2 defects that
+materially affect acceptance back to planning. Keep P3 refinements as
+non-blocking follow-ups and omit noisy P4 preferences.

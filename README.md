@@ -42,6 +42,38 @@ One skill owns Burnlist creation, hardening, execution, and maintenance. The pro
 
 The dashboard scans lifecycle folders and refreshes automatically. Its progress views observe Burnlists without changing them. `New Oven` and `Run Burn` write local controller records under `.local/burnlist/` by default; they do not change canonical task state.
 
+## Operational contract
+
+Start with the thinnest working end-to-end path, prove it, then refine—unless
+the repository or user has already chosen another architecture. Burnlist
+coordinates task, execution, proof, and observation contracts; it does not
+dictate project structure.
+
+Per-item control recommendations are optional:
+
+```sh
+burnlist recommend <id>#<item>
+burnlist recommend <id>#<item> --json
+```
+
+They suggest the lightest fitting direct/gate/review/branch workflow, a
+provider-neutral model class and effort, P0-P4 review handling, and an honest
+metric or task-fit Oven when one adds value. The user remains authoritative.
+
+The Checklist labels items `PENDING`, `ACTIVE`, `WAITING`, `BLOCKED`, or
+`COMPLETED` from canonical Burnlist and Run/claim state—never checklist
+position. Recent correlated hooks may only refine an active item to
+**progressing** and show bounded observational facts. The Loop Progress lens
+separates canonical checks/gates/reviews and blockers from observational
+agent/model/effort, file activity, timing, usage, and bounded forecasts.
+Missing facts stay unavailable.
+
+Creation, registration, assignment, and Oven commands print the next useful
+action and canonical dashboard URL. See the
+[operational UX contract](skills/burnlist/references/operational-ux.md) for
+coarse-to-fine guidance, P0-P4 policy, provenance, optimization measures, and
+the required browser inspection of every task-fit Oven.
+
 ## Ovens
 
 An Oven is a declarative recipe for a Burn. Its `instructions.md` defines the outcome, canonical state, required inputs, and evidence rules. Its `<id>.oven` source declares controlled widgets and bindings used to present normalized data.

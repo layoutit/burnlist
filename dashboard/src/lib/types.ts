@@ -1,9 +1,33 @@
 export type Filter = "active" | "draft" | "ready" | "complete" | "all";
 
+export type ChecklistItemWork = {
+  state: "PENDING" | "ACTIVE" | "WAITING" | "BLOCKED" | "COMPLETED";
+  reason: string;
+  run: null | {
+    runId: string;
+    state: string;
+    node: string;
+    claim: "claimed" | "awaiting-claim" | "resolved" | "not-applicable" | "unavailable";
+  };
+  progressing: boolean;
+  observation: {
+    source: "bounded-correlated-hooks";
+    authority: "observational";
+    availability: "unavailable" | "available";
+    lastAt: number | null;
+    lastKind: string | null;
+    ageMilliseconds: number | null;
+    recent: boolean;
+    codeChanges: string[];
+  };
+  provenance: { state: string; activity: string };
+};
+
 export type ChecklistItem = {
   id: string;
   title: string;
   fields: Record<string, string>;
+  work?: ChecklistItemWork;
   loop?: null | {
     selector: string;
     assignmentId: string;
@@ -12,7 +36,7 @@ export type ChecklistItem = {
     graph?: LoopRunProjection["graph"] | null;
   };
 };
-export type CompletedItem = { id: string; title: string; completedAt: string; detail: string };
+export type CompletedItem = { id: string; title: string; completedAt: string; detail: string; work?: ChecklistItemWork };
 export type Warning = { severity: "error" | "warning"; message: string };
 export type HistoryPoint = { time: string; done: number; remaining: number; total: number; percent: number };
 export type LoopRunProjection = {
@@ -27,6 +51,7 @@ export type LoopRunProjection = {
   currentNode: string;
   attempt: number;
   cycle: number;
+  hostTask?: "claimed" | "awaiting-claim" | "resolved" | "not-applicable";
   execution?: {
     mode: "managed" | "host-reported" | "unavailable";
     started: boolean;

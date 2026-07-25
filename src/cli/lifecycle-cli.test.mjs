@@ -53,7 +53,32 @@ test("new creates a protocol-valid draft scaffold", () => {
     assert.equal(readFileSync(result.planPath, "utf8").includes("## Active Checklist\n\n## Completed"), true);
     assert.equal(readFileSync(join(dirname(result.planPath), "goal.md"), "utf8").includes("## Proof Authority"), true);
     assert.match(result.handle, new RegExp(`^${repoKey(realpathSync(context.repo))}/${result.id}$`));
+    assert.match(result.output, /Dashboard: http:\/\/127\.0\.0\.1:4510\/r\/[a-f0-9]{12}\/\d{6}-001/u);
+    assert.match(result.output, /Dashboard start: burnlist --scan-root/u);
+    assert.match(result.output, /Next: edit .*goal\.md.*burnlist\.md.*burnlist ready/u);
     assert.match(run(context, "--plan", result.planPath, "--check"), /Burnlist check passed: 0 active, 0 completed\./u);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("recommend prints optional per-item controls, metrics, next action, and dashboard URL", () => {
+  const context = fixture();
+  try {
+    const result = newPlan(context);
+    addActiveItem(result.planPath, context.repo);
+    const output = run(context, "recommend", `${result.id}#B1`);
+    assert.match(output, /advisory; user choice remains authoritative/u);
+    assert.match(output, /Loop: loop:builtin:gate/u);
+    assert.match(output, /Model \/ effort: standard \/ medium/u);
+    assert.match(output, /P0-P1 block/u);
+    assert.match(output, /Optimize observed: host-visible commands; agent turns; wall time/u);
+    assert.match(output, /Dashboard: http:\/\/127\.0\.0\.1:4510\/r\/[a-f0-9]{12}\//u);
+    assert.match(output, /Next: burnlist loop assign item:/u);
+    const json = JSON.parse(run(context, "recommend", `${result.id}#B1`, "--json"));
+    assert.equal(json.schema, "burnlist-operational-recommendation@1");
+    assert.equal(json.advisory, true);
+    assert.equal(json.itemRef, `${result.id}#B1`);
   } finally {
     context.cleanup();
   }

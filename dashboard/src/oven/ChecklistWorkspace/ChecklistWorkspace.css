@@ -49,6 +49,11 @@
 .checklist-workspace__item.is-selected { background: rgba(90, 162, 255, .07); box-shadow: inset 2px 0 rgba(90, 162, 255, .7); }
 .checklist-workspace__item-marker { color: rgba(168, 168, 168, .42); font-size: 11px; text-align: center; }
 .checklist-workspace__item.is-current .checklist-workspace__item-marker { color: var(--status-green); }
+.checklist-workspace__item.is-waiting .checklist-workspace__item-marker { color: #e2b96f; }
+.checklist-workspace__item.is-blocked .checklist-workspace__item-marker { color: #ff8178; font-weight: 800; }
+.checklist-workspace__item.is-active .checklist-workspace__loop-label { color: #79d7a9; }
+.checklist-workspace__item.is-waiting .checklist-workspace__loop-label { color: #e2b96f; }
+.checklist-workspace__item.is-blocked .checklist-workspace__loop-label { color: #ff8178; }
 .checklist-workspace__item.is-completed { opacity: .64; }
 .checklist-workspace__item.is-completed .checklist-workspace__item-marker { color: var(--status-green); }
 .checklist-workspace__item.is-completed.is-selected { opacity: 1; }
@@ -72,6 +77,21 @@
 .checklist-workspace__detail-title > span { color: var(--status-green); font-size: 12px; }
 .checklist-workspace__detail-title.is-completed { grid-template-columns: 3ch minmax(0, 1fr); }
 .checklist-workspace__detail-title h2 { margin: 0; color: rgba(232, 232, 232, .9); font: 14px/1.3 var(--dashboard-font); }
+.checklist-workspace__work-state {
+  display: grid;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(163, 172, 183, .1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .015);
+  gap: 4px;
+}
+.checklist-workspace__work-state strong { color: rgba(210, 216, 224, .82); font-size: 10px; letter-spacing: .08em; }
+.checklist-workspace__work-state p { margin: 0; color: rgba(210, 216, 224, .68); font-size: 11px; line-height: 1.35; }
+.checklist-workspace__work-state small { color: rgba(168, 168, 168, .46); font-size: 9px; overflow-wrap: anywhere; }
+.checklist-workspace__work-state.is-active { border-color: rgba(103, 215, 164, .25); }
+.checklist-workspace__work-state.is-waiting { border-color: rgba(226, 185, 111, .24); }
+.checklist-workspace__work-state.is-blocked { border-color: rgba(255, 129, 120, .28); }
 .checklist-workspace__fields { display: grid; margin: 12px 0 0; gap: 8px; }
 .checklist-workspace__fields > div { display: grid; grid-template-columns: 8ch minmax(0, 1fr); gap: 10px; }
 .checklist-workspace__fields dt { color: rgba(168, 168, 168, .5); font-size: 11px; }

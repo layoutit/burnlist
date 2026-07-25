@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11539,
+    "domSha256": "5502efe29562ac55d549bd22d512e5e56c312043dc9a47f15b008fd719678229"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11537,
+    "domSha256": "7aba7741fe80cb71352348a4573c95dae072cffb9480d095d5e1ad48d9c8f1ef"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11538,
+    "domSha256": "e2c7aa9b6c919a3a29244f794167542ee61cb38b6424852d0eabb39a78e4d374"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11542,
+    "domSha256": "13af55dbf157da9638de11bb7a0aeebd38d71fa97036f38bb9b43409e086b9fa"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11547,
+    "domSha256": "7054d53708e82fd50d69719336f937f1a5de36103452aae9b9335aabb16e60be"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11554,
+    "domSha256": "7c4b0ff382daaf28f0853c4ebe11f7b52be665f081b14d098b8ca5cb629b8c65"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11556,
+    "domSha256": "226ac90b4ef4f3b8c9c1db6e19605bcd24c8c768f650e0930b789ebd7b7b8255"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 11319,
-    "domSha256": "3c80dbafd88e55b307255f003a64ef442d5e53c79e0650bcd378b2c3424b255b"
+    "domBytes": 11585,
+    "domSha256": "c980b879a49b77827f22699a6c69c8e230c97af49c5cded2ed633e276c592fec"
   }
 ]

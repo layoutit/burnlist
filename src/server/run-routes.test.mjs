@@ -36,10 +36,14 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     assert.equal(first.status, 200);
     assert.equal(JSON.parse(first.body).loopRun, null);
     assert.equal(JSON.parse(second.body).loopRun, null);
+    const itemWork = JSON.parse(first.body).active[0].work;
+    assert.equal(itemWork.state, "WAITING");
+    assert.match(itemWork.reason, /waiting for atomic Burnlist completion/u);
+    assert.equal(itemWork.provenance.state, "canonical-run-and-claim");
     const projection = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}`, { method: "GET" });
     assert.equal(projection.status, 200);
     const left = JSON.parse(projection.body).loopRun;
-    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "execution", "activity", "forecast", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
+    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "hostTask", "execution", "activity", "forecast", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
     assert.equal(left.activity.hooks, "unavailable");
     assert.equal(left.forecast, null, "terminal nodes do not advertise an agent forecast");
     assert.ok(left.activity.records.length <= 10);
@@ -53,6 +57,7 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     assert.ok(left.budget.limits.maxRounds >= 1);
     assert.equal(left.state, "converged");
     assert.equal(left.currentNode, "completed");
+    assert.equal(left.hostTask, "not-applicable");
     const itemId = fixtureItemRef.split("#")[1];
     const scoped = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}&item=${encodeURIComponent(itemId)}`, { method: "GET" });
     assert.equal(scoped.status, 200);
@@ -88,7 +93,10 @@ test("unassigned selected progress stays unchanged and Run discovery does not cr
   await withServer({ withBurnlist: true }, async ({ baseUrl, planPath, repoRoot }) => {
     const response = await httpGet(baseUrl, `/api/progress?plan=${encodeURIComponent(planPath)}`);
     assert.equal(response.status, 200);
-    assert.equal(JSON.parse(response.body).loopRun, null);
+    const payload = JSON.parse(response.body);
+    assert.equal(payload.loopRun, null);
+    assert.equal(payload.active[0].work.state, "PENDING");
+    assert.match(payload.active[0].work.reason, /checklist position does not imply execution/u);
     assert.equal(existsSync(`${repoRoot}/.local/burnlist/loop/m2/runs`), false);
   });
 });
@@ -127,6 +135,7 @@ test("loop projection distinguishes missing state from corrupt run storage", { t
     await withServer({ burnlists: [{ id: "260722-001", title: "Loop route" }], setup }, async ({ baseUrl, planPath }) => {
       const progress = await httpRequest(baseUrl, `/api/progress?plan=${encodeURIComponent(planPath)}`, { method: "GET" });
       assert.equal(progress.status, 200, "progress remains usable when Loop storage is corrupt");
+      assert.equal(JSON.parse(progress.body).active[0].work.state, expectedStatus === 200 ? "PENDING" : "BLOCKED");
       const response = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}`, { method: "GET" });
       assert.equal(response.status, expectedStatus);
       if (expectedStatus === 200) assert.equal(JSON.parse(response.body).loopRun, null);

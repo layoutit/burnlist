@@ -63,6 +63,9 @@ export function presentRun(replay, { optionalRecords = [], forecast = null } = {
   const executionMode = replay.execution.started
     ? declaredMode === "managed" ? "managed" : declaredMode === "host" ? "host-reported" : "unavailable"
     : "unavailable";
+  const hostTask = replay.execution.node?.kind !== "agent" ? "not-applicable"
+    : replay.execution.externalClaim ? "claimed"
+      : replay.execution.started ? "resolved" : "awaiting-claim";
   return Object.freeze({
     schema: "burnlist-loop-read-projection@1",
     runId: replay.projection.runId,
@@ -75,6 +78,7 @@ export function presentRun(replay, { optionalRecords = [], forecast = null } = {
     currentNode: replay.projection.currentNode,
     attempt: replay.projection.attempt,
     cycle: replay.execution.cycle,
+    hostTask,
     execution: {
       mode: executionMode,
       started: replay.execution.started,

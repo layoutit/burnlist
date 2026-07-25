@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
 import type { ChecklistProgressData, HistoryPoint } from "@lib";
-import { checklistEventDetailFields, compactAge, eventRows, formatDuration, progressHistory, timing } from "@lib/checklist-adapter";
+import { checklistEventDetailFields, compactAge, effectiveItemWork, eventRows, formatDuration, progressHistory, timing } from "@lib/checklist-adapter";
 export { checklistEventDetailFields } from "@lib/checklist-adapter";
 import "./ChecklistDashboard.css";
 import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
@@ -10,14 +10,18 @@ import { ChecklistWorkspace } from "@/oven/ChecklistWorkspace";
 
 function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
   const durations = timing(data);
-  const current = data.active[0];
+  const current = data.active.find((item) => effectiveItemWork(data, item).state === "ACTIVE")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "BLOCKED")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "WAITING")
+    ?? data.active[0];
+  const currentState = current ? effectiveItemWork(data, current).state : "PENDING";
   const metrics = [
     { icon: Clock3, heading: "Elapsed", value: formatDuration(durations.elapsed) },
     { icon: Gauge, heading: "Avg pace", value: formatDuration(durations.pace) },
     { icon: TimerReset, heading: "Time left", value: formatDuration(durations.timeLeft) },
   ];
   return <KpiStrip ariaLabel="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
-    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · Active` : "Complete"} />
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · ${currentState}` : "Complete"} />
     <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`} visual={<ProgressDonut percent={data.percent} />} heading="Progress" value={<><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></>} />
     {metrics.map(({ icon: Icon, heading, value }) => <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section" heading={heading} key={heading} value={value} visual={<Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} />)}
   </KpiStrip>;

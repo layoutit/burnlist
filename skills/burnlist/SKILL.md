@@ -33,6 +33,7 @@ Read references only when their trigger applies:
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
 - `references/host-execution.md`: generic host next/execute/submit protocol for a prepared Loop Run; read before a host executes an agent node.
+- `references/operational-ux.md`: optional per-item recommendations, coarse-to-fine defaults, P0-P4 review handling, truthful live states, provenance, and task-fit Oven visual proof.
 - `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.

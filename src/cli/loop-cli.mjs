@@ -10,6 +10,11 @@ import { createLoopController } from "../loops/run/controller.mjs";
 import { createProductionRun, createStoredSystemRunRunner } from "../loops/run/binder.mjs";
 import { completeLoopRun } from "../loops/completion/completion.mjs";
 import { validateHostExecutionEnvelope } from "../loops/contracts/host-execution.mjs";
+import {
+  dashboardHandoff,
+  dashboardRuntime,
+  dashboardUrl,
+} from "./actionable-output.mjs";
 
 function usageText() { return loopConfigUsage(); }
 function usageError(message = usageText()) { return Object.assign(new Error(message), { exitCode: 2 }); }
@@ -142,7 +147,19 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
   if (verb === "assign" && opts.positionals.length === 2) {
     const prepared = prepareItemMutation({ repoRoot: opts.repo, itemRef: opts.positionals[0] });
     const result = await assignLoopItem({ repoRoot: opts.repo, itemRef: opts.positionals[0], loopRef: opts.positionals[1], prepared });
-    stdout.write(`${result.assignmentId}\n${result.selector}\n${result.executionRevision}\n`); return result;
+    const itemMatch = opts.positionals[0].match(/^item:(\d{6}-\d{3})#/u);
+    const runtime = dashboardRuntime();
+    const dashboard = dashboardUrl(opts.repo, {
+      ...(itemMatch ? { burnlistId: itemMatch[1] } : {}),
+      ovenId: "loop-progress",
+      runtime,
+    });
+    stdout.write(`${result.assignmentId}\n${result.selector}\n${result.executionRevision}\n${dashboardHandoff(
+      opts.repo,
+      dashboard,
+      `burnlist loop create ${opts.positionals[0]} --repo ${JSON.stringify(opts.repo)}`,
+      { runtime },
+    )}\n`); return result;
   }
   if (verb === "unassign" && opts.positionals.length === 1) {
     const prepared = prepareItemMutation({ repoRoot: opts.repo, itemRef: opts.positionals[0] });
