@@ -58,7 +58,7 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     assert.equal(JSON.parse(scoped.body).loopRun.itemRef, fixtureItemRef);
     const unknown = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}&item=NOT-ACTIVE`, { method: "GET" });
     assert.equal(unknown.status, 404);
-    assert.match(JSON.parse(unknown.body).error, /not active/u);
+    assert.match(JSON.parse(unknown.body).error, /not present/u);
     assert.deepEqual(left.latestResult, { kind: "approve", summary: "approve" });
     for (const result of [left.latestMaker, left.latestCheck, left.latestReviewer]) {
       assert.equal(typeof result?.summary, "string");

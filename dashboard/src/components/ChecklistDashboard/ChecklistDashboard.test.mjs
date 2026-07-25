@@ -74,6 +74,14 @@ test("checklist detail renders the split progress surface and event card list", 
       if (projection.currentNode === "converged") assert.match(stage, /approve/u);
       if (projection.currentNode === "completed") assert.match(stage, /COMPLETED/u);
     }
+    const completedLoopMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: {
+      ...data,
+      selectedItemId: "B2",
+      loopRun: { ...snapshots.at(-1), itemRef: "item:260722-001#B2" },
+    } }));
+    assert.match(completedLoopMarkup, /Completed Loop for B2/u);
+    assert.match(completedLoopMarkup, /Loop symbols for B2/u);
+    assert.match(completedLoopMarkup, /IMPLEMENT/u);
     const evidence = renderToStaticMarkup(createElement(LoopRunPanel, { data: {
       ...data,
       loopRun: {
@@ -98,7 +106,7 @@ test("Loop panel exposes every terminal and observer diagnostic state accessibly
     const outputPath = join(outputDir, "ChecklistDashboard.mjs");
     await build({ entryPoints: [componentPath], bundle: true, format: "esm", outfile: outputPath, platform: "node", alias: { "@lib": libPath, "@oven": ovenPath }, jsx: "automatic", packages: "external", target: "node18" });
     const { LoopRunPanel } = await import(`${new URL(`file://${outputPath}`).href}?states=${Date.now()}`);
-    const { final } = await runM4ProgressFixture({ repoRoot, outcomes: ["complete", "pass", "reject", "complete", "pass", "approve"] });
+    const { final } = await runM4ProgressFixture({ repoRoot });
     const labels = { paused: "Paused", failed: "Failed", stopped: "Stopped", "needs-human": "Needs human review", "budget-exhausted": "Budget exhausted", converged: "Converged", completed: "Completed", corrupt: "Corrupt projection", stale: "Stale projection" };
     for (const [state, label] of Object.entries(labels)) {
       const projection = { ...final, state };

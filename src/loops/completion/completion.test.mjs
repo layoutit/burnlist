@@ -10,6 +10,7 @@ import { createLoopController } from "../run/controller.mjs";
 import { validateHostExecutionEnvelope } from "../contracts/host-execution.mjs";
 import { createProductionRunAuthority, fixtureItemRef, fixtureRunId } from "../run/run-test-fixtures.mjs";
 import { runStore } from "../run/run-store.mjs";
+import { readCompletedRunForItem } from "../run/read-projection.mjs";
 import { completeLoopRun } from "./completion.mjs";
 
 function context(t) {
@@ -54,6 +55,14 @@ test("completion burns one exact converged assignment, writes one receipt, and r
   assert.equal(readFileSync(value.planPath, "utf8").includes("- [ ] L29"), false);
   assert.equal(completedLines(value).length, 1);
   assert.equal(existsSync(runPath(store, fixtureRunId, "completion-receipt.json")), true);
+  const completedRun = readCompletedRunForItem({
+    repoRoot: value.repo,
+    itemRef: fixtureItemRef,
+    completedAt: first.completedAt,
+    title: "Exercise production authority",
+  });
+  assert.equal(completedRun?.runId, fixtureRunId);
+  assert.equal(completedRun?.state, "converged");
   writeFileSync(value.planPath, `${readFileSync(value.planPath, "utf8").trimEnd()}\n\nUnrelated lifecycle note.\n`);
   const second = completeLoopRun({ repoRoot: value.repo, runId: fixtureRunId, store });
   assert.equal(second.alreadyApplied, true); assert.equal(completedLines(value).length, 1);

@@ -33,7 +33,7 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null, ex
         if (completed?.released) lease = null;
         return { kind: "prepared-agent" };
       }
-      if (node.kind === "agent") return { kind: "awaiting-host" };
+      if (node.kind === "agent" && node.execution === "host") return { kind: "awaiting-host" };
       return append("node-started", { nodeId: node.id, attempt: execution.attempt + 1 });
     }
     if (node.kind === "terminal") return transition(node.state, "graph");

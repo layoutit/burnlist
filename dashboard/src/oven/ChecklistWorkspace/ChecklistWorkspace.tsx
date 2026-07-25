@@ -136,8 +136,10 @@ function ActiveDetail({ data, item }: { data: ChecklistProgressData; item: Check
     </div>;
 }
 
-function CompletedDetail({ item }: { item: CompletedItem }) {
+function CompletedDetail({ data, item }: { data: ChecklistProgressData; item: CompletedItem }) {
   const fields = checklistEventDetailFields(item.detail).filter((field) => field.label !== "Completed" && field.values.length);
+  const run = data.loopRun?.itemRef.endsWith(`#${item.id}`) ? data.loopRun : null;
+  const topology = run ? itemTopologyProjection(run) : null;
   return <div className="checklist-workspace__detail-body">
     <div className="checklist-workspace__detail-title is-completed"><span>✓</span><h2>{item.id} · {item.title}</h2></div>
     <dl className="checklist-workspace__fields">
@@ -145,6 +147,16 @@ function CompletedDetail({ item }: { item: CompletedItem }) {
       <div><dt>Completed</dt><dd><time dateTime={item.completedAt}>{new Date(item.completedAt).toLocaleString()}</time></dd></div>
       {fields.map((field) => <div key={field.label}><dt>{field.label === "Detail" ? "Outcome" : field.label}</dt><dd>{field.values.join(" · ")}</dd></div>)}
     </dl>
+    {run && topology ? <div className="checklist-workspace__detail-loop">
+      <div className="checklist-workspace__loop-head"><span>Loop</span><span>{run.loopId}</span></div>
+      <LoopCompact run={run} labels="outcomes" title={`Completed Loop for ${item.id}`} variant="topology" />
+      <LoopLegend run={topology} symbols={{
+        start: "S",
+        ...Object.fromEntries(topology.graph.nodes
+          .filter((node) => node.kind === "terminal" && node.terminalState === "converged")
+          .map((node) => [node.id, "B"])),
+      }} title={`Loop symbols for ${item.id}`} />
+    </div> : null}
   </div>;
 }
 
@@ -154,7 +166,7 @@ function DetailColumn({ data, selected }: { data: ChecklistProgressData; selecte
     <header className="checklist-workspace__heading"><span>Item detail</span><span>{status}</span></header>
     {!selected ? <p className="checklist-workspace__empty">No items</p>
       : selected.status === "active" ? <ActiveDetail data={data} item={selected.item} />
-        : <CompletedDetail item={selected.item} />}
+        : <CompletedDetail data={data} item={selected.item} />}
   </section>;
 }
 

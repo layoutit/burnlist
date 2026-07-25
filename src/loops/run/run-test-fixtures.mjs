@@ -58,7 +58,7 @@ export async function runM4ProgressFixture({
   const baseClock = clock ?? (() => at++);
   const store = runStore(repoRoot, { clock: baseClock });
   store.createRun({ runId, itemRef, graph: frozenGraph });
-  const runner = createRunRunner({ store, runId, invoke: async ({ nodeId }) => {
+  const invoke = async ({ nodeId }) => {
     const outcome = source.shift();
     if (!outcome) throw new Error(`run fixture: missing outcome for ${runId}`);
     const node = frozenGraph.nodes.find((item) => item.id === nodeId);
@@ -66,7 +66,18 @@ export async function runM4ProgressFixture({
       : node?.kind === "check" ? ["pass", "fail"] : [];
     if (!permitted.includes(outcome)) throw new Error(`run fixture: ${outcome} is not valid for ${nodeId}`);
     return { kind: outcome, summary: outcome, outputBytes: 1 };
-  }});
+  };
+  const runner = createRunRunner({ store, runId, invoke, executePreparedAgent: async ({ lease, node }) => {
+    const current = store.replay(runId), attempt = current.execution.attempt + 1;
+    store.append(runId, lease, "node-started", { nodeId: node.id, attempt });
+    const invocationId = `${String(attempt).padStart(2, "0")}${"0".repeat(30)}`;
+    store.append(runId, lease, "invocation-started", { nodeId: node.id, attempt, invocationId });
+    const result = await invoke({ nodeId: node.id });
+    store.append(runId, lease, "invocation-result", {
+      invocationId, ...result, candidateId: store.replay(runId).execution.candidate?.id ?? null,
+    });
+    return { released: false };
+  } });
   const snapshots = [];
   let previous = null;
   const capture = () => {

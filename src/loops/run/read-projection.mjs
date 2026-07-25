@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { readJournal } from "./run-journal.mjs";
 import { foldRun } from "./run-fold.mjs";
@@ -10,6 +10,7 @@ import { runStore } from "./run-store.mjs";
 import { projectRunActivity } from "../events/activity-projection.mjs";
 
 const MAX_RUNS = 128;
+const RECEIPT_KEYS = ["schema", "runId", "itemRef", "assignmentId", "completedAt", "title", "planDigest"];
 const fail = (message) => { throw Object.assign(new Error(`Run projection: ${message}`), { code: "ERUN_PROJECTION" }); };
 
 function publicNode(node, routes = []) {
@@ -149,4 +150,35 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
   selected.loopIdentity = stored.loopIdentity;
   selected.agentRoutes = stored.agentRoutes;
   return presentRun(selected);
+}
+
+/** Resolve a completed ledger item through its retained CLI completion receipt. */
+export function readCompletedRunForItem({ repoRoot, itemRef, completedAt, title }) {
+  const root = resolve(repoRoot);
+  const base = join(root, ".local", "burnlist", "loop", "m2");
+  if (!existsSync(base)) return null;
+  const current = currentRunAuthority({ root, base, random: () => Buffer.alloc(8) }).read()
+    .find((entry) => entry.itemRef === itemRef) ?? null;
+  if (!current) return null;
+  const receiptPath = join(base, "runs", Buffer.from(current.runId).toString("hex"), "completion-receipt.json");
+  let bytes;
+  try {
+    const entry = lstatSync(receiptPath);
+    if (!entry.isFile() || entry.isSymbolicLink() || entry.size < 2 || entry.size > 8192) fail("completion receipt is corrupt");
+    bytes = readFileSync(receiptPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    if (error?.code === "ERUN_PROJECTION") throw error;
+    fail("completion receipt is corrupt");
+  }
+  let receipt;
+  try { receipt = JSON.parse(bytes); } catch { fail("completion receipt is corrupt"); }
+  if (!receipt || Object.keys(receipt).length !== RECEIPT_KEYS.length
+    || !RECEIPT_KEYS.every((key, index) => Object.keys(receipt)[index] === key)
+    || receipt.schema !== "burnlist-loop-completion@1"
+    || receipt.runId !== current.runId || receipt.itemRef !== itemRef
+    || receipt.assignmentId !== current.assignmentId
+    || receipt.completedAt !== completedAt || receipt.title !== title
+    || !Buffer.from(`${JSON.stringify(receipt)}\n`).equals(bytes)) fail("completion receipt does not match the completed item");
+  return readLatestRunForItem({ repoRoot: root, itemRef });
 }

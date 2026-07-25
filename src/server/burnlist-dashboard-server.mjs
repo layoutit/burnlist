@@ -36,7 +36,7 @@ import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import "../ovens/built-in-handlers.mjs";
 import { getOvenHandler, listOvenHandlers } from "../ovens/oven-registry.mjs";
 import { genericJsonHandler } from "../ovens/handlers/generic-json-handler.mjs";
-import { presentGraph, readLatestRunForItem } from "../loops/run/read-projection.mjs";
+import { presentGraph, readCompletedRunForItem, readLatestRunForItem } from "../loops/run/read-projection.mjs";
 import { assignmentStore } from "../loops/assignment/store.mjs";
 import { buildRepoMapAsync } from "./repo-map.mjs";
 import { createOvenJsonSnapshotStore, OVEN_JSON_CACHE_MAX_BYTES } from "./oven-json-snapshot.mjs";
@@ -1081,18 +1081,32 @@ function payloadForPlan(selection, selectedItemId = null) {
 
 function loopProjectionForPlan(selection, requestedItemId = null) {
   const plan = parsePlan(selection.planPath, maxPlanBytes);
-  const currentItem = requestedItemId
+  const activeItem = requestedItemId
     ? plan.items.find((item) => item.id === requestedItemId)
     : plan.items.find((item) => loopAssignmentForItem(plan.markdown, item.id));
-  if (requestedItemId && !currentItem) throw Object.assign(new Error("Loop item is not active in the selected Burnlist"), { code: "EITEM" });
-  const assignment = currentItem ? loopAssignmentForItem(plan.markdown, currentItem.id) : null;
-  if (!currentItem || !assignment) return null;
-  return readLatestRunForItem({
+  if (activeItem) {
+    const assignment = loopAssignmentForItem(plan.markdown, activeItem.id);
+    if (!assignment) return null;
+    return readLatestRunForItem({
+      repoRoot: selection.repoRoot,
+      itemRef: `item:${burnlistIdForPlan(selection.planPath)}#${activeItem.id}`,
+      markdown: plan.markdown,
+      itemId: activeItem.id,
+      assignmentId: assignment["Assignment-Id"],
+    });
+  }
+  const completedItem = requestedItemId
+    ? plan.completed.find((item) => item.id === requestedItemId)
+    : plan.completed.at(-1);
+  if (!completedItem) {
+    if (requestedItemId) throw Object.assign(new Error("Loop item is not present in the selected Burnlist"), { code: "EITEM" });
+    return null;
+  }
+  return readCompletedRunForItem({
     repoRoot: selection.repoRoot,
-    itemRef: `item:${burnlistIdForPlan(selection.planPath)}#${currentItem.id}`,
-    markdown: plan.markdown,
-    itemId: currentItem.id,
-    assignmentId: assignment["Assignment-Id"],
+    itemRef: `item:${burnlistIdForPlan(selection.planPath)}#${completedItem.id}`,
+    completedAt: completedItem.completedAt,
+    title: completedItem.title,
   });
 }
 
