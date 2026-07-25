@@ -3,6 +3,7 @@ import { useTerminalPalette } from "./terminal-accessibility";
 import {
   bucketTerminalSeries,
   terminalSeriesChartFrame,
+  terminalSeriesRasterSize,
   terminalSeriesLevels,
   type TerminalChartPoint,
 } from "./terminal-series-chart-model";
@@ -12,6 +13,7 @@ export {
   bucketTerminalSeries,
   terminalSeriesChartFrame,
   terminalSeriesChartFrame as terminalLineChartFrame,
+  terminalSeriesRasterSize,
   type TerminalChartPoint,
 } from "./terminal-series-chart-model";
 
@@ -22,7 +24,7 @@ export function TerminalSeriesChart({ height, points, title, width }: {
   width: number;
 }) {
   const palette = useTerminalPalette(), rows = Math.max(2, Math.floor(height));
-  if (rows < 5) {
+  if (rows < 3) {
     const compactSeries = bucketTerminalSeries(points, Math.max(1, width - 2));
     const max = Math.max(0.0001, ...compactSeries.map((point) => Math.abs(point.value)));
     return <box width={width} height={rows} flexDirection="column" overflow="hidden">

@@ -123,6 +123,9 @@ export const componentPairFixture = {
     pace: "10m",
     done: "67%",
     log: "Frame 2 unchanged",
+    logRows: [
+      { age: "30m", frame: "2", result: "0", delta: "0%", done: "67%", tone: "neutral" },
+    ],
     chart: [
       { label: "F0", value: 0, state: "pass" },
       { label: "F1", value: 0.01, state: "pass" },
@@ -152,9 +155,9 @@ export const componentPairFixture = {
     label: "Homepage",
     frame: 7,
     images: [
-      { label: "Current", source: "current", width: 2, height: 2 },
-      { label: "Reference", source: "reference", width: 2, height: 2 },
-      { label: "Difference", source: "difference", width: 2, height: 2 },
+      { label: "Reference", source: "reference", width: 96, height: 54 },
+      { label: "Candidate", source: "candidate", width: 96, height: 54 },
+      { label: "Difference", source: "difference", width: 96, height: 54 },
     ],
   },
   lineChart: {

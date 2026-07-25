@@ -117,8 +117,8 @@ test("every keyboard handler branch is an AST-derived stale denominator", async 
 
 test("Story controls distinguish inert presentation from an actionable handler", async () => withFixture(async (target) => {
   const card = (await discoverStorybook(target)).find((entry) => entry.id.endsWith("Card/Card.stories.tsx#OvenSummary")); assert.equal(card.stateMatrix[0].actions.length, 0);
-  await replace(target, "dashboard/src/layout/Card/Card.stories.tsx", '<Button size="sm" variant="outline">Open Oven</Button>', '<Button size="sm" variant="outline" onClick={() => undefined}>Open Oven</Button>');
-  const actionable = (await discoverStorybook(target)).find((entry) => entry.id.endsWith("Card/Card.stories.tsx#OvenSummary")); assert.equal(actionable.stateMatrix[0].actions.length, 1); assert.match(actionable.stateMatrix[0].actions[0].id, /Open Oven/u);
+  await replace(target, "dashboard/src/layout/Card/Card.stories.tsx", '<Button aria-label="Card action" size="sm" variant="outline">', '<Button aria-label="Card action" size="sm" variant="outline" onClick={() => undefined}>');
+  const actionable = (await discoverStorybook(target)).find((entry) => entry.id.endsWith("Card/Card.stories.tsx#OvenSummary")); assert.equal(actionable.stateMatrix[0].actions.length, 1); assert.match(actionable.stateMatrix[0].actions[0].id, /Card action/u);
 }));
 
 test("structural registry rejects wrong families, targets, mappings, and provenance", async () => withFixture(async (target) => {

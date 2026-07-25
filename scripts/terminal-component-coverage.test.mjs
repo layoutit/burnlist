@@ -72,8 +72,14 @@ test("every catalogued console component has one source-backed terminal pair", a
   const index = JSON.parse(await readFile(resolve(frameRoot, "index.json"), "utf8"));
   const entries = index.entries.filter((entry) => entry.fixture.startsWith("component-"));
   assert.deepEqual(sorted(entries.map((entry) => entry.fixture)), sorted(manifest.entries.map((entry) => `component-${entry.id}`)));
+  const measuredViewports = {
+    "component-line-chart": "72x8",
+    "component-top-card": "72x12",
+    "component-visual-parity-media": "96x26",
+  };
   for (const entry of entries) {
-    assert.match(entry.id, new RegExp(`^${entry.fixture}:72x(?:10|12|16):${entry.fixture === "component-spinner" ? "spark" : "default"}$`, "u"));
+    const viewport = measuredViewports[entry.fixture] || "72x10";
+    assert.equal(entry.id, `${entry.fixture}:${viewport}:${entry.fixture === "component-spinner" ? "spark" : "default"}`);
     const frame = JSON.parse(await readFile(resolve(frameRoot, entry.path), "utf8"));
     assert.equal(frame.fixtureSha256, entry.fixtureSha256);
     assert.equal(frame.renderer.sourceSha256, entry.fixtureSha256);

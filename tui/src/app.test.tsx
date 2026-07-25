@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, test } from "bun:test";
-import { createTestRenderer } from "@opentui/core/testing";
+import { CliRenderEvents } from "@opentui/core";
+import { createTestRenderer, type TestRendererSetup } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { App } from "./app";
 // @ts-expect-error Production DSL remains JavaScript by design.
@@ -77,6 +78,40 @@ async function key(setup: Awaited<ReturnType<typeof createTestRenderer>>, value:
   await setup.flush();
 }
 
+function waitForRenderedFrame(
+  setup: TestRendererSetup,
+  predicate: (frame: string) => boolean,
+  label: string,
+  timeoutMs = 2_000,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      setup.renderer.off(CliRenderEvents.FRAME, inspect);
+      setup.renderer.off(CliRenderEvents.DESTROY, destroyed);
+    };
+    const inspect = () => {
+      const frame = setup.captureCharFrame();
+      if (!predicate(frame)) return;
+      cleanup();
+      resolve(frame);
+    };
+    const destroyed = () => {
+      cleanup();
+      reject(new Error(`Renderer was destroyed while waiting for ${label}.`));
+    };
+    setup.renderer.on(CliRenderEvents.FRAME, inspect);
+    setup.renderer.once(CliRenderEvents.DESTROY, destroyed);
+    timer = setTimeout(() => {
+      const frame = setup.captureCharFrame();
+      cleanup();
+      reject(new Error(`Timed out after ${timeoutMs}ms waiting for ${label}.\nlastFrame:\n${frame}`));
+    }, timeoutMs);
+    inspect();
+  });
+}
+
 describe("TUI navigation stack", () => {
   test("turns a render-time required binding failure into an explicit generic-runtime diagnostic", async () => {
     installGenericRuntimeApi(true);
@@ -84,9 +119,18 @@ describe("TUI navigation stack", () => {
     renderers.push(setup.renderer);
     const root = createRoot(setup.renderer);
     flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
-    await setup.waitForFrame((frame) => frame.includes("Demo Burnlist"));
-    await setup.mockInput.pressKeys(["RETURN"]);
-    await setup.waitForFrame((frame) => frame.includes("Missing required oven binding source") && frame.includes("/absent/value") && frame.includes("Current item"));
+    await waitForRenderedFrame(
+      setup,
+      (frame) => frame.includes("Demo Burnlist") && frame.includes("enter:open") && !frame.includes("Refreshing"),
+      "the settled selectable landing frame",
+    );
+    setup.mockInput.pressKey("RETURN");
+    await setup.renderOnce();
+    await waitForRenderedFrame(
+      setup,
+      (frame) => frame.includes("Missing required oven binding source") && frame.includes("/absent/value") && frame.includes("Current item"),
+      "the required-binding runtime diagnostic",
+    );
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     root.unmount();
   });

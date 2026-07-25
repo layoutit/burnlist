@@ -6,6 +6,7 @@ import {
   bucketTerminalSeries,
   TerminalSeriesChart,
   terminalSeriesChartFrame,
+  terminalSeriesRasterSize,
   type TerminalChartPoint,
 } from "./terminal-line-chart";
 
@@ -36,15 +37,16 @@ async function capture(width: number, height: number, color: "truecolor" | "none
   }
 }
 
-describe("terminal vertical series chart", () => {
-  test("renders bounded vertical columns and the semantic baseline without invented chart chrome", () => {
+describe("terminal supersampled series chart", () => {
+  test("renders a bounded continuous Braille path at 2x4 dot resolution", () => {
     const frame = terminalSeriesChartFrame(points, 48, 8, colors), text = frame.char.join("");
     expect(frame.cols).toBe(48);
     expect(frame.rows).toBe(8);
+    expect(terminalSeriesRasterSize(48, 8)).toEqual({ cols: 48, rows: 8, dotWidth: 96, dotHeight: 32 });
     expect(text).not.toMatch(/[│┼]/u);
     expect(text).not.toMatch(/F0|F5|-?\\d+\\.\\d+/u);
-    expect(text).toContain("·");
-    expect(text).toMatch(/[█▁▂▃▄▅▆▇]/u);
+    expect(text).toMatch(/[\u2801-\u28ff]/u);
+    expect(text).not.toMatch(/[█▁▂▃▄▅▆▇]/u);
     expect(text).not.toMatch(/[╱╲]/u);
     expect(frame.color).toContain("#61d394");
     expect(frame.color).toContain("#ef4444");
@@ -56,8 +58,8 @@ describe("terminal vertical series chart", () => {
       { label: "F1", value: 0, state: "pass" },
     ], 24, 6, colors);
     const rows = Array.from({ length: frame.rows }, (_, row) => frame.char.slice(row * frame.cols, (row + 1) * frame.cols).join(""));
-    expect(rows.slice(2, 4).join("")).toMatch(/[·▁]/u);
-    expect(rows[0]).not.toContain("·");
+    expect(rows.slice(2, 4).join("")).toMatch(/[\u2801-\u28ff]/u);
+    expect(frame.color).toContain("#61d394");
   });
 
   test("narrow bucketing preserves order, extrema, and failures", () => {

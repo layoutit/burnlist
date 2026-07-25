@@ -14,12 +14,12 @@ const levels = [..."▁▂▃▄▅▆▇█"];
 const grid = (chars: string[], colors: Array<string | null>, cols: number, rows: number): CellGrid =>
   buildCellGrid(chars, colors, Float64Array.from({ length: cols * rows }, () => 0), cols, rows);
 
-function setCell(chars: string[], colors: Array<string | null>, cols: number, rows: number, row: number, col: number, char: string, color: string) {
-  if (row < 0 || col < 0 || row >= rows || col >= cols) return;
-  const index = row * cols + col;
-  chars[index] = char;
-  colors[index] = color;
-}
+const brailleBit = (x: number, y: number) => (
+  x % 2 === 0
+    ? [0x01, 0x02, 0x04, 0x40][y % 4]
+    : [0x08, 0x10, 0x20, 0x80][y % 4]
+)!;
+const braille = (mask: number) => mask ? String.fromCodePoint(0x2800 + mask) : " ";
 
 /**
  * Deterministic width reduction. Every bucket retains a failure when present,
@@ -84,13 +84,20 @@ export function terminalSeriesModel(points: readonly unknown[], mode: "delta" | 
   return normalizeSeriesChart(points, { mode }) as NormalizedTerminalSeries;
 }
 
+/** Dot resolution used by the terminal-safe 2×4 Braille supersampling pass. */
+export function terminalSeriesRasterSize(width: number, height: number) {
+  const cols = Math.max(3, Math.floor(width)), rows = Math.max(2, Math.floor(height));
+  return { cols, rows, dotWidth: cols * 2, dotHeight: rows * 4 };
+}
+
 /**
- * Compact rasterization of the console's unframed series surface. It keeps the
- * semantic zero guide for delta mode, but deliberately adds no axes or labels.
+ * Rasterizes the same ordered path as the console SVG into 2×4-dot Braille
+ * cells. Segment state follows the console's interval rule: either failing
+ * endpoint makes the connecting segment fail.
  */
 export function terminalSeriesFrameFromModel(model: NormalizedTerminalSeries, width: number, height: number, palette: ChartColors): CellGrid {
-  const cols = Math.max(3, Math.floor(width)), rows = Math.max(2, Math.floor(height));
-  const chars = Array(cols * rows).fill(" "), colors: Array<string | null> = Array(cols * rows).fill(null);
+  const { cols, rows, dotWidth, dotHeight } = terminalSeriesRasterSize(width, height);
+  const masks = new Uint8Array(cols * rows), tones = new Uint8Array(cols * rows);
   const points = model.points.filter((point): point is Readonly<{
     index: number;
     tick: number;
@@ -100,25 +107,54 @@ export function terminalSeriesFrameFromModel(model: NormalizedTerminalSeries, wi
     value: number;
     state: "pass" | "fail";
   }> => Number.isFinite(point.value));
-  const series = bucketTerminalSeries(points, cols);
-  if (!series.length) return grid(chars, colors, cols, rows);
+  const selected = bucketTerminalSeries(points.map((point, index) => ({
+    label: String(index),
+    value: point.value,
+    state: point.state,
+  })), dotWidth);
+  const series = selected.map((point) => points[Number(point.label)]!).filter(Boolean);
+  if (!series.length) return grid(Array(cols * rows).fill(" "), Array(cols * rows).fill(null), cols, rows);
   const min = model.domain.min, max = model.domain.max, span = Math.max(0.000001, max - min);
-  const rowFor = (entry: number) => Math.max(0, Math.min(rows - 1, Math.round((max - entry) / span * (rows - 1))));
-  const baseline = rowFor(0);
+  const y = (entry: number) => Math.max(0, Math.min(dotHeight - 1, Math.round((max - entry) / span * (dotHeight - 1))));
   const monochrome = palette.green === palette.red;
   const pass = monochrome ? palette.green : model.colors.pass;
   const fail = monochrome ? palette.red : model.colors.fail;
-  if (model.mode === "delta") for (let column = 0; column < cols; column += 1) {
-    setCell(chars, colors, cols, rows, baseline, column, column % 2 ? " " : "·", pass);
+  const paint = (dotX: number, dotY: number, tone: 1 | 2 | 3) => {
+    if (dotX < 0 || dotY < 0 || dotX >= dotWidth || dotY >= dotHeight) return;
+    const cellX = Math.floor(dotX / 2), cellY = Math.floor(dotY / 4), index = cellY * cols + cellX;
+    masks[index] |= brailleBit(dotX, dotY);
+    tones[index] = Math.max(tones[index]!, tone);
+  };
+  const line = (x1: number, y1: number, x2: number, y2: number, tone: 2 | 3, dashed = false) => {
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1)) * 2));
+    for (let step = 0; step <= steps; step += 1) {
+      if (dashed && Math.floor(step / 3) % 2) continue;
+      const mix = step / steps;
+      paint(Math.round(x1 + (x2 - x1) * mix), Math.round(y1 + (y2 - y1) * mix), tone);
+    }
+  };
+  if (model.mode === "delta") {
+    const guide = y(0);
+    for (let dotX = 0; dotX < dotWidth; dotX += 4) paint(dotX, guide, 1);
   }
-  series.forEach((point, index) => {
-    const column = series.length === 1 ? Math.floor(cols / 2) : Math.round(index / (series.length - 1) * (cols - 1));
-    const target = rowFor(point.value), color = point.state === "fail" ? fail : pass;
-    const start = Math.min(baseline, target), end = Math.max(baseline, target);
-    if (start === end) setCell(chars, colors, cols, rows, target, column, "▁", color);
-    else for (let row = start; row <= end; row += 1) setCell(chars, colors, cols, rows, row, column, "█", color);
-  });
-  return grid(chars, colors, cols, rows);
+  const x = (index: number) => series.length === 1
+    ? Math.floor(dotWidth / 2)
+    : Math.round(index / (series.length - 1) * (dotWidth - 1));
+  for (let index = 0; index < series.length - 1; index += 1) {
+    const first = series[index]!, next = series[index + 1]!;
+    const failing = first.state === "fail" || next.state === "fail";
+    line(x(index), y(first.value), x(index + 1), y(next.value), failing ? 3 : 2);
+    if (model.mode === "value" && failing && Number.isFinite(first.reference) && Number.isFinite(next.reference)) {
+      line(x(index), y(first.reference!), x(index + 1), y(next.reference!), 2, true);
+    }
+  }
+  if (series.length === 1) paint(x(0), y(series[0]!.value), series[0]!.state === "fail" ? 3 : 2);
+  return grid(
+    [...masks].map(braille),
+    [...tones].map((tone) => tone === 3 ? fail : tone === 2 ? pass : tone === 1 ? palette.dim : null),
+    cols,
+    rows,
+  );
 }
 
 export function terminalSeriesChartFrame(points: readonly TerminalChartPoint[], width: number, height: number, palette: ChartColors): CellGrid {

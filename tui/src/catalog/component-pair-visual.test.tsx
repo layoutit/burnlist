@@ -33,9 +33,9 @@ describe("canonical Oven-derived component pairs", () => {
       const wide = (await capture(id, 72)).join("\n"), narrow = (await capture(id, 36)).join("\n");
       for (const frame of [wide, narrow]) {
         expect(frame).toMatch(id === "field-list-cards" ? /fail/iu : /Exact delta/iu);
-        expect(frame).not.toMatch(/[│┼]/u);
+        if (id === "field-list-cards") expect(frame).not.toMatch(/[│┼]/u);
       }
-      expect(wide).toMatch(/[█▁]/u);
+      expect(wide).toMatch(/[\u2801-\u28ff]/u);
       expect(narrow).not.toMatch(/[╱╲]/u);
     }
   });

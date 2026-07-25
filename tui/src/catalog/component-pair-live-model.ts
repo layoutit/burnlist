@@ -2,7 +2,8 @@ import type { CellGrid } from "glyphcss";
 import { paletteFor, type TerminalPalette } from "../terminal-accessibility";
 import { terminalLoadingGlyph } from "../loading-cadence";
 import { progressGlyphFrame } from "../oven-runtime/components/progress-glyph";
-import { terminalSeriesFrameFromModel, type NormalizedTerminalSeries, type TerminalChartPoint } from "../terminal-series-chart-model";
+import { imageGlyphFrame } from "../image-glyph-grid";
+import { type NormalizedTerminalSeries, type TerminalChartPoint } from "../terminal-series-chart-model";
 // @ts-expect-error Shared pure chart authority is JavaScript by design.
 import { normalizeSeriesChart } from "../../../src/ovens/series-chart-model.mjs";
 import { componentPairFixture, type ComponentPairId } from "./component-pair-fixture";
@@ -15,7 +16,17 @@ import {
   type CellCanvas,
   type PairPalette,
 } from "./component-cell-canvas";
-import { fieldCardPairLayout } from "./component-pair-layout";
+import { fieldCardPairLayout, topCardPairLayout } from "./component-pair-layout";
+import { componentMediaImages, componentMediaPixelsForSource, type ComponentMediaImage } from "./component-media-fixture";
+import {
+  PAIR_RUN_LOG_COLUMNS,
+  renderPairHeader,
+  renderPairKpiStrip,
+  renderPairSeriesChart,
+  renderPairTable,
+  type PairTableColumn,
+  type PairTableRow,
+} from "./component-pair-composition";
 
 export type ComponentPairLiveArgs = Readonly<Record<string, unknown>>;
 export const defaultPairPalette = paletteFor({ color: "truecolor", light: false, reducedMotion: false });
@@ -38,9 +49,23 @@ const variantTone = (variant: string, palette: PairPalette) =>
 const variantGlyph = (variant: string) =>
   variant === "destructive" ? "×" : variant === "warning" ? "!" : variant === "success" ? "✓" : "i";
 
+function mediaImages(args: ComponentPairLiveArgs): readonly ComponentMediaImage[] {
+  if (!Array.isArray(args.images)) return componentMediaImages;
+  return args.images.slice(0, 3).map((entry, index) => {
+    const item = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
+    const fallback = componentMediaImages[index] ?? componentMediaImages[0]!;
+    return {
+      label: text(item.label, fallback.label),
+      src: text(item.src, fallback.src),
+      width: numeric(item.width, fallback.width),
+      height: numeric(item.height, fallback.height),
+    };
+  });
+}
+
 export const componentPairViewport = (id: ComponentPairId) => ({
-  width: 72,
-  height: id === "field-list-cards" ? 16 : id === "top-card" || id === "line-chart" ? 12 : 10,
+  width: id === "visual-parity-media" ? 96 : 72,
+  height: id === "field-list-cards" ? 10 : id === "top-card" ? 12 : id === "visual-parity-media" ? 26 : id === "line-chart" ? 8 : 10,
 });
 
 function chartSamples(value: unknown, fallback: readonly TerminalChartPoint[]): readonly TerminalChartPoint[] {
@@ -125,9 +150,24 @@ function simplePair(id: ComponentPairId, args: ComponentPairLiveArgs, canvas: Ce
     write(canvas, 3, `cadence · ${text(value(args, "size", "default"))}${reduced ? " · reduced motion" : ""}`, palette.dim);
   } else if (id === "table") {
     const headers = list<string>(args.headers, fixture.table.headers), rows = list<readonly string[]>(args.rows, fixture.table.rows);
-    write(canvas, 0, value(args, "caption", fixture.table.caption), palette.muted);
-    write(canvas, 2, headers.join("  "), palette.dim);
-    rows.slice(0, canvas.height - 4).forEach((row, index) => write(canvas, 3 + index, row.join("  "), palette.foreground));
+    const columns: PairTableColumn[] = headers.map((heading, index) => ({
+      id: String(index),
+      label: heading,
+      minWidth: index < 2 ? 10 : 7,
+      align: index < 2 ? "left" : "right",
+      grow: index === 1 ? 3 : 1,
+    }));
+    renderPairTable(
+      canvas,
+      columns,
+      rows.map((row) => ({ cells: Object.fromEntries(row.map((cell, index) => [String(index), cell])) })),
+      1,
+      0,
+      canvas.width - 2,
+      canvas.height,
+      palette,
+      text(value(args, "caption", fixture.table.caption)),
+    );
   } else if (id === "tabs") {
     const tabs = list<string>(args.tabs, fixture.tabs.tabs), selected = text(value(args, "selected", fixture.tabs.selected));
     write(canvas, 0, tabs.map((tab) => tab === selected ? `[${tab}]` : tab).join("  "), palette.foreground);
@@ -167,17 +207,15 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
     const fields = list<Record<string, unknown>>(args.fields, fixture.fieldListCards.fields as unknown as readonly Record<string, unknown>[]);
     const layout = fieldCardPairLayout(canvas.width);
     fields.slice(0, 2).forEach((field, index) => {
-      const top = layout.starts[index]!, failures = numeric(field.failures), model = seriesModel(field.samples, chartMode);
+      const top = layout.starts[index]!;
+      const failures = numeric(field.failures ?? field.failedSampleCount);
+      const delta = numeric(field.delta ?? field.maxDelta);
+      const model = seriesModel(field.samples, chartMode);
       const status = text(field.status, failures ? "failed" : "pass").toUpperCase();
       writeCanvasText(canvas, layout.metadataX, top, text(field.label, "Field"), palette.foreground, layout.metadataWidth - 2);
-      writeCanvasText(canvas, layout.metadataX, top + 1, `${status} · ${failures} fail${layout.narrow ? ` · Δ ${numeric(field.delta)}` : ""}`, failures ? palette.red : palette.green, layout.metadataWidth - 2);
-      if (!layout.narrow) writeCanvasText(canvas, layout.metadataX, top + 2, `max Δ ${numeric(field.delta)}`, palette.muted, layout.metadataWidth - 2);
-      pasteCellGrid(
-        canvas,
-        terminalSeriesFrameFromModel(model, layout.chartWidth, layout.chartHeight, palette),
-        layout.chartX,
-        top + layout.chartOffsetY,
-      );
+      writeCanvasText(canvas, layout.metadataX, top + 1, `${status} · ${failures} fail${layout.narrow ? ` · Δ ${delta}` : ""}`, failures ? palette.red : palette.green, layout.metadataWidth - 2);
+      if (!layout.narrow) writeCanvasText(canvas, layout.metadataX, top + 2, `max Δ ${delta}`, palette.muted, layout.metadataWidth - 2);
+      renderPairSeriesChart(canvas, model, layout.chartX, top + layout.chartOffsetY, layout.chartWidth, layout.chartHeight, palette);
     });
   } else if (id === "top-card" || id === "line-chart") {
     const source = id === "top-card" ? fixture.topCard : fixture.lineChart;
@@ -186,19 +224,31 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
     const title = text(value(args, "title", source.title));
     if (id === "top-card") {
       const published = text(value(args, "publishedAt", fixture.topCard.publishedAt));
-      const publishedWidth = Math.min(published.length, Math.max(10, Math.floor(canvas.width * 0.4)));
-      const publishedX = Math.max(1, canvas.width - publishedWidth - 1);
-      writeCanvasText(canvas, 1, 0, title, palette.foreground, Math.max(1, publishedX - 2));
-      writeCanvasText(canvas, publishedX, 0, published, palette.dim, publishedWidth);
-      write(canvas, 1, `Tasks ${text(value(args, "tasks", fixture.topCard.tasks))}  Elapsed ${text(value(args, "elapsed", fixture.topCard.elapsed))}  Pace ${text(value(args, "pace", fixture.topCard.pace))}  Done ${text(value(args, "done", fixture.topCard.done))}`, palette.muted);
-      fillCanvasRow(canvas, 2, 0, canvas.width, "─", palette.dim);
-      pasteCellGrid(canvas, terminalSeriesFrameFromModel(model, canvas.width - 2, Math.max(4, canvas.height - 6), palette), 1, 3);
-      write(canvas, canvas.height - 2, `${text(value(args, "historyTitle", fixture.topCard.historyTitle))} · Log`, palette.dim);
-      write(canvas, canvas.height - 1, value(args, "log", fixture.topCard.log), palette.foreground);
+      const layout = topCardPairLayout(canvas.width, canvas.height);
+      renderPairHeader(canvas, title, published, palette);
+      renderPairKpiStrip(canvas, [
+        { heading: "Scenario", value: "135b7578" },
+        { heading: "Progress", value: "3 · 2 (67%)", tone: "good" },
+        { heading: "Results", value: "1 · 0 · 0 · 0" },
+        { heading: "Fields", value: "2 · 1 (50%)", tone: "bad" },
+        { heading: "Frames", value: "6 · 1 (17%)", tone: "bad" },
+      ], 1, 1, canvas.width - 2, palette);
+      fillCanvasRow(canvas, layout.dividerY, 0, canvas.width, "─", palette.dim);
+      const columns = PAIR_RUN_LOG_COLUMNS;
+      const historyTitle = text(value(args, "historyTitle", fixture.topCard.historyTitle));
+      const rows = list<Record<string, unknown>>(args.logRows, fixture.topCard.logRows);
+      const tableRows: PairTableRow[] = rows.map((row) => ({
+        cells: Object.fromEntries(columns.map((column) => [column.id, text(row[column.id])])),
+        tone: row.tone === "good" ? "good" : row.tone === "bad" ? "bad" : "neutral",
+      }));
+      renderPairTable(canvas, columns, tableRows, layout.logX, layout.logY, layout.logWidth, layout.logHeight, palette, historyTitle);
+      renderPairSeriesChart(canvas, model, layout.chartX, layout.chartY, layout.chartWidth, layout.chartHeight, palette, "Chart · Value · [Delta]");
+      if (!layout.narrow) for (let row = layout.bodyY; row < layout.bodyY + layout.chartHeight; row += 1) {
+        writeCanvasText(canvas, layout.chartX - 1, row, "│", palette.dim, 1);
+      }
     }
     else {
-      write(canvas, 0, title, palette.foreground);
-      pasteCellGrid(canvas, terminalSeriesFrameFromModel(model, canvas.width - 2, canvas.height - 1, palette), 1, 1);
+      renderPairSeriesChart(canvas, model, 1, 0, canvas.width - 2, canvas.height, palette, title);
     }
   } else if (id === "kpi-item" || id === "progress-donut") {
     const percent = numeric(value(args, "percent", id === "kpi-item" ? fixture.kpiItem.percent : fixture.progressDonut.percent));
@@ -207,9 +257,9 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
     renderMetric(canvas, frame, 1, 1, text(value(args, "label", id === "kpi-item" ? fixture.kpiItem.value : `${Math.round(percent)}% complete`)), palette);
   } else if (id === "waffle-metric") {
     const metric = value(args, "metric", fixture.waffleMetric.metric);
-    write(canvas, 0, value(args, "heading", "Field parity"), palette.foreground);
     const frame = progressGlyphFrame("waffle-metric", metric, 5, palette as TerminalPalette, 4);
-    renderMetric(canvas, frame, 1, 1, text(value(args, "label", fixture.waffleMetric.label)), palette);
+    pasteCellGrid(canvas, frame, 1, 0);
+    writeCanvasText(canvas, 1, frame.rows + 1, text(value(args, "label", fixture.waffleMetric.label)), palette.muted, Math.max(1, canvas.width - 2));
   } else if (id === "burn-donut") {
     const entries = value(args, "entries", fixture.burnDonut.entries);
     write(canvas, 0, value(args, "heading", "Result distribution"), palette.foreground);
@@ -240,13 +290,23 @@ function chartAndMetricPair(id: ComponentPairId, args: ComponentPairLiveArgs, ca
       writeCanvasText(canvas, x + frame.cols + 1, 2, fixture.kpiStrip.items[index]!.value, palette.muted, Math.max(1, cellWidth - frame.cols - 2));
     });
   } else if (id === "visual-parity-media") {
-    const names = list<string>(args.labels, fixture.visualParityMedia.images.map((image) => image.label));
+    const images = mediaImages(args);
     write(canvas, 0, `${text(value(args, "label", fixture.visualParityMedia.label))} · Frame ${numeric(value(args, "frame", fixture.visualParityMedia.frame))}`, palette.foreground);
-    const width = Math.max(6, Math.floor((canvas.width - 2) / 3)), tones = [palette.green, palette.blue, palette.red];
-    names.slice(0, 3).forEach((name, index) => {
-      const x = 1 + index * width;
-      writeCanvasText(canvas, x, 2, name, palette.muted, width - 1);
-      for (let row = 0; row < 4; row += 1) fillCanvasRow(canvas, 4 + row, x, width - 2, row % 2 ? "▓" : "█", tones[index]!);
+    const wide = canvas.width >= 54;
+    images.forEach((image, index) => {
+      const slotWidth = wide ? Math.max(6, Math.floor((canvas.width - 2) / 3)) : canvas.width - 2;
+      const slotHeight = wide ? canvas.height - 2 : Math.max(5, Math.floor((canvas.height - 1) / 3));
+      const x = wide ? 1 + index * slotWidth : 1;
+      const y = wide ? 2 : 1 + index * slotHeight;
+      writeCanvasText(canvas, x, y, image.label, palette.muted, slotWidth - 1);
+      try {
+        const pixels = componentMediaPixelsForSource(image.src);
+        if (!pixels) throw new Error("Image source is unavailable to the live terminal raster.");
+        const frame = imageGlyphFrame(pixels, Math.max(1, slotWidth - 1), Math.max(1, slotHeight - 1));
+        pasteCellGrid(canvas, frame, x, y + 1);
+      } catch (cause) {
+        writeCanvasText(canvas, x, y + 1, cause instanceof Error ? cause.message : "invalid image", palette.red, slotWidth - 1);
+      }
     });
   }
 }

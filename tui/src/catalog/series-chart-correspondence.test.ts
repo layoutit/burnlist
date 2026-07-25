@@ -4,7 +4,7 @@ import {
   FIELD_MINI_CHART_WIDTH,
   fieldMiniChartModel,
 } from "../../../dashboard/src/oven/FieldMiniChart/field-mini-chart-geometry";
-import { fieldCardPairLayout } from "./component-pair-layout";
+import { FIELD_CARD_TRACKS, fieldCardPairLayout } from "./component-pair-layout";
 import { terminalSeriesModel } from "../terminal-series-chart-model";
 
 const tuples = [
@@ -44,15 +44,22 @@ describe("console/terminal series correspondence", () => {
   });
 
   test("paired FieldList metadata and series share rows until the explicit breakpoint", () => {
-    const wide = fieldCardPairLayout(72);
-    expect(wide.narrow).toBe(false);
-    expect(wide.chartOffsetY).toBe(0);
-    expect(wide.metadataWidth / 72).toBeGreaterThanOrEqual(0.4);
-    expect(wide.metadataWidth / 72).toBeLessThanOrEqual(0.5);
+    for (const width of [56, 72, 120]) {
+      const layout = fieldCardPairLayout(width);
+      expect(layout.narrow).toBe(false);
+      expect(layout.chartOffsetY).toBe(1);
+      expect(layout.chartHeight).toBe(FIELD_CARD_TRACKS.chartRows);
+      const ratio = layout.chartWidth / (width - 2);
+      expect(ratio).toBeGreaterThanOrEqual(FIELD_CARD_TRACKS.chart - 0.03);
+      expect(ratio).toBeLessThanOrEqual(FIELD_CARD_TRACKS.chart + 0.03);
+      expect(layout.chartWidth).toBeLessThanOrEqual(width - layout.chartX);
+    }
 
     const narrow = fieldCardPairLayout(42);
     expect(narrow.narrow).toBe(true);
     expect(narrow.chartOffsetY).toBe(2);
     expect(narrow.chartX).toBe(narrow.metadataX);
+    expect(narrow.chartHeight).toBe(3);
+    expect(narrow.cardHeight).toBe(5);
   });
 });

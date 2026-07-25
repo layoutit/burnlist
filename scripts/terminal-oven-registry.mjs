@@ -98,8 +98,18 @@ function assertTargetSemantics(kind, frame) {
   if (kind === "kpi-strip" && (!semantic.includes("Strip Alpha") || !semantic.includes("Strip Beta"))) fail("KPI strip evidence lacks isolated cells");
   if (kind === "kpi-item" && (!semantic.includes("item-only-value") || !semantic.includes("◒"))) fail("KPI item evidence lacks isolated render");
   if (kind === "progress-donut" && (!chars.has("█") || !chars.has("░") || !semantic.includes("37%"))) fail("progress donut evidence lacks unique glyph pattern");
-  if (kind === "burn-donut" && new Set(frame.cells.filter((cell) => cell.char === "━").map((cell) => cell.fg)).size < 4) fail("burn donut evidence lacks result classes");
-  if (kind === "waffle-metric" && (!chars.has("▪") || !chars.has("▫") || !semantic.includes("5"))) fail("waffle evidence lacks failed and passing cells");
+  if (kind === "burn-donut") {
+    const burnCells = frame.cells.filter((cell) => ["█", "▓", "▒", "░"].includes(cell.char));
+    if (new Set(burnCells.map((cell) => cell.char)).size < 4 || new Set(burnCells.map((cell) => cell.fg)).size < 4) {
+      fail("burn donut evidence lacks result classes");
+    }
+  }
+  if (kind === "waffle-metric") {
+    const waffleCells = frame.cells.filter((cell) => /^[\u2800-\u28ff]$/u.test(cell.char));
+    if (!waffleCells.length || new Set(waffleCells.map((cell) => cell.fg)).size < 2 || !semantic.includes("5")) {
+      fail("waffle evidence lacks failed and passing cells");
+    }
+  }
   if (kind === "progress-value" && !semantic.includes("13 · 29 (45%)")) fail("progress value evidence lacks its unique semantic value");
 }
 

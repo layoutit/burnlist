@@ -29,7 +29,12 @@ const pairChartField = {
 const meta = {
   title: "Patterns/TopCard",
   component: DifferentialTestingDetail,
-  args: { ...fixture },
+  args: {
+    title: fixture.title,
+    historyTitle: fixture.historyTitle,
+    publishedAt: fixture.publishedAt,
+    chart: fixture.chart,
+  },
   parameters: { layout: "fullscreen", terminalParityOwner: "oven:differential-testing" },
 } satisfies Meta;
 

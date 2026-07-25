@@ -118,18 +118,37 @@ test("progress quadrants are compact, partial-aware, and preserve fill versus tr
   expect(new Set(partial.color)).toEqual(new Set(["#55b987", "#e06c75"]));
 });
 
+test("burn distribution reuses the compact square and retains category proportions without color", () => {
+  const entries = [
+    { result: "pass" }, { result: "pass" }, { result: "pass" }, { result: "pass" },
+    { result: "worsened" }, { result: "worsened" }, { result: "blocked" }, { result: "other" },
+  ];
+  const frame = progressGlyphFrame("burn-donut", entries, 4);
+  expect([frame.cols, frame.rows]).toEqual([4, 2]);
+  expect(frame.char).toHaveLength(8);
+  expect(new Set(frame.char)).toEqual(new Set(["█", "▓", "▒", "░"]));
+  expect(new Set(frame.color)).toEqual(new Set(["#55b987", "#e06c75", "#8b8b8b", "#d19a66"]));
+  const mono = progressGlyphFrame("burn-donut", entries, 4, { green: "#fff", red: "#fff", muted: "#fff", dim: "#fff", amber: "#fff" });
+  expect(new Set(mono.color)).toEqual(new Set(["#fff"]));
+  expect(new Set(mono.char)).toEqual(new Set(["█", "▓", "▒", "░"]));
+});
+
 test("waffle cells keep the console aspect, fill direction, and pass/fail colors", () => {
   const frame = progressGlyphFrame("waffle-metric", { total: 10, failed: 4 }, 40);
   expect(frame.cols).toBe(5);
-  expect(frame.rows).toBe(4);
-  expect(frame.char).toContain("▪");
-  expect(frame.char).toContain("▫");
+  expect(frame.rows).toBe(3);
+  expect(frame.char.join("")).toMatch(/^[\u2800-\u28ff]+$/u);
   expect(new Set(frame.color)).toEqual(new Set(["#55b987", "#e06c75"]));
-  const rows = Array.from({ length: frame.rows }, (_, row) => frame.char.slice(row * frame.cols, (row + 1) * frame.cols).join(""));
-  expect(rows.at(-1)?.at(-1)).toBe("▪");
-  expect(rows[0]?.[0]).toBe("▫");
-
-  const narrow = progressGlyphFrame("waffle-metric", { total: 10, failed: 4 }, 4);
-  expect(narrow.cols).toBe(4);
-  expect(narrow.rows).toBe(3);
+  const dotCount = (char: string) => {
+    let mask = char.codePointAt(0)! - 0x2800, count = 0;
+    while (mask) { count += mask & 1; mask >>>= 1; }
+    return count;
+  };
+  expect(frame.char.reduce((sum, char, index) => sum + (frame.color[index] === "#e06c75" ? dotCount(char) : 0), 0)).toBe(40);
+  for (const [failed, expectedColor] of [[0, "#55b987"], [10, "#e06c75"]] as const) {
+    const edge = progressGlyphFrame("waffle-metric", { total: 10, failed }, 40);
+    expect([edge.cols, edge.rows]).toEqual([5, 3]);
+    expect(new Set(edge.color)).toEqual(new Set([expectedColor]));
+    expect(edge.char.reduce((sum, char) => sum + dotCount(char), 0)).toBe(100);
+  }
 });
