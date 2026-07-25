@@ -8,6 +8,7 @@ import { assignmentStore } from "../assignment/store.mjs";
 import { currentRunAuthority } from "./current-authority.mjs";
 import { runStore } from "./run-store.mjs";
 import { projectRunActivity } from "../events/activity-projection.mjs";
+import { readLoopObservationRecords } from "../events/hook-observation.mjs";
 
 const MAX_RUNS = 128;
 const RECEIPT_KEYS = ["schema", "runId", "itemRef", "assignmentId", "completedAt", "title", "planDigest"];
@@ -45,7 +46,7 @@ export function presentGraph(graph, routes = []) {
   });
 }
 
-export function presentRun(replay) {
+export function presentRun(replay, { optionalRecords = [] } = {}) {
   const records = replay.journal;
   let latestResult = null;
   const transitions = [];
@@ -81,7 +82,9 @@ export function presentRun(replay) {
         ? "reported" : "unavailable",
       telemetry: replay.execution.telemetry,
     },
-    activity: projectRunActivity({ runId: replay.projection.runId, graph: replay.graph, journal: records }),
+    activity: projectRunActivity({
+      runId: replay.projection.runId, graph: replay.graph, journal: records, optionalRecords,
+    }),
     latestResult,
     latestMaker: replay.projection.latestMaker,
     latestCheck: replay.projection.latestCheck,
@@ -100,6 +103,7 @@ export function presentRun(replay) {
 
 /** Read-only bounded discovery. Missing state returns null and never creates directories. */
 export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemId = null, assignmentId = null }) {
+  const root = resolve(repoRoot);
   let artifact = null;
   if (markdown !== null || itemId !== null || assignmentId !== null) {
     try {
@@ -116,9 +120,9 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
       return null;
     }
   }
-  const runs = join(resolve(repoRoot), ".local", "burnlist", "loop", "m2", "runs");
+  const runs = join(root, ".local", "burnlist", "loop", "m2", "runs");
   if (!existsSync(runs)) return null;
-  const base = join(resolve(repoRoot), ".local", "burnlist", "loop", "m2");
+  const base = join(root, ".local", "burnlist", "loop", "m2");
   const current = currentRunAuthority({ root: repoRoot, base, random: () => Buffer.alloc(8) }).read()
     .find((entry) => entry.itemRef === itemRef) ?? null;
   if (current && artifact && current.assignmentId !== artifact.assignmentId) return null;
@@ -149,7 +153,9 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
   const stored = runStore(repoRoot).read(selected.projection.runId);
   selected.loopIdentity = stored.loopIdentity;
   selected.agentRoutes = stored.agentRoutes;
-  return presentRun(selected);
+  return presentRun(selected, {
+    optionalRecords: readLoopObservationRecords(root, selected.projection.runId),
+  });
 }
 
 /** Resolve a completed ledger item through its retained CLI completion receipt. */

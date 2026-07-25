@@ -10,7 +10,7 @@ Burnlist requires Node.js 18 or newer.
 npm install --global burnlist
 ```
 
-The global package installs the `burnlist` command and registers the bundled Burnlist skill for Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. Streaming Diff hooks are a separate, opt-in per-repository integration; see [Agent integrations](#agent-integrations).
+The global package installs the `burnlist` command and registers the bundled Burnlist skill for Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. Native observability hooks are a separate, opt-in per-repository integration; see [Agent integrations](#agent-integrations).
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow; the CLI provides the dashboard and protocol helpers.
 
@@ -106,14 +106,21 @@ burnlist uninstall --global --purge
 
 ### Hooks: capture Streaming Diff edits
 
-`burnlist hooks install` is separate from skill installation. It is per-repository only (there is no global hooks mode) and merges Burnlist's edit-capture commands without replacing unrelated hooks:
+`burnlist hooks install` is separate from skill installation. It is per-repository only (there is no global hooks mode) and merges Burnlist's edit-capture and Loop observation commands without replacing unrelated hooks:
 
 | Agent that consumes the hook | Worktree-root config |
 | --- | --- |
 | Codex | `<repo>/.codex/hooks.json` |
 | Claude Code | `<repo>/.claude/settings.json` |
 
-Codex receives `SessionStart`, `PreToolUse`, and `PostToolUse` hooks; Claude Code also receives `PostToolUseFailure`. Edit events are limited to each agent's edit/write tools and invoke `burnlist streaming-diff hook`. Codex needs CLI version 0.124.0 or newer to run these hooks. The host needs `burnlist` on `PATH`, and the agent remains responsible for any hook trust or consent prompt.
+Codex and Claude receive native session, subagent, tool, and stop lifecycle
+hooks; Claude also receives `PostToolUseFailure`. Edit events remain limited to
+each agent's edit/write tools and invoke `burnlist streaming-diff hook`.
+Advisory `burnlist hooks observe` entries publish bounded, correlated Loop
+activity through ignored local event state without reporting outcomes or
+changing canonical Run state. Codex needs CLI version 0.124.0 or newer to run
+these hooks. The host needs `burnlist` on `PATH`, and the agent remains
+responsible for any hook trust or consent prompt.
 
 ```sh
 # Hooks only, for both agents by default
@@ -144,7 +151,7 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 - `burnlist --close-completed` adds a digest when needed and moves empty in-progress Burnlists to `completed`.
 - `burnlist --stamp` prints a local ISO timestamp for completion records.
 - `burnlist install` / `burnlist uninstall` manage the independent agent-skill registrations.
-- `burnlist hooks install|uninstall|status` manages the independent per-repository Streaming Diff hooks.
+- `burnlist hooks install|uninstall|status` manages the independent per-repository native observability hooks.
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 

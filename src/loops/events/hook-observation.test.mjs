@@ -1,0 +1,131 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import { createProductionRunAuthority, fixtureItemRef } from "../run/run-test-fixtures.mjs";
+import { readOvenEvents } from "../../events/oven-event-store.mjs";
+import { readLatestRunForItem } from "../run/read-projection.mjs";
+import { publishNativeLoopObservation } from "./hook-observation.mjs";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const cli = join(root, "bin", "burnlist.mjs");
+function command(repo, args) {
+  const result = spawnSync(process.execPath, [cli, "loop", ...args, "--repo", repo],
+    { cwd: repo, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout;
+}
+function fixture(t) {
+  const directory = mkdtempSync(join(tmpdir(), "loop-hook-observation-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = JSON.parse(command(repo, ["create", fixtureItemRef])).runId;
+  command(repo, ["next", runId]);
+  return { repo, runId };
+}
+function codexPayload(repo, event, patch = {}) {
+  return {
+    session_id: "codex-session", cwd: repo, hook_event_name: event,
+    model: "gpt-5.6-sol", turn_id: "turn-1", ...patch,
+  };
+}
+
+test("native lifecycle and tool hooks publish correlated observational events", (t) => {
+  const { repo, runId } = fixture(t);
+  const start = publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "SessionStart", { source: "startup" }),
+  });
+  assert.equal(start.authority, "observational");
+  const tool = publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "PostToolUse", {
+      tool_name: "apply_patch", tool_use_id: "tool-1",
+      tool_input: { command: "*** Begin Patch\n*** Update File: src/example.mjs\n*** End Patch" },
+    }),
+  });
+  assert.equal(tool.payload.model, "gpt-5.6-sol");
+  assert.deepEqual(tool.payload.observedPaths, ["src/example.mjs"]);
+  assert.equal(tool.payload.effort, null);
+  assert.equal(tool.payload.inputTokens, null);
+  assert.doesNotMatch(JSON.stringify(tool), /codex-session|claimId|invocationId|dispatchAuthority/u);
+
+  const projection = readLatestRunForItem({ repoRoot: repo, itemRef: fixtureItemRef });
+  assert.equal(projection.runId, runId);
+  assert.equal(projection.currentNode, "implement");
+  assert.equal(projection.activity.hooks, "available");
+  assert.ok(projection.activity.records.some((entry) =>
+    entry.kind === "tool-finished" && entry.observedPaths[0] === "src/example.mjs"));
+});
+
+test("Claude facts retain exposed effort and usage while missing fields stay null", (t) => {
+  const { repo, runId } = fixture(t);
+  publishNativeLoopObservation({
+    repoRoot: repo, provider: "claude",
+    payload: {
+      session_id: "claude-session", cwd: repo, hook_event_name: "SessionStart",
+      source: "startup", model: "claude-opus-4-6",
+    },
+  });
+  const event = publishNativeLoopObservation({
+    repoRoot: repo, provider: "claude",
+    payload: {
+      session_id: "claude-session", cwd: repo, hook_event_name: "PostToolUse",
+      prompt_id: "prompt-1", effort: { level: "xhigh" }, tool_name: "Agent",
+      tool_use_id: "tool-agent-1", tool_input: {},
+      tool_response: {
+        resolvedModel: "claude-sonnet-4-6",
+        usage: { input_tokens: 8320, output_tokens: 412 },
+      },
+    },
+  });
+  assert.equal(event.payload.model, "claude-sonnet-4-6");
+  assert.equal(event.payload.effort, "xhigh");
+  assert.equal(event.payload.inputTokens, 8320);
+  assert.equal(event.payload.outputTokens, 412);
+  const records = readLatestRunForItem({ repoRoot: repo, itemRef: fixtureItemRef }).activity.records;
+  const observed = records.find((entry) => entry.tool === "Agent");
+  assert.deepEqual({
+    model: observed.model, effort: observed.effort,
+    inputTokens: observed.inputTokens, outputTokens: observed.outputTokens,
+  }, {
+    model: "claude-sonnet-4-6", effort: "xhigh",
+    inputTokens: 8320, outputTokens: 412,
+  });
+  assert.equal(readOvenEvents(repo, { ovenIds: ["checklist"], limit: 100 })
+    .filter((entry) => entry.payload?.runId === runId).length, 2);
+});
+
+test("hook replay cannot report outcomes or advance canonical Run state", (t) => {
+  const { repo, runId } = fixture(t);
+  const payload = codexPayload(repo, "SubagentStop", {
+    agent_id: "agent-1", agent_type: "worker", outcome: "complete",
+  });
+  const first = publishNativeLoopObservation({ repoRoot: repo, provider: "codex", payload });
+  const second = publishNativeLoopObservation({ repoRoot: repo, provider: "codex", payload });
+  assert.equal(first.eventId, second.eventId);
+  assert.equal(Object.hasOwn(first.payload, "outcome"), false);
+  assert.equal(JSON.parse(command(repo, ["status", runId])).currentNode, "implement");
+  command(repo, ["submit", runId, "--outcome", "complete"]);
+  assert.equal(publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "PostToolUse", {
+      tool_name: "Bash", tool_use_id: "late-tool", tool_input: {},
+    }),
+  }), null);
+});
+
+test("providers without a verified native hook contract are unsupported", (t) => {
+  const { repo } = fixture(t);
+  assert.equal(publishNativeLoopObservation({
+    repoRoot: repo, provider: "agy",
+    payload: { session_id: "session", hook_event_name: "SessionStart" },
+  }), null);
+  assert.equal(publishNativeLoopObservation({
+    repoRoot: repo, provider: "grok",
+    payload: { session_id: "session", hook_event_name: "SessionStart" },
+  }), null);
+});

@@ -151,7 +151,7 @@ Read `references/burnlist-dashboard.md` only for dashboard/chart/log/timeline/re
 Burnlist has two independent installable systems. Either or both may be present:
 
 - **Skill discovery** (`burnlist install`) makes this Burnlist skill discoverable to both agents. The default is a per-repository, untracked-local registration in `<repo>/.claude/skills/burnlist` for Claude Code and `<repo>/.agents/skills/burnlist` for Codex. `--global` instead uses `~/.claude/skills/burnlist` and `~/.agents/skills/burnlist`; a global npm installation of Burnlist automatically registers both global skills. Use `--commit` only for a per-repository portable copy intended for Git; `--agent codex,claude` limits targets and `--dry-run` previews. `burnlist uninstall` is the inverse; `burnlist uninstall --global --purge` also removes the global npm package.
-- **Streaming Diff hooks** (`burnlist hooks install`) install per-repository edit-capture commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` for session/edit events and merge with existing hook entries. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
+- **Native observability hooks** (`burnlist hooks install`) install per-repository edit-capture and advisory Loop-observation commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` around edits and `burnlist hooks observe` for supported native lifecycle events, merging with existing entries. Observations are bounded local facts and never semantic Loop outcomes. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
 
 Install only the system the task needs, or both. Read `references/installation.md` for exact commands, ownership, and shared-versus-local behavior.
 
@@ -248,5 +248,5 @@ names, and native worker state are host evidence rather than dashboard graph
 state.
 
 `burnlist install` registers this skill, while `burnlist hooks install` adds
-Streaming Diff edit-capture hooks. These integrations are independent and do
-not configure or start a Review Loop.
+native observability hooks for Streaming Diff and active Loop activity. These
+integrations are independent and do not configure or start a Review Loop.

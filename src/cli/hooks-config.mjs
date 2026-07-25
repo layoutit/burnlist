@@ -16,6 +16,12 @@ const EVENTS = {
   codex: ["ensure", "pre", "post"],
   claude: ["ensure", "pre", "post", "failure"],
 };
+const OBSERVATION_EVENTS = {
+  codex: ["SessionStart", "SessionEnd", "PreToolUse", "PostToolUse",
+    "SubagentStart", "SubagentStop", "Stop"],
+  claude: ["SessionStart", "SessionEnd", "PreToolUse", "PostToolUse",
+    "PostToolUseFailure", "SubagentStart", "SubagentStop", "Stop"],
+};
 const MANAGED_EVENTS = ["ensure", "pre", "post", "failure"];
 const MUTATING_MATCHERS = {
   claude: "Edit|Write|MultiEdit|NotebookEdit",
@@ -70,6 +76,11 @@ export function managedHookEntry(agent, event) {
   return entry;
 }
 
+export function managedObservationHookEntry(agent, event) {
+  if (!OBSERVATION_EVENTS[agent]?.includes(event)) throw new Error(`unsupported ${agent} observation event: ${event}`);
+  return { hooks: [{ type: "command", command: `burnlist hooks observe --agent ${agent}` }] };
+}
+
 // Ownership is intentionally an exact, event-specific structural match. The
 // marker belongs only to info/exclude, never to a host command string.
 function ownedEntry(entry, agent, event) {
@@ -77,6 +88,14 @@ function ownedEntry(entry, agent, event) {
   return entry && typeof entry === "object" && !Array.isArray(entry)
     && entry.matcher === expected.matcher && Array.isArray(entry.hooks) && entry.hooks.length === 1
     && entry.hooks[0]?.type === "command" && entry.hooks[0]?.command === expected.hooks[0].command;
+}
+
+function ownedObservationEntry(entry, agent, event) {
+  const expected = managedObservationHookEntry(agent, event);
+  return entry && typeof entry === "object" && !Array.isArray(entry)
+    && entry.matcher === undefined && Array.isArray(entry.hooks) && entry.hooks.length === 1
+    && entry.hooks[0]?.type === "command"
+    && entry.hooks[0]?.command === expected.hooks[0].command;
 }
 
 function removeOwnedEntries(entries, agent, event) {
@@ -88,6 +107,10 @@ function eventEntries(config, event) {
   const entries = config.hooks?.[eventName(event)];
   return Array.isArray(entries) ? entries : [];
 }
+function namedEventEntries(config, event) {
+  const entries = config.hooks?.[event];
+  return Array.isArray(entries) ? entries : [];
+}
 
 function hasCorruptHooks(config) {
   if (config.hooks === undefined) return false;
@@ -96,13 +119,19 @@ function hasCorruptHooks(config) {
 }
 
 function hasOwnedEntries(config, agent) {
-  return eventsFor(agent).every((event) => eventEntries(config, event).some((entry) => ownedEntry(entry, agent, event)));
+  return eventsFor(agent).every((event) => eventEntries(config, event).some((entry) => ownedEntry(entry, agent, event)))
+    && OBSERVATION_EVENTS[agent].every((event) =>
+      namedEventEntries(config, event).some((entry) => ownedObservationEntry(entry, agent, event)));
 }
 
 function ownershipState(config, agent) {
-  const events = eventsFor(agent);
-  const found = events.filter((event) => eventEntries(config, event).some((entry) => ownedEntry(entry, agent, event))).length;
-  return found === events.length ? "installed" : found === 0 ? "none" : "partial";
+  const diffEvents = eventsFor(agent);
+  const total = diffEvents.length + OBSERVATION_EVENTS[agent].length;
+  const found = diffEvents.filter((event) => eventEntries(config, event)
+    .some((entry) => ownedEntry(entry, agent, event))).length
+    + OBSERVATION_EVENTS[agent].filter((event) => namedEventEntries(config, event)
+      .some((entry) => ownedObservationEntry(entry, agent, event))).length;
+  return found === total ? "installed" : found === 0 ? "none" : "partial";
 }
 
 function mergeConfig(config, agent, install) {
@@ -116,6 +145,13 @@ function mergeConfig(config, agent, install) {
     if (install && eventsFor(agent).includes(event)) clean.push(managedHookEntry(agent, event));
     if (clean.length) next.hooks[name] = clean;
     else delete next.hooks[name];
+  }
+  for (const event of OBSERVATION_EVENTS[agent]) {
+    const clean = (next.hooks[event] ?? []).filter((entry) =>
+      !ownedObservationEntry(entry, agent, event));
+    if (install) clean.push(managedObservationHookEntry(agent, event));
+    if (clean.length) next.hooks[event] = clean;
+    else delete next.hooks[event];
   }
   if (Object.keys(next.hooks).length === 0) delete next.hooks;
   return next;

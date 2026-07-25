@@ -3,6 +3,8 @@ import { isRunRef } from "./run-ref.mjs";
 import { prepareHostClaim, presentHostTask } from "./host-execution.mjs";
 import { deriveCandidate } from "./candidate.mjs";
 import { validateHostExecutionEnvelope, validateHostSemanticResult } from "../contracts/host-execution.mjs";
+import { activateLoopHookContext } from "../events/hook-context.mjs";
+import { readLoopObservationRecords } from "../events/hook-observation.mjs";
 
 const fail = (message, code = "ELOOP_CONTROL") => { throw Object.assign(new Error(`Loop control: ${message}`), { code }); };
 const stable = (value) => `${JSON.stringify(value)}\n`;
@@ -12,11 +14,14 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
   if (!store?.read || !store?.list || !store?.acquireLease || !store?.terminalize || !store?.bindExternalClaim || !store?.readExternalClaim || !store?.abandonExternalClaim || !store?.acceptExternalReport || !store?.resolveClaimRef) fail("invalid controller input");
   const check = (runId) => { if (!isRunRef(runId)) fail("invalid RunRef"); return runId; };
   const read = (runId) => store.read(check(runId));
-  const inspect = (runId) => Object.freeze(presentRun(read(runId)));
+  const presented = (runId) => presentRun(read(runId), {
+    optionalRecords: repoRoot ? readLoopObservationRecords(repoRoot, runId) : [],
+  });
+  const inspect = (runId) => Object.freeze(presented(runId));
   // Status is a compact public projection, never the internal fold object.
   // This keeps frozen Loop identity and journal timestamps available to CLI
   // users without exposing dispatch authority or invocation internals.
-  const status = (runId) => Object.freeze({ ...presentRun(read(runId)), schema: "burnlist-loop-status@1" });
+  const status = (runId) => Object.freeze({ ...presented(runId), schema: "burnlist-loop-status@1" });
   const list = () => Object.freeze(store.list().map((run) => ({ schema: "burnlist-loop-status@1", ...run })));
   function idleLease(runId) {
     const current = read(runId);
@@ -52,6 +57,10 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
   }
   function next(runId) {
     const prepared = claim(runId);
+    const envelope = validateHostExecutionEnvelope(prepared.envelope);
+    activateLoopHookContext(repoRoot, {
+      replay: read(runId), claim: prepared.claim, envelope: envelope.value,
+    });
     return presentHostTask(prepared.envelope);
   }
   async function report(claimRef, bytes) {
@@ -61,7 +70,8 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     if (typeof runnerFor !== "function") fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
     const runner = runnerFor(runId);
     if (!runner?.runToHostBoundary) fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
-    return presentRun(await runner.runToHostBoundary());
+    await runner.runToHostBoundary();
+    return presented(runId);
   }
   async function submit(runId, bytes) {
     check(runId);
