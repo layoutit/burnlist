@@ -130,7 +130,9 @@ Usage:
   burnlist loop unassign <ItemRef> [--repo <path>]
   burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
   burnlist loop create <ItemRef> [--repo <path>]
-  burnlist loop next|claim <RunRef> [--repo <path>]
+  burnlist loop next <RunRef> [--repo <path>]
+  burnlist loop submit <RunRef> (--outcome <complete|approve|reject|escalate> | --result <file>) [--repo <path>]
+  burnlist loop claim <RunRef> [--repo <path>] (recovery/diagnostics)
   burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
   burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
   burnlist loop list [--repo <path>]

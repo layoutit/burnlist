@@ -334,6 +334,29 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
     if (matches.length !== 1) fail("ClaimRef is ambiguous", "ECLAIM");
     return matches[0];
   }
+  function visibleRunEntries() {
+    if (!existsSync(runs)) return [];
+    const entries = readdirSync(runs, { withFileTypes: true });
+    const staging = entries.filter((entry) => /^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
+    const visible = entries.filter((entry) => !/^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
+    if (staging.length > 128 || visible.length > 128
+      || entries.some((entry) => !entry.isDirectory()
+        || !/^(?:[a-f0-9]+|\.create-[a-f0-9]{16}\.tmp)$/u.test(entry.name)))
+      fail("run directory exceeds bounds", "EBOUNDS");
+    return visible.sort((left, right) => left.name.localeCompare(right.name));
+  }
+  function listForItem(itemRef) {
+    if (typeof itemRef !== "string" || !itemRef) fail("invalid item projection", "EBOUNDS");
+    const output = [];
+    for (const entry of visibleRunEntries()) {
+      const runId = Buffer.from(entry.name, "hex").toString("utf8");
+      if (!isRunRef(runId) || Buffer.from(runId).toString("hex") !== entry.name)
+        fail("run directory is corrupt", "EBOUNDS");
+      const journal = readJournal(journalFor(runId));
+      if (journal[0]?.value?.payload?.itemRef === itemRef) output.push(replay(runId).projection);
+    }
+    return output;
+  }
   return Object.freeze({ createRun: (...input) => published(createRun(...input)), replay, read: replay,
     append: (...input) => published(append(...input)), acquireLease: (...input) => published(acquireLease(...input)),
     releaseLease: (...input) => published(releaseLease(...input)), recoverLease: (...input) => published(recoverLease(...input)),
@@ -341,10 +364,7 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
     readExternalClaim, abandonExternalClaim: (...input) => published(abandonExternalClaim(...input)),
     resolveExternalClaim: (...input) => published(resolveExternalClaim(...input)),
     acceptExternalReport: (...input) => published(acceptExternalReport(...input)), list: () => {
-    if (!existsSync(runs)) return [];
-    const entries = readdirSync(runs, { withFileTypes: true }), staging = entries.filter((entry) => /^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name)), visible = entries.filter((entry) => !/^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
-    if (staging.length > 128 || visible.length > 128 || entries.some((entry) => !entry.isDirectory() || !/^(?:[a-f0-9]+|\.create-[a-f0-9]{16}\.tmp)$/u.test(entry.name))) fail("run directory exceeds bounds", "EBOUNDS");
-    return visible.sort((a, b) => a.name.localeCompare(b.name))
+    return visibleRunEntries()
       .map((entry) => replay(Buffer.from(entry.name, "hex").toString("utf8")).projection);
-  }, resolveClaimRef, readAuthority, readCurrentRun(itemRef) { if (!existsSync(base)) return null; const values = currentAuthority().read().filter((entry) => entry.itemRef === itemRef); if (values.length > 1) fail("current Run binding is ambiguous", "ECURRENT"); return values[0] ?? null; }, paths: Object.freeze({ base, runs, pathFor, journalFor, authorityPath, executionPath, reportPath, currentPath: join(base, "current-runs.json") }) });
+  }, listForItem, resolveClaimRef, readAuthority, readCurrentRun(itemRef) { if (!existsSync(base)) return null; const values = currentAuthority().read().filter((entry) => entry.itemRef === itemRef); if (values.length > 1) fail("current Run binding is ambiguous", "ECURRENT"); return values[0] ?? null; }, paths: Object.freeze({ base, runs, pathFor, journalFor, authorityPath, executionPath, reportPath, currentPath: join(base, "current-runs.json") }) });
 }

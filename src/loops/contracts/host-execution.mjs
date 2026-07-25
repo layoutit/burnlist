@@ -4,6 +4,7 @@ import { validateAgentResult, validateDispatchAuthority, validateInvocationInput
 
 const KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "issuedAt", "expiresAt", "invocationInput", "dispatchAuthority"];
 const REPORT_KEYS = ["schema", "result", "telemetry"];
+const SEMANTIC_RESULT_KEYS = ["schema", "outcome", "findings", "resolvedFindingIds", "telemetry"];
 const TELEMETRY_KEYS = ["schema", "provenance", "executor", "displayName", "provider", "model", "effort", "startedAt", "completedAt", "inputTokens", "outputTokens"];
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 const MAX_ENVELOPE_BYTES = 400_000;
@@ -121,3 +122,38 @@ export function validateHostExecutionReport(bytes, options) {
 }
 
 export const HOST_EXECUTION_REPORT_SCHEMA = "burnlist-loop-host-report@1";
+
+/**
+ * Bind the worker's small semantic result to controller-owned claim identity.
+ * The worker never receives or reconstructs the authority-bearing tuple.
+ */
+export function createHostSemanticResult(value, { envelope, mode, openFindings = new Map() } = {}) {
+  if (!exact(value, SEMANTIC_RESULT_KEYS) || value.schema !== "burnlist-loop-host-result@1"
+    || !envelope?.value) fail("invalid host semantic result");
+  const binding = Object.fromEntries([
+    "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId",
+    "recipeRevision", "policyRevision", "inputCandidate",
+  ].map((key) => [key, envelope.value[key]]));
+  return createHostExecutionReport({
+    schema: HOST_EXECUTION_REPORT_SCHEMA,
+    result: {
+      schema: "agent-result@1", ...binding, outcome: value.outcome,
+      findings: value.findings, resolvedFindingIds: value.resolvedFindingIds,
+    },
+    telemetry: value.telemetry,
+  }, { envelope, mode, openFindings });
+}
+
+export function validateHostSemanticResult(bytes, options) {
+  const raw = Buffer.from(bytes);
+  const value = parseBoundedObject(raw, { maximumBytes: 262_144, maximumDepth: 5, label: "host semantic result" });
+  const report = createHostSemanticResult(value, options);
+  const canonical = Buffer.from(`${JSON.stringify({
+    schema: value.schema, outcome: value.outcome, findings: value.findings,
+    resolvedFindingIds: value.resolvedFindingIds, telemetry: value.telemetry,
+  })}\n`, "utf8");
+  if (!canonical.equals(raw)) fail("host semantic result is not canonical");
+  return report;
+}
+
+export const HOST_SEMANTIC_RESULT_SCHEMA = "burnlist-loop-host-result@1";

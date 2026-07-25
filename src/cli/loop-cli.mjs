@@ -36,7 +36,8 @@ function options(tokens) {
     else if (tokens[index] === "--outcome") {
       if (outcome !== null) throw usageError("--outcome must be specified at most once.");
       outcome = tokens[++index];
-      if (!["complete", "approve"].includes(outcome ?? "")) throw usageError("--outcome requires complete or approve.");
+      if (!["complete", "approve", "reject", "escalate"].includes(outcome ?? ""))
+        throw usageError("--outcome requires complete, approve, reject, or escalate.");
     }
     else if (tokens[index].startsWith("--")) throw usageError(`Unknown option: ${tokens[index]}`);
     else positionals.push(tokens[index]);
@@ -45,8 +46,9 @@ function options(tokens) {
 }
 function validateVerbOptions(verb, opts) {
   if (opts.recoveryProof && verb !== "reconcile") throw usageError();
-  if ((opts.resultFile || opts.outcome) && verb !== "report"
-    || verb === "report" && Boolean(opts.resultFile) === Boolean(opts.outcome)) throw usageError();
+  if ((opts.resultFile || opts.outcome) && !["report", "submit"].includes(verb)
+    || ["report", "submit"].includes(verb) && Boolean(opts.resultFile) === Boolean(opts.outcome)
+    || verb === "report" && opts.outcome && !["complete", "approve"].includes(opts.outcome)) throw usageError();
   if (opts.reason && verb !== "abandon" || verb === "abandon" && !opts.reason) throw usageError();
 }
 function simpleReport(envelopeBytes, outcome) {
@@ -56,6 +58,12 @@ function simpleReport(envelopeBytes, outcome) {
   return Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-host-report@1", result: {
     schema: "agent-result@1", ...result, outcome, findings: [], resolvedFindingIds: [],
   }, telemetry: null })}\n`);
+}
+function simpleSemanticResult(outcome) {
+  return Buffer.from(`${JSON.stringify({
+    schema: "burnlist-loop-host-result@1", outcome,
+    findings: [], resolvedFindingIds: [], telemetry: null,
+  })}\n`);
 }
 function resultBytes(path) {
   let fd;
@@ -98,7 +106,7 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     const result = completeLoopRun({ repoRoot: opts.repo, runId: opts.positionals[0] });
     stdout.write(`${JSON.stringify({ schema: "burnlist-loop-completion@1", ...result })}\n`); return result;
   }
-  if (["list", "status", "inspect", "next", "claim", "report", "abandon", "pause", "stop", "reconcile"].includes(verb)) {
+  if (["list", "status", "inspect", "next", "claim", "submit", "report", "abandon", "pause", "stop", "reconcile"].includes(verb)) {
     const allowed = verb === "list" ? 0 : 1;
     if (opts.positionals.length !== allowed) throw usageError();
     const store = runStore(opts.repo);
@@ -111,8 +119,10 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     const result = verb === "list" ? controller.list()
       : verb === "status" ? controller.status(opts.positionals[0])
       : verb === "inspect" ? controller.inspect(opts.positionals[0])
-      : verb === "next" ? controller.inspect(opts.positionals[0])
+      : verb === "next" ? controller.next(opts.positionals[0])
       : verb === "claim" ? publicClaim(controller.claim(opts.positionals[0]))
+      : verb === "submit" ? await controller.submit(opts.positionals[0],
+        opts.resultFile ? resultBytes(opts.resultFile) : simpleSemanticResult(opts.outcome))
       : verb === "report" ? await controller.report(opts.positionals[0],
         opts.resultFile ? resultBytes(opts.resultFile) : simpleReport(
           controller.readClaim(store.resolveClaimRef(opts.positionals[0]))?.envelope, opts.outcome))

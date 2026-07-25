@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { prefixed, rawSha256 } from "../dsl/hash.mjs";
 import { createDispatchAuthority, createInvocationInput } from "../contracts/agent-result.mjs";
-import { createHostExecutionEnvelope } from "../contracts/host-execution.mjs";
+import { createHostExecutionEnvelope, validateHostExecutionEnvelope } from "../contracts/host-execution.mjs";
 import { boundPolicyRevision, loadBoundPolicy } from "./run-artifacts.mjs";
 import { createHostClaim } from "./run-claim.mjs";
 import { deriveCandidate } from "./candidate.mjs";
@@ -64,4 +64,40 @@ export function prepareHostClaim({ repoRoot, replay, authority, now = Date.now()
   });
   const claim = createHostClaim({ ...common, claimId, executionDigest: envelope.digest, expiresAt });
   return Object.freeze({ claim, envelope: envelope.bytes });
+}
+
+function utf8(base64, label) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(base64, "base64")); }
+  catch { fail(`${label} is not UTF-8`); }
+}
+
+/** Public worker packet. Authority identities stay sealed in the Run store. */
+export function presentHostTask(envelopeBytes) {
+  const envelope = validateHostExecutionEnvelope(envelopeBytes);
+  const input = envelope.input.value;
+  const instruction = utf8(input.instructionBytes, "instruction");
+  const item = utf8(input.itemText, "item");
+  const context = utf8(input.candidateContext, "candidate context");
+  const findings = input.openFindings?.length
+    ? `\n\nOpen review findings:\n${JSON.stringify(input.openFindings, null, 2)}`
+    : "";
+  const prompt = [
+    `Act as the ${input.role} for this ${input.mode} task. Your workspace authority is ${input.authority}.`,
+    instruction.trimEnd(),
+    `Assigned item:\n${item.trimEnd()}`,
+    `Candidate context:\n${context.trimEnd()}${findings}`,
+    `Return a concise summary and one result: ${input.legalOutcomes.join(", ")}. Do not edit Burnlist lifecycle files or choose a graph transition.`,
+  ].join("\n\n");
+  return Object.freeze({
+    schema: "burnlist-loop-host-task@1",
+    runId: input.runId,
+    nodeId: input.nodeId,
+    mode: input.mode,
+    role: input.role,
+    authority: input.authority,
+    intelligence: input.intelligence,
+    legalOutcomes: Object.freeze([...input.legalOutcomes]),
+    requires: Object.freeze([...input.requires]),
+    prompt,
+  });
 }

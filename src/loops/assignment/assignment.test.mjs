@@ -180,6 +180,19 @@ test("repository hazard authority reads production Runs and permits only safe te
   } finally { context.cleanup(); }
 });
 
+test("repository hazard authority scopes sealed authority corruption to its item", () => {
+  const context = fixture();
+  try {
+    const other = "item:260710-001#OTHER", runId = "run:01arz3ndektsv4rrffq69g5fax";
+    const store = runStore(context.repo);
+    store.createRun({ runId, itemRef: other, graph: testGraph });
+    writeFileSync(store.paths.authorityPath(runId), "{}\n");
+    assert.deepEqual(repositoryHazardAuthority(context.repo)({ itemRef: ref() }), []);
+    assert.throws(() => repositoryHazardAuthority(context.repo)({ itemRef: other }),
+      /E_LOOP_HAZARD_CORRUPT/u);
+  } finally { context.cleanup(); }
+});
+
 test("artifact is immutable, contained, and resolver selects only its declared authority", async () => {
   const context = fixture();
   try {

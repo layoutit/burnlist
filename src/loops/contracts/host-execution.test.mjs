@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDispatchAuthority, createInvocationInput } from "./agent-result.mjs";
 import {
-  createHostExecutionEnvelope, createHostExecutionReport, validateHostExecutionEnvelope,
-  hostExecutionExpired, validateHostExecutionReport,
+  createHostExecutionEnvelope, createHostExecutionReport, createHostSemanticResult,
+  validateHostExecutionEnvelope, hostExecutionExpired, validateHostExecutionReport,
+  validateHostSemanticResult,
 } from "./host-execution.mjs";
 import { rawSha256 } from "../dsl/hash.mjs";
 
@@ -113,4 +114,34 @@ test("host report bytes make retransmission identity explicit", () => {
   const changed = createHostExecutionReport(report(envelope, { telemetry: null }), { envelope, mode: "task" });
   assert.notEqual(changed.digest, first.digest);
   assert.throws(() => validateHostExecutionReport(Buffer.concat([first.bytes, Buffer.from(" ")]), { envelope, mode: "task" }), /canonical/u);
+});
+
+test("small semantic results are bound to sealed identity by Burnlist", () => {
+  const envelope = createHostExecutionEnvelope(fixture());
+  const semantic = {
+    schema: "burnlist-loop-host-result@1", outcome: "complete",
+    findings: [], resolvedFindingIds: [], telemetry: null,
+  };
+  const bound = createHostSemanticResult(semantic, { envelope, mode: "task" });
+  assert.equal(bound.value.result.claimId, envelope.value.claimId);
+  assert.equal(bound.value.result.invocationId, envelope.value.invocationId);
+  assert.equal(bound.value.result.outcome, "complete");
+  assert.equal(Object.hasOwn(semantic, "claimId"), false);
+  const bytes = Buffer.from(`${JSON.stringify(semantic)}\n`);
+  assert.equal(validateHostSemanticResult(bytes, { envelope, mode: "task" }).digest, bound.digest);
+});
+
+test("semantic results fail closed on extra authority, illegal outcomes, and noncanonical replay", () => {
+  const envelope = createHostExecutionEnvelope(fixture());
+  const semantic = {
+    schema: "burnlist-loop-host-result@1", outcome: "complete",
+    findings: [], resolvedFindingIds: [], telemetry: null,
+  };
+  assert.throws(() => createHostSemanticResult({ ...semantic, destination: "completed" },
+    { envelope, mode: "task" }), /semantic result/u);
+  assert.throws(() => createHostSemanticResult({ ...semantic, outcome: "approve" },
+    { envelope, mode: "task" }), /not allowed/u);
+  assert.throws(() => validateHostSemanticResult(
+    Buffer.concat([Buffer.from(`${JSON.stringify(semantic)}\n`), Buffer.from(" ")]),
+    { envelope, mode: "task" }), /canonical/u);
 });

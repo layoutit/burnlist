@@ -1,7 +1,8 @@
 import { presentRun } from "./read-projection.mjs";
 import { isRunRef } from "./run-ref.mjs";
-import { prepareHostClaim } from "./host-execution.mjs";
+import { prepareHostClaim, presentHostTask } from "./host-execution.mjs";
 import { deriveCandidate } from "./candidate.mjs";
+import { validateHostExecutionEnvelope, validateHostSemanticResult } from "../contracts/host-execution.mjs";
 
 const fail = (message, code = "ELOOP_CONTROL") => { throw Object.assign(new Error(`Loop control: ${message}`), { code }); };
 const stable = (value) => `${JSON.stringify(value)}\n`;
@@ -49,6 +50,10 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
       throw error;
     }
   }
+  function next(runId) {
+    const prepared = claim(runId);
+    return presentHostTask(prepared.envelope);
+  }
   async function report(claimRef, bytes) {
     const runId = store.resolveClaimRef(claimRef), current = read(runId);
     store.acceptExternalReport(runId, current.execution.lease, bytes,
@@ -57,6 +62,19 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     const runner = runnerFor(runId);
     if (!runner?.runToHostBoundary) fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
     return presentRun(await runner.runToHostBoundary());
+  }
+  async function submit(runId, bytes) {
+    check(runId);
+    const current = read(runId), active = store.readExternalClaim(runId, current);
+    if (!active) fail("Run has no active host task", "ECLAIM");
+    const envelope = validateHostExecutionEnvelope(active.envelope);
+    const bound = validateHostSemanticResult(bytes, {
+      envelope,
+      mode: current.execution.node.mode,
+      openFindings: current.execution.node.mode === "review"
+        ? current.execution.openFindings : new Map(),
+    });
+    return report(active.claim.claimId, bound.bytes);
   }
   function readClaim(runId) { check(runId); return store.readExternalClaim(runId); }
   function abandonClaim(runId, abandonment) {
@@ -78,6 +96,6 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     const lease = idleLease(runId);
     return presentRun(store.terminalize(runId, lease, "lost", "reconciled lost invocation"));
   }
-  return Object.freeze({ list, inspect, status, pause, stop, reconcile, claim, report,
+  return Object.freeze({ list, inspect, status, pause, stop, reconcile, claim, next, report, submit,
     readClaim, abandonClaim, render: stable });
 }

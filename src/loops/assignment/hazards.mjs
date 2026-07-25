@@ -17,10 +17,10 @@ export function repositoryHazardAuthority(repoRoot) {
   return ({ itemRef }) => {
     const item = parseItemRef(itemRef);
     const store = runStore(repoRoot); let runs, current;
-    try { runs = store.list(); current = store.readCurrentRun(item.selector); }
+    try { runs = store.listForItem(item.selector); current = store.readCurrentRun(item.selector); }
     catch (error) { bad("E_LOOP_HAZARD_CORRUPT", error?.message ?? "production Run state is unreadable"); }
     if (!Array.isArray(runs)) bad("E_LOOP_HAZARD_CORRUPT", "production Run state is invalid");
-    const matching = runs.filter((run) => run?.itemRef === item.selector);
+    const matching = runs;
     if (current && !matching.some((run) => run.runId === current.runId)) return [`unpublished current Run ${current.runId}`];
     if (matching.some((run) => typeof run.runId !== "string" || typeof run.state !== "string")) bad("E_LOOP_HAZARD_CORRUPT", "production Run projection is invalid");
     return matching.filter((run) => !SAFE_TERMINALS.has(run.state)).map((run) => {

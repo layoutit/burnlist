@@ -86,6 +86,43 @@ test("simple successful outcomes do not require a hand-authored report", (t) => 
   assert.equal(JSON.parse(command(repo, ["status", runId])).state, "converged");
 });
 
+test("next and submit hide claim mechanics while advancing the Run", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "host-next-submit-loop-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = created(repo), visited = [];
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    if (JSON.parse(command(repo, ["status", runId])).state === "converged") break;
+    const raw = command(repo, ["next", runId]), task = JSON.parse(raw);
+    visited.push(task.nodeId);
+    assert.equal(task.schema, "burnlist-loop-host-task@1");
+    assert.match(task.prompt, /Assigned item:/u);
+    assert.doesNotMatch(raw, /claimId|invocationId|assignmentId|dispatchAuthority|invocationInput/u);
+    command(repo, ["submit", runId, "--outcome",
+      task.mode === "review" ? "approve" : "complete"]);
+  }
+  assert.deepEqual(visited, ["implement", "review"]);
+  assert.equal(JSON.parse(command(repo, ["status", runId])).state, "converged");
+});
+
+test("submit rejects missing tasks, illegal outcomes, and duplicate conflicts", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "host-submit-closed-loop-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = created(repo);
+  const missing = invoke(repo, ["submit", runId, "--outcome", "complete"]);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /no active host task/u);
+  command(repo, ["next", runId]);
+  const illegal = invoke(repo, ["submit", runId, "--outcome", "approve"]);
+  assert.equal(illegal.status, 1);
+  assert.match(illegal.stderr, /not allowed/u);
+  command(repo, ["submit", runId, "--outcome", "complete"]);
+  const duplicate = invoke(repo, ["submit", runId, "--outcome", "complete"]);
+  assert.equal(duplicate.status, 1);
+  assert.match(duplicate.stderr, /no active host task/u);
+});
+
 test("a claimed provider cannot be stolen and reviewer candidate drift rejects its report", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "host-claim-loop-cli-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
