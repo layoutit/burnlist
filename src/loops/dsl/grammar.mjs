@@ -61,7 +61,7 @@ export function validateLoop(ast) {
     if (node.name === "budget") for (const [key, [min, max]] of Object.entries(limits)) value(d, node, key, (v) => positive.test(v) && +v >= min && +v <= max, `an integer from ${min} through ${max}`);
     if (node.name === "agent") {
       value(d, node, "mode", (v) => v === "task" || v === "review", "task or review");
-      value(d, node, "execution", (v) => v === "managed" || v === "host", "managed or host");
+      value(d, node, "execution", (v) => v === "host", "host");
       value(d, node, "intelligence", (v) => ["fast", "standard", "strong", "critical"].includes(v), "fast, standard, strong, or critical");
       value(d, node, "role", (v) => v === "maker" || v === "reviewer", "maker or reviewer");
       value(d, node, "route", (v) => route.test(v), "a Route"); value(d, node, "authority", (v) => v === "read" || v === "write", "read or write"); value(d, node, "instructions", (v) => slug.test(v), "a lowercase slug");

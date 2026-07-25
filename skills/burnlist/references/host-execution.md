@@ -1,8 +1,8 @@
 # Host-executed Loop nodes
 
 Use this reference when a host executes a prepared agent node. It is the whole
-provider-neutral contract; choose a `loop-providers/` recipe only if its
-invocation details help.
+provider-neutral contract; choose the matching `loop-providers/` recipe before
+invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
 
 ## Claim, execute, report
 
@@ -90,12 +90,12 @@ invocation details help.
 
 ## Ownership and observability
 
-The host owns invocation and optional best-effort telemetry. Burnlist owns the
-frozen graph, claim authority, validation, deterministic checks, transition
-selection, canonical journal, and item completion. Native provider execution,
-the managed `builtin:codex-cli` process adapter, and external tools all feed
-this same boundary. `builtin:codex-cli` is optional for cross-engine use, not
-the only Loop mechanism.
+The host owns every provider invocation and optional best-effort telemetry.
+Burnlist owns the frozen graph, claim authority, validation, deterministic
+checks, transition selection, canonical journal, and item completion. After
+`loop report`, Burnlist automatically advances trusted checks and graph-only
+nodes until the next host agent claim or a terminal state. It never launches a
+provider process.
 
 Installable skills and Streaming Diff hooks are independent. Neither installs,
 selects, or starts a host executor; hooks only provide optional observational

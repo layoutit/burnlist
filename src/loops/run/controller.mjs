@@ -49,10 +49,14 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
       throw error;
     }
   }
-  function report(claimRef, bytes) {
+  async function report(claimRef, bytes) {
     const runId = store.resolveClaimRef(claimRef), current = read(runId);
-    return presentRun(store.acceptExternalReport(runId, current.execution.lease, bytes,
-      () => deriveCandidate({ repoRoot })));
+    store.acceptExternalReport(runId, current.execution.lease, bytes,
+      () => deriveCandidate({ repoRoot }));
+    if (typeof runnerFor !== "function") fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
+    const runner = runnerFor(runId);
+    if (!runner?.runToHostBoundary) fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
+    return presentRun(await runner.runToHostBoundary());
   }
   function readClaim(runId) { check(runId); return store.readExternalClaim(runId); }
   function abandonClaim(runId, abandonment) {
@@ -65,11 +69,6 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     const lease = idleLease(runId);
     return presentRun(store.abandonExternalClaim(runId, lease, abandonment));
   }
-  async function run(runId) {
-    check(runId); if (typeof runnerFor !== "function") fail("foreground runner is unavailable", "ERUNNER_UNAVAILABLE");
-    const runner = runnerFor(runId); if (!runner?.run) fail("foreground runner is unavailable", "ERUNNER_UNAVAILABLE");
-    return presentRun(await runner.run());
-  }
   /** Recovery is deliberately proof-gated: without an owner proof it cannot take a live lease. */
   function reconcile(runId, recoveryProof = null) {
     check(runId); const current = read(runId);
@@ -79,5 +78,6 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
     const lease = idleLease(runId);
     return presentRun(store.terminalize(runId, lease, "lost", "reconciled lost invocation"));
   }
-  return Object.freeze({ list, inspect, status, pause, stop, run, reconcile, claim, report, readClaim, abandonClaim, render: stable });
+  return Object.freeze({ list, inspect, status, pause, stop, reconcile, claim, report,
+    readClaim, abandonClaim, render: stable });
 }

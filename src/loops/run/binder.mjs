@@ -12,13 +12,11 @@ import { checkSnapshot, holdSnapshot, readSnapshotBytes, releaseSnapshot, snapsh
 import { compileLoopFiles } from "../dsl/compile.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { prefixed, rawSha256 } from "../dsl/hash.mjs";
-import { agentProfileRevision } from "../agents/profile.mjs";
-import { readProfile, readRoute, requiredRoutes } from "../config/profiles.mjs";
 import { localRecordPath } from "../config/store.mjs";
 import { canonicalBoundPolicyBytes, loadBoundPolicy } from "./run-artifacts.mjs";
 import { deriveCandidate } from "./candidate.mjs";
 import { newRunId } from "./run-codec.mjs";
-import { createBoundNormalizedInvocationImpl, createProductionRunRunnerImpl } from "./production-runner.mjs";
+import { createSystemRunRunner } from "./system-runner.mjs";
 
 const INPUT_KEYS = new Set(["runId", "itemRef"]);
 const builtinsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../loops");
@@ -103,25 +101,13 @@ async function projectExecutableSnapshot(repoRoot, loopRef) {
 function currentPolicy(repoRoot, recipeRevision) {
   const authorityInputs = [];
   const add = (role, path, executable = false) => authorityInputs.push(Object.freeze({ role, path, executable }));
-  const routes = requiredRoutes.map(({ route }) => {
-    const routeRecord = readRoute({ repoRoot, route });
-    const profile = readProfile({ repoRoot, slug: routeRecord.profile });
-    add(`route:${route}`, localRecordPath(repoRoot, "routes", route.replace(".", "-")));
-    add(`profile:${route}`, localRecordPath(repoRoot, "profiles", profile.id));
-    add(`adapter:${route}`, profile.binary, true);
-    const executableDigest = snapshotTarget({ root: dirname(profile.binary), path: profile.binary }).digest;
-    return { route, profile, profileRevision: agentProfileRevision(profile), executableDigest,
-      guarantees: route === "review.strong"
-        ? { freshSession: "enforced", filesystemWriteDeny: "supervised" }
-        : { freshSession: "enforced" } };
-  }).sort((left, right) => Buffer.compare(Buffer.from(left.route), Buffer.from(right.route)));
   const resolved = resolveCapability(readCapabilityCatalog(repoRoot), "repo-verify");
   const trust = assertTrustedCapability({ repoRoot, resolved });
   add("capability-catalog", join(repoRoot, ".burnlist", "loop-capabilities.json"));
   add("capability-trust", localRecordPath(repoRoot, "capabilities", resolved.policy.id));
   add("capability-bin", resolved.policy.argv[0], true);
   const grants = trust.grants;
-  const policy = { schema: "burnlist-loop-bound-policy@1", recipeRevision, routes,
+  const policy = { schema: "burnlist-loop-bound-policy@1", recipeRevision, routes: [],
     capabilities: [{ id: resolved.policy.id, policy: resolved.policy, revision: resolved.revision,
       policyDigest: rawSha256(canonicalCapabilityBytes(resolved.policy)), grants,
       grantsDigest: rawSha256(canonicalGrantBytes(grants, resolved.policy)), trust,
@@ -319,31 +305,10 @@ export function releaseRunLaunchBinding(held) {
   if (failure) throw failure;
 }
 
-/**
- * Build the production M3 callback from already-frozen Run authority.  This is
- * deliberately a direct Codex path: Docker controllers are legacy setup
- * artifacts and are not consulted for foreground Stage One dispatch.
- */
-export function createBoundNormalizedInvocation({ repoRoot, replay, contextFor, candidateForBoundary = null,
-  startAgent, runCheck, agentTimeoutMs = 0 }) {
-  return createBoundNormalizedInvocationImpl({ repoRoot, replay, contextFor, candidateForBoundary,
-    startAgent, runCheck, agentTimeoutMs });
-}
-
-/** Compose frozen creation authority, the M3 dispatcher, and the M2 runner. */
-export function createProductionRunRunner({ repoRoot, store, runId, authority, contextFor,
-  startAgent, runCheck, agentTimeoutMs = 0 }) {
-  return createProductionRunRunnerImpl({ repoRoot, store, runId, authority, contextFor,
-    startAgent, runCheck, agentTimeoutMs, binding: {
-      seal: sealRunAuthority, unseal: unsealRunAuthority, capture: captureRunLaunchBinding,
-      recheck: recheckRunLaunchBinding, hold: holdRunLaunchBinding, release: releaseRunLaunchBinding,
-    } });
-}
-
-/** Resume constructs exclusively from the immutable per-Run record; it never rebinds source or policy. */
-export function createStoredProductionRunRunner({ repoRoot, store, runId, startAgent, runCheck, agentTimeoutMs = 0 }) {
+/** System advancement uses only frozen capability authority; providers remain host-owned. */
+export function createStoredSystemRunRunner({ repoRoot, store, runId, runCheck }) {
   if (!store?.readAuthority) fail("sealed production authority is unavailable");
   const authority = store.readAuthority(runId), current = store.readCurrentRun?.(authority.itemRef);
   if (!current || current.runId !== runId || current.assignmentId !== authority.assignmentId) fail("Run is superseded and cannot launch", "ELOOP_RUN_SUPERSEDED");
-  return createProductionRunRunner({ repoRoot, store, runId, authority, startAgent, runCheck, agentTimeoutMs });
+  return createSystemRunRunner({ repoRoot, store, runId, authority: unsealRunAuthority(authority), runCheck });
 }

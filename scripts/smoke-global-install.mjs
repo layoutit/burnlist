@@ -9,7 +9,6 @@ import {
   readlinkSync,
   realpathSync,
   rmSync,
-  chmodSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -85,22 +84,32 @@ function writeLoopFixture(repo) {
   mkdirSync(join(repo, "src"), { recursive: true });
   mkdirSync(join(repo, "notes", "burnlists", "inprogress", "260722-001"), { recursive: true });
   writeFileSync(join(repo, "notes", "burnlists", "inprogress", "260722-001", "burnlist.md"), "# Smoke Loop\n\n## Active Checklist\n- [ ] L1 | Packed Loop proof\n\n## Completed\n");
-  const binary = join(repo, "fixtures", "fake-codex");
-  mkdirSync(dirname(binary), { recursive: true });
-  writeFileSync(binary, `#!${testNode}
-const fs=require("node:fs"),args=process.argv.slice(2),prompt=args.at(-1),lines=Object.fromEntries(prompt.split("\\n").filter((line)=>line.includes("=")).map((line)=>line.split(/=(.*)/s).slice(0,2)));
-const counter=process.env.BURNLIST_FAKE_COUNTER,index=counter?Number(fs.readFileSync(counter,"utf8")):0,outcome=(process.env.BURNLIST_FAKE_OUTCOMES||"complete,approve").split(",")[index]||"approve";
-if(counter)fs.writeFileSync(counter,String(index+1));
-const final={schema:"burnlist.agent-final@1",runId:lines.run,nodeId:lines.node,attempt:Number(lines.attempt),claimId:lines.claim,invocationId:lines.invocation,assignmentId:lines.assignment,recipeRevision:lines.recipe,policyRevision:lines.policy,inputCandidate:lines.candidate,outcome,summary:"fake "+outcome};
-process.stdout.write(JSON.stringify({type:"thread.started",thread_id:"smoke-"+process.pid,model:args[args.indexOf("-m")+1]})+"\\n");
-process.stdout.write(JSON.stringify({type:"item.completed",item:{type:"agent_message",text:JSON.stringify(final)}})+"\\n");
-process.stdout.write(JSON.stringify({type:"turn.completed",usage:{input_tokens:1,output_tokens:1,cached_input_tokens:0}})+"\\n");
-`);
-  chmodSync(binary, 0o700);
   const capability = { id: "repo-verify", argv: [testNode, "-e", "process.exit(0)"], cwd: ".", environment: { inherit: ["PATH"], set: {} }, network: "deny", filesystem: { read: ["src"], write: [] }, output: { maxBytes: 1024 }, maxMilliseconds: 1000 };
   writeFileSync(join(repo, ".burnlist", "loop-capabilities.json"), `${JSON.stringify({ schema: "burnlist-loop-capabilities@1", capabilities: [capability] })}\n`);
   writeFileSync(join(repo, "grants.json"), `${JSON.stringify({ argv: capability.argv, cwd: capability.cwd, environment: capability.environment, network: capability.network, filesystem: capability.filesystem, output: capability.output, maxMilliseconds: capability.maxMilliseconds })}\n`);
-  return { binary, itemRef: "item:260722-001#L1" };
+  return { itemRef: "item:260722-001#L1" };
+}
+
+function hostReport(execution, outcome) {
+  return {
+    schema: "burnlist-loop-host-report@1",
+    result: {
+      schema: "agent-result@1",
+      runId: execution.runId,
+      nodeId: execution.nodeId,
+      attempt: execution.attempt,
+      claimId: execution.claimId,
+      assignmentId: execution.assignmentId,
+      invocationId: execution.invocationId,
+      recipeRevision: execution.recipeRevision,
+      policyRevision: execution.policyRevision,
+      inputCandidate: execution.inputCandidate,
+      outcome,
+      findings: [],
+      resolvedFindingIds: [],
+    },
+    telemetry: null,
+  };
 }
 
 function assertLoopFlow(cli) {
@@ -108,11 +117,7 @@ function assertLoopFlow(cli) {
   mkdirSync(repoPath, { recursive: true });
   run("git", ["init", "--quiet", repoPath]);
   const repo = realpathSync(repoPath);
-  const { binary, itemRef } = writeLoopFixture(repo);
-  const profile = (slug, authority) => command(cli, repo, ["agent", "profile", "add", slug, "--adapter", "builtin:codex-cli", "--binary", binary, "--model", "gpt-5.6-terra", "--effort", "medium", "--authority", authority]);
-  profile("maker", "write"); profile("reviewer", "read");
-  command(cli, repo, ["route", "set", "implementation.standard", "--profile", "maker"]);
-  command(cli, repo, ["route", "set", "review.strong", "--profile", "reviewer"]);
+  const { itemRef } = writeLoopFixture(repo);
   const capability = JSON.parse(command(cli, repo, ["loop", "capability", "inspect", "repo-verify"], { capture: true }));
   command(cli, repo, ["loop", "capability", "trust", "repo-verify", "--revision", capability.revision, "--grants", join(repo, "grants.json")]);
   const setup = command(cli, repo, ["loop", "setup", "status"], { capture: true });
@@ -122,8 +127,17 @@ function assertLoopFlow(cli) {
   if (!view.includes("LOOP: loop:builtin:review")) throw new Error("packed CLI did not render the assigned Loop");
   const runId = JSON.parse(command(cli, repo, ["loop", "create", itemRef], { capture: true })).runId;
   for (const operation of ["status", "inspect"]) JSON.parse(command(cli, repo, ["loop", operation, runId], { capture: true }));
-  const counter = join(repo, "counter"); writeFileSync(counter, "0");
-  const result = JSON.parse(command(cli, repo, ["loop", "run", runId], { capture: true, env: { ...env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,approve" } }));
+  const reportPath = join(tmpRoot, "host-report.json");
+  let result;
+  for (let attempts = 0; attempts < 8; attempts += 1) {
+    result = JSON.parse(command(cli, repo, ["loop", "status", runId], { capture: true }));
+    if (result.state === "converged") break;
+    const execution = JSON.parse(command(cli, repo, ["loop", "claim", runId], { capture: true })).execution;
+    const outcome = ["review", "final-review"].includes(execution.nodeId)
+      ? "approve" : "complete";
+    writeFileSync(reportPath, `${JSON.stringify(hostReport(execution, outcome))}\n`);
+    command(cli, repo, ["loop", "report", execution.claimId, "--result", reportPath]);
+  }
   if (result.state !== "converged") throw new Error(`packed Loop did not converge: ${result.state}`);
   const first = JSON.parse(command(cli, repo, ["loop", "complete", runId], { capture: true }));
   const second = JSON.parse(command(cli, repo, ["loop", "complete", runId], { capture: true }));

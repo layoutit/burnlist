@@ -14,4 +14,4 @@ Read [Host-executed Loop nodes](../host-execution.md) first.
   them `host-reported`, otherwise use `null`.
 - **Fallback:** if native delegation is unavailable, execute directly as the
   Claude host or use another available mechanism, then follow the same report
-  and abandonment rules. Do not configure Claude as a managed adapter.
+  and abandonment rules. Burnlist never configures or launches Claude.

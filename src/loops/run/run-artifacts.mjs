@@ -2,15 +2,12 @@ import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { prefixed, rawSha256 } from "../dsl/hash.mjs";
 import { validateDispatchAuthority } from "../contracts/agent-result.mjs";
 import { parseBoundedObject } from "../contracts/contract.mjs";
-import { resolveConfiguredStageOneRoutes, validateAgentProfile, agentProfileRevision } from "../agents/profile.mjs";
 import { canonicalCapabilityBytes, canonicalGrantBytes, capabilityRevision, GUARANTEE_LABELS,
   validateCapability, validateCapabilityGrants } from "../capabilities/contract.mjs";
 
-const PROFILE = /^ap1-sha256:[a-f0-9]{64}$/u;
 const RAW = /^sha256:[a-f0-9]{64}$/u;
 const RECIPE = /^er1-sha256:[a-f0-9]{64}$/u;
 const POLICY_KEYS = ["schema", "recipeRevision", "routes", "capabilities"];
-const ROUTE_KEYS = ["route", "profile", "profileRevision", "executableDigest", "guarantees"];
 const CAPABILITY_KEYS = ["id", "policy", "revision", "policyDigest", "grants", "grantsDigest", "trust", "guarantees"];
 
 function fail(message) { throw Object.assign(new Error(`Loop bound policy: ${message}`), { code: "ELOOP_BOUND_POLICY" }); }
@@ -20,21 +17,8 @@ const canonical = (value) => Buffer.from(`${JSON.stringify(value)}\n`);
 
 export function validateBoundPolicy(value) {
   if (!closed(value, POLICY_KEYS) || value.schema !== "burnlist-loop-bound-policy@1" || !RECIPE.test(value.recipeRevision)
-    || !Array.isArray(value.routes) || value.routes.length !== 2 || !Array.isArray(value.capabilities) || value.capabilities.length !== 1) fail("invalid closed policy");
-  const routes = value.routes.map((entry) => {
-    if (!closed(entry, ROUTE_KEYS) || !["implementation.standard", "review.strong"].includes(entry.route)
-      || !PROFILE.test(entry.profileRevision) || !RAW.test(entry.executableDigest)
-      || !closed(entry.guarantees, entry.route === "review.strong"
-        ? ["freshSession", "filesystemWriteDeny"] : ["freshSession"])) fail("invalid route binding");
-    const profile = validateAgentProfile(entry.profile), profileRevision = agentProfileRevision(profile);
-    if (entry.profileRevision !== profileRevision || entry.guarantees.freshSession !== "enforced"
-      || entry.route === "review.strong" && entry.guarantees.filesystemWriteDeny !== "supervised") fail("route revision or guarantee mismatch");
-    return { route: entry.route, profile, profileRevision, executableDigest: entry.executableDigest,
-      guarantees: { ...entry.guarantees } };
-  });
-  if (!sortedUnique(routes, "route")) fail("invalid route set");
-  resolveConfiguredStageOneRoutes({ profiles: routes.map((entry) => entry.profile),
-    routes: Object.fromEntries(routes.map((entry) => [entry.route, entry.profile.id])) });
+    || !Array.isArray(value.routes) || value.routes.length !== 0
+    || !Array.isArray(value.capabilities) || value.capabilities.length !== 1) fail("invalid closed policy");
   const capabilities = value.capabilities.map((entry) => {
     if (!closed(entry, CAPABILITY_KEYS) || entry.id !== "repo-verify" || !RAW.test(entry.policyDigest) || !RAW.test(entry.grantsDigest)
       || JSON.stringify(entry.guarantees) !== JSON.stringify(GUARANTEE_LABELS)) fail("invalid capability binding");
@@ -51,7 +35,8 @@ export function validateBoundPolicy(value) {
       guarantees: Object.fromEntries(Object.keys(GUARANTEE_LABELS).map((key) => [key, GUARANTEE_LABELS[key]])) };
   });
   if (!sortedUnique(capabilities, "id") || capabilities[0]?.id !== "repo-verify") fail("invalid capability set");
-  return Object.freeze({ schema: value.schema, recipeRevision: value.recipeRevision, routes: Object.freeze(routes), capabilities: Object.freeze(capabilities) });
+  return Object.freeze({ schema: value.schema, recipeRevision: value.recipeRevision,
+    routes: Object.freeze([]), capabilities: Object.freeze(capabilities) });
 }
 
 export function canonicalBoundPolicyBytes(value) { return Buffer.from(`${JSON.stringify(validateBoundPolicy(value))}\n`, "utf8"); }

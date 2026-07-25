@@ -116,15 +116,12 @@ Usage:
   burnlist loop report <ClaimRef> --result <file> [--repo <path>]
   burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
   burnlist loop list [--repo <path>]
-  burnlist loop run|resume <RunRef> [--repo <path>]
   burnlist loop status|inspect <RunRef> [--repo <path>]
   burnlist loop pause|stop <RunRef> [--repo <path>] (idle Run only)
   burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
   burnlist loop complete <RunRef> [--repo <path>]
   burnlist loop capability <inspect|trust> <id> ...
   burnlist loop setup status [--repo <path>]
-  burnlist agent <profile|doctor> ...
-  burnlist route set <route> --profile <slug> [--repo <path>]
   burnlist register [path]
   burnlist unregister [path]
   burnlist roots [--prune]
@@ -167,12 +164,6 @@ if (args[0] === "oven") {
 } else if (args[0] === "loop") {
   const { runLoopCliEntry } = await import("../src/cli/loop-cli.mjs");
   await runLoopCliEntry(args.slice(1));
-} else if (args[0] === "agent") {
-  const { runAgentCliEntry } = await import("../src/cli/loop-config-cli.mjs");
-  await runAgentCliEntry(args.slice(1));
-} else if (args[0] === "route") {
-  const { runRouteCliEntry } = await import("../src/cli/loop-config-cli.mjs");
-  await runRouteCliEntry(args.slice(1));
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");
 } else {

@@ -17,21 +17,9 @@ item is completed only through its converged Loop Run.
 
 ## Configure and assign
 
-Create one profile for each role, then attach the fixed routes. The maker has
-write authority; the reviewer has read authority. `--binary` must be an
-absolute path to the installed Codex CLI. Accepted `--model` values are
-`gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and
-`gpt-5.3-codex-spark`; accepted `--effort` values are `minimal`, `low`,
-`medium`, `high`, `xhigh`, and `max`.
-
-```sh
-burnlist agent profile add maker --adapter builtin:codex-cli --binary /absolute/path/to/codex --model <id> --effort <level> --authority write
-burnlist agent profile add reviewer --adapter builtin:codex-cli --binary /absolute/path/to/codex --model <id> --effort <level> --authority read
-burnlist route set implementation.standard --profile maker
-burnlist route set review.strong --profile reviewer
-burnlist agent doctor maker
-burnlist agent doctor reviewer
-```
+Burnlist stores no provider profile, binary, model, subscription, route, or
+login. The host that burns the item chooses and supervises a native subagent or
+external provider CLI for each claimed agent node.
 
 The check is a repository-owned declarative capability, not a command in the
 Loop package. Inspect it, review the grants JSON against that capability, then
@@ -92,19 +80,19 @@ graph; do not redraw or abbreviate it.
 
 ## Run and control
 
-Create a Run from the assigned item, then execute it in the foreground. These
-commands return machine-readable status or projection JSON except `view`.
+Create a Run from the assigned item. These commands return machine-readable
+status or projection JSON except `view`.
 
 ```sh
 burnlist loop create item:<burnlist-id>#<item-id>
-burnlist loop run run:<id>
 burnlist loop status run:<id>
 burnlist loop inspect run:<id>
 ```
 
 ## Host-orchestrated agent nodes
 
-A host may inspect the next node, claim an agent node, then return exactly one
+Every provider invocation is host-owned. A host inspects the next node, claims
+an agent node, then returns exactly one
 bound result. All four commands use JSON on stdout; write the report to a
 regular, non-symlink file no larger than 256 KiB.
 
@@ -117,20 +105,20 @@ burnlist loop abandon cl1-sha256:<claim-id> --reason host-cancelled
 
 `abandon` accepts only `host-cancelled`, `host-lost`, or `expired`; `expired`
 is accepted only after the claim lease expires. Hosts cannot choose graph edges
-or execute checks. The Checklist Oven only observes these Run updates and has
-no mutation path.
+or execute checks. After a valid report, Burnlist automatically advances its
+trusted checks and graph-only nodes until the next agent claim or terminal
+state. The Checklist Oven only observes these updates.
 
 The claim response carries a prepared execution envelope. A host executes that
 exact bounded input through its available mechanism, preserves its full claim
 identity in one `burnlist-loop-host-report@1`, and submits the report by claim
-id. Burnlist, not the host, validates it and selects the transition. Native
-hosts can orchestrate their own subagents: Codex natively orchestrates Codex
-and Claude natively orchestrates Claude. `builtin:codex-cli` is only the
-Burnlist-managed process adapter, useful when deliberately configured for a
-cross-engine invocation; it is not the only way a Loop node runs. Unknown
-host telemetry remains unavailable rather than inferred. The installed
-Burnlist skill contains the generic host protocol and optional bounded provider
-recipes; it remains independent from Streaming Diff hook installation.
+id. Burnlist, not the host, validates it and selects the transition. Codex and
+Claude may orchestrate native subagents; any host may harness Codex CLI, AGY,
+Grok, or another CLI using the explicit recipes shipped in the Burnlist skill.
+Before the first Loop, the skill safely inventories native agents, installed
+CLIs, live access, and subscriptions, shows the user the result, and asks which
+providers to use or help set up. Burnlist never installs, authenticates,
+configures, or launches a provider. Unknown telemetry remains unavailable.
 
 The maker receives the item and instructions, then the trusted repository
 check runs. A new reviewer process evaluates the candidate. A check failure or
@@ -139,20 +127,17 @@ passes the convergence gate. Escalation becomes `needs-human`; errors,
 timeouts, cancellation, and budget exhaustion use their recorded terminal
 outcomes.
 
-`Ctrl-C` requests a pause after the child exits; a second interrupt requests a
-controlled stop. The standalone `pause` and `stop` commands require an idle
-Run with no active foreground owner; they cannot take over a live Run. Use the
-foreground owner's interrupts for a live Run, then use the standalone commands
-only for recovery while it is idle:
+The standalone `pause` and `stop` commands require an idle Run with no active
+host claim; they cannot take over a live provider. Use them only between
+claims:
 
 ```sh
 burnlist loop pause run:<id>
-burnlist loop resume run:<id>
 burnlist loop stop run:<id>
 burnlist loop reconcile run:<id> --recovery-proof <64-lowercase-hex>
 ```
 
-`reconcile` is for a demonstrably lost foreground owner. It folds the frozen
+`reconcile` is for a demonstrably lost host claim. It folds the frozen
 journal and never re-resolves setup, recompiles the Loop, or reruns work.
 With a valid recovery proof it terminalizes the Run as `needs-human`; it never
 changes a Run to paused.
@@ -205,9 +190,10 @@ state after item-keyed Loop invalidations.
 
 The graph distinguishes writing agents (`[W]`), read-only agents (`[R]`),
 deterministic checks, metric or evaluation gates, orchestrators, and terminal
-outputs with separate text shapes. For sealed Runs, agent nodes also show the
-resolved model and effort from their frozen profile; only this safe display
-metadata is projected, never the executable path or private dispatch policy.
+outputs with separate text shapes. During a Run, a node may show provider,
+model, and effort only when the host reports those observed values as
+telemetry. No executable path, subscription, or provider configuration is
+stored in the Run.
 Fan-out Loops are arranged as explicit split, parallel branch, merge, and
 feedback paths.
 
@@ -242,13 +228,13 @@ instructions are `supervised`; they are not Docker or an OS sandbox.
 Host execution is transport-only for a frozen invocation envelope. The host
 provides output and optional telemetry; Burnlist alone selects graph edges from
 the frozen graph, validates the claim/candidate identity, and applies outcomes.
-Hosts may not choose destination edges or execute checks directly; checks remain
-managed and declared by the frozen Loop run authority.
+Hosts may not choose destination edges or execute checks directly; checks
+remain Burnlist-owned and declared by the frozen Loop authority.
 
 Hosts return one terminal `burnlist-loop-host-report@1` for their claim. Its
 bound agent result carries one legal node-mode `outcome` and no `destination`.
 
-Parallelism, nested agents, metric gates, custom adapters, auto-worktrees,
+Parallelism, nested agents, metric gates, auto-worktrees,
 background execution, Docker isolation, and forecasting are `unsupported`.
 Do not present any of those as shipped Loop features.
 

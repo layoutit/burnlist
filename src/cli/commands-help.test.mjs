@@ -51,14 +51,13 @@ test("top-level and Oven help expose the validated use and set flow", () => {
     assert.match(top.stdout, /burnlist loop report <ClaimRef> --result <file> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop abandon <ClaimRef> --reason <host-cancelled\|host-lost\|expired> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop list \[--repo <path>\]/u);
-    assert.match(top.stdout, /burnlist loop run\|resume <RunRef> \[--repo <path>\]/u);
+    assert.doesNotMatch(top.stdout, /burnlist loop run\|resume/u);
     assert.match(top.stdout, /burnlist loop status\|inspect <RunRef> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop pause\|stop <RunRef> \[--repo <path>\] \(idle Run only\)/u);
     assert.match(top.stdout, /burnlist loop reconcile <RunRef> --recovery-proof <hex> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop complete <RunRef> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop capability <inspect\|trust> <id> \.\.\./u);
-    assert.match(top.stdout, /burnlist agent <profile\|doctor> \.\.\./u);
-    assert.match(top.stdout, /burnlist route set <route> --profile <slug> \[--repo <path>\]/u);
+    assert.doesNotMatch(top.stdout, /burnlist agent <profile\|doctor>|burnlist route set/u);
 
     const oven = run(context.directory, ["oven", "help"]);
     assert.equal(oven.status, 0, oven.stderr);
@@ -73,19 +72,15 @@ test("top-level and Oven help expose the validated use and set flow", () => {
 test("Loop local configuration help exposes only explicit setup commands", () => {
   const context = fixture({ git: false });
   try {
-    for (const [args, usage] of [
-      [["agent", "--help"], /burnlist agent profile add <slug>/u],
-      [["agent", "--help"], /burnlist agent doctor <slug>/u],
-      [["route", "--help"], /burnlist route set <implementation\.standard\|review\.strong>/u],
-      [["loop", "--help"], /burnlist loop capability trust <id> --revision cp1-sha256:<hex> --grants <json-file>/u],
-    ]) {
-      const result = run(context.directory, args);
-      assert.equal(result.status, 0, result.stderr); assert.match(result.stdout, usage); assert.equal(result.stderr, "");
-    }
-    for (const args of [["agent", "controller", "add", "host"], ["agent", "preflight", "maker"]]) {
+    const loop = run(context.directory, ["loop", "--help"]);
+    assert.equal(loop.status, 0, loop.stderr);
+    assert.match(loop.stdout,
+      /burnlist loop capability trust <id> --revision cp1-sha256:<hex> --grants <json-file>/u);
+    assert.doesNotMatch(loop.stdout, /agent profile|route set|builtin:codex-cli/u);
+    for (const args of [["agent", "--help"], ["route", "--help"]]) {
       const result = run(context.directory, args);
       assert.equal(result.status, 2, args.join(" "));
-      assert.match(result.stderr, /Usage: burnlist agent profile add/u);
+      assert.doesNotMatch(result.stderr, /builtin:codex-cli/u);
     }
   } finally { context.cleanup(); }
 });
@@ -95,10 +90,10 @@ test("nested Loop help snapshots every Stage 1 control", () => {
   try {
     const result = run(context.directory, ["loop", "--help"]);
     assert.equal(result.status, 0, result.stderr);
-    for (const command of ["create", "next|claim", "report <ClaimRef> --result <file>", "abandon <ClaimRef> --reason <host-cancelled|host-lost|expired>", "list", "run|pause|resume|stop|complete", "status|inspect", "reconcile"]) {
+    for (const command of ["create", "next|claim", "report <ClaimRef> --result <file>", "abandon <ClaimRef> --reason <host-cancelled|host-lost|expired>", "list", "pause|stop|complete", "status|inspect", "reconcile"]) {
       assert.match(result.stdout, new RegExp(`burnlist loop ${command}`, "u"));
     }
-    assert.match(result.stdout, /pause\|resume\|stop\|complete <RunRef>/u);
+    assert.doesNotMatch(result.stdout, /loop run|resume/u);
     assert.equal(result.stderr, "");
   } finally { context.cleanup(); }
 });
@@ -150,7 +145,7 @@ test("hooks status and uninstall name their own Git requirement", () => {
 test("Review Loop documentation command matrix runs against the production fixture", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "burnlist-loop-docs-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const { repo, binary } = createProductionRunAuthority(join(directory, "repo"));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
   const loop = (...args) => run(repo, ["loop", ...args, "--repo", repo]);
   const command = (...args) => run(repo, [...args, "--repo", repo]);
   const planPath = join(repo, "notes", "burnlists", "inprogress", "260722-001", "burnlist.md");
@@ -162,15 +157,6 @@ test("Review Loop documentation command matrix runs against the production fixtu
     "",
     "## Completed",
   ].join("\n")));
-  const profile = (slug, authority) => command("agent", "profile", "add", slug,
-    "--adapter", "builtin:codex-cli", "--binary", binary, "--model", "gpt-5.3-codex-spark",
-    "--effort", "medium", "--authority", authority);
-  for (const result of [profile("maker", "write"), profile("reviewer", "read"),
-    command("route", "set", "implementation.standard", "--profile", "maker"),
-    command("route", "set", "review.strong", "--profile", "reviewer"),
-    command("agent", "doctor", "maker"), command("agent", "doctor", "reviewer")]) {
-    assert.equal(result.status, 0, result.stderr);
-  }
   const inspected = loop("capability", "inspect", "repo-verify");
   assert.equal(inspected.status, 0, inspected.stderr);
   const revision = JSON.parse(inspected.stdout).revision;
@@ -199,19 +185,11 @@ test("Review Loop documentation command matrix runs against the production fixtu
     const result = loop(...args);
     assert.equal(result.status, 0, `${args.join(" ")}: ${result.stderr}`);
   }
-  const counter = join(directory, "counter");
-  writeFileSync(counter, "0");
-  const executed = spawnSync(process.execPath, [cli, "loop", "run", runId, "--repo", repo], {
-    cwd: repo,
-    encoding: "utf8",
-    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,complete,complete,approve,complete,approve" },
-  });
-  assert.equal(executed.status, 0, executed.stderr);
-  assert.equal(JSON.parse(executed.stdout).state, "converged");
-  for (const args of [["complete", runId], ["complete", runId]]) {
-    const result = loop(...args);
-    assert.equal(result.status, 0, `${args.join(" ")}: ${result.stderr}`);
-  }
+  const claim = loop("claim", runId);
+  assert.equal(claim.status, 0, claim.stderr);
+  assert.equal(JSON.parse(claim.stdout).execution.nodeId, "start");
+  assert.equal(loop("abandon", JSON.parse(claim.stdout).execution.claimId,
+    "--reason", "host-cancelled").status, 0);
 
   const pauseRef = "item:260722-001#L31";
   assert.equal(loop("assign", pauseRef, "loop:builtin:review").status, 0);
@@ -219,13 +197,9 @@ test("Review Loop documentation command matrix runs against the production fixtu
   const paused = loop("pause", pausedRun);
   assert.equal(paused.status, 0, paused.stderr);
   assert.equal(JSON.parse(paused.stdout).state, "paused");
-  writeFileSync(counter, "0");
-  const resumed = spawnSync(process.execPath, [cli, "loop", "resume", pausedRun, "--repo", repo], {
-    cwd: repo, encoding: "utf8",
-    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,complete,complete,approve,complete,approve" },
-  });
+  const resumed = loop("claim", pausedRun);
   assert.equal(resumed.status, 0, resumed.stderr);
-  assert.equal(JSON.parse(resumed.stdout).state, "converged");
+  assert.equal(JSON.parse(resumed.stdout).execution.nodeId, "start");
 
   const stoppedRef = "item:260722-001#L32";
   assert.equal(loop("assign", stoppedRef, "loop:builtin:review").status, 0);
@@ -251,14 +225,13 @@ test("Review Loop documentation preserves Stage 1 boundaries", () => {
     join(root, "website", "src", "content", "docs", "loops.mdx"),
     join(root, "skills", "burnlist", "SKILL.md"),
   ].map((path) => readFileSync(path, "utf8")).join("\n");
-  assert.match(files, /filesystem write denial.*supervised/us);
-  assert.match(files, /fresh reviewer process.*enforced/us);
+  assert.match(files, /host owns every provider invocation/us);
   assert.match(files, /[Pp]arallelism.*unsupported/us);
   assert.match(files, /Docker isolation.*unsupported/us);
-  assert.match(files, /custom adapters.*unsupported/us);
+  assert.match(files, /never .*launches an? .*provider/us);
   assert.match(files, /forecasting.*unsupported/us);
   assert.match(files, /skill.*hooks.*independent/us);
   assert.match(files, /loop-capability-example\.json/us);
-  assert.match(files, /gpt-5\.6-terra/us);
-  assert.match(files, /idle.*foreground owner/us);
+  assert.match(files, /loop-provider-setup\.md/us);
+  assert.match(files, /Codex.*AGY.*Grok/us);
 });

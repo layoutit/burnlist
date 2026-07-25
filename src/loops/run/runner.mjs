@@ -33,6 +33,7 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null, ex
         if (completed?.released) lease = null;
         return { kind: "prepared-agent" };
       }
+      if (node.kind === "agent") return { kind: "awaiting-host" };
       return append("node-started", { nodeId: node.id, attempt: execution.attempt + 1 });
     }
     if (node.kind === "terminal") return transition(node.state, "graph");
@@ -95,7 +96,18 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null, ex
     if (current.execution.terminal) { if (lease && current.execution.lease) store.releaseLease(runId, lease); lease = null; return read(); }
     if (pauseRequested) return pause();
   } }
+  async function runToHostBoundary() {
+    for (;;) {
+      const result = await step(), current = read();
+      if (result?.kind === "awaiting-host" || current.execution.terminal) {
+        if (lease && current.execution.lease) store.releaseLease(runId, lease);
+        lease = null;
+        return read();
+      }
+    }
+  }
   function requestPause() { pauseRequested = true; cancelRequested = true; invoke.cancel?.(); executePreparedAgent?.cancel?.(); cancelWake?.(); }
   function requestStop() { stopRequested = true; cancelRequested = true; invoke.cancel?.(); executePreparedAgent?.cancel?.(); cancelWake?.(); }
-  return Object.freeze({ step, run, pause, stop, requestPause, requestStop, replay: read, get lease() { return lease; } });
+  return Object.freeze({ step, run, runToHostBoundary, pause, stop, requestPause, requestStop,
+    replay: read, get lease() { return lease; } });
 }

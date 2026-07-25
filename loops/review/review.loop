@@ -1,11 +1,11 @@
 <loop id="review" version="0.1.0" entry="start">
   <budget max-rounds="12" max-minutes="60" max-agent-runs="18" max-check-runs="8" max-transitions="40" max-output-bytes="262144"/>
-  <agent id="start" mode="task" execution="managed" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="start"/>
-  <agent id="decompose" mode="task" execution="managed" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="decompose"/>
-  <agent id="implement" mode="task" execution="managed" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>
-  <agent id="review" mode="review" execution="managed" intelligence="strong" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="review"/>
-  <agent id="integrate" mode="task" execution="managed" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="integrate"/>
-  <agent id="final-review" mode="review" execution="managed" intelligence="critical" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="final-review"/>
+  <agent id="start" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="start"/>
+  <agent id="decompose" mode="task" execution="host" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="decompose"/>
+  <agent id="implement" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>
+  <agent id="review" mode="review" execution="host" intelligence="strong" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="review"/>
+  <agent id="integrate" mode="task" execution="host" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="integrate"/>
+  <agent id="final-review" mode="review" execution="host" intelligence="critical" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="final-review"/>
   <check id="validate" capability="repo-verify"/>
   <check id="final-validate" capability="repo-verify"/>
   <gate id="converged" kind="convergence" requires="final-validate,final-review"/>

@@ -20,7 +20,7 @@ function same(left, right) { return JSON.stringify(left) === JSON.stringify(righ
 function validNode(node) {
   if (!exact(node, nodeKeys[node?.kind] ?? []) || !boundedSlug(node.id)) return false;
   if (node.kind === "agent") {
-    if (!["task", "review"].includes(node.mode) || !["managed", "host"].includes(node.execution)
+    if (!["task", "review"].includes(node.mode) || node.execution !== "host"
       || !["fast", "standard", "strong", "critical"].includes(node.intelligence)
       || !route.test(node.route) || !boundedSlug(node.instructions)
       || !Array.isArray(node.requires) || node.requires.some((item) => typeof item !== "string" || item.length > 128)) return false;
@@ -117,7 +117,7 @@ export function validateReplayIr(ir) {
   const upgraded = {
     ...ir,
     nodes: ir.nodes.map((node) => node?.kind === "agent"
-      ? { ...node, execution: "managed", intelligence: node.mode === "review" ? "strong" : "standard" }
+      ? { ...node, execution: "host", intelligence: node.mode === "review" ? "strong" : "standard" }
       : node),
   };
   return validateClosedIr(upgraded);

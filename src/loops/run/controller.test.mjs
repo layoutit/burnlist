@@ -22,10 +22,13 @@ test("read commands are byte-stable and do not create a lease", (t) => {
   assert.equal(store.read(testRunId).projection.leaseHeld, false);
 });
 
-test("pause is resumable, stop is terminal, and an owner fences competing controls", async (t) => {
+test("pause resumes on the next owner, stop is terminal, and an owner fences controls", (t) => {
   const { controller, store } = fixture(t);
   assert.equal(controller.pause(testRunId).state, "paused");
-  assert.equal((await controller.run(testRunId)).state, "converged");
+  const resumed = store.acquireLease(testRunId);
+  assert.equal(resumed.projection.state, "running");
+  store.releaseLease(testRunId, resumed.lease);
+  assert.equal(controller.stop(testRunId).state, "stopped");
   assert.throws(() => controller.stop(testRunId), { code: "ETERMINAL" });
   const second = fixture(t), owner = second.store.acquireLease(testRunId);
   assert.throws(() => second.controller.pause(testRunId), { code: "ELEASED" });

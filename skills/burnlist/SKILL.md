@@ -33,7 +33,8 @@ Read references only when their trigger applies:
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
 - `references/host-execution.md`: generic host claim/execute/report protocol for a prepared Loop Run; read before a host executes a claimed agent node.
-- `references/loop-providers/<provider>.md`: optional bounded provider recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read only after choosing that provider; native hosts do not need a recipe to use the generic protocol.
+- `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
+- `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -161,8 +162,9 @@ assigns an item to it. It is one serial foreground path: maker, trusted
 repository check, fresh reviewer, convergence gate, then CLI-owned completion.
 Items without an assignment keep the direct Burnlist workflow.
 
-Before creating a Run, configure distinct local profiles and routes, inspect
-and explicitly trust the repository check capability, then assign the item:
+Before creating a Run, inspect and explicitly trust the repository check
+capability, then assign the item. Burnlist stores no provider profile, route,
+subscription, binary, model, or login:
 
 The installed skill includes `references/loop-capability-example.json`. Copy
 its `catalog` object to the repository capability catalog and its `grants`
@@ -178,30 +180,16 @@ the absolute check command and paths with your repository's reviewed command:
 {"argv":["/absolute/path/to/repository-check","--verify"],"cwd":".","environment":{"inherit":["PATH"],"set":{}},"network":"deny","filesystem":{"read":["src"],"write":[]},"output":{"maxBytes":65536},"maxMilliseconds":60000}
 ```
 
-Accepted profile models are `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`,
-and `gpt-5.3-codex-spark`; efforts are `minimal`, `low`, `medium`, `high`,
-`xhigh`, and `max`.
-
-`builtin:codex-cli` is currently the only Burnlist-managed process adapter.
-That does not limit native host orchestration: Codex normally runs Codex
-subagents natively, Claude normally runs Claude subagents natively, and any host
-may claim and report Loop nodes through native orchestration. Claude, Grok, AGY,
-and custom hosts are not managed adapters, though they may optionally invoke
-Codex through a `codex-cli` recipe; do not promise or configure them as managed
-Loop backends.
-
-For a host-orchestrated agent node, read `references/host-execution.md` before
-claiming it. The core protocol is provider-neutral: claim the prepared node,
-execute its exact bounded envelope through an available native or external
-mechanism, then return one bound report. Never invent a transition or execute a
-managed check. Provider recipes are optional detail, not a prerequisite for
-native host orchestration.
+Every agent node is host-orchestrated. The host owns every provider invocation.
+Read `references/host-execution.md`
+before claiming it. If available subscriptions are unknown, read
+`references/loop-provider-setup.md`, show the user the safe inventory, and ask
+which ready providers to use or help set up. Then read the selected provider
+recipe. The host may use native subagents or the Codex, AGY, Grok, or another
+CLI, but it—not Burnlist—launches and supervises them. Never invent a
+transition or execute a managed check.
 
 ```sh
-burnlist agent profile add maker --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority write
-burnlist agent profile add reviewer --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority read
-burnlist route set implementation.standard --profile maker
-burnlist route set review.strong --profile reviewer
 burnlist loop capability inspect repo-verify
 burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants <json-file>
 burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
@@ -210,16 +198,12 @@ burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
 Run `burnlist loop setup status` before `loop create`. Paste the complete
 `burnlist loop view item:<burnlist-id>#<item-id>` ASCII output into the task
 handoff or review request: it records the frozen graph, retries, completion
-path, and pins. Control a Run only with `loop run|pause|resume|stop`,
-inspect with `loop status|inspect`, use proof-gated `loop reconcile` only for a
-demonstrably lost foreground owner, and apply a converged Run through the
-idempotent `loop complete` command. A valid reconcile proof terminalizes as
-`needs-human`; it never pauses a Run.
-
-Standalone `pause` and `stop` only work while no foreground owner holds the
-Run lease. For live foreground work, the owner handles Ctrl-C: first interrupt
-requests pause after its child exits, second requests controlled stop. Do not
-claim that a separate CLI invocation can take over a live Run.
+path, and pins. For each agent node use `loop claim`, invoke the selected
+provider through the host, and submit `loop report`. Reporting automatically
+advances Burnlist-owned checks and gates to the next agent or terminal node.
+Inspect with `loop status|inspect`, control idle Runs with `loop pause|stop`,
+use proof-gated `loop reconcile` only for a demonstrably lost host claim, and
+apply a converged Run through idempotent `loop complete`.
 
 The canonical Checklist Oven keeps a centered KPI row above the side-by-side
 Progress ledger and Completion trend. Its unified Items list contains current,
@@ -237,7 +221,7 @@ Stage 1 labels fresh reviewer process, graph grammar, budgets, closed outcomes,
 and atomic canonical CLI writes `enforced`; ordinary drift checks are
 `detected-at-boundaries`; reviewer filesystem write denial is `supervised`.
 It is not Docker or an OS sandbox. Parallelism, nested agents, metric gates,
-custom adapters, worktrees, background execution, Docker isolation, and
+worktrees, background execution, Docker isolation, and
 forecasting are `unsupported`. The Checklist UI is read-only and displays
 active, paused, error, and terminal Run states; it never controls a Run.
 

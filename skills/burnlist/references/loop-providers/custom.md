@@ -12,4 +12,4 @@ Use for a host not covered by another recipe. Read
 - **Telemetry:** use only observed values with `host-reported`; leave absent
   fields `null`.
 - **Fallback:** execute directly if possible; otherwise abandon the live claim
-  with a permitted reason. A custom host is never silently a managed adapter.
+  with a permitted reason. Burnlist never configures or launches the provider.

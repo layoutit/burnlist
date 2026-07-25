@@ -7,7 +7,7 @@ import { loopConfigUsage, runLoopConfigCli } from "./loop-config-cli.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 import { runStore } from "../loops/run/run-store.mjs";
 import { createLoopController } from "../loops/run/controller.mjs";
-import { createProductionRun, createStoredProductionRunRunner } from "../loops/run/binder.mjs";
+import { createProductionRun, createStoredSystemRunRunner } from "../loops/run/binder.mjs";
 import { completeLoopRun } from "../loops/completion/completion.mjs";
 
 function usageText() { return loopConfigUsage(); }
@@ -66,7 +66,7 @@ export async function renderLoopView({ selector, repoRoot, runReader }) {
   return { authority, output: renderResolvedLoopView(authority) };
 }
 
-export async function runLoopCli(tokens, { runReader, runnerFor, stdout = process.stdout, processObject = process } = {}) {
+export async function runLoopCli(tokens, { runReader, runnerFor, stdout = process.stdout } = {}) {
   if (tokens[0] === "--help" || tokens[0] === "-h") { stdout.write(`${usageText()}\n`); return null; }
   if (["capability", "setup"].includes(tokens[0])) {
     const value = await runLoopConfigCli(tokens); stdout.write(value.output); return value;
@@ -83,11 +83,11 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     const result = completeLoopRun({ repoRoot: opts.repo, runId: opts.positionals[0] });
     stdout.write(`${JSON.stringify({ schema: "burnlist-loop-completion@1", ...result })}\n`); return result;
   }
-  if (["list", "status", "inspect", "next", "claim", "report", "abandon", "run", "pause", "resume", "stop", "reconcile"].includes(verb)) {
+  if (["list", "status", "inspect", "next", "claim", "report", "abandon", "pause", "stop", "reconcile"].includes(verb)) {
     const allowed = verb === "list" ? 0 : 1;
     if (opts.positionals.length !== allowed) throw usageError();
     const store = runStore(opts.repo);
-    const suppliedRunnerFor = runnerFor ?? ((runId) => createStoredProductionRunRunner({ repoRoot: opts.repo, store, runId }));
+    const suppliedRunnerFor = runnerFor ?? ((runId) => createStoredSystemRunRunner({ repoRoot: opts.repo, store, runId }));
     const runners = new Map(), runtimeRunnerFor = (runId) => {
       if (!runners.has(runId)) runners.set(runId, suppliedRunnerFor(runId));
       return runners.get(runId);
@@ -98,7 +98,7 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
       : verb === "inspect" ? controller.inspect(opts.positionals[0])
       : verb === "next" ? controller.inspect(opts.positionals[0])
       : verb === "claim" ? publicClaim(controller.claim(opts.positionals[0]))
-      : verb === "report" ? controller.report(opts.positionals[0], resultBytes(opts.resultFile))
+      : verb === "report" ? await controller.report(opts.positionals[0], resultBytes(opts.resultFile))
       : verb === "abandon" ? (() => {
         const runId = store.resolveClaimRef(opts.positionals[0]);
         if (store.read(runId).execution.terminal) { const error = new Error("ClaimRef is stale"); error.exitCode = 1; throw error; }
@@ -109,12 +109,7 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
       : verb === "pause" ? controller.pause(opts.positionals[0])
       : verb === "stop" ? controller.stop(opts.positionals[0])
       : verb === "reconcile" ? controller.reconcile(opts.positionals[0], opts.recoveryProof ? { generation: store.read(opts.positionals[0]).execution.generation, recoveryProof: opts.recoveryProof } : null)
-      : verb === "resume" || verb === "run" ? await (() => {
-        const runner = runtimeRunnerFor(opts.positionals[0]); let signalled = false;
-        const onInterrupt = () => { if (!signalled) { signalled = true; runner.requestPause?.(); } else runner.requestStop?.(); };
-        processObject.on?.("SIGINT", onInterrupt);
-        return controller.run(opts.positionals[0]).finally(() => processObject.removeListener?.("SIGINT", onInterrupt));
-      })() : null;
+      : null;
     stdout.write(controller.render(result)); return result;
   }
   if (verb === "assign" && opts.positionals.length === 2) {

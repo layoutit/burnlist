@@ -27,7 +27,7 @@ function check(outcome, extra = {}) { return { schema: "check-result@1", ...bind
 function bytes(value) { return Buffer.from(JSON.stringify(value)); }
 function invocation(extra = {}) {
   const instruction = Buffer.from("Follow the frozen instructions.\n");
-  return { schema: "burnlist-loop-invocation-input@1", ...binding, itemRevision: d("id1-sha256", "8"), execution: "managed", intelligence: "strong", instructionDigest: rawSha256(instruction),
+  return { schema: "burnlist-loop-invocation-input@1", ...binding, itemRevision: d("id1-sha256", "8"), execution: "host", intelligence: "strong", instructionDigest: rawSha256(instruction),
     instructionBytes: instruction.toString("base64"), candidateContext: Buffer.from("candidate-context@1\n").toString("base64"), reviewerEvidence: [], ...extra };
 }
 function dispatch(input, extra = {}) {

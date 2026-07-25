@@ -159,34 +159,34 @@ maker -> repository check -> fresh reviewer -> convergence gate -> CLI completio
   +------------ check failure / rejection
 ```
 
-Configure a write-authority maker and read-authority reviewer with `burnlist
-agent profile add`, map them with `burnlist route set`, inspect and explicitly
-trust the repository check with `burnlist loop capability inspect|trust`, then
-assign an item with `burnlist loop assign`. Run `burnlist loop view <item-ref>`
+Inspect and explicitly trust the repository check with `burnlist loop
+capability inspect|trust`, then assign an item with `burnlist loop assign`.
+Burnlist stores no agent profile, provider route, subscription, or login. Run
+`burnlist loop view <item-ref>`
 and paste its complete ASCII output into the work handoff; it is the frozen
-graph, pin, and completion-path record for that item. Create a Run with `loop create`, run
-or resume it in the foreground with `loop run|resume`, and inspect it with
-`loop status|inspect`. `pause` and `stop` are idle-Run recovery controls: they
-require no active foreground owner. For a live foreground Run, Ctrl-C belongs
-to that owner (first interrupt requests pause; second requests controlled
-stop). Proof-gated `reconcile` is for a demonstrably lost owner. Only a
+graph, pin, and completion-path record for that item. Create a Run with `loop
+create`; for each agent node, claim it, invoke a native subagent or external
+provider CLI from the host, and submit a bound report. Burnlist automatically
+advances its trusted checks and gates to the next agent or terminal node.
+Inspect with `loop status|inspect`; `pause` and `stop` are idle-Run controls,
+and proof-gated `reconcile` handles a demonstrably lost claim. Only a
 converged Run can be applied by `loop complete`; the
 command is idempotent and performs the normal shrinking-list completion.
 
-Hosts can also claim a prepared agent node, execute its exact bounded envelope,
-and submit one identity-bound report. Burnlist remains transition and check
-authority. Codex natively orchestrates Codex subagents and Claude natively
-orchestrates Claude subagents; `builtin:codex-cli` is only the
-Burnlist-managed process adapter, not the only Loop mechanism. The installed
-skill provides the provider-neutral protocol and optional bounded recipes for
-Codex CLI, AGY, Grok, and custom hosts. Host execution does not require, start,
-or install Streaming Diff hooks.
+The host owns every provider invocation. Codex and Claude can use native
+subagents; any host can deliberately harness Codex CLI, AGY, Grok, or another
+CLI through the installed skill's explicit recipes. Before the first Loop, the
+skill inventories available native agents, CLIs, live access, and subscriptions
+without reading credentials, shows the result, and asks which providers the
+user wants to use or set up. Burnlist never installs, authenticates, configures,
+or launches an agent provider. Host execution remains independent from
+Streaming Diff hooks.
 
 The Checklist UI is read-only and shows the active node, attempt, results,
-transition history, and paused, error, or terminal state. The runner enforces
-the graph, fresh reviewer process, budgets, closed outcomes, and atomic CLI
-writes. Reviewer filesystem write denial is **supervised**, not an OS sandbox.
-Parallel execution, Docker isolation, metrics gates, custom adapters,
+transition history, and paused, error, or terminal state. Burnlist enforces
+the graph, claim identity, trusted checks, budgets, closed outcomes, and atomic
+CLI writes. Provider permissions remain host-supervised, not an OS sandbox.
+Parallel execution, Docker isolation, metrics gates,
 forecasting, worktrees, and background execution are deliberately unsupported
 in Stage 1. Items with no Loop assignment keep the ordinary direct
 `burnlist burn` workflow.

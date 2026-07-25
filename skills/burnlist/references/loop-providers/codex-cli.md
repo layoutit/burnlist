@@ -1,32 +1,38 @@
 # Codex CLI recipe
 
-Read [Host-executed Loop nodes](../host-execution.md) first. There are two
-different Codex CLI paths; never describe a direct host launch as the managed
-adapter.
+Read [Host-executed Loop nodes](../host-execution.md) first. The host owns the
+Codex process; Burnlist never launches or configures it.
 
-## Managed `builtin:codex-cli`
+## Preflight
 
-- **Invocation ownership:** the Burnlist runner launches and cancels the
-  configured process through `loop run` or `loop resume`; the host does not
-  claim/report that managed invocation.
-- **Context and identity:** the runner supplies the frozen input and preserves
-  its identity internally; neither the child nor a supervising host selects an
-  edge.
-- **Telemetry:** runner measurements are `managed`; missing values are
-  unavailable, not inferred.
-- **Fallback:** if managed setup is unavailable, use native host orchestration
-  or the direct host-claim path below; do not call that fallback an adapter.
+```sh
+command -v codex
+codex --version
+```
 
-## Direct Codex CLI for a host claim
+If authentication is missing, ask the user to run `codex login`. Do not inspect
+credential files.
 
-- **Invocation ownership:** the host launches, supervises, and cancels its own
-  Codex CLI process after `burnlist loop claim`; this is not `builtin:codex-cli`.
-- **Context freedom:** give Codex the exact decoded invocation input and only
-  bounded supplemental context. Do not ask it to choose a transition.
-- **Identity:** retain the complete generic correlation tuple and submit the
-  one bound host report under the original claim id.
-- **Telemetry:** observations from this host-owned process are
-  `host-reported`; unavailable fields are `null`.
-- **Fallback:** use native Codex orchestration, another available host
-  mechanism, or abandon the claim. `builtin:codex-cli` remains the only
-  Burnlist-managed process adapter, not the only way a Loop node can run.
+## Invoke
+
+Put the decoded prepared invocation plus bounded supplemental context in a
+prompt file, then run one foreground process:
+
+```sh
+codex exec --json --ephemeral \
+  -m <model> \
+  -c model_reasoning_effort=<minimal|low|medium|high|xhigh|max> \
+  -s <workspace-write|read-only> \
+  -C <absolute-repo-path> \
+  --skip-git-repo-check \
+  -- "$(cat <prompt-file>)" </dev/null > <capture-file> 2>&1
+```
+
+Use `workspace-write` only for a write-authority task node and `read-only` for
+review. Keep the process foreground and supervised; never start two writers in
+one worktree. Parse its final answer, verify it against the workspace, and
+construct the bound host report yourself. Codex output is not a graph
+transition and must not replace any claim identity.
+
+Telemetry is `host-reported`; copy only values actually observed. If the
+process cannot finish, abandon the claim rather than fabricating a result.

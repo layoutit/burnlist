@@ -188,7 +188,7 @@ test("closed grammar rejects named later constructs", async () => {
     const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace('<edge from="final-review" on="approve" to="converged"/>', `<${name} id="later"/>`)) });
     assert.equal(result.ok, false, name); assert.ok(result.diagnostics.some((item) => item.code === "E_ELEMENT_UNKNOWN"));
   }
-  const altered = Buffer.from(source.replace('<agent id="implement" mode="task" execution="managed" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>', '<agent id="implement" role="maker" route="implementation.standard" authority="write" instructions="implement"/>'));
+  const altered = Buffer.from(source.replace('<agent id="implement" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>', '<agent id="implement" role="maker" route="implementation.standard" authority="write" instructions="implement"/>'));
   const result = compileLoopFiles({ ...files, "review.loop": altered });
   assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_ATTRIBUTE_REQUIRED"));
 });
@@ -197,13 +197,13 @@ test("every Stage 1 element required attribute and scalar union is closed", asyn
   const files = await reviewFiles(), source = files["review.loop"].toString();
   const required = [
     'id="start"', 'version="0.1.0"', 'entry="start"', 'max-rounds="12"', 'max-minutes="60"', 'max-agent-runs="18"', 'max-check-runs="8"', 'max-transitions="40"', 'max-output-bytes="262144"',
-    'id="implement"', 'mode="task"', 'execution="managed"', 'intelligence="standard"', 'role="maker"', 'route="implementation.standard"', 'authority="write"', 'instructions="implement"', 'id="decompose"', 'id="integrate"', 'id="review"', 'mode="review"', 'role="reviewer"', 'route="review.strong"', 'authority="read"', 'independent-from="implement"', 'requires="fresh-session:enforced,filesystem-write-deny:supervised"', 'id="final-review"', 'independent-from="implement"', 'id="validate"', 'id="final-validate"', 'capability="repo-verify"', 'id="converged"', 'kind="convergence"', 'state="converged"', 'error="failed"', 'timeout="failed"', 'cancelled="stopped"', 'lost="needs-human"', 'exhausted="exhausted"', 'from="start"', 'on="complete"', 'to="decompose"',
+    'id="implement"', 'mode="task"', 'execution="host"', 'intelligence="standard"', 'role="maker"', 'route="implementation.standard"', 'authority="write"', 'instructions="implement"', 'id="decompose"', 'id="integrate"', 'id="review"', 'mode="review"', 'role="reviewer"', 'route="review.strong"', 'authority="read"', 'independent-from="implement"', 'requires="fresh-session:enforced,filesystem-write-deny:supervised"', 'id="final-review"', 'independent-from="implement"', 'id="validate"', 'id="final-validate"', 'capability="repo-verify"', 'id="converged"', 'kind="convergence"', 'state="converged"', 'error="failed"', 'timeout="failed"', 'cancelled="stopped"', 'lost="needs-human"', 'exhausted="exhausted"', 'from="start"', 'on="complete"', 'to="decompose"',
   ];
   for (const token of required) {
     const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace(token, "")) });
     assert.equal(result.ok, false, token); assert.ok(result.diagnostics.some((item) => item.code === "E_ATTRIBUTE_REQUIRED"), token);
   }
-  for (const [token, replacement] of [['mode="task"', 'mode="stage-two"'], ['execution="managed"', 'execution="remote"'], ['intelligence="standard"', 'intelligence="provider-name"'], ['role="maker"', 'role="planner"'], ['authority="write"', 'authority="admin"'], ['route="implementation.standard"', 'route="invalid..route"'], ['kind="convergence"', 'kind="metric"'], ['state="converged"', 'state="done"'], ['max-visits="3"', 'max-visits="0"']]) {
+  for (const [token, replacement] of [['mode="task"', 'mode="stage-two"'], ['execution="host"', 'execution="remote"'], ['intelligence="standard"', 'intelligence="provider-name"'], ['role="maker"', 'role="planner"'], ['authority="write"', 'authority="admin"'], ['route="implementation.standard"', 'route="invalid..route"'], ['kind="convergence"', 'kind="metric"'], ['state="converged"', 'state="done"'], ['max-visits="3"', 'max-visits="0"']]) {
     const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace(token, replacement)) });
     assert.equal(result.ok, false, replacement);
   }

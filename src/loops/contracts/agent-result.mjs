@@ -44,7 +44,7 @@ export function createInvocationInput(value) {
     || value.schema !== "burnlist-loop-invocation-input@1") fail("invalid invocation input");
   identity(value, "invocation input");
   if (!DIGESTS.item.test(value.itemRevision) || (Object.hasOwn(value, "execution")
-    && (!["managed", "host"].includes(value.execution) || !["fast", "standard", "strong", "critical"].includes(value.intelligence))) || !DIGESTS.raw.test(value.instructionDigest)
+    && (value.execution !== "host" || !["fast", "standard", "strong", "critical"].includes(value.intelligence))) || !DIGESTS.raw.test(value.instructionDigest)
     || !SLUG.test(value.nodeId) || !Array.isArray(value.reviewerEvidence) || value.reviewerEvidence.length > 50
     || !sortedUnique(value.reviewerEvidence) || !value.reviewerEvidence.every((ref) => DIGESTS.artifact.test(ref))) fail("invalid invocation evidence");
   const instruction = base64(value.instructionBytes, "instruction bytes", 65_536);

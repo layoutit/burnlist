@@ -5,7 +5,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { burnItem, closeLifecycle } from "../../cli/lifecycle-moves.mjs";
 import { prepareItemMutation, unassignLoopItem } from "../assignment/assignment.mjs";
-import { createProductionRun, createStoredProductionRunRunner } from "../run/binder.mjs";
+import { createProductionRun, createStoredSystemRunRunner } from "../run/binder.mjs";
+import { createLoopController } from "../run/controller.mjs";
+import { validateHostExecutionEnvelope } from "../contracts/host-execution.mjs";
 import { createProductionRunAuthority, fixtureItemRef, fixtureRunId } from "../run/run-test-fixtures.mjs";
 import { runStore } from "../run/run-store.mjs";
 import { completeLoopRun } from "./completion.mjs";
@@ -25,15 +27,21 @@ function unassignedContext(t) {
 async function converged(context, runId = fixtureRunId) {
   const store = runStore(context.repo);
   await createProductionRun({ repoRoot: context.repo, store, itemRef: fixtureItemRef, runId });
-  const counter = join(context.directory, `counter-${runId.slice(-4)}`); writeFileSync(counter, "0");
-  const before = [process.env.BURNLIST_FAKE_COUNTER, process.env.BURNLIST_FAKE_OUTCOMES];
-  process.env.BURNLIST_FAKE_COUNTER = counter; process.env.BURNLIST_FAKE_OUTCOMES = "complete,complete,complete,approve,complete,approve";
-  try { assert.equal((await createStoredProductionRunRunner({ repoRoot: context.repo, store, runId }).run()).projection.state, "converged"); }
-  finally {
-    for (const [key, value] of [["BURNLIST_FAKE_COUNTER", before[0]], ["BURNLIST_FAKE_OUTCOMES", before[1]]]) {
-      if (value === undefined) delete process.env[key]; else process.env[key] = value;
-    }
+  const controller = createLoopController({ store, repoRoot: context.repo,
+    runnerFor: (id) => createStoredSystemRunRunner({ repoRoot: context.repo, store, runId: id }) });
+  for (let attempts = 0; attempts < 8 && !store.read(runId).execution.terminal; attempts += 1) {
+    const claimed = controller.claim(runId), execution = validateHostExecutionEnvelope(claimed.envelope).value;
+    const outcome = store.read(runId).execution.node.mode === "task" ? "complete" : "approve";
+    const report = Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-host-report@1", result: {
+      schema: "agent-result@1", runId: execution.runId, nodeId: execution.nodeId,
+      attempt: execution.attempt, claimId: execution.claimId, assignmentId: execution.assignmentId,
+      invocationId: execution.invocationId, recipeRevision: execution.recipeRevision,
+      policyRevision: execution.policyRevision, inputCandidate: execution.inputCandidate,
+      outcome, findings: [], resolvedFindingIds: [],
+    }, telemetry: null })}\n`);
+    await controller.report(execution.claimId, report);
   }
+  assert.equal(store.read(runId).projection.state, "converged");
   return store;
 }
 function runPath(store, runId, name) { return join(store.paths.pathFor(runId), name); }
