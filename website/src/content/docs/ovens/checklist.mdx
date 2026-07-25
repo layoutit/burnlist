@@ -9,6 +9,10 @@ Checklist is the default queue-completion Oven. It observes a shrinking Markdown
 
 Canonical run state is `burnlist.md` with an ordered `## Active Checklist` and a terse `## Completed` ledger. The dashboard observes; it does not replace or silently mutate that state.
 
+Live item labels come from canonical Burnlist and Run/claim state, not queue
+position. See [Truthful item state](/dashboard#truthful-item-state) for the
+PENDING, ACTIVE, WAITING, BLOCKED, and COMPLETED contract.
+
 ## Direction
 
 Progress normally moves 0% → 100%. Completed count comes from the completed ledger, remaining from the active checklist, and total equals completed plus remaining.

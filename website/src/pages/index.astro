@@ -215,11 +215,11 @@ const skillUrl = new URL('/skill.md', Astro.site).toString();
         <h2 id="surfaces-title">One tracker, five surfaces</h2>
         <p class="section-lede">The same shrinking queue gives agents, repositories, and observers a clear, local view of the work.</p>
         <div class="grid">
-          <article class="card"><h3>CLI</h3><p>One command, <code>burnlist</code>, launches the loopback dashboard. Lifecycle verbs (<code>new</code>, <code>ready</code>, <code>start</code>, <code>burn</code>, <code>close</code>) plus protocol helpers (<code>--check</code>, <code>--digest</code>, <code>--stamp</code>) drive the burndown. Run <code>burnlist --help</code> for the full surface.</p></article>
-          <article class="card"><h3>Dashboard</h3><p>A read-only web observer. It scans the <code>notes/burnlists/</code> lifecycle folders across your registered repos and refreshes automatically. It never mutates canonical task state.</p></article>
-          <article class="card"><h3>Ovens</h3><p>Declarative, non-executable recipes for a Burn: two files — <code>instructions.md</code> (outcome + evidence rules) and <code>&lt;id&gt;.oven</code> (declarative detail-page source). Six built-in Ovens ship: Checklist, Differential Testing, Model Lab, Streaming Diff, Performance Tracing, and Visual Parity.</p></article>
+          <article class="card"><h3>CLI</h3><p>One command, <code>burnlist</code>, launches the loopback dashboard. Lifecycle verbs drive the burndown; <code>recommend</code> suggests an optional per-item control profile and next step. Run <code>burnlist --help</code> for the full surface.</p></article>
+          <article class="card"><h3>Dashboard</h3><p>A read-only web observer. It scans lifecycle folders across registered repos and separates canonical PENDING, ACTIVE, WAITING, BLOCKED, and COMPLETED state from bounded observations.</p></article>
+          <article class="card"><h3>Ovens</h3><p>Declarative, non-executable recipes for a Burn: <code>instructions.md</code> defines outcome and evidence rules; <code>&lt;id&gt;.oven</code> defines the view. The official catalog includes Checklist and Loop Progress lenses plus task-fit comparison, tracing, diff, and model views.</p></article>
           <article class="card"><h3>Skills</h3><p>A single agent skill owns the full Burnlist lifecycle — creation, hardening, execution, and maintenance — installable for both Claude and Codex, per-repo or global.</p></article>
-          <article class="card"><h3>Hooks</h3><p><code>burnlist hooks install --agent codex,claude</code> merges Streaming Diff commands into <code>.codex/hooks.json</code> and <code>.claude/settings.json</code>, preserving your existing hook entries.</p></article>
+          <article class="card"><h3>Hooks</h3><p><code>burnlist hooks install --agent codex,claude</code> adds optional Streaming Diff capture and bounded native observations. Hooks explain activity; they never create canonical state or complete work.</p></article>
         </div>
       </section>
 
@@ -229,7 +229,7 @@ const skillUrl = new URL('/skill.md', Astro.site).toString();
           <ol class="steps" aria-label="Burnlist folder lifecycle">
             <li class="step">draft/</li><li class="step">ready/</li><li class="step">inprogress/</li><li class="step">completed/</li>
           </ol>
-          <p>Ready work moves to <code>inprogress</code> before execution and to <code>completed</code> once the active queue is empty. Each active item is validated before it leaves the checklist: the agent appends a terse completion record, deletes the item, then re-checks the Burnlist. <code>burnlist.md</code> is the canonical shrinking queue; <code>goal.md</code> holds the stable contract.</p>
+          <p>Ready work moves to <code>inprogress</code> before execution and to <code>completed</code> once the active queue is empty. Queue position does not imply live execution. Direct items burn atomically after validation; assigned items leave only through a converged Loop Run. <code>burnlist.md</code> is the canonical shrinking queue; <code>goal.md</code> holds the stable contract.</p>
           <p class="flow-caption">new → ready → start → burn → close</p>
         </div>
       </section>

@@ -37,6 +37,28 @@ These commands act on the current repository by default, or on an explicit `--re
 | `burnlist burn <id> <item> [--check] [--repo <path>]` | Complete a Burnlist item; `--check` validates it. |
 | `burnlist close <id> [--repo <path>]` | Close a completed Burnlist. |
 
+Lifecycle commands print the next useful command and the canonical local
+dashboard URL when one is available. `show <id>#<item>` also prints the stable
+item deep link.
+
+## Operational recommendation
+
+```sh
+burnlist recommend <id>#<item> [--json] [--repo <path>]
+```
+
+`recommend` reads one item from the Active Checklist and deterministically
+suggests the lightest fitting control. It reports direct work or a `gate`,
+`review`, or `branch` Loop; a provider-neutral model class and effort; P0–P4
+review handling; a task-fit metric or Oven signal; a coarse-to-fine sequence;
+and observable costs worth optimizing.
+
+The result is advisory: the user may accept, change, or ignore it. Burnlist
+does not select, install, authenticate, or launch a model provider. Human
+output ends with an actionable `Next:` command plus the canonical
+`Dashboard:` URL. `--json` emits
+`burnlist-operational-recommendation@1` for tooling.
+
 ## Loops
 
 ```sh
@@ -44,10 +66,13 @@ burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
 burnlist loop unassign <ItemRef> [--repo <path>]
 burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
 burnlist loop create <ItemRef> [--repo <path>]
-burnlist loop next|claim <RunRef> [--repo <path>]
-burnlist loop report <ClaimRef> --result <file> [--repo <path>]
+burnlist loop next <RunRef> [--repo <path>]
+burnlist loop submit <RunRef> (--outcome <complete|approve|reject|escalate> | --result <file>) [--repo <path>]
+burnlist loop claim <RunRef> [--repo <path>] # recovery/diagnostics
+burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
 burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
-burnlist loop pause|stop|complete <RunRef> [--repo <path>]
+burnlist loop pause|stop <RunRef> [--repo <path>] # idle Run only
+burnlist loop complete <RunRef> [--repo <path>]
 burnlist loop list [--repo <path>]
 burnlist loop status|inspect <RunRef> [--repo <path>]
 burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
@@ -60,10 +85,11 @@ An item either runs directly with no assignment or uses one of exactly three
 built-ins: `loop:builtin:review`, `loop:builtin:gate`, or
 `loop:builtin:branch`. Branch fan-out is orchestrated by the current host;
 Burnlist does not schedule branch workers. Agent providers are invoked by the
-host, never by Burnlist. `loop view` is deterministic ASCII graph output;
-`claim` and `report` cross the provider boundary, and reporting advances
-trusted checks and gates. Only `loop complete` applies a converged Run to the
-Burnlist. See [Loops](/loops).
+host, never by Burnlist. In the normal flow, `next` returns a small prepared
+host task and `submit` returns its semantic outcome by RunRef; Burnlist then
+advances trusted checks and gates. `claim`, `report`, `abandon`, and
+`reconcile` expose lower-level recovery and diagnostics. Only `loop complete`
+applies a converged Run to the Burnlist. See [Loops](/loops).
 
 ## Registry
 
@@ -79,7 +105,7 @@ burnlist init [path] [--track]
 ## Ovens
 
 ```sh
-burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|create|update|fork> ...
+burnlist oven <list|view|use|set|bind|unbind|bindings|event|adopt|upgrade|create|update|fork> ...
 ```
 
 Author and inspect Ovens. Ovens carry an `id@version` identity and can be vendored and pinned per project with `adopt` (committed under `.burnlist/ovens/<id>/`) and opt-in `upgrade`.
@@ -117,6 +143,8 @@ burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]
 ```
 
 Independent of Skills above. See [Install](/install).
+Hooks publish bounded observations only; they cannot advance a Loop or change
+canonical item state.
 
 ## Differential Testing
 

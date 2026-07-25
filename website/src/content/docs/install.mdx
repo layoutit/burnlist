@@ -5,7 +5,11 @@ description: Install the Burnlist CLI, the agent skill, and the Streaming Diff h
 
 Burnlist requires Node.js 18 or newer. It has zero runtime dependencies: it uses pure Node built-ins and ES modules.
 
-Burnlist has two independent, optional integrations on top of the CLI: the **skill**, which teaches an agent to create and execute Burnlists, and the **hooks**, which capture edit activity for Streaming Diff. Installing one does not install, require, or remove the other — install one, the other, or both.
+Burnlist has two independent, optional integrations on top of the CLI: the
+**skill**, which teaches an agent to create and execute Burnlists, and the
+**hooks**, which capture edit activity for Streaming Diff plus bounded native
+agent observations. Installing one does not install, require, or remove the
+other—install one, the other, or both.
 
 ## Install the CLI
 
@@ -39,9 +43,10 @@ Two ways to get the skill in front of an agent:
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow, while the CLI provides the dashboard and protocol helpers.
 
-## The hooks system (optional, independent of the skill)
+## The hooks system (optional, observational)
 
-Streaming Diff hooks are optional and installed per-agent, separately from the skill above. You can install them for Codex, Claude, or both:
+Hooks are repository-only and installed per-agent, separately from the skill
+above. There is no global hook mode:
 
 ```sh
 burnlist hooks install --agent codex,claude
@@ -49,9 +54,24 @@ burnlist hooks status
 burnlist hooks uninstall --agent codex,claude
 ```
 
-Installation merges local Streaming Diff commands into `.codex/hooks.json` and `.claude/settings.json`, preserving existing hook entries. Hooks use the portable `burnlist` command from `PATH`.
+Installation merges managed Streaming Diff and `burnlist hooks observe`
+commands into `.codex/hooks.json` and `.claude/settings.json`, preserving
+unrelated entries. Hooks use the portable `burnlist` command from `PATH`;
+Codex hook support requires Codex CLI 0.124.0 or newer.
 
-The agent remains responsible for any first-run hook trust or consent prompt; Burnlist only writes configuration. `burnlist hooks status` reports whether each config is tracked (shared) or local. `--agent codex,claude` selects agents, and `--untracked` is available for untracked handling.
+Observations retain only bounded lifecycle, hashed session/agent identity,
+tool name, contained paths, timing, model, effort, and token usage when the
+native payload provides them. They may refine an already ACTIVE item to
+**progressing**, but cannot create canonical state, report a semantic outcome,
+advance a Loop, satisfy a gate, or complete work. See
+[Observation is not canonical state](/dashboard#observation-is-not-canonical-state).
+
+The agent remains responsible for any first-run hook trust or consent prompt;
+Burnlist only writes configuration. `burnlist hooks status` reports each
+selected agent's installed/partial/corrupt state, CLI capability, inspected
+config path, and whether the config is tracked (shared) or local.
+`--agent codex,claude` selects agents. `--untracked` requests a local exclude,
+but Git cannot hide a config that is already tracked.
 
 ## From a source checkout (optional)
 

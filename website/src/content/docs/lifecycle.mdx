@@ -3,7 +3,9 @@ title: Lifecycle
 description: How a Burnlist moves from draft to completed — and how an item burns down.
 ---
 
-A Burnlist's state **is** its location. Burnlist moves the whole folder through four lifecycle directories; the per-item work flows through five verbs.
+A Burnlist's state **is** its location. Burnlist moves the whole folder through
+four lifecycle directories; five lifecycle verbs create, ready, start, burn
+direct items, and close the plan.
 
 ## Folder lifecycle
 
@@ -48,9 +50,22 @@ See the [CLI reference](/cli).
 
 An active item is a `- [ ] <id> | <title>` line with indented `Files/search`, `Action`, `Done/delete when`, and `Validate` fields. Completed work becomes a single terse ledger line under `## Completed`.
 
-## The burn transaction
+## Queue state is not execution state
 
-Perform this transaction atomically:
+`## Active Checklist` means work remains. Its first item is the current queue
+position, but that alone does not mean an agent or Loop Run is executing it.
+An assigned-but-unstarted item is still `PENDING`; a direct item has no Loop
+assignment at all. The dashboard derives PENDING, ACTIVE, WAITING, BLOCKED,
+and COMPLETED from canonical Burnlist and Run/claim state—see
+[Truthful item state](/dashboard#truthful-item-state).
+
+Direct items use the ordinary `burn` transaction below. Assigned items leave
+the queue only through `burnlist loop complete` after their frozen Run
+converges.
+
+## The direct burn transaction
+
+`burnlist burn` performs this transaction atomically for an unassigned item:
 
 1. Validate the active item.
 2. Generate a local ISO timestamp mechanically with `burnlist --stamp`.

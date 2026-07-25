@@ -15,6 +15,23 @@ Burnlist has zero runtime dependencies: it uses pure Node built-ins and ES modul
 
 To design an Oven that measures honest evidence, see [Designing Ovens](/ovens/designing-ovens).
 
+## Soft orchestration, end to end first
+
+Burnlist coordinates task state, optional [Loops](/loops), proof, and
+observation without taking over the project. The repository still owns its
+architecture, implementation strategy, tests, domain tools, deployment, and
+proof authority.
+
+Unless the repository or user chose another order, work coarse to fine:
+
+1. Establish the thinnest path that reaches the real end-to-end outcome.
+2. Prove that path with the declared repository check and, when useful, a
+   user-approved Oven signal.
+3. Refine internal layers, edge cases, performance, and polish without
+   replacing the working vertical slice.
+
+This is a default execution shape, not a command to restructure the project.
+
 ## Explore the CLI
 
 Install the CLI, initialize the repository, then create a burnlist. Use the built-in help to see every available command.
@@ -26,6 +43,11 @@ burnlist --help
 burnlist new
 ```
 
+For an item still in the Active Checklist,
+`burnlist recommend <id>#<item>` prints an optional control profile and the
+next command; see the
+[CLI reference](/cli#operational-recommendation).
+
 The core workflow moves a burnlist item through its lifecycle:
 
 `new` → `ready` → `start` → `burn` → `close`
@@ -36,4 +58,8 @@ You can also launch the dashboard server with `burnlist`, create a workspace wit
 
 ## Coming next
 
-Upcoming sections cover the [CLI](/cli), [Ovens](/ovens), and the [Dashboard](/dashboard). Burnlist also includes `burnlist oven <list|view|use|set|bind|create|update|...>`, `burnlist differential-testing ...`, and `burnlist streaming-diff ...` commands.
+Continue with the [CLI](/cli), [Loops](/loops), [Ovens](/ovens), and the
+[Dashboard](/dashboard). Burnlist also includes
+`burnlist oven <list|view|use|set|bind|create|update|...>`,
+`burnlist differential-testing ...`, and `burnlist streaming-diff ...`
+commands.
