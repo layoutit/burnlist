@@ -63,8 +63,25 @@ export function layoutSerialCompact(
   const available = Math.max(24, options.availableCharacters ?? 72);
   const destinations = [...new Set(feedback.map((edge) => edge.to))];
   const leftMargin = destinations.length ? destinations.length * 2 + 2 : 0;
-  const capacity = Math.max(2, Math.floor((available - leftMargin + slot) / slot));
-  const rowCount = Math.ceil(path.length / capacity);
+  const minimumRows = path.length >= 7 ? 2 : 1;
+  const candidates = Array.from(
+    { length: Math.min(5, Math.ceil(path.length / 2)) - minimumRows + 1 },
+    (_, index) => minimumRows + index,
+  );
+  const rowCount = candidates.map((rows) => {
+    const columns = Math.ceil(path.length / rows);
+    const estimatedWidth = leftMargin + (columns - 1) * slot + 2;
+    const estimatedHeight = rows * 5;
+    const overflow = Math.max(0, estimatedWidth - available);
+    const aspect = estimatedWidth / Math.max(1, estimatedHeight * 2);
+    const emptySlots = rows * columns - path.length;
+    return {
+      rows,
+      score: overflow * 1_000
+        + Math.abs(Math.log(Math.max(.01, aspect) / 2.2)) * 20
+        + emptySlots * 1.5 + rows * .15,
+    };
+  }).sort((left, right) => left.score - right.score || left.rows - right.rows)[0].rows;
   const perRow = Math.ceil(path.length / rowCount);
   const rowHeight = 4 + Math.max(0, ...Array.from({ length: rowCount }, (_, row) =>
     feedback.filter((edge) => Math.floor(pathIndex.get(edge.from)! / perRow) === row).length));

@@ -137,8 +137,10 @@ test("compact topology keeps the serial dogfood Loop labelled within tablet widt
   assert.ok(drawing.split("\n").length < 14);
   assert.doesNotMatch(drawing, /┬─┬/u);
   const wide = layoutCompactLoop(run, { availableCharacters: 100, showLabels: true });
+  const extraWide = layoutCompactLoop(run, { availableCharacters: 180, showLabels: true });
   const narrow = layoutCompactLoop(run, { availableCharacters: 48, showLabels: true });
   assert.ok(Math.max(...wide.lines.map((line) => line.length)) <= 100);
   assert.ok(Math.max(...narrow.lines.map((line) => line.length)) <= 48);
   assert.ok(narrow.lines.length > wide.lines.length);
+  assert.ok(new Set([...extraWide.positions.values()].map((position) => position.y)).size >= 2);
 });
