@@ -9,6 +9,11 @@ import { runtimeCollectionPage } from "../../../dashboard/src/oven/runtime/oven-
 // @ts-expect-error Console source remains JavaScript by design.
 import { parseRoute, repoOvenHref } from "../../../dashboard/src/lib/route-model.mjs";
 import { adaptOvenDefinition, definitionChangeInvalidates, ovenDataPath, ovenDefinitionPath, ovenPageEnvelope, ovenScopeKey } from "./definition-adapter";
+import { adaptChecklist } from "../../../dashboard/src/lib/checklist-adapter";
+import { admitTerminalOven } from "./terminal-contract";
+import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./components/terminal-capabilities";
+// @ts-expect-error Server fixture is production JavaScript by design.
+import { httpGet, withServer } from "../../../src/server/dashboard-routes-fixtures.mjs";
 
 const revision = `o1-sha256:${"a".repeat(64)}`;
 const source = readFileSync(new URL("../../../ovens/checklist/checklist.oven", import.meta.url), "utf8").replace('id="checklist"', 'id="shared"');
@@ -54,5 +59,17 @@ describe("terminal definition adapter correspondence", () => {
     expect(() => adaptOvenDefinition({ oven: { ...detail, name: "\u001b[2Jspoof", repoKey: "repo-a", ovenRevision: revision, ir } }, scope)).toThrow("package detail");
     expect(() => adaptOvenDefinition({ oven: { ...detail, id: "other", repoKey: "repo-a", ovenRevision: revision, ir: { ...ir, id: "other" } } }, scope)).toThrow("runtime definition");
     expect(() => adaptOvenDefinition({ oven: { ...detail, repoKey: "repo-a", ovenRevision: revision, ir: { ...ir, root: [null] } } }, scope)).toThrow("runtime definition");
+  });
+
+  test("admits a live Checklist definition and adapted progress through the terminal runtime", async () => {
+    await withServer({ withBurnlist: true }, async ({ baseUrl, planPath }: { baseUrl: string; planPath: string }) => {
+      const landing = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body);
+      const repoKey = landing.burnlists[0]!.repoKey;
+      const definition = adaptOvenDefinition(JSON.parse((await httpGet(baseUrl, `/api/ovens/checklist?repoKey=${repoKey}`)).body), { ovenId: "checklist", repoKey });
+      const progress = JSON.parse((await httpGet(baseUrl, `/api/progress?plan=${encodeURIComponent(planPath)}`)).body);
+      const payload = JSON.parse(JSON.stringify(adaptChecklist({ ...progress, history: progress.history ?? [], active: progress.active.map((item: { fields?: Record<string, string> }) => ({ ...item, fields: item.fields ?? {} })), completed: progress.completed.map((item: { detail?: string }) => ({ ...item, detail: item.detail ?? "" })) })));
+      const result = admitTerminalOven(definition.ir, { status: "ready", payload }, { viewport: { width: 80, height: 24 } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+      expect(result.status, JSON.stringify(result.diagnostics)).toBe("ready");
+    });
   });
 });

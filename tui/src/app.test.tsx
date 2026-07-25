@@ -130,7 +130,7 @@ describe("TUI navigation stack", () => {
     await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("Completion 1/2"));
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     await key(setup, "RETURN");
-    await setup.waitForFrame((frame) => frame.includes("Finish navigation.") && frame.includes("previous/next"));
+    await setup.waitForFrame((frame) => frame.includes("Finish navigation.") && frame.includes("scroll detail"));
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("enter:item"));
     await key(setup, "q");
@@ -245,6 +245,10 @@ describe("TUI navigation stack", () => {
     await setup.waitForFrame((frame) => frame.includes("Demo Burnlist")); await key(setup, "RETURN");
     await new Promise((resolve) => setTimeout(resolve, 30));
     const beforeTyping = requests.length;
+    await key(setup, "x"); await key(setup, "q"); await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(requests.length).toBe(beforeTyping);
+    await key(setup, "ESCAPE"); await new Promise((resolve) => setTimeout(resolve, 180));
+    expect(requests.length).toBe(beforeTyping);
     await key(setup, "x"); await key(setup, "q"); await key(setup, "r"); await key(setup, "o"); await key(setup, "ESCAPE"); await new Promise((resolve) => setTimeout(resolve, 200));
     expect(requests.length).toBe(beforeTyping);
     await key(setup, "x"); await key(setup, "q"); await key(setup, "r"); await key(setup, "o"); await key(setup, "BACKSPACE"); await key(setup, "a"); await key(setup, "RETURN"); await key(setup, "f"); await key(setup, "s"); await key(setup, "m"); await key(setup, "n"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z"); await new Promise((resolve) => setTimeout(resolve, 30)); await key(setup, "z");

@@ -35,6 +35,7 @@ export interface ScreenRuntimeProps {
   ovenData: OvenDataSnapshot | null;
   selectedItem: DetailItem | null;
   itemIndex: number;
+  itemDetailScroll?: number;
   domainIndex: number;
   focusId: string;
   selections: Record<string, number>;
@@ -93,6 +94,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
       <ItemDetail
         item={props.selectedItem}
         width={collapsed ? width : width - summaryWidth}
+        height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
       />
     </box>
   </box>;
@@ -153,7 +155,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       if (props.ovenRuntime) return <CatalogOvenRuntime key={key} summary={props.activeOven} detail={props.ovenDetail} result={props.ovenRuntime} height={height - 3} width={width} footer={officialOvenFixture(props.activeOven?.id)?.footer ?? "q:back"} />;
       return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} width={width} />;
     case "item-detail":
-      return <ItemDetail key={key} item={props.selectedItem} width={width} />;
+      return <ItemDetail key={key} item={props.selectedItem} width={width} height={Math.max(1, height - 3)} scrollOffset={props.itemDetailScroll} />;
     case "footer":
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
         <text fg={palette.dim}>{fitText(String(node.attributes.hints), Math.max(1, width - 6)).trimEnd()}</text>

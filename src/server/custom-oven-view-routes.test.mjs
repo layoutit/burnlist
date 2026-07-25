@@ -24,7 +24,15 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
 
     const ovenResponse = await httpGet(baseUrl, `/api/ovens/widget-oven${query}`);
     assert.equal(ovenResponse.status, 200);
-    assert.equal(JSON.parse(ovenResponse.body).oven.ir.id, "widget-oven");
+    const definition = JSON.parse(ovenResponse.body).oven;
+    assert.equal(definition.ir.id, "widget-oven");
+    assert.equal(definition.version, "0.1.0");
+    assert.equal(definition.contract, "checklist-progress@1");
+    assert.equal(definition.dataInput, "json-payload");
+    assert.equal(definition.repoKey, repoKey);
+    for (const field of ["id", "name", "description", "version", "contract", "dataInput", "instructions", "oven", "ovenRevision", "ir"]) {
+      assert.ok(Object.hasOwn(definition, field), `terminal definition envelope is missing ${field}`);
+    }
 
     const dataResponse = await httpGet(baseUrl, `/api/oven-data/widget-oven${query}`);
     assert.equal(dataResponse.status, 200);

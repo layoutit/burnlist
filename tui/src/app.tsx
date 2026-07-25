@@ -1,4 +1,4 @@
-import { useKeyboard } from "@opentui/react";
+import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { compileGlyph, type GlyphScreen } from "../../src/glyph/glyph-compile.mjs";
 import burnlistSource from "../screens/burnlist.glyph" with { type: "text" };
@@ -19,6 +19,7 @@ import { initTerminalRuntime, reduceTerminalRuntime, type TerminalRuntimeAction,
 import { orderedBurnlists } from "./landing-groups";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
+import { itemDetailMaxOffset } from "./item-view";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "./oven-runtime/terminal-contract";
 import { initStreamingDiffNavigation, reduceStreamingDiffNavigation, type StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import { useStreamingDiffSession } from "./use-streaming-diff-session";
@@ -40,12 +41,22 @@ const screens = {
   item: screen(itemSource, "item.glyph"),
 };
 type View = keyof typeof screens;
+function terminalChecklistPayload(progress: ProgressSnapshot): JsonValue {
+  const payload = adaptChecklist({
+    ...progress,
+    history: progress.history ?? [],
+    active: progress.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
+    completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
+  });
+  return JSON.parse(JSON.stringify(payload)) as JsonValue;
+}
 export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): void }) {
+  const dimensions = useTerminalDimensions();
   const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
   const [landing, setLanding] = useState(emptyLanding); const [progress, setProgress] = useState<ProgressSnapshot | null>(null);
   const [ovenData, setOvenData] = useState<OvenDataSnapshot | null>(null); const [ovenDetail, setOvenDetail] = useState<OvenPackageDetail | null>(null);
   const [navigation, setNavigation] = useState<View[]>(["home"]); const [selectedBurnlist, setSelectedBurnlist] = useState<BurnlistSummary | null>(null); const [activeOven, setActiveOven] = useState<OvenSummary | null>(null);
-  const [selections, setSelections] = useState<Record<string, number>>({ burnlists: 0, ovens: 0 }); const [itemIndex, setItemIndex] = useState(0); const [domainIndex, setDomainIndex] = useState(0);
+  const [selections, setSelections] = useState<Record<string, number>>({ burnlists: 0, ovens: 0 }); const [itemIndex, setItemIndex] = useState(0); const [itemDetailScroll, setItemDetailScroll] = useState(0); const [domainIndex, setDomainIndex] = useState(0);
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
   const [activeLive, setActiveLive] = useState<LiveSnapshot<true>>(initialLiveSnapshot());
@@ -80,12 +91,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const selectedItem = items[safeItemIndex] ?? null;
   const ovenRuntime = useMemo(() => {
     if (!ovenDetail) return null;
-    const payload = activeOven?.contract === "checklist-progress@1" && progress ? adaptChecklist({
-      ...progress,
-      history: progress.history ?? [],
-      active: progress.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
-      completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
-    }) : displayData?.payload;
+    const payload = activeOven?.contract === "checklist-progress@1" && progress ? terminalChecklistPayload(progress) : displayData?.payload;
     if (payload === undefined) return null;
     return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, terminalState ?? undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   }, [activeOven?.contract, displayData?.payload, ovenDetail, progress, terminalState]);
@@ -140,7 +146,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
         if (!request.owns()) return;
         setProgress(progressResponse.data);
         setOvenDetail(definitionResponse.data);
-        acceptTerminalPayload(definitionResponse.data, adaptChecklist({ ...progressResponse.data, history: progressResponse.data.history ?? [], active: progressResponse.data.active.map((item) => ({ ...item, fields: item.fields ?? {} })), completed: progressResponse.data.completed.map((item) => ({ ...item, detail: item.detail ?? "" })) }) as JsonValue, JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
+        acceptTerminalPayload(definitionResponse.data, terminalChecklistPayload(progressResponse.data), JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
         if (!sameSelection) setDomainIndex(0);
         setActiveLive((current) => reduceLiveSnapshot(current, progressResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       } else if (oven) {
@@ -218,9 +224,8 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     const key = JSON.stringify([selectedBurnlist.repoKey, activeOven.id, ovenDetail.repoKey, query]);
     if (terminalQueryRef.current === key) return;
     const search = (ovenDetail.ir as unknown as TerminalOvenIR).controls.find((control) => control.kind === "search");
-    const previous = deferredQueryRef.current;
     deferredQueryRef.current = key;
-    const delay = searchControlId && previous && search && typeof search.debounceMs === "number" ? Math.max(0, Math.min(search.debounceMs, 1000)) : 0;
+    const delay = searchControlId && search && typeof search.debounceMs === "number" ? Math.max(0, Math.min(search.debounceMs, 1000)) : 0;
     const timer = setTimeout(() => { if (deferredQueryRef.current !== key || terminalQueryRef.current === key) return; terminalQueryRef.current = key; void loadBurnlist(selectedBurnlist, activeOven, false); }, delay);
     return () => clearTimeout(timer);
   }, [activeOven, loadBurnlist, ovenDetail, searchControlId, searchFlush, selectedBurnlist, terminalState]);
@@ -396,7 +401,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (view === "burnlist") {
       if (key.name === "up" && items.length) return moveItem(-1);
       if (key.name === "down" && items.length) return moveItem(1);
-      if ((key.name === "return" || key.name === "enter") && selectedItem) return pushView("item");
+      if ((key.name === "return" || key.name === "enter") && selectedItem) { setItemDetailScroll(0); return pushView("item"); }
       if (key.sequence === "[") return cycleLens(-1);
       if (key.sequence === "]") return cycleLens(1);
       if ((key.name === "left" || key.name === "right") && selectModelLabFrame(key.name === "left" ? -1 : 1)) return;
@@ -409,8 +414,8 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "item") {
-      if (key.name === "up") return moveItem(-1);
-      if (key.name === "down") return moveItem(1);
+      if (key.name === "up") return setItemDetailScroll((offset) => Math.max(0, offset - 1));
+      if (key.name === "down") return setItemDetailScroll((offset) => Math.min(itemDetailMaxOffset(selectedItem, dimensions.width, Math.max(1, dimensions.height - 3)), offset + 1));
     }
   });
   const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const }
@@ -426,6 +431,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     ovenData={ovenData}
     selectedItem={selectedItem}
     itemIndex={safeItemIndex}
+    itemDetailScroll={itemDetailScroll}
     domainIndex={domainIndex}
     focusId={view === "ovens" ? "ovens" : view === "home" ? "burnlists" : "items"}
     selections={selections}

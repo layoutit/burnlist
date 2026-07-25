@@ -71,6 +71,9 @@ jobs:
           npm run build:tui
           npm run build:catalog:tui
 
+      - name: Fast terminal verification
+        run: npm run verify:fast
+
       - name: Verify installed current-host package
         run: |
           npm run verify:package

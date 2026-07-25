@@ -1265,7 +1265,9 @@ const server = createServer(async (req, res) => {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
       const oven = findOven(ovenRoute[1], selectedRepoKey(url));
       if (!oven) return json(res, 404, { error: "oven not found" });
-      json(res, 200, { oven });
+      // Keep the raw definition fields (IR, source, path, and lineage) while
+      // projecting the same terminal-required summary contract as /api/ovens.
+      json(res, 200, { oven: { ...oven, ...ovenSummary(oven) } });
       return;
     }
     const ovenDataRoute = url.pathname.match(/^\/api\/oven-data\/([a-z0-9]+(?:-[a-z0-9]+)*)$/u);

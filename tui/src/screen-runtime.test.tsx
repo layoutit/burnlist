@@ -13,6 +13,7 @@ import ovenSource from "../screens/oven.glyph" with { type: "text" };
 import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { detailItems } from "./detail-items";
 import { ScreenRuntime, type ScreenRuntimeProps } from "./screen-runtime";
+import { itemDetailLines, itemDetailMaxOffset } from "./item-view";
 import type { BurnlistSummary, LandingSnapshot, OvenPackageDetail, ProgressSnapshot } from "./types";
 import { admitTerminalOven } from "./oven-runtime/terminal-contract";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components/terminal-capabilities";
@@ -245,6 +246,27 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("COMPLETION DETAIL");
     expect(frame).toContain("Animated with glyphcss.");
     root.unmount();
+  });
+
+  test("windows long canonical item detail without losing its tail or crossing the footer", async () => {
+    const detail = Array.from({ length: 12 }, (_, index) => `Completion line ${index + 1}: ${"long field body ".repeat(8)}${index === 11 ? "TAIL-SENTINEL" : ""}`).join("\n");
+    const item = { key: "tail-01", id: "tail-01", title: "A long item title that also wraps across narrow screens", kind: "completed" as const, status: "Completed", latest: false, completedAt: "2026-07-23T09:00:00Z", fields: { rationale: "A canonical field body that must remain reachable when wrapped into multiple viewport rows. ".repeat(8) }, detail };
+    for (const [width, height] of [[42, 18], [110, 34]] as const) {
+      const max = itemDetailMaxOffset(item, width, height - 3);
+      const middle = Math.min(max, itemDetailLines(item, width - 4).findIndex((line) => line.text.includes("Completion line 6")));
+      for (const offset of [0, middle, max]) {
+        const { frame, root } = await renderFrame(width, height, props({ screen: parsed(itemSource), selectedItem: item, itemDetailScroll: offset }));
+        const lines = frame.split("\n"), footer = lines.findIndex((line) => line.includes("scroll detail"));
+        expect(footer).toBe(height - 1);
+        expect(lines.slice(footer).join("\n")).not.toContain("TAIL-SENTINEL");
+        expect(lines.every((line) => Array.from(line).length <= width)).toBe(true);
+        if (offset === 0) expect(frame).toContain("RATIONALE");
+        if (offset === middle) expect(frame).toContain("Completion line 6");
+        if (offset === max) expect(frame).toContain("TAIL-SENTINEL");
+        if (max > 0) expect(frame).toContain(offset === 0 ? "↓ more" : offset === max ? "↑ more" : "↑ more · ↓ more");
+        root.unmount();
+      }
+    }
   });
 
   test("inspects a generic Oven package rather than an installed binding", async () => {
