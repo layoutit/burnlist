@@ -146,3 +146,58 @@ test("compact topology keeps the serial dogfood Loop labelled within tablet widt
   assert.ok(narrow.lines.length > wide.lines.length);
   assert.ok(new Set([...extraWide.positions.values()].map((position) => position.y)).size >= 2);
 });
+
+test("canonical review and branch loops use balanced rows with local feedback", () => {
+  const serial = (ids: string[], edges: LoopGraphProjection["graph"]["edges"]) => {
+    const run = projection({
+      graph: {
+        entry: "start",
+        nodes: ids.map((id) => ({
+          id,
+          kind: id === "validate" ? "check"
+            : id === "converged" ? "gate"
+              : id === "completed" ? "terminal" : "agent",
+          role: id === "review" ? "reviewer" : "maker",
+          terminalState: id === "completed" ? "converged" : undefined,
+        })),
+        edges,
+      },
+    });
+    return layoutCompactLoop(run, { availableCharacters: 72, showLabels: true }).lines;
+  };
+  const review = serial(
+    ["start", "implement", "validate", "review", "converged", "completed"],
+    [
+      { from: "start", on: "begin", to: "implement" },
+      { from: "implement", on: "complete", to: "validate" },
+      { from: "validate", on: "pass", to: "review" },
+      { from: "validate", on: "fail", to: "implement" },
+      { from: "review", on: "approve", to: "converged" },
+      { from: "review", on: "reject", to: "implement" },
+      { from: "converged", on: "pass", to: "completed" },
+    ],
+  );
+  const branch = serial(
+    ["start", "plan", "branches", "merge", "validate", "review", "converged", "completed"],
+    [
+      { from: "start", on: "begin", to: "plan" },
+      { from: "plan", on: "complete", to: "branches" },
+      { from: "branches", on: "complete", to: "merge" },
+      { from: "merge", on: "complete", to: "validate" },
+      { from: "validate", on: "pass", to: "review" },
+      { from: "validate", on: "fail", to: "branches" },
+      { from: "review", on: "approve", to: "converged" },
+      { from: "review", on: "reject", to: "plan" },
+      { from: "converged", on: "pass", to: "completed" },
+    ],
+  );
+  for (const lines of [review, branch]) {
+    assert.ok(Math.max(...lines.map((line) => line.length)) <= 72);
+    assert.ok(lines.length <= 7);
+    assert.doesNotMatch(lines.join("\n"), /^[┌├└]/mu);
+    assert.match(lines[0], /^S .*▶/u);
+    assert.match(lines.at(-1)!, /^\s*C .*G/u);
+  }
+  assert.match(review.join("\n"), /fail.*reject/su);
+  assert.match(branch.join("\n"), /fail.*reject|reject.*fail/su);
+});

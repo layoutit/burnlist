@@ -76,36 +76,31 @@ export function layoutSerialCompact(
     ? Math.max(0, ...primary.map((edge) => edge.on.length)) : 0;
   const slot = Math.max(9, labelWidth + 9, ...path.map((id) => symbols.get(id)!.length + 7));
   const available = Math.max(24, options.availableCharacters ?? 72);
-  const destinations = [...new Set(feedback.map((edge) => edge.to))];
-  const leftMargin = destinations.length ? destinations.length * 2 + 2 : 0;
-  const minimumRows = path.length >= 7 ? 2 : 1;
   const candidates = Array.from(
-    { length: Math.min(5, Math.ceil(path.length / 2)) - minimumRows + 1 },
-    (_, index) => minimumRows + index,
+    { length: Math.max(1, Math.min(5, path.length) - 1) },
+    (_, index) => index + 2,
   );
-  const rowCount = candidates.map((rows) => {
-    const columns = Math.ceil(path.length / rows);
-    const estimatedWidth = leftMargin + (columns - 1) * slot + 2;
+  const perRow = candidates.map((columns) => {
+    const rows = Math.ceil(path.length / columns);
+    const estimatedWidth = (columns - 1) * slot + 2;
     const estimatedHeight = rows * 5;
     const overflow = Math.max(0, estimatedWidth - available);
     const aspect = estimatedWidth / Math.max(1, estimatedHeight * 2);
-    const emptySlots = rows * columns - path.length;
     return {
-      rows,
+      columns,
       score: overflow * 1_000
         + Math.abs(Math.log(Math.max(.01, aspect) / 2.2)) * 20
-        + emptySlots * 1.5 + rows * .15,
+        + Math.abs(columns - 4) * 2 + rows * .15,
     };
-  }).sort((left, right) => left.score - right.score || left.rows - right.rows)[0].rows;
-  const perRow = Math.ceil(path.length / rowCount);
+  }).sort((left, right) => left.score - right.score || right.columns - left.columns)[0].columns;
+  const rowCount = Math.ceil(path.length / perRow);
   const rowHeight = 4 + Math.max(0, ...Array.from({ length: rowCount }, (_, row) =>
-    feedback.filter((edge) => Math.floor(pathIndex.get(edge.from)! / perRow) === row).length));
+    feedback.filter((edge) => Math.floor(pathIndex.get(edge.to)! / perRow) === row).length));
   const positions = new Map<string, Position>();
   path.forEach((id, index) => {
     const row = Math.floor(index / perRow), offset = index % perRow;
-    const count = Math.min(perRow, path.length - row * perRow);
-    const column = row % 2 ? count - offset - 1 : offset;
-    positions.set(id, { x: leftMargin + column * slot, y: row * rowHeight });
+    const column = row % 2 ? perRow - offset - 1 : offset;
+    positions.set(id, { x: column * slot, y: row * rowHeight });
   });
   const width = Math.min(available, Math.max(...[...positions.values()].map((point) => point.x)) + slot);
   const graph = canvas(rowCount * rowHeight, width);
@@ -125,21 +120,20 @@ export function layoutSerialCompact(
     }
   });
 
-  const rails = new Map(destinations.map((id, index) => [id, index * 2]));
-  const sourceOffsets = new Map<number, number>();
+  const targetRowOffsets = new Map<number, number>();
   feedback.forEach((edge) => {
     const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
-    const row = Math.floor(pathIndex.get(edge.from)! / perRow);
-    const offset = sourceOffsets.get(row) ?? 0;
-    sourceOffsets.set(row, offset + 1);
-    const sourceY = from.y + 2 + offset, railX = rails.get(edge.to)!;
-    graph.vertical(from.x, from.y + 1, sourceY);
-    graph.horizontal(railX, from.x, sourceY);
-    graph.vertical(railX, to.y + 1, sourceY);
-    graph.horizontal(railX, to.x, to.y + 1);
+    const targetRow = Math.floor(pathIndex.get(edge.to)! / perRow);
+    const offset = targetRowOffsets.get(targetRow) ?? 0;
+    targetRowOffsets.set(targetRow, offset + 1);
+    const feedbackY = to.y + 2 + offset;
+    const fromAttachY = feedbackY < from.y ? from.y - 1 : from.y + 1;
+    graph.vertical(from.x, Math.min(fromAttachY, feedbackY), Math.max(fromAttachY, feedbackY));
+    graph.horizontal(to.x, from.x, feedbackY);
+    graph.vertical(to.x, to.y + 1, feedbackY);
     graph.put(to.x, to.y + 1, "▲");
     if (options.showLabels)
-      placeHorizontalLabel(graph, railX, from.x, sourceY, edge.on);
+      placeHorizontalLabel(graph, to.x, from.x, feedbackY, edge.on);
   });
 
   for (const [id, position] of positions) graph.text(position.x, position.y, symbols.get(id)!);
