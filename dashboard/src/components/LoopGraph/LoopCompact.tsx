@@ -11,39 +11,27 @@ export type LoopCompactProps = {
 };
 
 function semanticTopology(run: LoopGraphProjection) {
-  const convergence = new Set(run.graph.nodes
-    .filter((node) => node.kind === "gate" && node.gateKind === "convergence")
-    .map((node) => node.id));
   const exceptional = new Set(run.graph.nodes
     .filter((node) => node.kind === "terminal" && node.terminalState !== "converged")
     .map((node) => node.id));
-  const passTarget = new Map([...convergence].map((id) => [
-    id,
-    run.graph.edges.find((edge) => edge.from === id && edge.on === "pass")?.to,
-  ]));
-  const nodes = run.graph.nodes.filter((node) => !convergence.has(node.id) && !exceptional.has(node.id));
+  const nodes = run.graph.nodes.filter((node) => !exceptional.has(node.id));
   const nodeIds = new Set(nodes.map((node) => node.id));
-  const edges = run.graph.edges.flatMap((edge) => {
-    if (convergence.has(edge.from) || exceptional.has(edge.from) || exceptional.has(edge.to)) return [];
-    const to = convergence.has(edge.to) ? passTarget.get(edge.to) : edge.to;
-    return to && nodeIds.has(edge.from) && nodeIds.has(to) ? [{ ...edge, to }] : [];
-  });
-  const currentNode = convergence.has(run.currentNode)
-    ? passTarget.get(run.currentNode) ?? run.currentNode
-    : run.currentNode;
-  return { graph: { ...run.graph, nodes, edges }, currentNode };
+  const edges = run.graph.edges.filter((edge) =>
+    nodeIds.has(edge.from) && nodeIds.has(edge.to));
+  return { graph: { ...run.graph, nodes, edges }, currentNode: run.currentNode };
 }
 
 export function itemTopologyProjection(run: LoopGraphProjection): LoopGraphProjection {
   const semantic = semanticTopology(run);
+  const hasStart = semantic.graph.nodes.some((node) => node.id === "start");
   return {
     ...run,
     currentNode: semantic.currentNode,
     graph: {
       ...semantic.graph,
-      entry: "start",
-      nodes: [{ id: "start", kind: "terminal" }, ...semantic.graph.nodes],
-      edges: [{ from: "start", on: "begin", to: semantic.graph.entry ?? semantic.graph.nodes[0]?.id ?? "burn" }, ...semantic.graph.edges],
+      entry: hasStart ? semantic.graph.entry ?? "start" : "start",
+      nodes: hasStart ? semantic.graph.nodes : [{ id: "start", kind: "terminal" }, ...semantic.graph.nodes],
+      edges: hasStart ? semantic.graph.edges : [{ from: "start", on: "begin", to: semantic.graph.entry ?? semantic.graph.nodes[0]?.id ?? "burn" }, ...semantic.graph.edges],
     },
   };
 }

@@ -282,7 +282,10 @@ async function revalidateLeafBoundary(snapshot, output) {
   }
 }
 
-export async function readPackageDirectory(directory, { beforeLeafRead, afterLeafOpenForTest } = {}) {
+export async function readPackageDirectory(directory, { beforeLeafRead, afterLeafOpenForTest, loopFile = "review.loop" } = {}) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.loop$/u.test(loopFile)) throw new TypeError("Invalid Loop package source name");
+  const knownRoot = new Set([loopFile, "instructions.md", "example"]);
+  const fileLimits = { [loopFile]: 65536, "instructions.md": 262144, "example/item.md": 65536 };
   const diagnostics = [];
   const files = {};
   const root = await snapshotDirectory("", directory, diagnostics);
@@ -294,7 +297,7 @@ export async function readPackageDirectory(directory, { beforeLeafRead, afterLea
 
   for (const name of root.entries) {
     const full = join(directory, name);
-    if (!KNOWN_ROOT.has(name)) {
+    if (!knownRoot.has(name)) {
       addDiagnostic(diagnostics, name, "E_PACKAGE_PATH", "Unknown package file");
       continue;
     }
@@ -318,7 +321,7 @@ export async function readPackageDirectory(directory, { beforeLeafRead, afterLea
       continue;
     }
 
-    const snapshot = await snapshotLeaf(full, name, diagnostics, [{ path: directory, stat: root.stat }], FILE_LIMITS[name]);
+    const snapshot = await snapshotLeaf(full, name, diagnostics, [{ path: directory, stat: root.stat }], fileLimits[name]);
     if (!snapshot) continue;
     leaves.push(snapshot);
   }
@@ -336,7 +339,7 @@ export async function readPackageDirectory(directory, { beforeLeafRead, afterLea
 
   const rootAfter = await snapshotDirectory("", directory, diagnostics);
   if (rootAfter) {
-    compareDirectory(root, rootAfter, diagnostics, (name) => KNOWN_ROOT.has(name));
+    compareDirectory(root, rootAfter, diagnostics, (name) => knownRoot.has(name));
   }
 
   if (examplePath) {

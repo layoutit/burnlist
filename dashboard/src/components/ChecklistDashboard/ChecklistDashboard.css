@@ -216,6 +216,22 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .event-card:hover .event-card-summary { background: #1c1c1c; }
 
+@media (min-width: 761px) and (max-width: 1000px) {
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip,
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip.has-burns {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    column-gap: 0;
+  }
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-section {
+    padding-inline: 6px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 6px;
+  }
+  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-heading { font-size: 11px; }
+  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-ratio { font-size: 11px; }
+  .checklist-detail-shell .checklist-kpi-strip .driving-parity-kpi-scenario-icon { width: 28px; height: 28px; }
+}
+
 /* Keep Progress and Completion side by side through tablet widths. */
 @media (min-width: 521px) and (max-width: 640px) {
   body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-overview:not([hidden]) + .checklist-progress-workspace {

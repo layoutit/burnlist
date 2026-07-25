@@ -1,6 +1,7 @@
 import { compareUtf8 } from "./diagnostics.mjs";
 
-const nodeKeyOrder = { agent: ["kind", "id", "mode", "role", "route", "authority", "instructions", "independentFrom", "requires"], check: ["kind", "id", "capability"], gate: ["kind", "id", "gateKind", "requires"], terminal: ["kind", "id", "state"] };
+const nodeKeyOrder = { agent: ["kind", "id", "mode", "execution", "intelligence", "role", "route", "authority", "instructions", "independentFrom", "requires"], check: ["kind", "id", "capability"], gate: ["kind", "id", "gateKind", "requires"], terminal: ["kind", "id", "state"] };
+const legacyNodeKeyOrder = { ...nodeKeyOrder, agent: ["kind", "id", "mode", "role", "route", "authority", "instructions", "independentFrom", "requires"] };
 const topOrder = ["schema", "compiler", "id", "declaredVersion", "entry", "budget", "nodes", "failurePolicy", "edges", "instructions"];
 const budgetOrder = ["maxRounds", "maxMinutes", "maxAgentRuns", "maxCheckRuns", "maxTransitions", "maxOutputBytes"];
 const policyOrder = ["error", "timeout", "cancelled", "lost", "exhausted"];
@@ -27,7 +28,7 @@ function encode(value, context = "") {
   if (typeof value === "number") { if (!Number.isSafeInteger(value) || value < 0) throw new TypeError("Canonical numbers must be safe unsigned integers"); return String(value); }
   if (Array.isArray(value)) return `[${value.map((item) => encode(item)).join(",")}]`;
   if (!value || typeof value !== "object") throw new TypeError("Canonical IR contains an invalid value");
-  if (context === "nodes[]") return object(value, nodeKeyOrder[value.kind]);
+  if (context === "nodes[]") return object(value, (value.kind === "agent" && !Object.hasOwn(value, "execution")) ? legacyNodeKeyOrder[value.kind] : nodeKeyOrder[value.kind]);
   if (context === "budget") return object(value, budgetOrder);
   if (context === "failurePolicy") return object(value, policyOrder);
   if (context === "edges[]") return object(value, edgeOrder);

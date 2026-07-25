@@ -67,18 +67,28 @@ test("real M4 projections advance the full Checklist DOM through the frozen Loop
     ]);
     const { snapshots } = await runM4ProgressFixture({
       repoRoot,
-      outcomes: ["complete", "pass", "reject", "complete", "pass", "approve"],
     });
     const selected = [
-      snapshots.find((snapshot) => snapshot.currentNode === "implement" && snapshot.attempt === 1 && snapshot.latestResult?.kind === "reject"),
-      snapshots.find((snapshot) => snapshot.currentNode === "implement" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "reject"),
+      snapshots.find((snapshot) => snapshot.currentNode === "review" && snapshot.attempt === 1 && snapshot.latestResult?.kind === "reject"),
+      snapshots.find((snapshot) => snapshot.currentNode === "decompose" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "reject"),
       snapshots.find((snapshot) => snapshot.currentNode === "review" && snapshot.attempt === 2 && snapshot.latestResult?.kind === "approve"),
       snapshots.find((snapshot) => snapshot.currentNode === "converged" && snapshot.attempt === 1),
       snapshots.filter((snapshot) => snapshot.currentNode === "completed").at(-1),
     ];
     assert.equal(selected.every(Boolean), true);
     const actual = selected.map((projection) => {
-      const projectionBytes = JSON.stringify({ ...projection, revision: "<canonical-revision>" });
+      const stableActivity = projection.activity ? {
+        ...projection.activity,
+        records: projection.activity.records.map((record) => ({
+          ...record,
+          ...(record.correlation ? { correlation: "<invocation-correlation>" } : {}),
+        })),
+      } : undefined;
+      const projectionBytes = JSON.stringify({
+        ...projection,
+        revision: "<canonical-revision>",
+        ...(stableActivity ? { activity: stableActivity } : {}),
+      });
       const markup = withDeterministicTime(() =>
         renderToStaticMarkup(createElement(ChecklistDashboard, { data: itemData(projection) })));
       const domBytes = serializeCanonical(normalize(parseHtml(markup)));

@@ -13,6 +13,7 @@ import { formatRegistry } from "../OvenView/registries";
 import { buildLogTableProps } from "./log-table-adapter";
 import { ModelLabView, type ModelLabPayload } from "../ModelLabView";
 import { LoopGraph, type LoopGraphProjection } from "../../components/LoopGraph";
+import { LoopProgress } from "../LoopProgress";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
@@ -72,8 +73,9 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
     const run = runtimeSource(state.payload, item, attrs(node).source) as (LoopGraphProjection & { diagnostic?: "corrupt" | "stale" }) | null | undefined;
     return <LoopGraph run={run} diagnostic={run?.diagnostic} title={typeof attrs(node).title === "string" ? String(attrs(node).title) : undefined} />;
   }
+  if (node.kind === "loop-progress") return <LoopProgress data={runtimeSource(state.payload, item, attrs(node).source) as any} />;
   if (node.kind === "log-table") return <LogTable {...buildLogTableProps(node, state.payload, { resolvePointer, formatRegistry })} />;
-  if (["checklist-current", "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) return <ChecklistWidgetAdapter node={node} payload={state.payload} />;
+  if (["checklist-current", "checklist-workspace", "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) return <ChecklistWidgetAdapter node={node} payload={state.payload} />;
   if (["mode-toggle", "domain-tabs", "field-toolbar", "pagination"].includes(node.kind)) return <ControlAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;
   if (["field-list", "refresh-status", "verdict-header", "metric-tiles", "domain-note", "frame-card"].includes(node.kind)) return <WidgetAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;
   if (node.kind === "box") return <Box element={String(attrs(node).element) as "div" | "section" | "main" | "span"} className={typeof attrs(node).class === "string" ? attrs(node).class : undefined} dataDetailTab={typeof attrs(node).dataDetailTab === "string" ? attrs(node).dataDetailTab : undefined} id={typeof attrs(node).id === "string" ? attrs(node).id : undefined} text={typeof attrs(node).text === "string" ? attrs(node).text : undefined}>{(node.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</Box>;

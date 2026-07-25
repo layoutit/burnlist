@@ -1,7 +1,10 @@
-import { validateClosedIr } from "../dsl/ir-validate.mjs";
+import { validateReplayIr } from "../dsl/ir-validate.mjs";
 import { isRunRef } from "./run-ref.mjs";
 import { foldBudgets } from "./budgets.mjs";
 import { isSystemOutcome, validateNormalizedResult } from "./run-result.mjs";
+import { validateHostClaim } from "./run-claim.mjs";
+import { nextOpenFindings, validateFindingSet } from "../contracts/finding.mjs";
+import { validateHostTelemetry } from "../contracts/host-execution.mjs";
 
 const TERMINAL = new Set(["converged", "needs-human", "failed", "stopped", "budget-exhausted"]), SYSTEM = { error: "failed", timeout: "failed", cancelled: "stopped", lost: "needs-human", exhausted: "budget-exhausted" }, ATOMIC = { ...SYSTEM, converged: "converged" };
 const exact = (value, keys) => Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
@@ -9,7 +12,7 @@ const fail = (message) => { throw Object.assign(new Error(`Run state machine: ${
 export const isTerminalState = (state) => TERMINAL.has(state);
 export const systemState = (kind) => SYSTEM[kind] ?? fail("unknown system outcome");
 export const atomicTerminalState = (kind) => ATOMIC[kind] ?? fail("unknown atomic terminal");
-export function validateGraph(graph) { if (!validateClosedIr(graph)) fail("graph is not canonical closed IR"); return Object.freeze({ nodes: new Map(graph.nodes.map((node) => [node.id, node])), edges: new Map(graph.edges.map((edge) => [`${edge.from}\0${edge.on}`, edge])) }); }
+export function validateGraph(graph) { if (!validateReplayIr(graph)) fail("graph is not canonical closed IR"); return Object.freeze({ nodes: new Map(graph.nodes.map((node) => [node.id, node])), edges: new Map(graph.edges.map((edge) => [`${edge.from}\0${edge.on}`, edge])) }); }
 export function validateStateTransition(from, to, cause) {
   if (!(["control", "graph", "system"].includes(cause))) fail("invalid transition cause");
   const control = (from === "prepared" && ["running", "stopped"].includes(to)) || (from === "running" && ["paused", "stopped"].includes(to)) || (from === "paused" && ["running", "stopped"].includes(to));
@@ -29,7 +32,7 @@ function gateOutcome(runtime, node) {
 export function foldStateMachine({ graph, records }) {
   const { nodes, edges } = validateGraph(graph), first = records[0]?.value?.payload;
   if (!first || first.type !== undefined && records[0].value.type !== "run-created" || !isRunRef(first.runId)) fail("invalid RunRef creation");
-  const current = { state: "prepared", generation: 0, lease: null }, runtime = { nodeId: graph.entry, attempts: {}, started: false, invocation: null, result: null, system: null, cycle: 0, evidence: {}, candidate: null, latest: { maker: null, check: null, reviewer: null }, nodes, edges };
+  const current = { state: "prepared", generation: 0, lease: null }, runtime = { nodeId: graph.entry, attempts: {}, started: false, invocation: null, externalClaim: null, result: null, system: null, cycle: 0, evidence: {}, candidate: null, openFindings: new Map(), telemetry: null, latest: { maker: null, check: null, reviewer: null }, nodes, edges };
   for (const [index, record] of records.entries()) {
     const { type, payload } = record.value, node = nodes.get(runtime.nodeId); if (!index) continue;
     if (type === "state-changed") { if (!exact(payload, ["from", "to", "cause"]) || payload.from !== current.state) fail("invalid state event"); validateStateTransition(payload.from, payload.to, payload.cause); if (payload.cause === "control" && payload.to === "paused" && runtime.invocation && !runtime.result) runtime.invocation = null; if (payload.cause === "graph" && (!node || node.kind !== "terminal" || !runtime.started || payload.to !== node.state)) fail("graph terminal bypass"); if (payload.cause === "system" && (!runtime.system || payload.to !== systemState(runtime.system.kind))) fail("system terminal bypass"); current.state = payload.to; continue; }
@@ -39,9 +42,38 @@ export function foldStateMachine({ graph, records }) {
     if (!current.lease || current.state !== "running") fail("active event lacks lease");
     if (type === "node-started") { if (!exact(payload, ["nodeId", "attempt"]) || payload.nodeId !== runtime.nodeId || runtime.started || payload.attempt !== (runtime.attempts[payload.nodeId] ?? 0) + 1) fail("invalid node start"); runtime.started = true; runtime.attempts[payload.nodeId] = payload.attempt; if (node.kind === "agent" && node.mode === "task") { runtime.cycle += 1; runtime.candidate = null; } continue; }
     if (type === "invocation-started") { if (!exact(payload, ["nodeId", "attempt", "invocationId"]) || !runtime.started || runtime.invocation || !["agent", "check"].includes(node.kind) || payload.nodeId !== runtime.nodeId || payload.attempt !== runtime.attempts[payload.nodeId] || !/^[a-f0-9]{32}$/u.test(payload.invocationId)) fail("invalid invocation start"); runtime.invocation = payload; continue; }
-    if (type === "invocation-result") {
-      if (!runtime.invocation || runtime.result || !exact(payload, ["invocationId", "kind", "summary", "outputBytes", "candidateId"]) || payload.invocationId !== runtime.invocation.invocationId) fail("invalid invocation result");
+    if (type === "external-claim-bound") {
+      let claim; try { claim = validateHostClaim(payload.claim); } catch { fail("invalid external claim"); }
+      if (!exact(payload, ["claim", "envelopeDigest", "invocationId"]) || runtime.started || runtime.invocation || runtime.externalClaim || runtime.result || node?.kind !== "agent"
+        || claim.runId !== first.runId || claim.nodeId !== runtime.nodeId || claim.attempt !== (runtime.attempts[runtime.nodeId] ?? 0) + 1
+        || !/^sha256:[a-f0-9]{64}$/u.test(payload.envelopeDigest) || claim.executionDigest !== payload.envelopeDigest
+        || !/^iv1-sha256:[a-f0-9]{64}$/u.test(payload.invocationId)) fail("invalid external claim binding");
+      runtime.started = true; runtime.attempts[runtime.nodeId] = claim.attempt;
+      runtime.invocation = Object.freeze({ nodeId: claim.nodeId, attempt: claim.attempt, invocationId: payload.invocationId });
+      if (node.mode === "task") { runtime.cycle += 1; runtime.candidate = null; }
+      runtime.externalClaim = Object.freeze({ claim, envelopeDigest: payload.envelopeDigest }); continue;
+    }
+    if (type === "external-claim-resolved") {
+      if (!exact(payload, ["claimId", "invocationId", "reason"]) || payload.reason !== "paused"
+        || payload.claimId !== runtime.externalClaim?.claim.claimId || payload.invocationId !== runtime.invocation?.invocationId)
+        fail("invalid external claim resolution");
+      runtime.started = false; runtime.invocation = null; runtime.externalClaim = null; runtime.result = null; continue;
+    }
+    if (type === "invocation-result" || type === "external-report-accepted") {
+      const host = type === "external-report-accepted";
+      const hostKeys = ["claimId", "reportDigest", "invocationId", "kind", "summary", "outputBytes", "candidateId"];
+      const currentHost = host && exact(payload, [...hostKeys, "findings", "resolvedFindingIds", "telemetry"]);
+      const legacyHost = host && exact(payload, hostKeys);
+      if (!runtime.invocation || runtime.result || !(host ? currentHost || legacyHost : exact(payload, ["invocationId", "kind", "summary", "outputBytes", "candidateId"]))
+        || payload.invocationId !== runtime.invocation.invocationId || host && (payload.claimId !== runtime.externalClaim?.claim.claimId || !/^sha256:[a-f0-9]{64}$/u.test(payload.reportDigest))) fail("invalid invocation result");
       runtime.result = validateNormalizedResult({ kind: payload.kind, summary: payload.summary, outputBytes: payload.outputBytes, candidateId: payload.candidateId }, node, graph.budget.maxOutputBytes);
+      if (host) {
+        const findingSet = validateFindingSet(payload.findings ?? [], payload.resolvedFindingIds ?? [],
+          node.mode === "review" ? runtime.openFindings : new Map());
+        if (node.mode === "review") runtime.openFindings = nextOpenFindings(runtime.openFindings, findingSet);
+        runtime.telemetry = validateHostTelemetry(payload.telemetry ?? null);
+      }
+      runtime.externalClaim = null;
       const role = node.kind === "check" ? "check" : node.mode === "review" ? "reviewer" : "maker";
       if (node.kind !== "agent" || node.mode !== "task") {
         if (payload.candidateId !== (runtime.candidate?.id ?? null)) fail("result is not bound to the current candidate");
@@ -60,11 +92,11 @@ export function foldStateMachine({ graph, records }) {
       continue;
     }
     if (type === "system-outcome") { if (runtime.system || !exact(payload, ["kind", "summary"]) || !isSystemOutcome(payload.kind) || typeof payload.summary !== "string" || Buffer.byteLength(payload.summary, "utf8") > 1024) fail("invalid system outcome"); runtime.system = Object.freeze({ kind: payload.kind, summary: payload.summary, outputBytes: 0 }); continue; }
-    if (type === "failure-routed") { const target = nodes.get(payload?.to); if (!runtime.system || !exact(payload, ["from", "kind", "to"]) || payload.from !== runtime.nodeId || payload.kind !== runtime.system.kind || payload.to !== graph.failurePolicy[payload.kind] || payload.to === runtime.nodeId || target?.kind !== "terminal" || target.state !== systemState(payload.kind)) fail("invalid failure route"); runtime.nodeId = payload.to; runtime.started = false; runtime.invocation = null; runtime.result = null; continue; }
-    if (type === "edge-taken") { if (!exact(payload, ["from", "on", "to"]) || payload.from !== runtime.nodeId) fail("invalid edge event"); const edge = edges.get(`${payload.from}\0${payload.on}`); if (!edge || edge.to !== payload.to) fail("undeclared edge"); if (node.kind === "gate" ? payload.on !== gateOutcome(runtime, node) : !runtime.result || isSystemOutcome(runtime.result.kind) || payload.on !== runtime.result.kind) fail("edge outcome is not current result"); runtime.nodeId = edge.to; runtime.started = false; runtime.invocation = null; runtime.result = null; continue; }
+    if (type === "failure-routed") { const target = nodes.get(payload?.to); if (!runtime.system || !exact(payload, ["from", "kind", "to"]) || payload.from !== runtime.nodeId || payload.kind !== runtime.system.kind || payload.to !== graph.failurePolicy[payload.kind] || payload.to === runtime.nodeId || target?.kind !== "terminal" || target.state !== systemState(payload.kind)) fail("invalid failure route"); runtime.nodeId = payload.to; runtime.started = false; runtime.invocation = null; runtime.externalClaim = null; runtime.result = null; continue; }
+    if (type === "edge-taken") { if (!exact(payload, ["from", "on", "to"]) || payload.from !== runtime.nodeId) fail("invalid edge event"); const edge = edges.get(`${payload.from}\0${payload.on}`); if (!edge || edge.to !== payload.to) fail("undeclared edge"); if (node.kind === "gate" ? payload.on !== gateOutcome(runtime, node) : !runtime.result || isSystemOutcome(runtime.result.kind) || payload.on !== runtime.result.kind) fail("edge outcome is not current result"); runtime.nodeId = edge.to; runtime.started = false; runtime.invocation = null; runtime.externalClaim = null; runtime.result = null; runtime.telemetry = null; continue; }
     fail("unknown event");
   }
   const budget = foldBudgets({ records, graph });
-  return Object.freeze({ state: current.state, generation: current.generation, lease: current.lease && Object.freeze({ ...current.lease }), nodeId: runtime.nodeId, node: nodes.get(runtime.nodeId), attempts: Object.freeze({ ...runtime.attempts }), attempt: runtime.attempts[runtime.nodeId] ?? 0, cycle: runtime.cycle, evidence: Object.freeze({ ...runtime.evidence }), candidate: runtime.candidate, latest: Object.freeze({ ...runtime.latest }), started: runtime.started, invocation: runtime.invocation && Object.freeze({ ...runtime.invocation }), result: runtime.result, system: runtime.system, budget, terminal: isTerminalState(current.state) });
+  return Object.freeze({ state: current.state, generation: current.generation, lease: current.lease && Object.freeze({ ...current.lease }), nodeId: runtime.nodeId, node: nodes.get(runtime.nodeId), attempts: Object.freeze({ ...runtime.attempts }), attempt: runtime.attempts[runtime.nodeId] ?? 0, cycle: runtime.cycle, evidence: Object.freeze({ ...runtime.evidence }), candidate: runtime.candidate, openFindings: new Map(runtime.openFindings), telemetry: runtime.telemetry, latest: Object.freeze({ ...runtime.latest }), started: runtime.started, invocation: runtime.invocation && Object.freeze({ ...runtime.invocation }), externalClaim: runtime.externalClaim, result: runtime.result, system: runtime.system, budget, terminal: isTerminalState(current.state) });
 }
 export function gateDecision(execution, graph) { return gateOutcome({ evidence: execution.evidence, candidate: execution.candidate, cycle: execution.cycle, nodes: new Map(graph.nodes.map((node) => [node.id, node])) }, execution.node); }

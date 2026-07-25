@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { findBurnlistDir } from "../../cli/lifecycle-moves.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { locateItemSpan, validateAssignedItem } from "./item-metadata.mjs";
-import { resolveBuiltin } from "./assignment.mjs";
+import { resolveLoopPackage } from "./assignment.mjs";
 import { parseItemRef, parseLoopRef, parseRunRef, selectorKind } from "./selectors.mjs";
 import { assignmentStore } from "./store.mjs";
 
@@ -26,12 +26,12 @@ export async function resolveLoopAuthority({ repoRoot, selector, runReader }) {
   catch (error) { fail("E_LOOP_SELECTOR_INVALID", error.message); }
   if (kind === "loop") {
     const loop = parseLoopRef(selector, { allowViewSugar: true }); let compiled;
-    try { compiled = await resolveBuiltin(loop); } catch (error) { fail("E_LOOP_MISSING", error.message); }
+    try { compiled = await resolveLoopPackage({ repoRoot, loop }); } catch (error) { fail("E_LOOP_MISSING", error.message); }
     return { authority: "UNPINNED", selector: loop.selector, compiled, executableRevision: compiled.revisions.executable };
   }
   if (kind === "item") {
     const item = parseItemRef(selector), value = assigned(repoRoot, item);
-    let current = null; try { current = await resolveBuiltin(parseLoopRef(value.meta.Selector)); } catch { /* pin remains authoritative */ }
+    let current = null; try { current = await resolveLoopPackage({ repoRoot, loop: parseLoopRef(value.meta.Selector) }); } catch { /* pin remains authoritative */ }
     let artifact; try { artifact = assignmentStore(repoRoot).load(value.meta["Assignment-Id"]); } catch { pinUnavailable(value.meta, current); }
     if (artifact.itemRef !== item.selector || artifact.assignmentId !== value.meta["Assignment-Id"] || artifact.assignedItemDigest !== value.meta.assignedDigest || artifact.unassignedItemDigest !== value.meta.unassignedDigest || artifact.executionRevision !== value.meta["Execution-Revision"] || artifact.packageRevision !== value.meta["Package-Revision"]) pinUnavailable(value.meta, current);
     // The assignment artifact remains the only executable authority.  The fresh

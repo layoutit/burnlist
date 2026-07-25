@@ -17,7 +17,7 @@
         <checklist-ledger source="/raw"/>
         <checklist-burn-panel source="/raw"/>
       </box>
-      <checklist-event-cards source="/raw"/>
+      <checklist-workspace source="/raw"/>
     </box>
   </box>
 </oven>

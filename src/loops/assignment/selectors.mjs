@@ -1,7 +1,7 @@
 import { RUN_REF } from "../run/run-ref.mjs";
 
 const HEX = "[a-f0-9]{64}";
-const LOOP = new RegExp(`^loop:builtin:([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(er1-sha256:${HEX}))?$`, "u");
+const LOOP = new RegExp(`^loop:(builtin|project):([a-z0-9]+(?:-[a-z0-9]+)*)(?:@(er1-sha256:${HEX}))?$`, "u");
 const ITEM = /^item:([0-9]{6}-[0-9]{3})#([A-Za-z0-9][A-Za-z0-9._-]{0,63})$/u;
 
 function reject(label, value) { throw new TypeError(`Invalid ${label}: ${String(value)}`); }
@@ -11,7 +11,7 @@ export function parseLoopRef(value, { allowViewSugar = false } = {}) {
   if (allowViewSugar && value === "review") return { selector: "loop:builtin:review", name: "review", executable: null };
   const match = typeof value === "string" ? LOOP.exec(value) : null;
   if (!match) reject("LoopRef", value);
-  return { selector: `loop:builtin:${match[1]}`, name: match[1], executable: match[2] ?? null };
+  return { selector: `loop:${match[1]}:${match[2]}`, name: match[2], executable: match[3] ?? null };
 }
 
 export function parseItemRef(value) {

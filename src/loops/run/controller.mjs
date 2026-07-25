@@ -1,12 +1,14 @@
 import { presentRun } from "./read-projection.mjs";
 import { isRunRef } from "./run-ref.mjs";
+import { prepareHostClaim } from "./host-execution.mjs";
+import { deriveCandidate } from "./candidate.mjs";
 
 const fail = (message, code = "ELOOP_CONTROL") => { throw Object.assign(new Error(`Loop control: ${message}`), { code }); };
 const stable = (value) => `${JSON.stringify(value)}\n`;
 
 /** Small foreground-only control boundary.  It owns no daemon or recovery policy. */
-export function createLoopController({ store, runnerFor }) {
-  if (!store?.read || !store?.list || !store?.acquireLease || !store?.terminalize) fail("invalid controller input");
+export function createLoopController({ store, runnerFor, repoRoot = null }) {
+  if (!store?.read || !store?.list || !store?.acquireLease || !store?.terminalize || !store?.bindExternalClaim || !store?.readExternalClaim || !store?.abandonExternalClaim || !store?.acceptExternalReport || !store?.resolveClaimRef) fail("invalid controller input");
   const check = (runId) => { if (!isRunRef(runId)) fail("invalid RunRef"); return runId; };
   const read = (runId) => store.read(check(runId));
   const inspect = (runId) => Object.freeze(presentRun(read(runId)));
@@ -31,6 +33,38 @@ export function createLoopController({ store, runnerFor }) {
     const lease = idleLease(runId);
     return presentRun(store.terminalize(runId, lease, "cancelled", "control"));
   }
+  /** Claiming is controller-owned: the journal lease serializes contenders and exact retries reread the same envelope. */
+  function claim(runId) {
+    check(runId); const current = read(runId), active = store.readExternalClaim(runId, current);
+    if (active) fail("Run agent node is already claimed", "ECLAIMED");
+    const lease = idleLease(runId);
+    try {
+      const prepared = prepareHostClaim({ repoRoot, replay: read(runId), authority: store.readAuthority(runId) });
+      return store.bindExternalClaim(runId, lease, prepared);
+    }
+    catch (error) {
+      // A failed preparation has not started a host. Releasing this private
+      // controller lease makes the normal foreground owner available again.
+      try { if (read(runId).execution.lease) store.releaseLease(runId, lease); } catch {}
+      throw error;
+    }
+  }
+  function report(claimRef, bytes) {
+    const runId = store.resolveClaimRef(claimRef), current = read(runId);
+    return presentRun(store.acceptExternalReport(runId, current.execution.lease, bytes,
+      () => deriveCandidate({ repoRoot })));
+  }
+  function readClaim(runId) { check(runId); return store.readExternalClaim(runId); }
+  function abandonClaim(runId, abandonment) {
+    check(runId); const current = read(runId);
+    if (current.execution.terminal) return inspect(runId);
+    if (current.execution.externalClaim) {
+      if (!current.execution.lease) fail("external claim owner is not fenced", "ELEASED");
+      return presentRun(store.abandonExternalClaim(runId, current.execution.lease, abandonment));
+    }
+    const lease = idleLease(runId);
+    return presentRun(store.abandonExternalClaim(runId, lease, abandonment));
+  }
   async function run(runId) {
     check(runId); if (typeof runnerFor !== "function") fail("foreground runner is unavailable", "ERUNNER_UNAVAILABLE");
     const runner = runnerFor(runId); if (!runner?.run) fail("foreground runner is unavailable", "ERUNNER_UNAVAILABLE");
@@ -45,5 +79,5 @@ export function createLoopController({ store, runnerFor }) {
     const lease = idleLease(runId);
     return presentRun(store.terminalize(runId, lease, "lost", "reconciled lost invocation"));
   }
-  return Object.freeze({ list, inspect, status, pause, stop, run, reconcile, render: stable });
+  return Object.freeze({ list, inspect, status, pause, stop, run, reconcile, claim, report, readClaim, abandonClaim, render: stable });
 }

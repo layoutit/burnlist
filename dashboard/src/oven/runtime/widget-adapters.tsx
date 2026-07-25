@@ -4,6 +4,7 @@ import { ChecklistBurnPanel } from "../ChecklistBurnPanel/ChecklistBurnPanel";
 import { ChecklistEventCards } from "../ChecklistEventCards/ChecklistEventCards";
 import { ChecklistLedger } from "../ChecklistLedger/ChecklistLedger";
 import { ChecklistCurrent } from "../ChecklistCurrent/ChecklistCurrent";
+import { ChecklistWorkspace } from "../ChecklistWorkspace/ChecklistWorkspace";
 import { DomainNote } from "../DomainNote";
 import { FrameCard } from "../FrameCard";
 import { MetricTiles } from "../MetricTiles";
@@ -59,6 +60,7 @@ export function WidgetAdapter({ node, ir, state, dispatch }: { node: Node; ir: O
 export function ChecklistWidgetAdapter({ node, payload }: { node: Node; payload: unknown }) {
   const data = resolvePointer(payload, String(attrs(node).source ?? "/")) as any;
   if (node.kind === "checklist-current") return <ChecklistCurrent data={data} />;
+  if (node.kind === "checklist-workspace") return <ChecklistWorkspace data={data} />;
   if (node.kind === "checklist-burn-panel") return <ChecklistBurnPanel data={data} />;
   if (node.kind === "checklist-ledger") return <ChecklistLedger data={data} />;
   if (node.kind === "checklist-event-cards") return <ChecklistEventCards data={data} />;

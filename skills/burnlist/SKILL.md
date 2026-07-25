@@ -32,6 +32,8 @@ Read references only when their trigger applies:
 - `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
+- `references/host-execution.md`: generic host claim/execute/report protocol for a prepared Loop Run; read before a host executes a claimed agent node.
+- `references/loop-providers/<provider>.md`: optional bounded provider recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read only after choosing that provider; native hosts do not need a recipe to use the generic protocol.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -118,7 +120,7 @@ For detailed examples and banned narration, read `references/burnlist-visible-ou
 
 ## Dashboard Boundary
 
-The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task.
+The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize any dashboard server lifecycle or UI inspection.
 
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
@@ -179,6 +181,21 @@ the absolute check command and paths with your repository's reviewed command:
 Accepted profile models are `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`,
 and `gpt-5.3-codex-spark`; efforts are `minimal`, `low`, `medium`, `high`,
 `xhigh`, and `max`.
+
+`builtin:codex-cli` is currently the only Burnlist-managed process adapter.
+That does not limit native host orchestration: Codex normally runs Codex
+subagents natively, Claude normally runs Claude subagents natively, and any host
+may claim and report Loop nodes through native orchestration. Claude, Grok, AGY,
+and custom hosts are not managed adapters, though they may optionally invoke
+Codex through a `codex-cli` recipe; do not promise or configure them as managed
+Loop backends.
+
+For a host-orchestrated agent node, read `references/host-execution.md` before
+claiming it. The core protocol is provider-neutral: claim the prepared node,
+execute its exact bounded envelope through an available native or external
+mechanism, then return one bound report. Never invent a transition or execute a
+managed check. Provider recipes are optional detail, not a prerequisite for
+native host orchestration.
 
 ```sh
 burnlist agent profile add maker --adapter builtin:codex-cli --binary <absolute-path> --model <id> --effort <level> --authority write

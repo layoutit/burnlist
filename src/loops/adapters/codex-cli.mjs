@@ -4,7 +4,10 @@ import { isAbsolute } from "node:path";
 import { requestedCodexIdentity, validateAgentProfile, validateCodexProbe } from "../agents/profile.mjs";
 
 const MAX_OUTPUT_BYTES = 1048576;
-const MAX_JSONL_LINE_BYTES = 65536;
+// Codex may emit one bounded JSONL item containing a large tool/result payload.
+// The aggregate cap is the memory/safety boundary; a smaller per-line cap makes
+// valid provider output fail depending on event chunking.
+const MAX_JSONL_LINE_BYTES = MAX_OUTPUT_BYTES;
 const DIRECT_GUARANTEES = Object.freeze({ freshSession: "enforced", filesystemWriteDeny: "supervised", foregroundHandle: "supervised", cancellation: "supervised", lifecycle: "unsupported" });
 
 function fail(message, code = "ELOOP_CODEX_ADAPTER") { throw Object.assign(new Error(`Codex adapter: ${message}`), { code }); }

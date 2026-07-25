@@ -102,6 +102,18 @@ test("oven use adopts without data when no exact shipped example exists", (t) =>
   assert.equal(existsSync(canonicalOvenDataPath(context.repo, "differential-testing")), false);
 });
 
+test("oven use leaves core-transport burnlist lenses unbound when no example is shipped", (t) => {
+  const context = fixture(t);
+  const result = runResult(context.repo, "oven", "use", "loop-progress", "--repo", context.repo);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(existsSync(vendoredOvenPath(context.repo, "loop-progress")), true);
+  assert.equal(existsSync(canonicalOvenDataPath(context.repo, "loop-progress")), false);
+  assert.equal(Object.hasOwn(readBindingStore(context.repo).bindings, "loop-progress"), false);
+  assert.match(result.stdout, /Data is supplied by Burnlist core transport; no local data action is needed\./u);
+  assert.doesNotMatch(result.stdout, /burnlist oven set/u);
+});
+
 test("oven use validates, transactionally installs, and renders exact example data", async (t) => {
   const context = fixture(t);
   const payload = checklistFixture;

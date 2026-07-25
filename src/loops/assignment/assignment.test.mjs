@@ -31,6 +31,43 @@ test("selectors are closed, disjoint, and reject noncanonical ULID overflow", ()
   assert.equal(parseRunRef("run:01arz3ndektsv4rrffq69g5fav").id.length, 26);
   for (const value of ["review", "item:260710-001#BUG-07", "run:81arz3ndektsv4rrffq69g5fav", "run:01ARZ3NDEKTSV4RRFFQ69G5FAV"]) assert.throws(() => parseRunRef(value), TypeError);
   assert.equal(selectorKind("loop:builtin:review"), "loop"); assert.equal(selectorKind(ref()), "item");
+  assert.deepEqual(parseLoopRef("loop:project:whole-first"), { selector: "loop:project:whole-first", name: "whole-first", executable: null });
+  for (const value of ["loop:project:../review", "loop:project:Review", "loop:local:review", "loop:project:review/extra"]) assert.throws(() => parseLoopRef(value), TypeError);
+});
+
+test("project Loop packages are contained, frozen, and show provenance drift without changing the item pin", async () => {
+  const context = fixture();
+  try {
+    const packageDir = join(context.repo, ".burnlist", "loops", "whole-first");
+    mkdirSync(packageDir, { recursive: true });
+    const builtin = join(project, "loops", "review");
+    writeFileSync(join(packageDir, "whole-first.loop"), readFileSync(join(builtin, "review.loop")));
+    writeFileSync(join(packageDir, "instructions.md"), readFileSync(join(builtin, "instructions.md")));
+    const result = await assignLoopItem({ repoRoot: context.repo, itemRef: ref(), loopRef: "loop:project:whole-first" });
+    assert.equal(result.selector, "loop:project:whole-first");
+    const pinned = await resolveLoopAuthority({ repoRoot: context.repo, selector: ref() });
+    assert.equal(pinned.artifact.selector, "loop:project:whole-first");
+    writeFileSync(join(packageDir, "instructions.md"), `${readFileSync(join(packageDir, "instructions.md"), "utf8")}\n`);
+    const drifted = await resolveLoopAuthority({ repoRoot: context.repo, selector: ref() });
+    assert.equal(drifted.artifact.frozen.revisions.executable, pinned.artifact.frozen.revisions.executable);
+    assert.equal(drifted.executableDrift, true);
+    assert.notEqual(drifted.currentCompiled.revisions.package, pinned.artifact.frozen.revisions.package);
+    assert.match((await import("../view/render.mjs")).renderResolvedLoopView(drifted), /MODE: ITEM-PINNED/u);
+  } finally { context.cleanup(); }
+});
+
+test("project Loop resolver rejects symlinked and malformed contained packages", async () => {
+  const context = fixture();
+  try {
+    const loops = join(context.repo, ".burnlist", "loops"), outside = join(dirname(context.repo), "outside-loop");
+    mkdirSync(loops, { recursive: true }); mkdirSync(outside);
+    symlinkSync(outside, join(loops, "whole-first"));
+    await assert.rejects(assignLoopItem({ repoRoot: context.repo, itemRef: ref(), loopRef: "loop:project:whole-first" }), /unsafe package path/u);
+    rmSync(join(loops, "whole-first")); mkdirSync(join(loops, "whole-first"));
+    writeFileSync(join(loops, "whole-first", "whole-first.loop"), "not XML\n");
+    writeFileSync(join(loops, "whole-first", "instructions.md"), "# instructions\n");
+    await assert.rejects(assignLoopItem({ repoRoot: context.repo, itemRef: ref(), loopRef: "loop:project:whole-first" }), /does not compile/u);
+  } finally { context.cleanup(); }
 });
 
 test("assignment writes canonical bytes, stores artifact before one replacement, and unassign restores exact bytes", async () => {

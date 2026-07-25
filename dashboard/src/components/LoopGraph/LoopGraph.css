@@ -42,6 +42,14 @@
   margin-bottom: .65rem;
 }
 
+.loop-graph__mode {
+  color: color-mix(in srgb, currentColor 56%, transparent);
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .7rem;
+  line-height: 1.35;
+  margin: -.4rem 0 .45rem;
+}
+
 .loop-legend,
 .loop-compact {
   --loop-accent: #38bdf8;
@@ -112,6 +120,32 @@
   white-space: pre-wrap;
 }
 
+.loop-graph__activity {
+  margin-top: .75rem;
+  padding-top: .55rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: .68rem;
+}
+
+.loop-graph__activity-title,
+.loop-graph__activity-empty { color: color-mix(in srgb, currentColor 48%, transparent); }
+.loop-graph__activity ol { display: grid; margin: .4rem 0 0; padding: 0; list-style: none; gap: .2rem; }
+.loop-graph__activity li {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 8rem 8.5rem minmax(0, 1fr);
+  gap: .6rem;
+}
+.loop-graph__activity li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loop-graph__activity li span:first-child { color: color-mix(in srgb, currentColor 45%, transparent); }
+.loop-graph__activity li strong { color: var(--loop-accent); font-weight: 500; }
+
 @media (prefers-reduced-motion: reduce) {
   .loop-graph__ascii mark { text-shadow: none; }
+}
+
+@media (max-width: 640px) {
+  .loop-graph__activity li { grid-template-columns: 6.5rem minmax(0, 1fr); }
+  .loop-graph__activity li span:last-child { grid-column: 1 / -1; }
 }

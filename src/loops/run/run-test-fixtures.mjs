@@ -15,7 +15,10 @@ import { presentRun } from "./read-projection.mjs";
 export const d = (prefix, char) => `${prefix}:${char.repeat(64)}`;
 export const fixtureRunId = "run:01arz3ndektsv4rrffq69g5fav";
 export const fixtureItemRef = "item:260722-001#L29";
-export const m4ProgressOutcomes = ["complete", "pass", "reject", "complete", "pass", "approve"];
+export const m4ProgressOutcomes = [
+  "complete", "complete", "complete", "pass", "reject",
+  "complete", "complete", "pass", "approve", "complete", "pass", "approve",
+];
 let frozenPromise;
 const fixtureBinary = "/bin/sh";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -67,9 +70,13 @@ export async function runM4ProgressFixture({
   const baseClock = clock ?? (() => at++);
   const store = runStore(repoRoot, { clock: baseClock });
   store.createRun({ runId, itemRef, graph: frozenGraph });
-  const runner = createRunRunner({ store, runId, invoke: async () => {
+  const runner = createRunRunner({ store, runId, invoke: async ({ nodeId }) => {
     const outcome = source.shift();
     if (!outcome) throw new Error(`run fixture: missing outcome for ${runId}`);
+    const node = frozenGraph.nodes.find((item) => item.id === nodeId);
+    const permitted = node?.kind === "agent" ? (node.mode === "task" ? ["complete"] : ["approve", "reject", "escalate"])
+      : node?.kind === "check" ? ["pass", "fail"] : [];
+    if (!permitted.includes(outcome)) throw new Error(`run fixture: ${outcome} is not valid for ${nodeId}`);
     return { kind: outcome, summary: outcome, outputBytes: 1 };
   }});
   const snapshots = [];
@@ -125,9 +132,9 @@ const fs=require("node:fs"),a=process.argv.slice(2),prompt=a.at(-1),lines=Object
 let outcome="complete";const counter=process.env.BURNLIST_FAKE_COUNTER;
 if(process.env.BURNLIST_FAKE_STARTED){const marker=process.env.BURNLIST_FAKE_STARTED,tmp=marker+"."+process.pid+".tmp";fs.writeFileSync(tmp,JSON.stringify({pid:process.pid,node:lines.node,attempt:Number(lines.attempt)}));fs.renameSync(tmp,marker);}
 const wait=Number(process.env.BURNLIST_FAKE_WAIT_MS||0);if(Number.isSafeInteger(wait)&&wait>0)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,wait);
-if(counter){const attempt=Number(lines.attempt),index=lines.node==="implement"?(attempt-1)*2:lines.node==="review"?(attempt-1)*2+1:Number(fs.readFileSync(counter,"utf8"));outcome=(process.env.BURNLIST_FAKE_OUTCOMES||"complete").split(",")[index]||"approve";fs.writeFileSync(counter,String(Math.max(Number(fs.readFileSync(counter,"utf8")),index+1)));}
+if(counter){const index=Number(fs.readFileSync(counter,"utf8"));outcome=(process.env.BURNLIST_FAKE_OUTCOMES||"complete").split(",")[index]||"approve";fs.writeFileSync(counter,String(index+1));}
 if(lines.node==="implement"&&outcome==="complete")fs.writeFileSync(process.cwd()+"/src/fake-maker-candidate.txt","maker-attempt="+lines.attempt+"\\n");
-const final={schema:"burnlist.agent-final@1",runId:lines.run,nodeId:lines.node,attempt:Number(lines.attempt),claimId:lines.claim,invocationId:lines.invocation,assignmentId:lines.assignment,recipeRevision:lines.recipe,policyRevision:lines.policy,inputCandidate:lines.candidate,outcome,summary:"fake "+outcome};
+const final={schema:"burnlist.agent-final@1",runId:lines.run,nodeId:lines.node,attempt:Number(lines.attempt),claimId:lines.claim,invocationId:lines.invocation,assignmentId:lines.assignment,recipeRevision:lines.recipe,policyRevision:lines.policy,inputCandidate:lines.candidate,outcome,summary:"fake "+outcome,findings:[],resolvedFindingIds:[]};
 const mode=process.env.BURNLIST_FAKE_FINAL_MODE;if(mode==="stale")final.inputCandidate="cm1-sha256:"+"f".repeat(64);
 process.stdout.write(JSON.stringify({type:"thread.started",thread_id:"s-"+process.pid,model:a[a.indexOf("-m")+1]})+"\\n");
 process.stdout.write(JSON.stringify({type:"item.completed",item:{type:"agent_message",text:mode==="malformed"?"not-json":JSON.stringify(final)}})+"\\n");

@@ -5,6 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compileLoopFiles, compileLoopPackage } from "./compile.mjs";
 import { freezeRecipe, loadFrozenRecipe } from "./frozen.mjs";
+import { canonicalIrBytes } from "./canonical.mjs";
+import { prefixed } from "./hash.mjs";
+import { validateClosedIr, validateReplayIr } from "./ir-validate.mjs";
+import { createJournalRecord } from "../run/run-journal.mjs";
+import { foldRun } from "../run/run-fold.mjs";
+import { created } from "../run/m2-test-fixtures.mjs";
 import { renderDiagnostics } from "./diagnostics.mjs";
 
 const root = new URL("../../../loops/review/", import.meta.url);
@@ -19,8 +25,10 @@ test("built-in review package compiles to deterministic canonical frozen IR", as
   assert.deepEqual(first.irBytes, second.irBytes); assert.deepEqual(first.revisions, second.revisions);
   assert.equal(first.ir.schema, "burnlist-loop-ir@1");
   assert.equal(first.ir.compiler, "burnlist-loop-compiler@1");
-  assert.deepEqual(first.ir.nodes.map((node) => node.id), ["implement", "completed", "converged", "exhausted", "failed", "needs-human", "review", "stopped", "verify"]);
-  assert.deepEqual(first.ir.edges.map((edge) => edge.from), ["implement", "converged", "converged", "review", "review", "review", "verify", "verify"]);
+  assert.equal(first.ir.nodes.length, 14);
+  assert.equal(first.ir.edges.length, 16);
+  assert.deepEqual([...first.ir.nodes.map((node) => node.id)].sort(), ["completed", "converged", "decompose", "exhausted", "failed", "final-review", "final-validate", "implement", "integrate", "needs-human", "review", "start", "stopped", "validate"].sort());
+  assert.deepEqual([...first.ir.edges.map((edge) => edge.from)].sort(), ["start", "decompose", "implement", "validate", "validate", "review", "review", "review", "integrate", "final-validate", "final-validate", "final-review", "final-review", "final-review", "converged", "converged"].sort());
   assert.match(first.revisions.executable, /^er1-sha256:[a-f0-9]{64}$/);
   assert.equal((await compileLoopPackage(new URL("../../../loops/review", import.meta.url).pathname)).ok, true);
 });
@@ -32,13 +40,35 @@ test("runtime consumes persisted frozen IR and validates recipe identity", async
   assert.throws(() => loadFrozenRecipe(Buffer.from(changed)), /Frozen recipe/);
 });
 
+test("pre-H6 frozen recipes and Run journals replay without rewriting their identity", async () => {
+  const current = await compiled(), frozen = JSON.parse(freezeRecipe(current));
+  const legacyIr = {
+    ...current.ir,
+    nodes: current.ir.nodes.map(({ execution: _execution, intelligence: _intelligence, ...node }) => node),
+  };
+  assert.equal(validateClosedIr(legacyIr), false);
+  assert.equal(validateReplayIr(legacyIr), true);
+  const instructions = frozen.instructions;
+  const executable = prefixed("er1-sha256:", "recipe-v1", [
+    Buffer.from(legacyIr.compiler), canonicalIrBytes(legacyIr),
+    ...instructions.flatMap((section) => [Buffer.from(section.id), Buffer.from(section.bytes, "base64")]),
+  ]);
+  const legacy = { ...frozen, revisions: { ...frozen.revisions, executable }, ir: legacyIr };
+  const bytes = Buffer.from(`${JSON.stringify(legacy)}\n`);
+  const loaded = loadFrozenRecipe(bytes);
+  assert.equal(loaded.irBytes, canonicalIrBytes(legacyIr).toString("base64"));
+  assert.equal(loaded.revisions.executable, executable);
+  const journal = [createJournalRecord({ sequence: 1, prevDigest: null, at: 0, type: "run-created", payload: created(legacyIr) })];
+  assert.equal(foldRun(journal).graph, legacyIr);
+});
+
 test("closed grammar rejects Stage 2 syntax and convergence bypass", async () => {
   const files = await reviewFiles();
   for (const replacement of [
-    '<input id="scope"/>', '<gate id="converged" kind="predicate" requires="verify,review"/>',
-    '<edge from="review" on="approve" to="completed"/>', '<map from="verify"/>', '<combine id="x"/>',
+    '<input id="scope"/>', '<gate id="converged" kind="predicate" requires="feedback,review"/>',
+    '<edge from="final-review" on="approve" to="completed"/>', '<map from="feedback"/>', '<combine id="x"/>',
   ]) {
-    const copied = { ...files, "review.loop": Buffer.from(files["review.loop"].toString().replace('<edge from="review" on="approve" to="converged"/>', replacement)) };
+    const copied = { ...files, "review.loop": Buffer.from(files["review.loop"].toString().replace('<edge from="final-review" on="approve" to="converged"/>', replacement)) };
     const result = compileLoopFiles(copied); assert.equal(result.ok, false, replacement);
     assert.ok(result.diagnostics.length > 0);
   }
@@ -57,9 +87,32 @@ test("reviewer requirements close on the supervised Stage 1 boundary", async () 
   }
 });
 
+test("singleton declarations and frozen agent invariants fail closed", async () => {
+  const files = await reviewFiles(), source = files["review.loop"].toString();
+  for (const element of [
+    source.match(/  <budget [^\n]+\/>/u)?.[0],
+    source.match(/  <failure-policy [^\n]+\/>/u)?.[0],
+  ]) {
+    assert.ok(element);
+    const duplicated = compileLoopFiles({
+      ...files,
+      "review.loop": Buffer.from(source.replace(element, `${element}\n${element}`)),
+    });
+    assert.equal(duplicated.ok, false);
+    assert.ok(duplicated.diagnostics.some((item) => item.code === "E_CHILD_COUNT"));
+  }
+  const result = await compiled();
+  const wrongTask = structuredClone(result.ir);
+  Object.assign(wrongTask.nodes.find((node) => node.id === "decompose"), { role: "reviewer", authority: "read" });
+  assert.equal(validateClosedIr(wrongTask), false);
+  const wrongReviewer = structuredClone(result.ir);
+  wrongReviewer.nodes.find((node) => node.id === "review").independentFrom = "final-review";
+  assert.equal(validateClosedIr(wrongReviewer), false);
+});
+
 test("each semantic outcome has one closed, type-safe target", async () => {
   const files = await reviewFiles();
-  const source = files["review.loop"].toString().replace('from="verify" on="pass" to="review"', 'from="verify" on="pass" to="implement"');
+  const source = files["review.loop"].toString().replace('from="validate" on="pass" to="review"', 'from="validate" on="pass" to="implement"');
   const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source) });
   assert.equal(result.ok, false);
   assert.ok(result.diagnostics.some((item) => item.code === "E_EDGE_TARGET"));
@@ -67,7 +120,7 @@ test("each semantic outcome has one closed, type-safe target", async () => {
 
 test("diagnostics are stable, retained, sorted, and capped", async () => {
   const files = await reviewFiles();
-  const malformed = files["review.loop"].toString().replace('max-rounds="3"', 'max-rounds="0" evil="1"').replace('<edge from="implement" on="complete" to="verify"/>', '<edge from="implement" on="error" to="completed"/>');
+  const malformed = files["review.loop"].toString().replace('max-rounds="12"', 'max-rounds="0" evil="1"').replace('<edge from="start" on="complete" to="decompose"/>', '<edge from="start" on="error" to="completed"/>');
   const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(malformed) });
   assert.equal(result.ok, false);
   const lines = renderDiagnostics(result.diagnostics).trim().split("\n");
@@ -86,12 +139,12 @@ test("package lexical limits fail closed before grammar compilation", async () =
 
 test("instruction extraction is exact and treats fenced headings as prose", async () => {
   const files = await reviewFiles();
-  const markdown = "## implement\ntext\n```md\n## review\n```\n## review\nreview text\n";
+  const markdown = "## start\nscope\n```md\n## review\n```\n## review\nreview text\n## decompose\ndecompose\n## implement\nimplement\n## integrate\nintegrate\n## final-review\ninspect\n";
   const good = compileLoopFiles({ ...files, "instructions.md": Buffer.from(markdown) });
   assert.equal(good.ok, true, renderDiagnostics(good.diagnostics ?? []));
-  const bad = compileLoopFiles({ ...files, "instructions.md": Buffer.from("## implement\ntext\n## implement\nagain\n") });
+  const bad = compileLoopFiles({ ...files, "instructions.md": Buffer.from("## start\nscope\n## start\nagain\n") });
   assert.equal(bad.ok, false); assert.ok(bad.diagnostics.some((item) => item.code === "E_INSTRUCTIONS_DUPLICATE"));
-  const tilde = "## implement\ntext\n~~~ language ` allowed\n## review\n~~~    \n## review\nreview text\n";
+  const tilde = "## start\nscope\n~~~\n## review\nfenced text\n~~~\n## review\nreview text\n## decompose\nsplit\n## implement\nimplement\n## integrate\nintegrate\n## final-review\ninspect\n";
   assert.equal(compileLoopFiles({ ...files, "instructions.md": Buffer.from(tilde) }).ok, true);
 });
 
@@ -129,30 +182,28 @@ test("frozen replay rejects every closed-IR union, cap, reference, and ordering 
   ]) assert.throws(() => loadFrozenRecipe(mutate(change)), TypeError);
 });
 
-test("closed grammar rejects named later constructs and group/order violations", async () => {
+test("closed grammar rejects named later constructs", async () => {
   const files = await reviewFiles(), source = files["review.loop"].toString();
   for (const name of ["input", "condition", "source", "operator", "target", "map", "foreach", "join", "combine", "branch"]) {
-    const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace('<edge from="review" on="approve" to="converged"/>', `<${name} id="later"/>`)) });
+    const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace('<edge from="final-review" on="approve" to="converged"/>', `<${name} id="later"/>`)) });
     assert.equal(result.ok, false, name); assert.ok(result.diagnostics.some((item) => item.code === "E_ELEMENT_UNKNOWN"));
   }
-  const reordered = source.replace(/(<check[^\n]+\/>\n)  (<agent id="review"[^\n]+\/>)/, "$2\n  $1");
-  const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(reordered) });
-  assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_CHILD_GROUP"));
+  const altered = Buffer.from(source.replace('<agent id="implement" mode="task" execution="managed" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>', '<agent id="implement" role="maker" route="implementation.standard" authority="write" instructions="implement"/>'));
+  const result = compileLoopFiles({ ...files, "review.loop": altered });
+  assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_ATTRIBUTE_REQUIRED"));
 });
 
 test("every Stage 1 element required attribute and scalar union is closed", async () => {
   const files = await reviewFiles(), source = files["review.loop"].toString();
   const required = [
-    'id="review"', 'version="0.1.0"', 'entry="implement"', 'max-rounds="3"', 'max-minutes="60"', 'max-agent-runs="6"', 'max-check-runs="3"', 'max-transitions="16"', 'max-output-bytes="262144"',
-    'id="implement"', 'mode="task"', 'role="maker"', 'route="implementation.standard"', 'authority="write"', 'instructions="implement"', 'capability="repo-verify"',
-    'id="review"', 'mode="review"', 'role="reviewer"', 'route="review.strong"', 'authority="read"', 'independent-from="implement"', 'requires="fresh-session:enforced,filesystem-write-deny:supervised"',
-    'id="converged"', 'kind="convergence"', 'state="converged"', 'error="failed"', 'timeout="failed"', 'cancelled="stopped"', 'lost="needs-human"', 'exhausted="exhausted"', 'from="implement"', 'on="complete"', 'to="verify"',
+    'id="start"', 'version="0.1.0"', 'entry="start"', 'max-rounds="12"', 'max-minutes="60"', 'max-agent-runs="18"', 'max-check-runs="8"', 'max-transitions="40"', 'max-output-bytes="262144"',
+    'id="implement"', 'mode="task"', 'execution="managed"', 'intelligence="standard"', 'role="maker"', 'route="implementation.standard"', 'authority="write"', 'instructions="implement"', 'id="decompose"', 'id="integrate"', 'id="review"', 'mode="review"', 'role="reviewer"', 'route="review.strong"', 'authority="read"', 'independent-from="implement"', 'requires="fresh-session:enforced,filesystem-write-deny:supervised"', 'id="final-review"', 'independent-from="implement"', 'id="validate"', 'id="final-validate"', 'capability="repo-verify"', 'id="converged"', 'kind="convergence"', 'state="converged"', 'error="failed"', 'timeout="failed"', 'cancelled="stopped"', 'lost="needs-human"', 'exhausted="exhausted"', 'from="start"', 'on="complete"', 'to="decompose"',
   ];
   for (const token of required) {
     const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace(token, "")) });
     assert.equal(result.ok, false, token); assert.ok(result.diagnostics.some((item) => item.code === "E_ATTRIBUTE_REQUIRED"), token);
   }
-  for (const [token, replacement] of [['mode="task"', 'mode="stage-two"'], ['role="maker"', 'role="planner"'], ['authority="write"', 'authority="admin"'], ['route="implementation.standard"', 'route="invalid..route"'], ['kind="convergence"', 'kind="metric"'], ['state="converged"', 'state="done"'], ['max-visits="3"', 'max-visits="0"']]) {
+  for (const [token, replacement] of [['mode="task"', 'mode="stage-two"'], ['execution="managed"', 'execution="remote"'], ['intelligence="standard"', 'intelligence="provider-name"'], ['role="maker"', 'role="planner"'], ['authority="write"', 'authority="admin"'], ['route="implementation.standard"', 'route="invalid..route"'], ['kind="convergence"', 'kind="metric"'], ['state="converged"', 'state="done"'], ['max-visits="3"', 'max-visits="0"']]) {
     const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source.replace(token, replacement)) });
     assert.equal(result.ok, false, replacement);
   }
@@ -160,7 +211,7 @@ test("every Stage 1 element required attribute and scalar union is closed", asyn
 
 test("diagnostic truncation and recovery keep the first 99 sorted findings", async () => {
   const files = await reviewFiles(), extras = Array.from({ length: 110 }, (_, index) => ` bad-${index}="x"`).join("");
-  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0"').replace('max-rounds="3"', `max-rounds="0"${extras}`).replace('<edge from="implement" on="complete" to="verify"/>', '<edge from="implement" on="error" to="completed"/>');
+  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0"').replace('max-rounds="12"', `max-rounds="0"${extras}`).replace('<edge from="start" on="complete" to="decompose"/>', '<edge from="start" on="error" to="completed"/>');
   const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source) });
   assert.equal(result.ok, false); assert.equal(result.diagnostics.length, 100);
   assert.equal(result.diagnostics[0].code, "E_TOO_MANY_DIAGNOSTICS");
@@ -173,7 +224,7 @@ test("grammar diagnoses malformed attribute and complete semantic/system routing
   const duplicate = source.replace('id="review" version', 'id="review" id="again" version');
   let result = compileLoopFiles({ ...files, "review.loop": Buffer.from(duplicate) });
   assert.equal(result.ok, false); assert.deepEqual(result.diagnostics[0], { path: "review.loop", byteOffset: 18, code: "E_XML_DUPLICATE_ATTRIBUTE", message: "Duplicate attribute id" });
-  const missing = source.replace('<edge from="review" on="approve" to="converged"/>\n', "");
+  const missing = source.replace('<edge from="final-review" on="approve" to="converged"/>\n', "");
   result = compileLoopFiles({ ...files, "review.loop": Buffer.from(missing) });
   assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_EDGE_MISSING"));
   const system = source.replace('lost="needs-human"', 'lost="failed"');
@@ -182,14 +233,14 @@ test("grammar diagnoses malformed attribute and complete semantic/system routing
   const duplicateSystem = source.replace('error="failed"', 'error="failed" error="failed"');
   result = compileLoopFiles({ ...files, "review.loop": Buffer.from(duplicateSystem) });
   assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_XML_DUPLICATE_ATTRIBUTE"));
-  const bypass = source.replace('from="review" on="approve" to="converged"', 'from="review" on="approve" to="completed"');
+  const bypass = source.replace('from="final-review" on="approve" to="converged"', 'from="final-review" on="approve" to="completed"');
   result = compileLoopFiles({ ...files, "review.loop": Buffer.from(bypass) });
   assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_EDGE_TARGET" || item.code === "E_CONVERGENCE_DOMINATION"));
 });
 
 test("recoverable XML findings merge with semantic findings before global sorting", async () => {
   const files = await reviewFiles();
-  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0" version="still-bad"').replace('max-rounds="3"', 'max-rounds="0" unknown="x"');
+  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0" version="still-bad"').replace('max-rounds="12"', 'max-rounds="0" unknown="x"');
   const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source) });
   assert.equal(result.ok, false);
   assert.deepEqual(result.diagnostics.map((item) => item.code), ["E_SCALAR", "E_XML_DUPLICATE_ATTRIBUTE", "E_ATTRIBUTE_UNKNOWN", "E_SCALAR"]);
@@ -200,11 +251,11 @@ test("literal fenced-section grammar handles both delimiters and false closers",
   const files = await reviewFiles();
   for (const marker of ["`", "~"]) for (const indent of [0, 1, 2, 3]) {
     const fence = `${" ".repeat(indent)}${marker.repeat(3)} suffix ${marker}\n## review\n${" ".repeat(indent)}${marker.repeat(4)}    \n`;
-    const markdown = `## implement\ntext\n${fence}## review\nreview text\n`;
+    const markdown = `## start\nscope\n${fence}## review\nreview text\n## decompose\nsplit\n## implement\nwork\n## integrate\ncombine\n## final-review\ninspect\n`;
     const result = compileLoopFiles({ ...files, "instructions.md": Buffer.from(markdown) });
     assert.equal(result.ok, true, `${marker}/${indent}`);
   }
-  const falseCloser = "## implement\ntext\n``` suffix `\n## review\n``` not-close\n## review\nreview\n";
+  const falseCloser = "## start\nscope\n``` suffix `\n## review\n``` not-close\n## review\nreview\n## decompose\nsplit\n## implement\nwork\n## integrate\ncombine\n## final-review\ninspect\n";
   const result = compileLoopFiles({ ...files, "instructions.md": Buffer.from(falseCloser) });
   assert.equal(result.ok, false); assert.ok(result.diagnostics.some((item) => item.code === "E_INSTRUCTIONS_FENCE"));
 });
@@ -228,7 +279,7 @@ test("frozen recipe replay rejects any noncanonical JSON encoding", async () => 
   const spaced = Buffer.from(`${frozen.toString("utf8").trim()} \n`, "utf8");
   assert.throws(() => loadFrozenRecipe(spaced), /Frozen recipe is not canonical/);
 
-  const scientific = Buffer.from(frozen.toString("utf8").replace("\"maxRounds\":3", "\"maxRounds\":1e1"), "utf8");
+  const scientific = Buffer.from(frozen.toString("utf8").replace("\"maxRounds\":12", "\"maxRounds\":1.2e1"), "utf8");
   assert.throws(() => loadFrozenRecipe(scientific), /Frozen recipe is not canonical/);
 });
 
@@ -258,18 +309,15 @@ test("compiler invariant mirror rejects duplicated reviewer instruction IDs", as
 
 test("compiler invariant mirror rejects non-task maker entry", async () => {
   const files = await reviewFiles();
-  let source = files["review.loop"].toString().replace('entry="implement"', 'entry="verify"');
-  source = source.replace('<edge from="implement" on="complete" to="verify"/>', '<edge from="implement" on="complete" to="verify" max-visits="3"/>');
-  source = source.replace(' <edge from="verify" on="fail" to="implement" max-visits="3"/>', ' <edge from="verify" on="fail" to="implement"/>');
-  source = source.replace(' <edge from="review" on="reject" to="implement" max-visits="3"/>', ' <edge from="review" on="reject" to="implement"/>');
+  const source = files["review.loop"].toString().replace('entry="start"', 'entry="validate"');
   const reassigned = compileLoopFiles({ ...files, "review.loop": Buffer.from(source) });
   assert.equal(reassigned.ok, false);
-  assert.ok(reassigned.diagnostics.some((item) => item.code === "E_IR_INVARIANT"));
+  assert.ok(reassigned.diagnostics.some((item) => ["E_REACHABILITY", "E_ENTRY_KIND", "E_IR_INVARIANT"].includes(item.code)));
 });
 
 test("diagnostic truncation keeps the first 99 sorted findings", async () => {
   const files = await reviewFiles(), extras = Array.from({ length: 110 }, (_, index) => ` bad-${index}="x"`).join("");
-  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0"').replace('max-rounds="3"', `max-rounds="0"${extras}`).replace('<edge from="implement" on="complete" to="verify"/>', '<edge from="implement" on="error" to="completed"/>');
+  const source = files["review.loop"].toString().replace('version="0.1.0"', 'version="0"').replace('max-rounds="12"', `max-rounds="0"${extras}`).replace('<edge from="start" on="complete" to="decompose"/>', '<edge from="start" on="error" to="completed"/>');
   const result = compileLoopFiles({ ...files, "review.loop": Buffer.from(source) });
   assert.equal(result.ok, false); assert.equal(result.diagnostics.length, 100);
   assert.deepEqual(result.diagnostics[0], { path: "", byteOffset: 0, code: "E_TOO_MANY_DIAGNOSTICS", message: "Too many diagnostics (maximum 100)" });

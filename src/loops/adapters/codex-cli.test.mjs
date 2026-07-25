@@ -14,6 +14,7 @@ if (mode === "nonzero") { process.exit(7); }
 if (mode === "bad") { process.stdout.write("not-json\\n"); process.exit(0); }
 if (mode === "invalid-utf8") { process.stdout.write(Buffer.from([255,10])); process.exit(0); }
 if (mode === "oversize") { process.stdout.write(Buffer.alloc(1048577,97)); process.exit(0); }
+if (mode === "large-line") { process.stdout.write(JSON.stringify({type:"item.completed",item:{type:"agent_message",text:"x".repeat(70000)}})+"\\n"); }
 const session = mode === "same-session" ? "same" : "fresh-" + process.pid;
 process.stdout.write(JSON.stringify({type:"thread.started",thread_id:session,model:args[args.indexOf("-m") + 1],version:"fake-1"})+"\\n");
 process.stdout.write(JSON.stringify({type:"burnlist.capability",guarantees:{freshSession:"enforced",filesystemWriteDeny:"enforced",foregroundHandle:"enforced",cancellation:"enforced",lifecycle:"enforced"}})+"\\n");
@@ -75,6 +76,11 @@ test("JSONL is strict UTF-8 and usage overflow or absence is unavailable", async
     await withMode("bad", async () => assert.rejects(startCodexInvocation({ profile: maker, cwd: context.directory, prompt: "Bad." }).completion, (error) => error.code === "ELOOP_CODEX_OUTPUT"));
     await withMode("invalid-utf8", async () => assert.rejects(startCodexInvocation({ profile: maker, cwd: context.directory, prompt: "Bad bytes." }).completion, (error) => error.code === "ELOOP_CODEX_OUTPUT"));
     await withMode("oversize", async () => assert.rejects(startCodexInvocation({ profile: maker, cwd: context.directory, prompt: "Too much." }).completion, (error) => ["ELOOP_CODEX_OUTPUT_LIMIT", "ELOOP_CODEX_OUTPUT"].includes(error.code)));
+    await withMode("large-line", async () => {
+      const result = await startCodexInvocation({ profile: maker, cwd: context.directory, prompt: "Large valid line." }).completion;
+      assert.equal(result.outcome, "completed");
+      assert.equal(result.events[0].item.text.length, 70000);
+    });
     for (const mode of ["missing-usage", "overflow"]) await withMode(mode, async () => {
       const result = await startCodexInvocation({ profile: maker, cwd: context.directory, prompt: "Usage." }).completion;
       assert.equal(result.usage, null); assert.equal(result.usageStatus, "unavailable");

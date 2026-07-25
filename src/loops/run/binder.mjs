@@ -3,7 +3,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findBurnlistDir } from "../../cli/lifecycle-moves.mjs";
 import { locateItemSpan, validateAssignedItem } from "../assignment/item-metadata.mjs";
-import { parseItemRef } from "../assignment/selectors.mjs";
+import { parseItemRef, parseLoopRef } from "../assignment/selectors.mjs";
+import { resolveLoopPackage } from "../assignment/assignment.mjs";
 import { assignmentStore } from "../assignment/store.mjs";
 import { readCapabilityCatalog, resolveCapability, canonicalCapabilityBytes, canonicalGrantBytes, GUARANTEE_LABELS } from "../capabilities/contract.mjs";
 import { assertTrustedCapability } from "../capabilities/trust.mjs";
@@ -11,15 +12,13 @@ import { checkSnapshot, holdSnapshot, readSnapshotBytes, releaseSnapshot, snapsh
 import { compileLoopFiles } from "../dsl/compile.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { prefixed, rawSha256 } from "../dsl/hash.mjs";
-import { createNormalizedInvocation } from "../adapters/normalized-invocation.mjs";
 import { agentProfileRevision } from "../agents/profile.mjs";
 import { readProfile, readRoute, requiredRoutes } from "../config/profiles.mjs";
 import { localRecordPath } from "../config/store.mjs";
-import { boundPolicyRevision, canonicalBoundPolicyBytes, loadBoundPolicy } from "./run-artifacts.mjs";
-import { createRunRunner } from "./runner.mjs";
+import { canonicalBoundPolicyBytes, loadBoundPolicy } from "./run-artifacts.mjs";
 import { deriveCandidate } from "./candidate.mjs";
-import { ownerClaimId } from "./run-claim.mjs";
 import { newRunId } from "./run-codec.mjs";
+import { createBoundNormalizedInvocationImpl, createProductionRunRunnerImpl } from "./production-runner.mjs";
 
 const INPUT_KEYS = new Set(["runId", "itemRef"]);
 const builtinsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../loops");
@@ -83,6 +82,24 @@ function executableSnapshot(loopRef) {
   assertBoundaryEvidence(evidence);
   return { compiled, evidence };
 }
+async function projectExecutableSnapshot(repoRoot, loopRef) {
+  const loop = parseLoopRef(loopRef), directory = join(repoRoot, ".burnlist", "loops", loop.name);
+  const resolved = await resolveLoopPackage({ repoRoot, loop });
+  const files = {}, evidence = [];
+  for (const name of Object.keys(resolved.packageFiles).sort()) {
+    const path = join(directory, name), maximum = name.endsWith(".loop") ? 65536 : name === "instructions.md" ? 262144 : 65536;
+    const captured = readSnapshotBytes({ root: repoRoot, path, maximum }); files[name] = captured.bytes;
+    evidence.push(Object.freeze({ kind: "file", path, dev: String(captured.identity.dev), ino: String(captured.identity.ino),
+      size: String(captured.identity.size), mode: String(captured.identity.mode), mtimeMs: String(captured.identity.mtimeMs), ctimeMs: String(captured.identity.ctimeMs) }));
+    for (const ancestor of captured.ancestors) evidence.push(Object.freeze({ kind: "directory", path: ancestor.path,
+      dev: String(ancestor.identity.dev), ino: String(ancestor.identity.ino), size: String(ancestor.identity.size),
+      mode: String(ancestor.identity.mode), mtimeMs: String(ancestor.identity.mtimeMs), ctimeMs: String(ancestor.identity.ctimeMs) }));
+  }
+  const compiled = compileLoopFiles(files, { loopFile: `${loop.name}.loop` });
+  if (!compiled.ok) fail("captured project executable source does not compile");
+  assertBoundaryEvidence(evidence);
+  return { compiled, evidence };
+}
 function currentPolicy(repoRoot, recipeRevision) {
   const authorityInputs = [];
   const add = (role, path, executable = false) => authorityInputs.push(Object.freeze({ role, path, executable }));
@@ -139,10 +156,12 @@ export function launchAuthorityDigest(evidence) {
   return rawSha256(Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-launch-authority@1", inputs })}\n`));
 }
 export function assertExecutableBinding(authority) {
-  if (!authority?.artifact?.executionRevision || !authority.currentCompiled?.revisions?.executable)
+  if (!authority?.artifact?.executionRevision || !authority?.artifact?.packageRevision || !authority.currentCompiled?.revisions?.executable || !authority.currentCompiled?.revisions?.package)
     fail("installed executable recipe is unavailable");
   if (authority.currentCompiled.revisions.executable !== authority.artifact.executionRevision)
     fail(`installed executable ${authority.currentCompiled.revisions.executable} does not match assignment pin ${authority.artifact.executionRevision}`, "ELOOP_RUN_EXECUTABLE_DRIFT");
+  if (authority.currentCompiled.revisions.package !== authority.artifact.packageRevision)
+    fail(`installed package ${authority.currentCompiled.revisions.package} does not match assignment pin ${authority.artifact.packageRevision}`, "ELOOP_RUN_EXECUTABLE_DRIFT");
   return authority.artifact.executionRevision;
 }
 
@@ -157,7 +176,9 @@ export async function bindRunCreation({ repoRoot, input }) {
     || artifact.unassignedItemDigest !== metadata.unassignedDigest
     || artifact.executionRevision !== metadata["Execution-Revision"]
     || artifact.packageRevision !== metadata["Package-Revision"]) fail("Run creation requires one canonical item assignment");
-  const source = executableSnapshot(artifact.selector);
+  const source = artifact.selector.startsWith("loop:builtin:")
+    ? executableSnapshot(artifact.selector)
+    : await projectExecutableSnapshot(repoRoot, artifact.selector);
   const recipeRevision = assertExecutableBinding({ artifact, currentCompiled: source.compiled });
   const policy = currentPolicy(repoRoot, recipeRevision);
   const evidence = boundaryEvidence([join(located.dir, "burnlist.md"),
@@ -200,9 +221,18 @@ export async function createProductionRun({ repoRoot, store, itemRef, runId = ne
       authority = await bindRunCreation({ repoRoot, input: { runId, itemRef } });
     }
   }
-  revalidatePreparedBinding({ repoRoot, bound: authority });
   const graph = loadFrozenRecipe(authority.frozenRecipeBytes).ir;
-  store.createRun({ runId, itemRef: authority.itemRef, graph, authority: sealRunAuthority(runId, authority) });
+  const previous = store.readCurrentRun?.(authority.itemRef);
+  let allowSupersedeConverged = false;
+  if (previous && previous.runId !== runId) {
+    const replay = store.read(previous.runId);
+    if (replay.projection.state === "converged") {
+      const candidate = deriveCandidate({ repoRoot });
+      allowSupersedeConverged = candidate.id !== replay.execution.candidate?.id;
+    }
+  }
+  revalidatePreparedBinding({ repoRoot, bound: authority });
+  store.createRun({ runId, itemRef: authority.itemRef, graph, authority: sealRunAuthority(runId, authority), allowSupersedeConverged });
   return store.read(runId);
 }
 
@@ -231,7 +261,7 @@ function revalidateAssignedItem({ repoRoot, replay }) {
   if (located.lifecycle.folder !== "inprogress") fail("Run item is no longer active", "ELOOP_RUN_BINDING_STALE");
   const span = locateItemSpan(readFileSync(join(located.dir, "burnlist.md")), item.itemId);
   const metadata = validateAssignedItem(item.selector, span), artifact = assignmentStore(repoRoot).load(metadata["Assignment-Id"]);
-  const expectedSelector = `loop:builtin:${replay.frozenRecipe.ir.id}`;
+  const expectedSelector = artifact.selector;
   if (metadata.assignedDigest !== replay.projection.itemRevision
     || metadata["Assignment-Id"] !== replay.projection.assignmentId
     || metadata.Selector !== expectedSelector
@@ -296,62 +326,18 @@ export function releaseRunLaunchBinding(held) {
  */
 export function createBoundNormalizedInvocation({ repoRoot, replay, contextFor, candidateForBoundary = null,
   startAgent, runCheck, agentTimeoutMs = 0 }) {
-  if (typeof repoRoot !== "string" || !replay?.projection?.assignmentId || !replay?.frozenRecipe?.ir
-    || typeof replay.itemText !== "string" || !replay.itemText
-    || !Buffer.isBuffer(replay.policyBytes) || typeof contextFor !== "function") fail("invalid production invocation input");
-  const policy = loadBoundPolicy(replay.policyBytes).policy;
-  const route = (name) => policy.routes.find((entry) => entry.route === name);
-  const implementation = route("implementation.standard"), review = route("review.strong");
-  if (!implementation || !review) fail("frozen Stage One routes are unavailable");
-  const nodes = new Map(replay.frozenRecipe.ir.nodes.map((node) => [node.id, node]));
-  return createNormalizedInvocation({ repoRoot, nodes,
-    routes: { implementation: { profile: implementation.profile }, review: { profile: review.profile } },
-    bindingFor(invocation, node) {
-      const context = contextFor(invocation, node), instruction = replay.frozenRecipe.instructions
-        .find((item) => item.id === node.instructions);
-      if (!context || node.kind === "agent" && !instruction) fail("frozen invocation context is unavailable");
-      return { claimId: context.claimId, assignmentId: replay.projection.assignmentId,
-        recipeRevision: replay.frozenRecipe.revisions.executable, policyRevision: boundPolicyRevision(policy),
-        inputCandidate: context.inputCandidate, instructionBytes: instruction
-          ? Buffer.from(instruction.base64, "base64").toString("utf8") : "Run the frozen trusted capability.\n",
-        itemText: replay.itemText, candidateContext: context.candidateContext,
-        reviewerEvidence: context.reviewerEvidence ?? [] };
-    }, candidateForBoundary, startAgent, runCheck, agentTimeoutMs });
+  return createBoundNormalizedInvocationImpl({ repoRoot, replay, contextFor, candidateForBoundary,
+    startAgent, runCheck, agentTimeoutMs });
 }
 
 /** Compose frozen creation authority, the M3 dispatcher, and the M2 runner. */
 export function createProductionRunRunner({ repoRoot, store, runId, authority, contextFor,
   startAgent, runCheck, agentTimeoutMs = 0 }) {
-  if (authority?.schema === "burnlist-loop-m12-run-authority@1") authority = unsealRunAuthority(authority);
-  if (!store?.replay || !authority?.assignmentId || !Buffer.isBuffer(authority.frozenRecipeBytes)
-    || !Buffer.isBuffer(authority.policyBytes)) fail("invalid production runner authority");
-  const frozenRecipe = loadFrozenRecipe(authority.frozenRecipeBytes);
-  const replay = { projection: { assignmentId: authority.assignmentId }, frozenRecipe,
-    policyBytes: authority.policyBytes, itemText: authority.itemText };
-  const liveContext = (invocation, node) => {
-    const execution = store.replay(runId).execution;
-    const candidate = execution.candidate ?? deriveCandidate({ repoRoot });
-    const checkNode = frozenRecipe.ir.nodes.find((item) => item.kind === "check");
-    const check = checkNode && execution.evidence[checkNode.id];
-    const reviewerEvidence = node.mode === "review"
-      ? check?.kind === "pass" && check.candidateId === candidate.id && execution.latest.check?.candidateId === candidate.id
-        ? [`trusted-check candidate=${candidate.id} summary=${execution.latest.check.summary}`] : []
-      : [];
-    return { claimId: ownerClaimId({ runId: invocation.runId, nodeId: invocation.nodeId, attempt: invocation.attempt,
-      assignmentId: authority.assignmentId, inputCandidate: candidate.id }), inputCandidate: candidate.id,
-      candidateContext: candidate.context, reviewerEvidence };
-  };
-  const dispatch = createBoundNormalizedInvocation({ repoRoot, replay, contextFor: contextFor ?? liveContext,
-    candidateForBoundary: () => deriveCandidate({ repoRoot }), startAgent, runCheck, agentTimeoutMs });
-  const invoke = async (invocation) => {
-    const captured = captureRunLaunchBinding({ repoRoot, replay: { ...replay, projection: { ...replay.projection, itemRef: authority.itemRef, itemRevision: authority.itemRevision }, boundPolicy: loadBoundPolicy(authority.policyBytes).policy } });
-    recheckRunLaunchBinding(captured); const held = holdRunLaunchBinding(captured);
-    try { recheckRunLaunchBinding(captured); return await dispatch(invocation); }
-    finally { releaseRunLaunchBinding(held); }
-  };
-  return createRunRunner({ store, runId, invoke, bindCandidate() {
-    const candidate = deriveCandidate({ repoRoot }); return { candidateId: candidate.id, candidateContext: candidate.context };
-  } });
+  return createProductionRunRunnerImpl({ repoRoot, store, runId, authority, contextFor,
+    startAgent, runCheck, agentTimeoutMs, binding: {
+      seal: sealRunAuthority, unseal: unsealRunAuthority, capture: captureRunLaunchBinding,
+      recheck: recheckRunLaunchBinding, hold: holdRunLaunchBinding, release: releaseRunLaunchBinding,
+    } });
 }
 
 /** Resume constructs exclusively from the immutable per-Run record; it never rebinds source or policy. */

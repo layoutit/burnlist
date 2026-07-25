@@ -105,17 +105,17 @@ test("loop view rejects duplicate, missing, and unknown --repo options", () => {
   const context = fixture();
   try {
     const duplicate = runCommand(context.repo, ["loop", "view", "review", "--repo", context.repo, "--repo", context.repo]);
-    assert.equal(duplicate.status, 1);
+    assert.equal(duplicate.status, 2);
     assert.equal(duplicate.stdout, "");
     assert.match(duplicate.stderr, /--repo must be specified at most once/u);
 
     const missing = runCommand(context.repo, ["loop", "view", "review", "--repo"]);
-    assert.equal(missing.status, 1);
+    assert.equal(missing.status, 2);
     assert.equal(missing.stdout, "");
     assert.match(missing.stderr, /--repo requires a path/u);
 
     const unknown = runCommand(context.repo, ["loop", "view", "review", "--repo", context.repo, "--mystery"]);
-    assert.equal(unknown.status, 1);
+    assert.equal(unknown.status, 2);
     assert.equal(unknown.stdout, "");
     assert.match(unknown.stderr, /Unknown option: --mystery/u);
   } finally { context.cleanup(); }

@@ -102,6 +102,36 @@ burnlist loop status run:<id>
 burnlist loop inspect run:<id>
 ```
 
+## Host-orchestrated agent nodes
+
+A host may inspect the next node, claim an agent node, then return exactly one
+bound result. All four commands use JSON on stdout; write the report to a
+regular, non-symlink file no larger than 256 KiB.
+
+```sh
+burnlist loop next run:<id>
+burnlist loop claim run:<id>
+burnlist loop report cl1-sha256:<claim-id> --result ./agent-result.json
+burnlist loop abandon cl1-sha256:<claim-id> --reason host-cancelled
+```
+
+`abandon` accepts only `host-cancelled`, `host-lost`, or `expired`; `expired`
+is accepted only after the claim lease expires. Hosts cannot choose graph edges
+or execute checks. The Checklist Oven only observes these Run updates and has
+no mutation path.
+
+The claim response carries a prepared execution envelope. A host executes that
+exact bounded input through its available mechanism, preserves its full claim
+identity in one `burnlist-loop-host-report@1`, and submits the report by claim
+id. Burnlist, not the host, validates it and selects the transition. Native
+hosts can orchestrate their own subagents: Codex natively orchestrates Codex
+and Claude natively orchestrates Claude. `builtin:codex-cli` is only the
+Burnlist-managed process adapter, useful when deliberately configured for a
+cross-engine invocation; it is not the only way a Loop node runs. Unknown
+host telemetry remains unavailable rather than inferred. The installed
+Burnlist skill contains the generic host protocol and optional bounded provider
+recipes; it remains independent from Streaming Diff hook installation.
+
 The maker receives the item and instructions, then the trusted repository
 check runs. A new reviewer process evaluates the candidate. A check failure or
 reviewer rejection returns to the maker within the declared budget; approval
@@ -181,6 +211,26 @@ metadata is projected, never the executable path or private dispatch policy.
 Fan-out Loops are arranged as explicit split, parallel branch, merge, and
 feedback paths.
 
+Host execution is a frozen transport contract only:
+
+- Claim identity is fixed per invocation (`runId`, `nodeId`, `attempt`,
+  `assignmentId`, and `inputCandidate`) and carries a bounded lease.
+- Prepared execution-envelope identity is canonical
+  (`burnlist-loop-host-execution@1`) and must validate against the frozen
+  run/claim identity.
+- Transport envelope is canonical JSON with one prepared invocation digest and
+  dispatch authority, bounded inputs, no destination, and no outcome.
+- Report is canonical and includes an `agent-result@1`, `findings` (for reviews),
+  optional `burnlist-loop-host-telemetry@1` with `provenance: "host-reported"`
+  only, and is accepted as idempotent only when byte-equivalent on retransmit.
+- Outcomes are closed by node mode: task nodes accept only `complete`, review
+  nodes accept only `approve|reject|escalate`.
+- Graph transitions stay entirely on the Burnlist side; hosts only return the report.
+- Checks stay managed by the Loop run authority and are not executed directly by
+  hosts.
+- Repeated reports are identity-based; duplicate retransmits are only accepted when
+  byte-equivalent.
+
 ## Guarantees and limits
 
 Stage 1 labels graph grammar, fresh reviewer process, budgets, closed outcomes,
@@ -188,6 +238,15 @@ atomic canonical CLI writes, and the dashboard read-only boundary as
 `enforced`. Ordinary configuration and path drift checks are
 `detected-at-boundaries`. Reviewer filesystem write denial and host
 instructions are `supervised`; they are not Docker or an OS sandbox.
+
+Host execution is transport-only for a frozen invocation envelope. The host
+provides output and optional telemetry; Burnlist alone selects graph edges from
+the frozen graph, validates the claim/candidate identity, and applies outcomes.
+Hosts may not choose destination edges or execute checks directly; checks remain
+managed and declared by the frozen Loop run authority.
+
+Hosts return one terminal `burnlist-loop-host-report@1` for their claim. Its
+bound agent result carries one legal node-mode `outcome` and no `destination`.
 
 Parallelism, nested agents, metric gates, custom adapters, auto-worktrees,
 background execution, Docker isolation, and forecasting are `unsupported`.

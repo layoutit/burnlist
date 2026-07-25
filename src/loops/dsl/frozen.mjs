@@ -1,12 +1,13 @@
 import { canonicalIrBytes } from "./canonical.mjs";
 import { prefixed, rawSha256 } from "./hash.mjs";
-import { validateClosedIr } from "./ir-validate.mjs";
+import { validateReplayIr } from "./ir-validate.mjs";
 
 const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const digest = /^[a-f0-9]{64}$/;
 const sections = ["schema", "compiler", "revisions", "source", "package", "ir", "instructions"];
 const revisionKeys = ["source", "package", "executable"];
 const packageSizes = { "review.loop": [1, 65536], "instructions.md": [1, 262144], "example/item.md": [0, 65536] };
+const loopPath = /^[a-z0-9]+(?:-[a-z0-9]+)*\.loop$/u;
 
 function sortByPath(entries) {
   return [...entries].sort((left, right) => Buffer.compare(Buffer.from(left.path), Buffer.from(right.path)));
@@ -46,9 +47,11 @@ function freeze(value) { if (!value || typeof value !== "object") return value; 
 /** Serializes the only runtime-facing compiler product: immutable IR and source/package bytes. */
 export function freezeRecipe(compiled) {
   if (!compiled?.ok || !compiled.ir || !Buffer.isBuffer(compiled.irBytes) || !compiled.packageFiles) throw new TypeError("A successful compile result is required");
+  const sourcePath = Object.keys(compiled.packageFiles).find((path) => loopPath.test(path));
+  if (!sourcePath) throw new TypeError("A successful compile result is required");
   const packageFiles = Object.entries(compiled.packageFiles).sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right))).map(([path, bytes]) => ({ path, bytes: Buffer.from(bytes).toString("base64") }));
   const instructions = compiled.instructions.map((section) => ({ id: section.id, digest: section.digest, bytes: Buffer.from(section.bytes).toString("base64") }));
-  return Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-frozen@1", compiler: compiled.ir.compiler, revisions: compiled.revisions, source: Buffer.from(compiled.packageFiles["review.loop"]).toString("base64"), package: packageFiles, ir: JSON.parse(compiled.irBytes), instructions })}\n`, "utf8");
+  return Buffer.from(`${JSON.stringify({ schema: "burnlist-loop-frozen@1", compiler: compiled.ir.compiler, revisions: compiled.revisions, source: Buffer.from(compiled.packageFiles[sourcePath]).toString("base64"), package: packageFiles, ir: JSON.parse(compiled.irBytes), instructions })}\n`, "utf8");
 }
 
 /** Runtime/replay boundary: verify frozen bytes and never recompile installed source. */
@@ -61,11 +64,12 @@ export function loadFrozenRecipe(bytes) {
   } catch {
     throw new TypeError("Frozen recipe is not canonical");
   }
-  if (!exact(value, sections) || value.schema !== "burnlist-loop-frozen@1" || value.compiler !== "burnlist-loop-compiler@1" || !exact(value.revisions, revisionKeys) || !revision(value.revisions.source, "ls1") || !revision(value.revisions.package, "lp1") || !revision(value.revisions.executable, "er1") || !validateClosedIr(value.ir) || value.ir.compiler !== value.compiler) throw new TypeError("Frozen recipe has an invalid envelope");
+  if (!exact(value, sections) || value.schema !== "burnlist-loop-frozen@1" || value.compiler !== "burnlist-loop-compiler@1" || !exact(value.revisions, revisionKeys) || !revision(value.revisions.source, "ls1") || !revision(value.revisions.package, "lp1") || !revision(value.revisions.executable, "er1") || !validateReplayIr(value.ir) || value.ir.compiler !== value.compiler) throw new TypeError("Frozen recipe has an invalid envelope");
   const source = base64(value.source);
   if (!Array.isArray(value.package) || value.package.length < 2 || value.package.length > 3 || !Array.isArray(value.instructions)) throw new TypeError("Frozen recipe has an invalid package");
-  const packageFiles = value.package.map((item) => { if (!exact(item, ["path", "bytes"]) || !Object.hasOwn(packageSizes, item.path)) throw new TypeError("Frozen recipe has an invalid package"); const content = base64(item.bytes), [minimum, maximum] = packageSizes[item.path]; if (content.length < minimum || content.length > maximum) throw new TypeError("Frozen recipe has an invalid package"); return { path: item.path, bytes: content }; });
-  if (new Set(packageFiles.map((item) => item.path)).size !== packageFiles.length || packageFiles.reduce((total, item) => total + item.bytes.length, 0) > 393216 || !packageFiles.some((item) => item.path === "review.loop" && item.bytes.equals(source)) || !packageFiles.some((item) => item.path === "instructions.md")) throw new TypeError("Frozen recipe has an invalid package");
+  const packageFiles = value.package.map((item) => { const limits = loopPath.test(item?.path) ? [1, 65536] : packageSizes[item?.path]; if (!exact(item, ["path", "bytes"]) || !limits) throw new TypeError("Frozen recipe has an invalid package"); const content = base64(item.bytes), [minimum, maximum] = limits; if (content.length < minimum || content.length > maximum) throw new TypeError("Frozen recipe has an invalid package"); return { path: item.path, bytes: content }; });
+  const sources = packageFiles.filter((item) => loopPath.test(item.path));
+  if (new Set(packageFiles.map((item) => item.path)).size !== packageFiles.length || sources.length !== 1 || packageFiles.reduce((total, item) => total + item.bytes.length, 0) > 393216 || !sources[0].bytes.equals(source) || !packageFiles.some((item) => item.path === "instructions.md")) throw new TypeError("Frozen recipe has an invalid package");
   const sortedPackage = [...packageFiles].sort((left, right) => Buffer.compare(Buffer.from(left.path), Buffer.from(right.path)));
   const packageDigest = prefixed("lp1-sha256:", "package-v1", sortedPackage.flatMap((item) => [Buffer.from(item.path), item.bytes]));
   if (prefixed("ls1-sha256:", "source-v1", [source]) !== value.revisions.source || packageDigest !== value.revisions.package) throw new TypeError("Frozen recipe provenance revision does not match bytes");

@@ -29,7 +29,7 @@ function previewRun(item: ChecklistItem, data: ChecklistProgressData): LoopRunPr
     createdAt: 0,
     updatedAt: 0,
     state: "prepared",
-    currentNode: "start",
+    currentNode: item.loop?.graph?.entry ?? "start",
     attempt: 0,
     cycle: 0,
     revision: "preview",
@@ -80,9 +80,26 @@ const detailFields = [
   ["Files", "Files/search"],
 ] as const;
 
+function compactDuration(milliseconds: number) {
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return minutes < 60 ? `${minutes}m ${seconds % 60}s` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function latestEvidence(run: LoopRunProjection) {
+  const timed = [run.latestReviewer, run.latestCheck, run.latestMaker]
+    .filter((value): value is NonNullable<typeof value> => !!value)
+    .sort((left, right) => right.at - left.at);
+  return timed[0] ?? run.latestResult;
+}
+
 function ActiveDetail({ data, item }: { data: ChecklistProgressData; item: ChecklistItem }) {
   const run = previewRun(item, data);
   const topology = item.loop?.graph ? itemTopologyProjection(run) : null;
+  const activeNode = run.graph.nodes.find((node) => node.id === run.currentNode);
+  const evidence = latestEvidence(run);
+  const observedAgent = run.execution?.telemetry;
   const legendSymbols = topology ? {
     start: "S",
     ...Object.fromEntries(topology.graph.nodes.filter((node) => node.kind === "terminal" && node.terminalState === "converged").map((node) => [node.id, "B"])),
@@ -92,8 +109,29 @@ function ActiveDetail({ data, item }: { data: ChecklistProgressData; item: Check
       <dl className="checklist-workspace__fields">{detailFields.map(([label, key]) => item.fields[key] ? <div key={key}><dt>{label}</dt><dd>{item.fields[key]}</dd></div> : null)}</dl>
       {item.loop ? <div className="checklist-workspace__detail-loop">
         <div className="checklist-workspace__loop-head"><span>Loop</span><span>{item.loop.selector}</span></div>
+        {run.runId !== "preview" ? <dl className="checklist-workspace__run-facts" aria-label="Current Loop execution">
+          <div><dt>Node</dt><dd>{run.currentNode} · attempt {run.attempt || 1}</dd></div>
+          <div><dt>Mode</dt><dd>{run.execution?.mode ?? "unavailable"}</dd></div>
+          <div><dt>Agent</dt><dd>{activeNode?.execution
+            ? `${observedAgent?.model ?? activeNode.execution.model} · ${observedAgent?.effort ?? activeNode.execution.effort}${observedAgent ? " · host-reported" : " · declared"}`
+            : activeNode?.kind === "agent" ? "model and effort unavailable" : "not an agent node"}</dd></div>
+          <div><dt>Elapsed</dt><dd>{compactDuration(run.budget.elapsedMilliseconds)}</dd></div>
+          <div><dt>Usage</dt><dd>{run.execution?.usage ?? "unavailable"}</dd></div>
+          <div><dt>Evidence</dt><dd>{evidence?.summary ?? "unavailable"}</dd></div>
+        </dl> : null}
         <LoopCompact run={run} labels="outcomes" title={`Loop for ${item.id}`} variant={item.loop.graph ? "topology" : "burn-cycle"} />
         {topology && <LoopLegend run={topology} symbols={legendSymbols} title={`Loop symbols for ${item.id}`} />}
+        {run.activity ? <div className="checklist-workspace__activity" aria-label="Recent Loop activity">
+          <div className="checklist-workspace__loop-head"><span>Activity</span><span>hooks {run.activity.hooks}</span></div>
+          {run.activity.records.length ? <ol>{run.activity.records.slice().reverse().map((record, index) => <li key={`${record.at}/${record.kind}/${index}`}>
+            <b>{record.origin}</b>
+            <time dateTime={new Date(record.at).toISOString()}>{compactAge(new Date(record.at).toISOString(), data.generatedAt)}</time>
+            {record.provider ? <span>{record.provider}</span> : null}
+            {record.mode ? <span>{record.mode}</span> : null}
+            <span>{record.kind}{record.truncated ? " · truncated" : ""}</span>
+            {record.nodeId ? <span>{record.nodeId}{record.attempt ? ` #${record.attempt}` : ""}</span> : null}{record.outcome ? <span>{record.outcome}</span> : null}{record.capability ? <span>{record.capability}</span> : null}{record.subagentId ? <span>↳ {record.parentAgentId ? `${record.parentAgentId}/` : ""}{record.subagentId}</span> : null}{record.tool ? <span>{record.tool}</span> : null}{record.observedPath ? <span>{record.observedPath}</span> : null}
+          </li>)}</ol> : <p>Runner activity will appear after the first committed transition.</p>}
+        </div> : null}
       </div> : <div className="checklist-workspace__direct">Direct implementation · no Loop assigned</div>}
     </div>;
 }

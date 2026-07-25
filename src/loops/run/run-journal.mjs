@@ -4,15 +4,21 @@ import { join } from "node:path";
 
 export const MAX_JOURNAL_RECORDS = 256;
 const MAX_RECORDS = MAX_JOURNAL_RECORDS, MAX_BYTES = 4 * 1024 * 1024, MAX_RECORD = 131072;
-const TYPES = new Set(["run-created", "lease-acquired", "lease-released", "lease-revoked", "state-changed", "node-started", "invocation-started", "invocation-result", "candidate-bound", "system-outcome", "terminal-node-committed", "failure-routed", "edge-taken"]);
-const names = { "run-created": ["schema", "runId", "itemRef", "graph", "authorityRequired"], "lease-acquired": ["generation", "token"], "lease-released": ["generation", "token"], "lease-revoked": ["generation", "token"], "state-changed": ["from", "to", "cause"], "node-started": ["nodeId", "attempt"], "invocation-started": ["nodeId", "attempt", "invocationId"], "system-outcome": ["kind", "summary"], "terminal-node-committed": ["kind", "summary", "from", "to", "nodeId", "attempt"], "invocation-result": ["invocationId", "kind", "summary", "outputBytes", "candidateId"], "candidate-bound": ["candidateId", "candidateContext"], "failure-routed": ["from", "kind", "to"], "edge-taken": ["from", "on", "to"] };
+const TYPES = new Set(["run-created", "lease-acquired", "lease-released", "lease-revoked", "state-changed", "node-started", "invocation-started", "external-claim-bound", "external-claim-resolved", "external-report-accepted", "invocation-result", "candidate-bound", "system-outcome", "terminal-node-committed", "failure-routed", "edge-taken"]);
+const names = { "run-created": ["schema", "runId", "itemRef", "graph", "authorityRequired"], "lease-acquired": ["generation", "token"], "lease-released": ["generation", "token"], "lease-revoked": ["generation", "token"], "state-changed": ["from", "to", "cause"], "node-started": ["nodeId", "attempt"], "invocation-started": ["nodeId", "attempt", "invocationId"], "external-claim-bound": ["claim", "envelopeDigest", "invocationId"], "external-claim-resolved": ["claimId", "invocationId", "reason"], "external-report-accepted": ["claimId", "reportDigest", "invocationId", "kind", "summary", "outputBytes", "candidateId", "findings", "resolvedFindingIds", "telemetry"], "system-outcome": ["kind", "summary"], "terminal-node-committed": ["kind", "summary", "from", "to", "nodeId", "attempt"], "invocation-result": ["invocationId", "kind", "summary", "outputBytes", "candidateId"], "candidate-bound": ["candidateId", "candidateContext"], "failure-routed": ["from", "kind", "to"], "edge-taken": ["from", "on", "to"] };
+const legacyExternalReport = ["claimId", "reportDigest", "invocationId", "kind", "summary", "outputBytes", "candidateId"];
 const fileName = (sequence) => `${String(sequence).padStart(16, "0")}.json`;
 const tempName = /^\.append-[a-f0-9]{16}\.tmp$/u;
 const fail = (message, code = "EJOURNAL") => { throw Object.assign(new Error(`Run journal: ${message}`), { code }); };
 const exact = (value, keys) => Boolean(value) && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 const digest = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
-export function validateJournalEvent(type, payload) { if (!TYPES.has(type) || !exact(payload, names[type])) fail("event payload is not closed"); return payload; }
+export function validateJournalEvent(type, payload) {
+  if (!TYPES.has(type) || !exact(payload, names[type])
+    && !(type === "external-report-accepted" && exact(payload, legacyExternalReport)))
+    fail("event payload is not closed");
+  return payload;
+}
 export function createJournalRecord({ sequence, prevDigest, at, type, payload }) {
   if (!Number.isSafeInteger(sequence) || sequence < 1 || !Number.isSafeInteger(at) || at < 0 || !(prevDigest === null || /^sha256:[a-f0-9]{64}$/u.test(prevDigest))) fail("invalid record header");
   validateJournalEvent(type, payload);

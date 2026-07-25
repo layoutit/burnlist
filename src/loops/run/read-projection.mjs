@@ -7,6 +7,7 @@ import { locateItemSpan, validateAssignedItem } from "../assignment/item-metadat
 import { assignmentStore } from "../assignment/store.mjs";
 import { currentRunAuthority } from "./current-authority.mjs";
 import { runStore } from "./run-store.mjs";
+import { projectRunActivity } from "../events/activity-projection.mjs";
 
 const MAX_RUNS = 128;
 const fail = (message) => { throw Object.assign(new Error(`Run projection: ${message}`), { code: "ERUN_PROJECTION" }); };
@@ -19,6 +20,8 @@ function publicNode(node, routes = []) {
       ...common,
       role: node.role,
       authority: node.authority,
+      executionMode: node.execution,
+      intelligence: node.intelligence,
       execution: resolved ? {
         profileId: resolved.profileId,
         model: resolved.model,
@@ -47,12 +50,16 @@ export function presentRun(replay) {
   const transitions = [];
   for (const record of records) {
     const { sequence, type, payload } = record.value;
-    if (type === "invocation-result") latestResult = {
+    if (type === "invocation-result" || type === "external-report-accepted") latestResult = {
       kind: payload.kind, summary: payload.summary,
     };
     if (type === "edge-taken") transitions.push({ sequence, from: payload.from, outcome: payload.on, to: payload.to });
     if (type === "state-changed") transitions.push({ sequence, from: payload.from, outcome: payload.cause, to: payload.to });
   }
+  const declaredMode = replay.execution.node?.execution;
+  const executionMode = replay.execution.started
+    ? declaredMode === "managed" ? "managed" : declaredMode === "host" ? "host-reported" : "unavailable"
+    : "unavailable";
   return Object.freeze({
     schema: "burnlist-loop-read-projection@1",
     runId: replay.projection.runId,
@@ -65,6 +72,15 @@ export function presentRun(replay) {
     currentNode: replay.projection.currentNode,
     attempt: replay.projection.attempt,
     cycle: replay.execution.cycle,
+    execution: {
+      mode: executionMode,
+      started: replay.execution.started,
+      usage: replay.execution.telemetry
+        && (replay.execution.telemetry.inputTokens !== null || replay.execution.telemetry.outputTokens !== null)
+        ? "reported" : "unavailable",
+      telemetry: replay.execution.telemetry,
+    },
+    activity: projectRunActivity({ runId: replay.projection.runId, graph: replay.graph, journal: records }),
     latestResult,
     latestMaker: replay.projection.latestMaker,
     latestCheck: replay.projection.latestCheck,

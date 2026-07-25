@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 9373,
-    "domSha256": "507e6c935ee89bd163e26d015862cb0ff3e5bf7d0b970d21542e8ac4dde1a897"
+    "domBytes": 10876,
+    "domSha256": "78e067dd99894335edaaa2ab79aa9a77bcd9cd91430fc80054e205cd219dc150"
   }
 ]

@@ -47,6 +47,9 @@ test("top-level and Oven help expose the validated use and set flow", () => {
     assert.match(top.stdout, /burnlist oven <[^\n]*use[^\n]*set[^\n]*>/u);
     assert.match(top.stdout, /burnlist loop view <LoopRef\|ItemRef\|review> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop create <ItemRef> \[--repo <path>\]/u);
+    assert.match(top.stdout, /burnlist loop next\|claim <RunRef> \[--repo <path>\]/u);
+    assert.match(top.stdout, /burnlist loop report <ClaimRef> --result <file> \[--repo <path>\]/u);
+    assert.match(top.stdout, /burnlist loop abandon <ClaimRef> --reason <host-cancelled\|host-lost\|expired> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop list \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop run\|resume <RunRef> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop status\|inspect <RunRef> \[--repo <path>\]/u);
@@ -92,7 +95,7 @@ test("nested Loop help snapshots every Stage 1 control", () => {
   try {
     const result = run(context.directory, ["loop", "--help"]);
     assert.equal(result.status, 0, result.stderr);
-    for (const command of ["create", "list", "run|pause|resume|stop|complete", "status|inspect", "reconcile"]) {
+    for (const command of ["create", "next|claim", "report <ClaimRef> --result <file>", "abandon <ClaimRef> --reason <host-cancelled|host-lost|expired>", "list", "run|pause|resume|stop|complete", "status|inspect", "reconcile"]) {
       assert.match(result.stdout, new RegExp(`burnlist loop ${command}`, "u"));
     }
     assert.match(result.stdout, /pause\|resume\|stop\|complete <RunRef>/u);
@@ -201,7 +204,7 @@ test("Review Loop documentation command matrix runs against the production fixtu
   const executed = spawnSync(process.execPath, [cli, "loop", "run", runId, "--repo", repo], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,approve" },
+    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,complete,complete,approve,complete,approve" },
   });
   assert.equal(executed.status, 0, executed.stderr);
   assert.equal(JSON.parse(executed.stdout).state, "converged");
@@ -219,7 +222,7 @@ test("Review Loop documentation command matrix runs against the production fixtu
   writeFileSync(counter, "0");
   const resumed = spawnSync(process.execPath, [cli, "loop", "resume", pausedRun, "--repo", repo], {
     cwd: repo, encoding: "utf8",
-    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,approve" },
+    env: { ...process.env, BURNLIST_FAKE_COUNTER: counter, BURNLIST_FAKE_OUTCOMES: "complete,complete,complete,approve,complete,approve" },
   });
   assert.equal(resumed.status, 0, resumed.stderr);
   assert.equal(JSON.parse(resumed.stdout).state, "converged");
@@ -235,8 +238,8 @@ test("Review Loop documentation command matrix runs against the production fixtu
   assert.equal(loop("assign", reconciledRef, "loop:builtin:review").status, 0);
   const reconciledRun = JSON.parse(loop("create", reconciledRef).stdout).runId;
   const store = runStore(repo), acquired = store.acquireLease(reconciledRun);
-  store.append(reconciledRun, acquired.lease, "node-started", { nodeId: "implement", attempt: 1 });
-  store.append(reconciledRun, acquired.lease, "invocation-started", { nodeId: "implement", attempt: 1, invocationId: "a".repeat(32) });
+  store.append(reconciledRun, acquired.lease, "node-started", { nodeId: "start", attempt: 1 });
+  store.append(reconciledRun, acquired.lease, "invocation-started", { nodeId: "start", attempt: 1, invocationId: "a".repeat(32) });
   const reconciled = loop("reconcile", reconciledRun, "--recovery-proof", acquired.recoveryProof);
   assert.equal(reconciled.status, 0, reconciled.stderr);
   assert.equal(JSON.parse(reconciled.stdout).state, "needs-human");

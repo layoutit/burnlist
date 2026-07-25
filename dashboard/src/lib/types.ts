@@ -27,6 +27,47 @@ export type LoopRunProjection = {
   currentNode: string;
   attempt: number;
   cycle: number;
+  execution?: {
+    mode: "managed" | "host-reported" | "unavailable";
+    started: boolean;
+    usage?: "reported" | "unavailable";
+    telemetry?: null | {
+      provenance: "host-reported";
+      executor: string;
+      displayName: string | null;
+      provider: string | null;
+      model: string | null;
+      effort: string | null;
+      startedAt: number | null;
+      completedAt: number | null;
+      inputTokens: number | null;
+      outputTokens: number | null;
+    };
+  };
+  activity?: {
+    hooks: "unavailable" | "available";
+    records: Array<{
+      at: number;
+      origin: "runner" | "host-hook" | "agent-reported";
+      kind: string;
+      provider?: "claude" | "codex";
+      nodeId?: string;
+      attempt?: number;
+      correlation?: string;
+      mode?: "managed" | "host-reported" | "unavailable";
+      capability?: string;
+      outcome?: string;
+      state?: string;
+      from?: string;
+      to?: string;
+      reason?: string;
+      truncated?: boolean;
+      parentAgentId?: string;
+      subagentId?: string;
+      tool?: string;
+      observedPath?: string;
+    }>;
+  };
   revision: string;
   budget: {
     limits: { maxRounds: number; maxMinutes: number; maxAgentRuns: number; maxCheckRuns: number; maxTransitions: number; maxOutputBytes: number };

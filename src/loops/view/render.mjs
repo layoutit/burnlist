@@ -1,5 +1,6 @@
 import { outcomesFor } from "../dsl/grammar.mjs";
-import { validateClosedIr } from "../dsl/ir-validate.mjs";
+import { validateReplayIr } from "../dsl/ir-validate.mjs";
+import { renderLoopAscii } from "./ascii.mjs";
 
 const SYSTEM = ["error", "timeout", "cancelled", "lost", "exhausted"];
 const MODES = new Set(["UNPINNED", "ITEM-PINNED", "RUN-FROZEN"]);
@@ -24,7 +25,7 @@ function revision(value, label, prefix) {
 }
 function recipe(value, label) {
   if (!value || typeof value !== "object" || !value.ir || !value.revisions) fail("ELOOP_VIEW_IR_INVALID", `${label} recipe is missing`);
-  if (!validateClosedIr(value.ir)) fail("ELOOP_VIEW_IR_INVALID", `${label} recipe is not closed normalized Stage-1 IR`);
+  if (!validateReplayIr(value.ir)) fail("ELOOP_VIEW_IR_INVALID", `${label} recipe is not closed normalized Stage-1 IR`);
   const r = value.revisions;
   revision(r.source, `${label} source revision`, "ls1"); revision(r.package, `${label} package revision`, "lp1"); revision(r.executable, `${label} executable revision`, "er1");
   return value;
@@ -91,9 +92,7 @@ export function renderResolvedLoopView(authority) {
   const executionAssigned = mode === "UNPINNED" ? "-" : scalar(selectedRevisions.executable, "assigned execution revision");
   const executionCurrent = mode === "RUN-FROZEN" ? "not-checked" : currentValid ? scalar(currentRevisions.executable, "current execution revision") : mode === "UNPINNED" ? scalar(selectedRevisions.executable, "current execution revision") : "unavailable";
   const g = graph(ir);
-  const lines = ["BURNLIST LOOP VIEW @1", `MODE: ${mode}`, `SELECTOR: ${selector}`, `LOOP: ${loop}`, `DECLARED-VERSION: ${scalar(ir.declaredVersion, "declared version")}`, `COMPILER: ${scalar(ir.compiler, "compiler contract")}`, `EXECUTION: assigned=${executionAssigned} current=${executionCurrent} status=${status(executionAssigned, executionCurrent === "unavailable" ? null : executionCurrent, mode)}`, `SOURCE: assigned=${sourceAssigned} current=${sourceCurrent} status=${status(sourceAssigned, sourceCurrent === "unavailable" ? null : sourceCurrent, mode)}`, `PACKAGE: assigned=${packageAssigned} current=${packageCurrent} status=${status(packageAssigned, packageCurrent === "unavailable" ? null : packageCurrent, mode)}`, `PIN: ${mode === "UNPINNED" ? "unpinned" : mode === "ITEM-PINNED" ? "item-pinned" : "run-frozen"}`, "DRAWING (DECORATIVE):"];
-  for (const edge of g.expanded.filter((item) => item.className === "semantic"))
-    lines.push(`  ${edge.from === ir.entry ? "* " : "  "}${edge.from} --${edge.on}--> ${edge.to}`);
+  const lines = ["BURNLIST LOOP VIEW @1", `MODE: ${mode}`, `SELECTOR: ${selector}`, `LOOP: ${loop}`, `DECLARED-VERSION: ${scalar(ir.declaredVersion, "declared version")}`, `COMPILER: ${scalar(ir.compiler, "compiler contract")}`, `EXECUTION: assigned=${executionAssigned} current=${executionCurrent} status=${status(executionAssigned, executionCurrent === "unavailable" ? null : executionCurrent, mode)}`, `SOURCE: assigned=${sourceAssigned} current=${sourceCurrent} status=${status(sourceAssigned, sourceCurrent === "unavailable" ? null : sourceCurrent, mode)}`, `PACKAGE: assigned=${packageAssigned} current=${packageCurrent} status=${status(packageAssigned, packageCurrent === "unavailable" ? null : packageCurrent, mode)}`, `PIN: ${mode === "UNPINNED" ? "unpinned" : mode === "ITEM-PINNED" ? "item-pinned" : "run-frozen"}`, "DRAWING (DECORATIVE):", renderLoopAscii(ir)];
   lines.push("ADJACENCY (AUTHORITATIVE):");
   for (const node of g.nodes) {
     lines.push(`${node.id} [kind=${node.kind} scc=${g.scc.get(node.id)}]`);

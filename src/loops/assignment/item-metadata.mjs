@@ -61,7 +61,7 @@ export function findLoopMetadata(spanResult) {
   const meta = metadataAt(lines, markers[0]);
   if (meta.endLine > endLine) fail("Loop metadata escapes item span");
   if (!AS.test(meta.values["Assignment-Id"]) || !ER.test(meta.values["Execution-Revision"]) || !LP.test(meta.values["Package-Revision"])) fail("noncanonical Loop digest");
-  if (!/^loop:builtin:[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(meta.values.Selector)) fail("noncanonical Loop selector");
+  if (!/^loop:(?:builtin|project):[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(meta.values.Selector)) fail("noncanonical Loop selector");
   return meta;
 }
 

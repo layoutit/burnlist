@@ -28,6 +28,8 @@ export type LoopGraphProjection = {
   currentNode: string;
   attempt: number;
   cycle: number;
+  execution?: LoopRunProjectionExecution;
+  activity?: { hooks: "unavailable" | "available"; records: Array<{ at: number; origin: "runner" | "host-hook" | "agent-reported"; kind: string; provider?: "claude" | "codex"; nodeId?: string; attempt?: number; correlation?: string; mode?: "managed" | "host-reported" | "unavailable"; capability?: string; outcome?: string; state?: string; from?: string; to?: string; reason?: string; truncated?: boolean; parentAgentId?: string; subagentId?: string; tool?: string; observedPath?: string }> };
   graph: { entry?: string; nodes: LoopGraphNode[]; edges: LoopGraphEdge[] };
   transitions?: LoopGraphTransition[];
   latestResult?: null | { kind: string; summary: string };
@@ -40,6 +42,16 @@ export type LoopGraphProjection = {
   latestMaker?: null | { summary: string; at: number; candidateId: string | null };
   latestCheck?: null | { summary: string; at: number; candidateId: string | null };
   latestReviewer?: null | { summary: string; at: number; candidateId: string | null };
+};
+type LoopRunProjectionExecution = {
+  mode: "managed" | "host-reported" | "unavailable";
+  started: boolean;
+  usage?: "reported" | "unavailable";
+  telemetry?: null | {
+    provenance: "host-reported"; executor: string; displayName: string | null;
+    provider: string | null; model: string | null; effort: string | null;
+    startedAt: number | null; completedAt: number | null; inputTokens: number | null; outputTokens: number | null;
+  };
 };
 
 export type LoopGraphProps = {
@@ -95,6 +107,7 @@ function GraphCanvas({ run, label, state }: { run: LoopGraphProjection; label: s
         : active?.kind ?? "";
   return <div className="loop-graph__ascii-host" ref={host} aria-label={`Loop state: ${state}`}>
     <div className="loop-graph__active">ACTIVE: {run.currentNode.toUpperCase()}{activeDetail ? ` · ${activeDetail}` : ""}</div>
+    <div className="loop-graph__mode">MODE: {run.execution?.mode ?? "unavailable"} · {state.toUpperCase()}</div>
     <pre ref={text} className="loop-graph__ascii" role="img" aria-label={`${label}; current node ${run.currentNode}${execution}`}>
     {layout.lines.map((value, row) => {
       const current = layout.current;
@@ -106,6 +119,21 @@ function GraphCanvas({ run, label, state }: { run: LoopGraphProjection; label: s
     })}
     </pre>
   </div>;
+}
+
+function Activity({ activity }: { activity?: LoopGraphProjection["activity"] }) {
+  if (!activity) return null;
+  const records = activity.records;
+  return <section className="loop-graph__activity" aria-label="Recent Loop activity">
+    <div className="loop-graph__activity-title">ACTIVITY · HOOKS {activity.hooks.toUpperCase()}</div>
+    {records.length ? <ol>{records.map((record, index) => {
+      const subject = record.subagentId ? `subagent ${record.subagentId}` : record.tool ? `tool ${record.tool}` : record.nodeId ?? record.from ?? "run";
+      const result = record.outcome ?? record.state ?? record.to;
+      return <li key={`${record.correlation ?? record.at}/${record.kind}/${index}`}>
+        <span>{record.origin}</span><strong>{record.kind}</strong><span>{subject}{result ? ` → ${result}` : ""}</span>
+      </li>;
+    })}</ol> : <div className="loop-graph__activity-empty">No activity reported.</div>}
+  </section>;
 }
 
 export function LoopGraph({ run, diagnostic, message, title = "Loop Run" }: LoopGraphProps) {
@@ -120,5 +148,6 @@ export function LoopGraph({ run, diagnostic, message, title = "Loop Run" }: Loop
   const viewState = presentationState(run, diagnostic);
   return <div className={`loop-graph loop-graph--${viewState}`} data-loop-state={viewState}>
     <GraphCanvas label={title} run={run} state={stateLabel(run, diagnostic)} />
+    <Activity activity={run.activity} />
   </div>;
 }

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { closeSync, constants, fsyncSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { checklistCompletion, findBurnlistDir, withLock } from "../../cli/lifecycle-moves.mjs";
 import { localIsoTimestamp, parsePlan, validatePlan } from "../../server/plan-model.mjs";
 import { publishOvenEvent } from "../../events/oven-event-store.mjs";
@@ -9,6 +9,7 @@ import { locateItemSpan, validateAssignedItem } from "../assignment/item-metadat
 import { parseItemRef } from "../assignment/selectors.mjs";
 import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { runStore } from "../run/run-store.mjs";
+import { deriveCandidate } from "../run/candidate.mjs";
 
 const RECEIPT = "completion-receipt.json", INTENT = "completion-intent.json";
 const SHA = /^[a-f0-9]{64}$/u, RUN = /^run:[0-9a-z]{26}$/u, ASSIGNMENT = /^as1-sha256:[a-f0-9]{64}$/u;
@@ -72,7 +73,7 @@ function assertApplied(plan, record) {
   const completed = plan.completed.filter((item) => item.id === itemId && item.completedAt === record.completedAt && item.title === record.title);
   if (completed.length !== 1) fail("receipt does not match the current Burnlist");
 }
-function assertCurrentAssignment({ repoRoot, planBytes, plan, authority, replay, store }) {
+function assertCurrentAssignment({ repoRoot, planBytes, plan, authority, replay, store, candidateId }) {
   if (replay.projection.state !== "converged" || replay.projection.leaseHeld) fail("Run is not converged and idle", "ERUN_NOT_CONVERGED");
   if (replay.projection.itemRef !== authority.itemRef || authority.runId !== replay.projection.runId) fail("Run authority does not match its journal");
   const current = store.readCurrentRun?.(authority.itemRef);
@@ -82,6 +83,7 @@ function assertCurrentAssignment({ repoRoot, planBytes, plan, authority, replay,
   catch { fail("assigned item no longer matches the Run", "ESTALE_ASSIGNMENT"); }
   if (metadata["Assignment-Id"] !== authority.assignmentId || artifact.assignmentId !== authority.assignmentId || artifact.itemRef !== authority.itemRef || artifact.assignedItemDigest !== authority.itemRevision || metadata.assignedDigest !== authority.itemRevision || artifact.executionRevision !== metadata["Execution-Revision"] || artifact.packageRevision !== metadata["Package-Revision"]) fail("assigned item no longer matches the Run", "ESTALE_ASSIGNMENT");
   const frozen = loadFrozenRecipe(Buffer.from(authority.frozenRecipe, "base64")); if (JSON.stringify(frozen.ir) !== JSON.stringify(replay.graph)) fail("Run graph does not match its sealed assignment");
+  if (!replay.execution.candidate || replay.execution.candidate.id !== candidateId) fail("Run candidate drifted before completion", "ECANDIDATE_DRIFT");
   return { item, title: plan.items.find((entry) => entry.id === item.itemId)?.title };
 }
 function assertAuthority(authority, runId) {
@@ -94,6 +96,10 @@ function publish(repoRoot, outcome) { if (!outcome.applied) return; try { publis
 export function completeLoopRun({ repoRoot, runId, store = runStore(repoRoot), hooks = {} }) {
   if (!RUN.test(runId) || !store?.read || !store?.readAuthority || !store?.readCurrentRun || !store?.paths?.pathFor) fail("invalid completion input");
   const replay = store.read(runId), authority = assertAuthority(store.readAuthority(runId), runId), item = parseItemRef(authority.itemRef), found = findBurnlistDir(repoRoot, item.burnlistId);
+  // Capture before the lifecycle lock: that lock is itself an untracked
+  // runtime artifact and must not manufacture candidate drift.
+  const candidateExclusions = [relative(resolve(repoRoot), join(found.dir, ".lock"))];
+  const completionCandidate = deriveCandidate({ repoRoot, excludedPaths: candidateExclusions });
   if (found.lifecycle.folder !== "inprogress") fail(`Burnlist ${item.burnlistId} is not inprogress`);
   const lifecycle = lifecycleIdentity(repoRoot, item.burnlistId, found.dir);
   const result = withLock(found.dir, () => {
@@ -114,12 +120,17 @@ export function completeLoopRun({ repoRoot, runId, store = runStore(repoRoot), h
     }
     let record = readCanonical(intentPath, "completion intent");
     if (record) { record = validRecord(record, "completion intent"); if (record.runId !== runId || record.itemRef !== authority.itemRef || record.assignmentId !== authority.assignmentId) fail("completion intent belongs to another Run"); const completed = plan.completed.filter((entry) => entry.id === item.itemId && entry.completedAt === record.completedAt && entry.title === record.title); if (completed.length === 1) { atomicWrite(receiptPath, Buffer.from(`${JSON.stringify(record)}\n`)); rmSync(intentPath, { force: true }); syncDirectory(runDir); return { applied: false, item: completed[0], record, event: null }; } }
-    const current = assertCurrentAssignment({ repoRoot, planBytes: bytes, plan, authority, replay, store }); if (!current.title) fail("Run item title is unavailable");
+    const current = assertCurrentAssignment({ repoRoot, planBytes: bytes, plan, authority, replay, store, candidateId: completionCandidate.id }); if (!current.title) fail("Run item title is unavailable");
     const completedAt = record?.completedAt ?? localIsoTimestamp(), provisional = recordFor({ authority, completedAt, title: current.title, planDigest: "0".repeat(64) }), next = completedMarkdown(plan.markdown, provisional);
     record = recordFor({ authority, completedAt, title: current.title, planDigest: digest(Buffer.from(next)) });
     const existingIntent = readCanonical(intentPath, "completion intent");
     if (existingIntent && validRecord(existingIntent, "completion intent").planDigest !== record.planDigest) fail("completion intent no longer matches the active Burnlist", "ESTALE_INTENT");
     if (!existingIntent) { atomicWrite(intentPath, Buffer.from(`${JSON.stringify(record)}\n`)); hooks.afterIntent?.(record); }
+    hooks.beforePlan?.(record);
+    // This is the final pre-mutation boundary.  The lifecycle lock is excluded
+    // from both captures because it is our own untracked synchronization file.
+    if (deriveCandidate({ repoRoot, excludedPaths: candidateExclusions }).id !== completionCandidate.id)
+      fail("Run candidate drifted before completion", "ECANDIDATE_DRIFT");
     lifecycleIdentity(repoRoot, item.burnlistId, found.dir, lifecycle); const staged = atomicPlanWrite(planPath, Buffer.from(next)); hooks.afterPlan?.(record); atomicWrite(receiptPath, Buffer.from(`${JSON.stringify(record)}\n`)); hooks.afterReceipt?.(record); rmSync(intentPath, { force: true }); syncDirectory(runDir);
     return { applied: true, item: { id: item.itemId, title: current.title }, record, event: checklistCompletion(item.burnlistId, { id: item.itemId, title: current.title }, record.completedAt, staged) };
   });

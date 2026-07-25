@@ -10,7 +10,7 @@ const RUNTIME_ROOTS = new Set([".local", "node_modules"]);
 const fail = (message) => { throw Object.assign(new Error(`Loop candidate: ${message}`), { code: "ECANDIDATE" }); };
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-function repositoryPaths(root) {
+function repositoryPaths(root, excludedPaths) {
   let bytes;
   try {
     bytes = execFileSync("git", ["-C", root, "ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
@@ -21,7 +21,7 @@ function repositoryPaths(root) {
   if (paths.pop() !== "" || new Set(paths).size !== paths.length
     || paths.some((path) => !path || path.startsWith("/") || path.split("/").some((part) => part === "..")))
     fail("worktree path list is invalid or exceeds bounds");
-  const included = paths.filter((path) => !RUNTIME_ROOTS.has(path.split("/", 1)[0])).sort();
+  const included = paths.filter((path) => !RUNTIME_ROOTS.has(path.split("/", 1)[0]) && !excludedPaths.has(path)).sort();
   if (included.length > MAX_FILES) fail("worktree path list exceeds bounds");
   return included;
 }
@@ -49,18 +49,21 @@ function fileRecord(root, relativePath) {
   return `${relativePath}\tfile\t${bytes.length}\t${sha256(bytes)}`;
 }
 
-/** A bounded Git worktree manifest. This is boundary detection, not hostile-writer isolation. */
-export function deriveCandidate({ repoRoot }) {
+/** A bounded Git worktree manifest. This detects drift at caller-defined boundaries; it is not hostile-writer isolation. */
+export function deriveCandidate({ repoRoot, excludedPaths = [] }) {
   const root = resolve(repoRoot), rootBefore = lstatSync(root);
   if (!rootBefore.isDirectory() || rootBefore.isSymbolicLink()) fail("repository root is unsafe");
-  const paths = repositoryPaths(root), records = []; let total = 0;
+  if (!Array.isArray(excludedPaths) || excludedPaths.length > 16 || excludedPaths.some((path) => typeof path !== "string" || !path || path.startsWith("/") || path.split("/").some((part) => !part || part === "." || part === ".."))) fail("candidate exclusion is invalid");
+  const exclusions = new Set(excludedPaths);
+  if (exclusions.size !== excludedPaths.length) fail("candidate exclusion is invalid");
+  const paths = repositoryPaths(root, exclusions), records = []; let total = 0;
   for (const path of paths) {
     const record = fileRecord(root, path), fields = record.split("\t");
     total += Number(fields[2]);
     if (total > MAX_TOTAL_BYTES) fail("candidate manifest exceeds bounds");
     records.push(record);
   }
-  if (repositoryPaths(root).join("\0") !== paths.join("\0")) fail("worktree paths changed while capturing candidate");
+  if (repositoryPaths(root, exclusions).join("\0") !== paths.join("\0")) fail("worktree paths changed while capturing candidate");
   const rootAfter = lstatSync(root);
   if (!rootAfter.isDirectory() || rootAfter.isSymbolicLink() || rootBefore.dev !== rootAfter.dev || rootBefore.ino !== rootAfter.ino) fail("repository root changed while capturing candidate");
   const manifest = `candidate-manifest@2\n${records.join("\n")}\n`;

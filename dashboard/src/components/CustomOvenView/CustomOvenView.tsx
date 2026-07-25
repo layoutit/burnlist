@@ -14,6 +14,10 @@ function unwrapPayload(raw: unknown) {
   return raw && typeof raw === "object" && "payload" in raw ? (raw as { payload: unknown }).payload : raw;
 }
 
+export function burnlistOvenPayload(progress: ProgressData) {
+  return adaptChecklist(progress);
+}
+
 export function CustomOvenRuntime({ burnlistId, ir, payload }: { burnlistId?: string; ir: OvenIr; payload?: unknown }) {
   if (burnlistId) {
     return <><LensSwitcher /><OvenRuntime ir={{ ...ir, refreshSeconds: undefined }} payload={payload} /></>;
@@ -32,7 +36,7 @@ export function CustomOvenView({ error, loading, progress, stale }: { error: str
       <CustomOvenRuntime
         burnlistId={selection.burnlistId ?? undefined}
         ir={ir}
-        payload={selection.burnlistId ? adaptChecklist(progress!) : undefined}
+        payload={selection.burnlistId ? burnlistOvenPayload(progress!) : undefined}
       />
     )}</OvenDefinition>
   </>;

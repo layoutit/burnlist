@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { closeSync, constants, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, constants, fsyncSync, lstatSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compileLoopPackage } from "../dsl/compile.mjs";
@@ -23,8 +23,28 @@ function packageDirectory(loop) {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../loops/review");
 }
 export async function resolveBuiltin(loop) {
+  if (!loop.selector.startsWith("loop:builtin:")) fail(`installed Loop ${loop.selector} was not found`);
   const compiled = await compileLoopPackage(packageDirectory(loop));
   if (!compiled.ok) fail(`installed Loop ${loop.selector} does not compile`);
+  if (loop.executable && loop.executable !== compiled.revisions.executable) fail("LoopRef executable pin does not match current package");
+  return compiled;
+}
+
+function localPackageDirectory(repoRoot, loop) {
+  const root = resolve(repoRoot), parts = [root, join(root, ".burnlist"), join(root, ".burnlist", "loops"), join(root, ".burnlist", "loops", loop.name)];
+  for (const path of parts) {
+    let stat; try { stat = lstatSync(path); } catch { fail(`project Loop ${loop.selector} was not found`); }
+    if (stat.isSymbolicLink() || !stat.isDirectory()) fail(`project Loop ${loop.selector} has an unsafe package path`);
+  }
+  return parts.at(-1);
+}
+
+/** Resolve one closed selector kind. Project packages are data-only compiler input. */
+export async function resolveLoopPackage({ repoRoot, loop }) {
+  if (loop.selector.startsWith("loop:builtin:")) return resolveBuiltin(loop);
+  const directory = localPackageDirectory(repoRoot, loop);
+  const compiled = await compileLoopPackage(directory, { loopFile: `${loop.name}.loop` });
+  if (!compiled.ok) fail(`project Loop ${loop.selector} does not compile`);
   if (loop.executable && loop.executable !== compiled.revisions.executable) fail("LoopRef executable pin does not match current package");
   return compiled;
 }
@@ -58,7 +78,7 @@ export async function assignLoopItem({ repoRoot, itemRef, loopRef, prepared, sto
   const item = parseItemRef(itemRef), loop = parseLoopRef(loopRef);
   const token = prepared ?? prepareItemMutation({ repoRoot, itemRef: item.selector });
   if (token.item?.selector !== item.selector) fail("prepared token item does not match");
-  const compiled = await resolveBuiltin(loop);
+  const compiled = await resolveLoopPackage({ repoRoot, loop });
   const target = planPath(repoRoot, item); const canonicalSelector = loop.selector;
   return withLock(target.directory, () => {
     const whole = readFileSync(target.path); const located = locateItemSpan(whole, item.itemId);

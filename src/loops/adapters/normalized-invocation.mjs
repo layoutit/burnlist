@@ -1,9 +1,13 @@
 import { startCodexInvocation } from "./codex-cli.mjs";
 import { runTrustedCapability } from "../capabilities/runner.mjs";
 import { parseBoundedObject } from "../contracts/contract.mjs";
+import { validateHostExecutionEnvelope } from "../contracts/host-execution.mjs";
 
 const MAX_SUMMARY_BYTES = 1024;
-const RESULT_TYPES = new Set(["complete", "approve", "reject", "escalate"]);
+const AGENT_RESULT_TYPES = new Set(["complete", "approve", "reject", "escalate"]);
+const FINAL_REPORT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "invocationId", "assignmentId",
+  "recipeRevision", "policyRevision", "inputCandidate", "outcome", "summary", "findings", "resolvedFindingIds"];
+const MAX_FINAL_BYTES = 65_536;
 const CANDIDATE = /^cm1-sha256:[a-f0-9]{64}$/u;
 const ASSIGNMENT = /^as1-sha256:[a-f0-9]{64}$/u;
 const CLAIM = /^cl1-sha256:[a-f0-9]{64}$/u;
@@ -51,41 +55,61 @@ function finalPrompt(invocation, node, current) {
   return ["Burnlist Stage 1 invocation.", `run=${invocation.runId}`, `node=${node.id}`, `attempt=${invocation.attempt}`,
     `claim=${current.claimId}`, `invocation=${invocation.invocationId}`, `assignment=${current.assignmentId}`,
     `recipe=${current.recipeRevision}`, `policy=${current.policyRevision}`, `candidate=${current.inputCandidate}`,
-    `role=${node.role ?? "check"}`, "Your terminal response must be exactly one JSON object (no Markdown) with schema burnlist.agent-final@1, runId, nodeId, attempt, claimId, invocationId, assignmentId, recipeRevision, policyRevision, inputCandidate, outcome, summary.",
+    `role=${node.role ?? "check"}`,
+    "Burnlist owns graph routing and checks; host output is transport-only and idempotent by replaying the exact final report.",
+    "Report exactly one canonical object with this schema: burnlist.agent-final@1",
+    "Required report fields: schema, runId, nodeId, attempt, claimId, invocationId, assignmentId, recipeRevision, policyRevision, inputCandidate, outcome, summary, findings, resolvedFindingIds.",
+    "Do not include destination or any graph transitions; no host-selected edges are accepted.",
+    "Host result contracts are by node mode: task=>complete, review=>approve|reject|escalate.",
+    "Host claim envelopes are bounded; use exact prepared claim identity and expiry semantics from the transport contract.",
+    "Host telemetry is optional but, if provided, must use burnlist-loop-host-telemetry@1 with provenance=host-reported and non-negative token/time fields.",
     "FROZEN INSTRUCTIONS:", current.instructionBytes, "ASSIGNED ITEM:", current.itemText,
-    "CANDIDATE CONTEXT:", current.candidateContext, "REVIEW EVIDENCE:", JSON.stringify(current.reviewerEvidence)].join("\n");
+    "CANDIDATE CONTEXT:", current.candidateContext, "REVIEW EVIDENCE:", JSON.stringify(current.reviewerEvidence),
+    "OPEN FINDINGS:", JSON.stringify(current.openFindings ?? [])].join("\n");
 }
 function finalTexts(events) {
   const texts = [];
+  const finals = [];
   for (const event of events) {
     if (event?.type !== "item.completed" || !event.item || typeof event.item !== "object" || Array.isArray(event.item)
       || event.item.type !== "agent_message" || typeof event.item.text !== "string") continue;
-    texts.push(event.item.text);
+    const text = event.item.text;
+    try {
+      const value = parseBoundedObject(Buffer.from(text, "utf8"), { maximumBytes: MAX_FINAL_BYTES, maximumDepth: 2, label: "agent final" });
+      if (value.schema === "burnlist.agent-final@1") finals.push(text);
+    } catch {
+      // preceding conversational messages are permitted.
+    }
+    texts.push(text);
   }
   if (!texts.length) fail("agent emitted no final message");
-  return texts;
+  return { texts, finals };
 }
 function agentResult(events, invocation, node, current) {
-  const texts = finalTexts(events), envelopes = [];
+  const { texts, finals } = finalTexts(events);
+  if (!finals.length) fail("malformed or missing terminal agent result");
+  if (!finals.every((value) => value === finals[0])) fail("duplicate terminal reports differ");
+  const envelopes = [];
   for (let index = 0; index < texts.length; index += 1) {
     try {
-      const value = parseBoundedObject(Buffer.from(texts[index], "utf8"), { maximumBytes: 65_536, maximumDepth: 2, label: "agent final" });
+      const value = parseBoundedObject(Buffer.from(texts[index], "utf8"), { maximumBytes: MAX_FINAL_BYTES, maximumDepth: 2, label: "agent final" });
       if (value.schema === "burnlist.agent-final@1") envelopes.push({ index, value });
-    } catch { /* preceding conversational messages are permitted */ }
+    } catch {
+      // non-final conversational lines are tolerated.
+    }
   }
-  if (envelopes.length !== 1 || envelopes[0].index !== texts.length - 1) fail("malformed or ambiguous terminal agent result");
+  if (envelopes.at(-1).index !== texts.length - 1 || envelopes.length !== finals.length) fail("malformed or ambiguous terminal agent result");
   const result = envelopes[0].value;
-  const keys = ["schema", "runId", "nodeId", "attempt", "claimId", "invocationId", "assignmentId",
-    "recipeRevision", "policyRevision", "inputCandidate", "outcome", "summary"];
-  if (!exact(result, keys) || result.schema !== "burnlist.agent-final@1" || result.runId !== invocation.runId
+  if (!exact(result, FINAL_REPORT_KEYS) || result.schema !== "burnlist.agent-final@1" || result.runId !== invocation.runId
     || result.nodeId !== node.id || result.attempt !== invocation.attempt || result.invocationId !== invocation.invocationId
     || result.claimId !== current.claimId || result.assignmentId !== current.assignmentId
     || result.recipeRevision !== current.recipeRevision || result.policyRevision !== current.policyRevision
     || result.inputCandidate !== current.inputCandidate
-    || !RESULT_TYPES.has(result.outcome) || typeof result.summary !== "string") fail("malformed or stale agent result");
+    || !AGENT_RESULT_TYPES.has(result.outcome) || typeof result.summary !== "string") fail("malformed or stale agent result");
   const allowed = node.mode === "task" ? result.outcome === "complete" : ["approve", "reject", "escalate"].includes(result.outcome);
   if (!allowed) fail("agent result is illegal for node");
-  return { kind: result.outcome, summary: clean(result.summary) };
+  return { kind: result.outcome, summary: clean(result.summary), outputBytes: Buffer.byteLength(texts.at(-1), "utf8"),
+    findings: result.findings, resolvedFindingIds: result.resolvedFindingIds };
 }
 function boundedCompletion(handle, milliseconds) {
   if (!milliseconds) return handle.completion.then((value) => ({ value, timedOut: false }));
@@ -118,12 +142,8 @@ export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor
     || typeof startAgent !== "function" || typeof runCheck !== "function" || !Number.isSafeInteger(agentTimeoutMs)
     || agentTimeoutMs < 0 || agentTimeoutMs > 86_400_000) fail("invalid dispatcher input");
   let active = null;
-  async function invoke(invocation) {
-    const node = nodes.get(invocation?.nodeId);
-    if (!invocation || typeof invocation !== "object" || !node || typeof node !== "object") fail("invalid invocation");
-    let current;
-    try { current = binding(bindingFor(invocation, node)); } catch (error) { return Object.freeze({ kind: "error", summary: clean(error?.message), outputBytes: 0 }); }
-    if (node.mode === "review" && (!current.candidateContext || !current.reviewerEvidence.length))
+  async function invokeBound(invocation, node, current, requireReviewEvidence = true) {
+    if (node.mode === "review" && (!current.candidateContext || requireReviewEvidence && !current.reviewerEvidence.length))
       return Object.freeze({ kind: "error", summary: "review context is incomplete", outputBytes: 0 });
     if (node.kind === "check") {
       try {
@@ -149,12 +169,36 @@ export function createNormalizedInvocation({ repoRoot, routes, nodes, bindingFor
       if (completed.value.outcome === "cancelled") return Object.freeze({ kind: "cancelled", summary: "agent cancelled", outputBytes: 0 });
       if (completed.value.outcome !== "completed") return Object.freeze({ kind: "error", summary: "agent process failed", outputBytes: 0 });
       if (node.mode === "review") boundaryCandidate(candidateForBoundary, current.inputCandidate);
-      const result = agentResult(completed.value.events, invocation, node, current);
-      return Object.freeze({ ...result, outputBytes: Buffer.byteLength(JSON.stringify(completed.value.events), "utf8") });
+      return Object.freeze(agentResult(completed.value.events, invocation, node, current));
     } catch (error) { return Object.freeze({ kind: "error", summary: clean(error?.message), outputBytes: 0 }); }
     finally { active = null; }
   }
+  async function invoke(invocation) {
+    const node = nodes.get(invocation?.nodeId);
+    if (!invocation || typeof invocation !== "object" || !node || typeof node !== "object") fail("invalid invocation");
+    let current;
+    try { current = binding(bindingFor(invocation, node)); } catch (error) { return Object.freeze({ kind: "error", summary: clean(error?.message), outputBytes: 0 }); }
+    const result = await invokeBound(invocation, node, current);
+    const { findings: _findings, resolvedFindingIds: _resolved, ...normalized } = result;
+    return Object.freeze(normalized);
+  }
+  /** Executes the exact controller-prepared agent input; no second prompt binding is invented. */
+  async function invokePrepared(envelopeBytes) {
+    const envelope = validateHostExecutionEnvelope(envelopeBytes), input = envelope.input.value;
+    const node = nodes.get(input.nodeId);
+    if (!node || node.kind !== "agent") fail("prepared invocation does not target an agent node");
+    const current = {
+      claimId: input.claimId, assignmentId: input.assignmentId, recipeRevision: input.recipeRevision,
+      policyRevision: input.policyRevision, inputCandidate: input.inputCandidate,
+      instructionBytes: Buffer.from(input.instructionBytes, "base64").toString("utf8"),
+      itemText: input.itemText ? Buffer.from(input.itemText, "base64").toString("utf8") : "legacy prepared claim",
+      candidateContext: Buffer.from(input.candidateContext, "base64").toString("utf8"), reviewerEvidence: input.reviewerEvidence,
+      openFindings: input.openFindings ?? [],
+    };
+    return invokeBound(input, node, current);
+  }
   Object.defineProperty(invoke, "cancel", { value: () => active?.cancel?.() === true, enumerable: false });
   Object.defineProperty(invoke, "active", { get: () => active !== null, enumerable: false });
+  Object.defineProperty(invoke, "invokePrepared", { value: invokePrepared, enumerable: false });
   return invoke;
 }

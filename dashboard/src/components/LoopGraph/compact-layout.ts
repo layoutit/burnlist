@@ -38,6 +38,73 @@ function drawing(rows: number, columns: number) {
 
 type CompactOptions = { showLabels?: boolean; symbols?: Record<string, string> };
 
+function serialCompact(run: LoopGraphProjection, path: string[], options: CompactOptions) {
+  if (path.length < 6) return null;
+  const pathIds = new Set(path);
+  const primary = new Set(path.slice(0, -1).map((from, index) => `${from}\0${path[index + 1]}`));
+  const alternate = run.graph.edges.filter((edge) => !primary.has(`${edge.from}\0${edge.to}`));
+  const detours = run.graph.nodes.filter((node) => !pathIds.has(node.id));
+  const detourIds = new Set(detours.map((node) => node.id));
+  if (alternate.some((edge) => !pathIds.has(edge.from) && !detourIds.has(edge.from) || !pathIds.has(edge.to) && !detourIds.has(edge.to))) return null;
+  if (detours.some((node) => !run.graph.edges.some((edge) => edge.from === node.id && pathIds.has(edge.to)))) return null;
+
+  const symbols = loopSymbols(run.graph.nodes, options.symbols);
+  const loopbacks = alternate.filter((edge) => pathIds.has(edge.from) && pathIds.has(edge.to) && path.indexOf(edge.to) < path.indexOf(edge.from));
+  const width = Math.max(
+    28,
+    ...path.map((id) => symbols.get(id)!.length + 2),
+    ...run.graph.edges.map((edge) => edge.on.length + 5),
+  );
+  const graph = drawing(path.length * 2 + detours.length * 3, width);
+  const positions = new Map<string, Position>();
+
+  path.forEach((id, index) => {
+    const y = index * 2;
+    positions.set(id, { x: 0, y });
+    graph.text(0, y, symbols.get(id)!);
+    if (index + 1 < path.length) {
+      const edge = run.graph.edges.find((candidate) => candidate.from === id && candidate.to === path[index + 1])!;
+      graph.put(0, y + 1, "▼");
+      if (options.showLabels) graph.text(2, y + 1, edge.on);
+    }
+  });
+  detours.forEach((node, index) => {
+    const y = path.length * 2 + index * 3;
+    positions.set(node.id, { x: 12, y });
+    graph.text(12, y, symbols.get(node.id)!);
+  });
+  alternate.filter((edge) => detourIds.has(edge.to)).forEach((edge, index) => {
+    const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
+    const rail = 4 + index * 2;
+    graph.vertical(rail, from.y, to.y);
+    graph.horizontal(rail, to.x - 2, to.y);
+    graph.put(to.x - 2, to.y, "▶");
+    if (options.showLabels) graph.text(rail + 2, from.y, edge.on);
+  });
+  alternate.filter((edge) => detourIds.has(edge.from)).forEach((edge, index) => {
+    const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
+    const rail = width - 2 - index * 2;
+    graph.horizontal(from.x + 2, rail, from.y);
+    graph.vertical(rail, to.y, from.y);
+    graph.horizontal(2, rail, to.y);
+    graph.put(2, to.y, "◀");
+    if (options.showLabels) graph.text(from.x + 2, from.y, edge.on);
+  });
+  loopbacks.forEach((edge, index) => {
+    const from = positions.get(edge.from)!, to = positions.get(edge.to)!;
+    const rail = width - 2 - index * 2;
+    graph.horizontal(2, rail, from.y);
+    graph.vertical(rail, to.y, from.y);
+    graph.horizontal(2, rail, to.y);
+    graph.put(2, to.y, "◀");
+    if (options.showLabels) graph.text(4, from.y, edge.on);
+  });
+  return {
+    lines: graph.cells.map((line) => line.join("").trimEnd()),
+    positions,
+  };
+}
+
 function fanoutCompact(run: LoopGraphProjection, options: CompactOptions) {
   const planner = run.graph.nodes.find((node) => node.role === "planner" || node.role === "orchestrator");
   if (!planner) return null;
@@ -151,6 +218,8 @@ export function layoutCompactLoop(run: LoopGraphProjection, options: CompactOpti
   const fanout = fanoutCompact(run, options);
   if (fanout) return fanout;
   const path = loopPrimaryPath(run.graph);
+  const serial = serialCompact(run, path, options);
+  if (serial) return serial;
   const symbols = loopSymbols(run.graph.nodes, options.symbols);
   const primaryEdges = path.slice(0, -1).map((from, index) =>
     run.graph.edges.find((edge) => edge.from === from && edge.to === path[index + 1])!);

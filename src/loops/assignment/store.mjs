@@ -23,7 +23,7 @@ function manifest(record, recipe) {
 function parseManifest(bytes, id) {
   let value; try { value = JSON.parse(bytes.toString("utf8")); } catch { fail("manifest is not JSON"); }
   if (!exact(value, MANIFEST_KEYS) || !Buffer.from(`${JSON.stringify(value)}\n`).equals(bytes)) fail("manifest is not canonical");
-  if (value.schema !== "burnlist-loop-assignment@1" || value.assignmentId !== id || !ITEM.test(value.itemRef) || !/^loop:builtin:[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.selector) || !/^er1-sha256:[a-f0-9]{64}$/u.test(value.executionRevision) || !/^lp1-sha256:[a-f0-9]{64}$/u.test(value.packageRevision) || !/^ls1-sha256:[a-f0-9]{64}$/u.test(value.sourceRevision) || !/^id1-sha256:[a-f0-9]{64}$/u.test(value.unassignedItemDigest) || !/^id1-sha256:[a-f0-9]{64}$/u.test(value.assignedItemDigest) || !DIGEST.test(value.frozenRecipeDigest) || !Number.isSafeInteger(value.frozenRecipeSize) || value.frozenRecipeSize < 1) fail("manifest has invalid bindings");
+  if (value.schema !== "burnlist-loop-assignment@1" || value.assignmentId !== id || !ITEM.test(value.itemRef) || !/^loop:(?:builtin|project):[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.selector) || !/^er1-sha256:[a-f0-9]{64}$/u.test(value.executionRevision) || !/^lp1-sha256:[a-f0-9]{64}$/u.test(value.packageRevision) || !/^ls1-sha256:[a-f0-9]{64}$/u.test(value.sourceRevision) || !/^id1-sha256:[a-f0-9]{64}$/u.test(value.unassignedItemDigest) || !/^id1-sha256:[a-f0-9]{64}$/u.test(value.assignedItemDigest) || !DIGEST.test(value.frozenRecipeDigest) || !Number.isSafeInteger(value.frozenRecipeSize) || value.frozenRecipeSize < 1) fail("manifest has invalid bindings");
   return value;
 }
 

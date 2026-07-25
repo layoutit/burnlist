@@ -27,7 +27,7 @@ async function converged(context, runId = fixtureRunId) {
   await createProductionRun({ repoRoot: context.repo, store, itemRef: fixtureItemRef, runId });
   const counter = join(context.directory, `counter-${runId.slice(-4)}`); writeFileSync(counter, "0");
   const before = [process.env.BURNLIST_FAKE_COUNTER, process.env.BURNLIST_FAKE_OUTCOMES];
-  process.env.BURNLIST_FAKE_COUNTER = counter; process.env.BURNLIST_FAKE_OUTCOMES = "complete,approve";
+  process.env.BURNLIST_FAKE_COUNTER = counter; process.env.BURNLIST_FAKE_OUTCOMES = "complete,complete,complete,approve,complete,approve";
   try { assert.equal((await createStoredProductionRunRunner({ repoRoot: context.repo, store, runId }).run()).projection.state, "converged"); }
   finally {
     for (const [key, value] of [["BURNLIST_FAKE_COUNTER", before[0]], ["BURNLIST_FAKE_OUTCOMES", before[1]]]) {
@@ -87,6 +87,24 @@ test("completion rejects a prepared Run and a stale assigned item", async (t) =>
   const currentId = "run:01arz3ndektsv4rrffq69g5faw", currentStore = await converged(superseded, currentId);
   assert.throws(() => completeLoopRun({ repoRoot: superseded.repo, runId: fixtureRunId, store: firstStore }), /not converged/u);
   assert.equal(completeLoopRun({ repoRoot: superseded.repo, runId: currentId, store: currentStore }).alreadyApplied, false);
+});
+
+test("candidate drift blocks completion but a fresh Run explicitly supersedes the stale convergence", async (t) => {
+  const value = context(t), store = await converged(value);
+  writeFileSync(join(value.repo, "src", "changed-after-convergence.txt"), "drift\n");
+  assert.throws(() => completeLoopRun({ repoRoot: value.repo, runId: fixtureRunId, store }), /candidate drifted/u);
+  const fresh = "run:01arz3ndektsv4rrffq69g5faw";
+  await createProductionRun({ repoRoot: value.repo, store, itemRef: fixtureItemRef, runId: fresh });
+  assert.equal(store.readCurrentRun(fixtureItemRef).runId, fresh);
+});
+
+test("completion rechecks candidate after intent and before canonical plan mutation", async (t) => {
+  const value = context(t), store = await converged(value);
+  assert.throws(() => completeLoopRun({ repoRoot: value.repo, runId: fixtureRunId, store, hooks: {
+    beforePlan() { writeFileSync(join(value.repo, "src", "drift-at-final-boundary.txt"), "drift\n"); },
+  } }), /candidate drifted/u);
+  assert.match(readFileSync(value.planPath, "utf8"), /- \[ \] L29/u);
+  assert.equal(existsSync(runPath(store, fixtureRunId, "completion-intent.json")), true);
 });
 
 test("receipt and Run ambiguity evidence fail closed when corrupt, bounded, symlinked, or duplicate", async (t) => {

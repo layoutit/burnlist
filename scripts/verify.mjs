@@ -413,6 +413,7 @@ assertSkillSet(repoRoot, ["burnlist"]);
 const officialOvenExpectations = new Map([
   ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
   ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
+  ["loop-progress", { name: "Loop Progress", validator: "validateGenericJsonData" }],
   ["model-lab", { name: "Model Lab", validator: "validateModelLabRuntimeData" }],
   ["performance-tracing", { name: "Performance Tracing", validator: "validatePerformanceTracingRuntimeData" }],
   ["streaming-diff", { name: "Streaming Diff" }],

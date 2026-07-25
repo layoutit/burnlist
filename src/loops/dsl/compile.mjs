@@ -17,8 +17,8 @@ function appendDiagnostics(target, source) {
   }
 }
 
-function sourceChecks(bytes, path, d) {
-  const [minimum, maximum] = sizes[path];
+function sourceChecks(bytes, path, d, limits = sizes) {
+  const [minimum, maximum] = limits[path];
   if (bytes.length < minimum || bytes.length > maximum) d.add(path, 0, "E_FILE_SIZE", `${path} must contain ${minimum}..${maximum} bytes`);
   try {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
@@ -40,7 +40,8 @@ function cloneFiles(data) {
   return Object.fromEntries(Object.entries(data).map(([path, bytes]) => [path, Buffer.from(bytes)]));
 }
 
-function compileLoopFilesInternal(files, { continueOnMissing = false } = {}) {
+function compileLoopFilesInternal(files, { continueOnMissing = false, loopFile = "review.loop" } = {}) {
+  const packagePaths = [loopFile, "instructions.md", "example/item.md"], packageSizes = { ...sizes, [loopFile]: [1, 65536] };
   const d = createDiagnostics();
   if (!files || typeof files !== "object" || Array.isArray(files)) {
     d.add("", 0, "E_PACKAGE", "Package files must be an object");
@@ -48,26 +49,28 @@ function compileLoopFilesInternal(files, { continueOnMissing = false } = {}) {
 
   const actual = Object.keys(files ?? {});
   if (actual.length > 3) d.add("", 0, "E_PACKAGE_COUNT", "Package may contain at most three files");
-  for (const path of actual) if (!paths.includes(path)) d.add(path, 0, "E_PACKAGE_PATH", "Unknown package file");
-  for (const path of paths.slice(0, 2)) if (!(path in (files ?? {}))) d.add(path, 0, "E_PACKAGE_MISSING", "Required package file is missing");
+  for (const path of actual) if (!packagePaths.includes(path)) d.add(path, 0, "E_PACKAGE_PATH", "Unknown package file");
+  for (const path of packagePaths.slice(0, 2)) if (!(path in (files ?? {}))) d.add(path, 0, "E_PACKAGE_MISSING", "Required package file is missing");
 
   if (!continueOnMissing && d.all.length) return { ok: false, diagnostics: d.all };
 
   const data = {};
-  for (const path of paths) if (path in (files ?? {})) {
+  for (const path of packagePaths) if (path in (files ?? {})) {
     try {
       data[path] = Buffer.from(files[path]);
-      sourceChecks(data[path], path, d);
+      const [minimum, maximum] = packageSizes[path];
+      if (Buffer.from(data[path]).length < minimum || Buffer.from(data[path]).length > maximum) d.add(path, 0, "E_FILE_SIZE", `${path} must contain ${minimum}..${maximum} bytes`);
+      else sourceChecks(data[path], path, d, packageSizes);
     } catch {
       d.add(path, 0, "E_PACKAGE_BYTES", "Package file must be byte data");
     }
   }
 
-  if (!("review.loop" in data)) return { ok: false, diagnostics: d.all, packageFiles: cloneFiles(data) };
+  if (!(loopFile in data)) return { ok: false, diagnostics: d.all, packageFiles: cloneFiles(data) };
   if (Object.values(data).reduce((sum, bytes) => sum + bytes.length, 0) > totalLimit) d.add("", 0, "E_PACKAGE_SIZE", "Package exceeds 393216 byte limit");
   if (!continueOnMissing && d.all.length) return { ok: false, diagnostics: d.all, packageFiles: cloneFiles(data) };
 
-  const parsed = parseLoopXml(data["review.loop"]);
+  const parsed = parseLoopXml(data[loopFile]);
   const checked = parsed.ast ? validateLoop(parsed.ast) : null;
   appendDiagnostics(d, collectDiagnostics(parsed, checked));
 
@@ -86,13 +89,13 @@ function compileLoopFilesInternal(files, { continueOnMissing = false } = {}) {
 
   const ir = { ...checked.ir, instructions: extracted.sections.map(({ bytes, ...section }) => section) };
   if (!validateClosedIr(ir)) {
-    d.add("review.loop", 0, "E_IR_INVARIANT", "Closed invariant validation failed");
+    d.add(loopFile, 0, "E_IR_INVARIANT", "Closed invariant validation failed");
     return { ok: false, diagnostics: d.all, packageFiles: cloneFiles(data) };
   }
 
   const irBytes = canonicalIrBytes(ir);
   const revisions = {
-    source: prefixed("ls1-sha256:", "source-v1", [data["review.loop"]]),
+    source: prefixed("ls1-sha256:", "source-v1", [data[loopFile]]),
     package: packageRevision(data),
     executable: prefixed("er1-sha256:", "recipe-v1", [Buffer.from(ir.compiler), irBytes, ...extracted.sections.flatMap((section) => [Buffer.from(section.id), section.bytes])]),
   };
@@ -105,13 +108,13 @@ function compileLoopFilesInternal(files, { continueOnMissing = false } = {}) {
     instructions: extracted.sections,
     packageFiles,
     revisions,
-    rawSourceDigest: rawSha256(data["review.loop"]),
+    rawSourceDigest: rawSha256(data[loopFile]),
     diagnostics: d.all,
   };
 }
 
-export function compileLoopFiles(files) {
-  const result = compileLoopFilesInternal(files);
+export function compileLoopFiles(files, options = {}) {
+  const result = compileLoopFilesInternal(files, options);
   const finalized = finalizeDiagnostics(result.diagnostics);
   if (finalized.length) return { ok: false, diagnostics: finalized };
   return { ...result, diagnostics: finalized };
@@ -120,12 +123,12 @@ export function compileLoopFiles(files) {
 /**
  * Compile package files directly from a directory without trust or execution.
  */
-export async function compileLoopPackage(directory, { beforeLeafRead, afterLeafOpenForTest } = {}) {
+export async function compileLoopPackage(directory, { beforeLeafRead, afterLeafOpenForTest, loopFile = "review.loop" } = {}) {
   const { files, diagnostics } = await readPackageDirectory(directory, {
     beforeLeafRead,
-    afterLeafOpenForTest,
+    afterLeafOpenForTest, loopFile,
   });
-  const compiled = compileLoopFilesInternal(files, { continueOnMissing: true });
+  const compiled = compileLoopFilesInternal(files, { continueOnMissing: true, loopFile });
   const merged = finalizeDiagnostics([...diagnostics, ...(compiled.diagnostics ?? [])]);
   if (merged.length) return { ok: false, diagnostics: merged };
   return compiled;

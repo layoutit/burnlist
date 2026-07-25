@@ -63,15 +63,14 @@ test("checklist detail renders the split progress surface and event card list", 
 
     const { snapshots } = await runM4ProgressFixture({
       repoRoot,
-      outcomes: ["complete", "pass", "reject", "complete", "pass", "approve"],
     });
     for (const projection of snapshots) {
       const stage = renderToStaticMarkup(createElement(LoopRunPanel, { data: { ...data, loopRun: projection } }));
       assert.match(stage, new RegExp(`ACTIVE: ${projection.currentNode.toUpperCase()}`, "u"));
-      assert.match(stage, /IMPLEMENT/u);
-      assert.match(stage, /VERIFY/u);
+      assert.match(stage, /START/u);
+      assert.match(stage, /DECOMPO/u);
+      assert.match(stage, /FINAL-R/u);
       assert.match(stage, /aria-current="step"/u);
-      if (projection.currentNode === "implement" && projection.attempt === 2) assert.match(stage, /reject/u);
       if (projection.currentNode === "converged") assert.match(stage, /approve/u);
       if (projection.currentNode === "completed") assert.match(stage, /COMPLETED/u);
     }

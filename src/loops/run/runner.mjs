@@ -11,8 +11,9 @@ function boundedSummary(value) {
   while (end > 0 && (bytes[end] & 0xc0) === 0x80) end -= 1;
   return bytes.subarray(0, end).toString("utf8");
 }
-export function createRunRunner({ store, runId, invoke, bindCandidate = null }) {
+export function createRunRunner({ store, runId, invoke, bindCandidate = null, executePreparedAgent = null }) {
   if (!store?.replay || !store?.append || !store?.acquireLease || !store?.terminalize || typeof invoke !== "function") fail("invalid runner input");
+  if (executePreparedAgent !== null && typeof executePreparedAgent !== "function") fail("invalid prepared agent executor");
   let lease = null, pauseRequested = false, stopRequested = false, cancelRequested = false, cancelWake = null;
   const read = () => store.replay(runId), append = (type, payload) => store.append(runId, lease, type, payload);
   function transition(to, cause) { const execution = read().execution; return append("state-changed", { from: execution.state, to, cause }); }
@@ -22,7 +23,18 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null }) 
   async function step() {
     let current = read(), execution = current.execution; if (execution.terminal) return { kind: "terminal", state: execution.state }; if (!lease) lease = store.acquireLease(runId).lease;
     current = read(); execution = current.execution; if (execution.terminal) { lease = null; return { kind: "terminal", state: execution.state }; } if (execution.system) return routeSystem(current, execution); const node = execution.node; if (execution.budget.elapsedMilliseconds >= current.graph.budget.maxMinutes * 60_000) return system("exhausted", "minutes");
-    if (!execution.started) { const exhausted = budgetReason({ folded: execution.budget, graph: current.graph, node }); if (exhausted) return system("exhausted", exhausted); return append("node-started", { nodeId: node.id, attempt: execution.attempt + 1 }); }
+    if (!execution.started) {
+      const exhausted = budgetReason({ folded: execution.budget, graph: current.graph, node }); if (exhausted) return system("exhausted", exhausted);
+      // Agent work is prepared and accepted through the same claim transaction
+      // as host execution. Checks and graph-only nodes retain this runner's
+      // existing deterministic path.
+      if (node.kind === "agent" && executePreparedAgent) {
+        const completed = await executePreparedAgent({ runId, lease, node });
+        if (completed?.released) lease = null;
+        return { kind: "prepared-agent" };
+      }
+      return append("node-started", { nodeId: node.id, attempt: execution.attempt + 1 });
+    }
     if (node.kind === "terminal") return transition(node.state, "graph");
     if (node.kind === "gate") return edge(execution, gateDecision(execution, current.graph));
     if (execution.result) {
@@ -83,7 +95,7 @@ export function createRunRunner({ store, runId, invoke, bindCandidate = null }) 
     if (current.execution.terminal) { if (lease && current.execution.lease) store.releaseLease(runId, lease); lease = null; return read(); }
     if (pauseRequested) return pause();
   } }
-  function requestPause() { pauseRequested = true; cancelRequested = true; invoke.cancel?.(); cancelWake?.(); }
-  function requestStop() { stopRequested = true; cancelRequested = true; invoke.cancel?.(); cancelWake?.(); }
+  function requestPause() { pauseRequested = true; cancelRequested = true; invoke.cancel?.(); executePreparedAgent?.cancel?.(); cancelWake?.(); }
+  function requestStop() { stopRequested = true; cancelRequested = true; invoke.cancel?.(); executePreparedAgent?.cancel?.(); cancelWake?.(); }
   return Object.freeze({ step, run, pause, stop, requestPause, requestStop, replay: read, get lease() { return lease; } });
 }

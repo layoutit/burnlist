@@ -5,14 +5,13 @@ const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const route = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)*$/;
 const semver = /^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$/;
 const positive = /^[1-9][0-9]*$/;
-const order = ["budget", "agent", "check", "agent", "gate", "terminal", "terminal", "terminal", "terminal", "terminal", "failure-policy", "edge", "edge", "edge", "edge", "edge", "edge", "edge", "edge"];
 const attrs = {
   loop: ["id", "version", "entry"], budget: ["max-rounds", "max-minutes", "max-agent-runs", "max-check-runs", "max-transitions", "max-output-bytes"],
-  agent: ["id", "mode", "role", "route", "authority", "instructions", "independent-from", "requires"], check: ["id", "capability"], gate: ["id", "kind", "requires"],
+  agent: ["id", "mode", "execution", "intelligence", "role", "route", "authority", "instructions", "independent-from", "requires"], check: ["id", "capability"], gate: ["id", "kind", "requires"],
   terminal: ["id", "state"], "failure-policy": ["error", "timeout", "cancelled", "lost", "exhausted"], edge: ["from", "on", "to", "max-visits"],
 };
 const required = {
-  loop: attrs.loop, budget: attrs.budget, agent: ["id", "mode", "role", "route", "authority", "instructions"], check: ["id", "capability"], gate: attrs.gate, terminal: attrs.terminal,
+  loop: attrs.loop, budget: attrs.budget, agent: ["id", "mode", "execution", "intelligence", "role", "route", "authority", "instructions"], check: ["id", "capability"], gate: attrs.gate, terminal: attrs.terminal,
   "failure-policy": attrs["failure-policy"], edge: ["from", "on", "to"],
 };
 const outcomes = { agent: (node) => node.mode === "task" ? ["complete"] : ["approve", "reject", "escalate"], check: () => ["pass", "fail"], gate: () => ["pass", "fail"], terminal: () => [] };
@@ -46,9 +45,14 @@ export function validateLoop(ast) {
   exactAttrs(d, ast);
   if (ast.selfClosing) add(d, ast, "E_ROOT_FORM", "Root <loop> must not be self-closing");
   value(d, ast, "id", (v) => slug.test(v), "a lowercase slug"); value(d, ast, "version", (v) => semver.test(v), "a Stage 1 SemVer"); value(d, ast, "entry", (v) => slug.test(v), "a lowercase slug");
-  ast.children.forEach((node, index) => { exactAttrs(d, node); if (!node.selfClosing) add(d, node, "E_CHILD_FORM", `<${node.name}> must be self-closing`); if (node.children.length) add(d, node, "E_CHILDREN", `<${node.name}> may not have children`); if (node.name !== order[index]) add(d, node, "E_CHILD_ORDER", "Children must use the closed Stage 1 group order"); if (index === 1 && node.attrs.mode !== "task") add(d, node, "E_CHILD_GROUP", "Maker agent group must precede check"); if (index === 3 && node.attrs.mode !== "review") add(d, node, "E_CHILD_GROUP", "Reviewer agent group must follow check"); });
-  if (ast.children.length !== order.length) add(d, ast, "E_CHILD_COUNT", "Loop must contain the exact closed Stage 1 child set");
+  ast.children.forEach((node) => { exactAttrs(d, node); if (!node.selfClosing) add(d, node, "E_CHILD_FORM", `<${node.name}> must be self-closing`); if (node.children.length) add(d, node, "E_CHILDREN", `<${node.name}> may not have children`); });
+  const kindTotals = new Map();
+  for (const node of ast.children) kindTotals.set(node.name, (kindTotals.get(node.name) ?? 0) + 1);
+  if (kindTotals.get("budget") !== 1) add(d, ast, "E_CHILD_COUNT", "Loop must include exactly one budget declaration");
+  if (kindTotals.get("failure-policy") !== 1) add(d, ast, "E_CHILD_COUNT", "Loop must include exactly one failure-policy declaration");
+  if (!kindTotals.get("edge")) add(d, ast, "E_CHILD_COUNT", "Loop must include at least one edge");
   const ids = new Map(), nodes = [], edges = [], policy = ast.children.find((node) => node.name === "failure-policy");
+  const budget = ast.children.find((node) => node.name === "budget");
   for (const node of ast.children) {
     if (["agent", "check", "gate", "terminal"].includes(node.name)) {
       value(d, node, "id", (v) => slug.test(v), "a lowercase slug");
@@ -56,13 +60,16 @@ export function validateLoop(ast) {
     }
     if (node.name === "budget") for (const [key, [min, max]] of Object.entries(limits)) value(d, node, key, (v) => positive.test(v) && +v >= min && +v <= max, `an integer from ${min} through ${max}`);
     if (node.name === "agent") {
-      value(d, node, "mode", (v) => v === "task" || v === "review", "task or review"); value(d, node, "role", (v) => v === "maker" || v === "reviewer", "maker or reviewer");
+      value(d, node, "mode", (v) => v === "task" || v === "review", "task or review");
+      value(d, node, "execution", (v) => v === "managed" || v === "host", "managed or host");
+      value(d, node, "intelligence", (v) => ["fast", "standard", "strong", "critical"].includes(v), "fast, standard, strong, or critical");
+      value(d, node, "role", (v) => v === "maker" || v === "reviewer", "maker or reviewer");
       value(d, node, "route", (v) => route.test(v), "a Route"); value(d, node, "authority", (v) => v === "read" || v === "write", "read or write"); value(d, node, "instructions", (v) => slug.test(v), "a lowercase slug");
       const task = node.attrs.mode === "task"; const expected = task ? ["maker", "write"] : ["reviewer", "read"];
       if ((node.attrs.role && node.attrs.authority) && (node.attrs.role !== expected[0] || node.attrs.authority !== expected[1])) add(d, node, "E_AGENT_COMBINATION", `${node.attrs.mode} agent must be ${expected[0]}/${expected[1]}`);
       if (task && ("independent-from" in node.attrs || "requires" in node.attrs)) add(d, node, "E_AGENT_ATTRIBUTES", "Task agent may not have review-only attributes");
       if (!task) { for (const key of ["independent-from", "requires"]) if (!(key in node.attrs)) add(d, node, "E_ATTRIBUTE_REQUIRED", `<agent> requires attribute ${key}`); if (node.attrs.requires !== "fresh-session:enforced,filesystem-write-deny:supervised") add(d, node, "E_REVIEW_REQUIREMENTS", "Review requires must be fresh-session:enforced,filesystem-write-deny:supervised"); }
-      nodes.push({ kind: "agent", id: node.attrs.id, mode: node.attrs.mode, role: node.attrs.role, route: node.attrs.route, authority: node.attrs.authority, instructions: node.attrs.instructions, independentFrom: node.attrs["independent-from"] ?? null, requires: node.attrs.requires ? node.attrs.requires.split(",") : [] });
+      nodes.push({ kind: "agent", id: node.attrs.id, mode: node.attrs.mode, execution: node.attrs.execution, intelligence: node.attrs.intelligence, role: node.attrs.role, route: node.attrs.route, authority: node.attrs.authority, instructions: node.attrs.instructions, independentFrom: node.attrs["independent-from"] ?? null, requires: node.attrs.requires ? node.attrs.requires.split(",") : [] });
     }
     if (node.name === "check") { value(d, node, "capability", (v) => slug.test(v), "a lowercase slug"); nodes.push({ kind: "check", id: node.attrs.id, capability: node.attrs.capability }); }
     if (node.name === "gate") { if (node.attrs.kind !== "convergence") add(d, node, "E_GATE_KIND", "Stage 1 gate kind must be convergence"); nodes.push({ kind: "gate", id: node.attrs.id, gateKind: node.attrs.kind, requires: node.attrs.requires?.split(",") ?? [] }); }
@@ -70,12 +77,19 @@ export function validateLoop(ast) {
     if (node.name === "edge") { if ("max-visits" in node.attrs) value(d, node, "max-visits", (v) => positive.test(v) && +v <= 100, "an integer from 1 through 100"); edges.push({ from: node.attrs.from, on: node.attrs.on, to: node.attrs.to, maxVisits: node.attrs["max-visits"] ? +node.attrs["max-visits"] : null, offset: node.byteOffset }); }
   }
   const agents = nodes.filter((node) => node.kind === "agent"), checks = nodes.filter((node) => node.kind === "check"), gates = nodes.filter((node) => node.kind === "gate"), terminals = nodes.filter((node) => node.kind === "terminal");
-  if (agents.length !== 2 || agents.filter((node) => node.mode === "task").length !== 1 || agents.filter((node) => node.mode === "review").length !== 1) add(d, ast, "E_AGENT_CARDINALITY", "Stage 1 requires one task agent and one review agent");
-  if (checks.length !== 1 || gates.length !== 1) add(d, ast, "E_NODE_CARDINALITY", "Stage 1 requires exactly one check and one convergence gate");
+  const taskAgents = agents.filter((node) => node.mode === "task"), reviewAgents = agents.filter((node) => node.mode === "review");
+  if (taskAgents.length < 1) add(d, ast, "E_AGENT_CARDINALITY", "Stage 1 requires at least one task agent");
+  if (reviewAgents.length < 1) add(d, ast, "E_AGENT_CARDINALITY", "Stage 1 requires at least one review agent");
+  if (checks.length < 1) add(d, ast, "E_NODE_CARDINALITY", "Stage 1 requires at least one check node");
+  if (gates.length !== 1) add(d, ast, "E_NODE_CARDINALITY", "Stage 1 requires exactly one convergence gate");
   for (const state of terminalStates) if (terminals.filter((node) => node.state === state).length !== 1) add(d, ast, "E_TERMINAL_CARDINALITY", `Stage 1 requires exactly one ${state} terminal`);
-  const reviewer = agents.find((node) => node.mode === "review"), maker = agents.find((node) => node.mode === "task"), check = checks[0], gate = gates[0];
-  if (reviewer && reviewer.independentFrom !== maker?.id) add(d, ids.get(reviewer.id), "E_REVIEW_INDEPENDENCE", "Reviewer independent-from must name the task agent");
-  if (gate && `${gate.requires.join(",")}` !== `${check?.id ?? ""},${reviewer?.id ?? ""}`) add(d, ids.get(gate.id), "E_GATE_REQUIREMENTS", "Convergence gate requires must name check then reviewer");
+  for (const reviewer of reviewAgents) if (!taskAgents.some((task) => task.id === reviewer.independentFrom)) add(d, ids.get(reviewer.id), "E_REVIEW_INDEPENDENCE", "Reviewer independent-from must name an existing task agent");
+  const gate = gates[0], gateRequires = new Set(gate?.requires ?? []);
+  if (gate && (gateRequires.size !== gate.requires.length
+    || !reviewAgents.some((node) => gateRequires.has(node.id))
+    || [...gateRequires].some((id) => !checks.some((node) => node.id === id) && !reviewAgents.some((node) => node.id === id)))) {
+    add(d, ids.get(gate.id), "E_GATE_REQUIREMENTS", "Convergence gate requires must uniquely reference at least one review node and only check/review nodes");
+  }
   if (policy) for (const [outcome, state] of Object.entries({ error: "failed", timeout: "failed", cancelled: "stopped", lost: "needs-human", exhausted: "budget-exhausted" })) { const target = ids.get(policy.attrs[outcome]); if (!target || target.attrs.state !== state) add(d, policy, "E_FAILURE_POLICY", `${outcome} must target the ${state} terminal`); }
   for (const edge of edges) {
     const from = ids.get(edge.from), to = ids.get(edge.to);
@@ -84,12 +98,12 @@ export function validateLoop(ast) {
     const source = nodes.find((node) => node.id === edge.from);
     if (!outcomes[source?.kind]?.(source).includes(edge.on)) d.add("review.loop", edge.offset, "E_EDGE_OUTCOME", `Outcome ${edge.on} is not emitted by ${edge.from}`);
     const target = nodes.find((node) => node.id === edge.to);
-    const allowed = (source?.kind === "agent" && source.mode === "task" && edge.on === "complete" && target?.kind === "check") ||
-      (source?.kind === "check" && edge.on === "pass" && target?.kind === "agent" && target.mode === "review") ||
-      (source?.kind === "check" && edge.on === "fail" && target?.kind === "agent" && target.mode === "task") ||
-      (source?.kind === "agent" && source.mode === "review" && edge.on === "reject" && target?.kind === "agent" && target.mode === "task") ||
-      (source?.kind === "agent" && source.mode === "review" && edge.on === "approve" && target?.kind === "gate") ||
+    const allowed = (source?.kind === "agent" && source.mode === "task" && edge.on === "complete" && target?.kind !== "terminal") ||
+      (source?.kind === "agent" && source.mode === "review" && edge.on === "approve" && target?.kind !== "terminal") ||
+      (source?.kind === "agent" && source.mode === "review" && edge.on === "reject" && target?.kind !== "terminal") ||
       (source?.kind === "agent" && source.mode === "review" && edge.on === "escalate" && target?.kind === "terminal" && target.state === "needs-human") ||
+      (source?.kind === "check" && edge.on === "pass" && target?.kind === "agent" && target?.mode === "review") ||
+      (source?.kind === "check" && edge.on === "fail" && target?.kind === "agent" && target?.mode === "task") ||
       (source?.kind === "gate" && edge.on === "pass" && target?.kind === "terminal" && target.state === "converged") ||
       (source?.kind === "gate" && edge.on === "fail" && target?.kind === "terminal" && target.state === "needs-human");
     if (!allowed) d.add("review.loop", edge.offset, "E_EDGE_TARGET", `Target ${edge.to} is not allowed for ${edge.from}/${edge.on}`);
@@ -102,12 +116,13 @@ export function validateLoop(ast) {
   // System outcomes are runner-owned but are still graph routes for reachability.
   const systemEdges = policy ? nodes.filter((node) => node.kind !== "terminal").flatMap((node) => Object.entries(policy.attrs).map(([on, to]) => ({ from: node.id, on, to }))) : [];
   const reachable = reachesTerminal(nodes, [...edges, ...systemEdges], ast.attrs.entry); if (!ids.has(ast.attrs.entry)) add(d, ast, "E_ENTRY", "Entry must name a declared node");
+  else if (!taskAgents.some((node) => node.id === ast.attrs.entry)) add(d, ast, "E_ENTRY_KIND", "Entry must name a task agent");
   else for (const node of nodes) if (!reachable.has(node.id)) add(d, ids.get(node.id), "E_REACHABILITY", `Node ${node.id} is not reachable from entry`);
   const back = ids.has(ast.attrs.entry) ? backEdges(nodes, edges, ast.attrs.entry) : new Set();
   for (const edge of edges) { const needs = back.has(edge); if (needs !== (edge.maxVisits !== null)) d.add("review.loop", edge.offset, "E_EDGE_VISITS", needs ? "DFS back edges require max-visits" : "max-visits is allowed only on DFS back edges"); }
   if (d.all.length) return { diagnostics: d.list, allDiagnostics: d.all };
   const ir = normalizeIr({ schema: "burnlist-loop-ir@1", compiler: "burnlist-loop-compiler@1", id: ast.attrs.id, declaredVersion: ast.attrs.version, entry: ast.attrs.entry,
-    budget: { maxRounds: +ast.children[0].attrs["max-rounds"], maxMinutes: +ast.children[0].attrs["max-minutes"], maxAgentRuns: +ast.children[0].attrs["max-agent-runs"], maxCheckRuns: +ast.children[0].attrs["max-check-runs"], maxTransitions: +ast.children[0].attrs["max-transitions"], maxOutputBytes: +ast.children[0].attrs["max-output-bytes"] }, nodes, failurePolicy: { error: policy.attrs.error, timeout: policy.attrs.timeout, cancelled: policy.attrs.cancelled, lost: policy.attrs.lost, exhausted: policy.attrs.exhausted }, edges: edges.map(({ offset, ...edge }) => edge), instructions: [] }, (node) => outcomes[node.kind](node));
+    budget: { maxRounds: +budget.attrs["max-rounds"], maxMinutes: +budget.attrs["max-minutes"], maxAgentRuns: +budget.attrs["max-agent-runs"], maxCheckRuns: +budget.attrs["max-check-runs"], maxTransitions: +budget.attrs["max-transitions"], maxOutputBytes: +budget.attrs["max-output-bytes"] }, nodes, failurePolicy: { error: policy.attrs.error, timeout: policy.attrs.timeout, cancelled: policy.attrs.cancelled, lost: policy.attrs.lost, exhausted: policy.attrs.exhausted }, edges: edges.map(({ offset, ...edge }) => edge), instructions: [] }, (node) => outcomes[node.kind](node));
   return { ir, instructionIds: agents.map((node) => node.instructions), diagnostics: [], allDiagnostics: [] };
 }
 

@@ -40,6 +40,7 @@ test("loads and freezes the exact shipped Oven catalog", () => {
   assert.deepEqual(catalog.entries.map(({ id }) => id), [
     "checklist",
     "differential-testing",
+    "loop-progress",
     "model-lab",
     "performance-tracing",
     "streaming-diff",

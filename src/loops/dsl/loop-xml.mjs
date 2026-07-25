@@ -66,7 +66,7 @@ export function parseLoopXml(input, { path = "review.loop" } = {}) {
     }
     const node = { name, attrs, children: [], byteOffset: offsetOf(source, begin), selfClosing };
     elements++;
-    if (elements > 32) add(begin, "E_XML_LIMIT", "XML element limit is 32");
+    if (elements > 64) add(begin, "E_XML_LIMIT", "XML element limit is 64");
     if (stack.length >= 2) add(begin, "E_XML_DEPTH", "XML depth limit is 2");
     if (stack.length) stack.at(-1).children.push(node);
     else if (root) add(begin, "E_XML_ROOT", "Only one root element is allowed");

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
+import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { assignLoopItem, prepareItemMutation, unassignLoopItem } from "../loops/assignment/assignment.mjs";
 import { resolveLoopAuthority } from "../loops/assignment/resolver.mjs";
 import { loopConfigUsage, runLoopConfigCli } from "./loop-config-cli.mjs";
@@ -10,22 +11,53 @@ import { createProductionRun, createStoredProductionRunRunner } from "../loops/r
 import { completeLoopRun } from "../loops/completion/completion.mjs";
 
 function usageText() { return loopConfigUsage(); }
+function usageError(message = usageText()) { return Object.assign(new Error(message), { exitCode: 2 }); }
 function options(tokens) {
-  const positionals = []; let repo = null, recoveryProof = null;
+  const positionals = []; let repo = null, recoveryProof = null, resultFile = null, reason = null;
   for (let index = 0; index < tokens.length; index += 1) {
     if (tokens[index] === "--repo") {
-      if (repo !== null) throw new Error("--repo must be specified at most once.");
+      if (repo !== null) throw usageError("--repo must be specified at most once.");
       repo = tokens[++index];
-      if (!repo || repo.startsWith("--")) throw new Error("--repo requires a path.");
+      if (!repo || repo.startsWith("--")) throw usageError("--repo requires a path.");
     }
     else if (tokens[index] === "--recovery-proof") {
-      if (recoveryProof !== null) throw new Error("--recovery-proof must be specified at most once.");
-      recoveryProof = tokens[++index]; if (!/^[a-f0-9]{64}$/u.test(recoveryProof ?? "")) throw new Error("--recovery-proof requires a 64-character lowercase hex value.");
+      if (recoveryProof !== null) throw usageError("--recovery-proof must be specified at most once.");
+      recoveryProof = tokens[++index]; if (!/^[a-f0-9]{64}$/u.test(recoveryProof ?? "")) throw usageError("--recovery-proof requires a 64-character lowercase hex value.");
     }
-    else if (tokens[index].startsWith("--")) throw new Error(`Unknown option: ${tokens[index]}`);
+    else if (tokens[index] === "--result") {
+      if (resultFile !== null) throw usageError("--result must be specified at most once.");
+      resultFile = tokens[++index]; if (!resultFile || resultFile.startsWith("--")) throw usageError("--result requires a file.");
+    }
+    else if (tokens[index] === "--reason") {
+      if (reason !== null) throw usageError("--reason must be specified at most once.");
+      reason = tokens[++index]; if (!reason || reason.startsWith("--")) throw usageError("--reason requires host-cancelled, host-lost, or expired.");
+    }
+    else if (tokens[index].startsWith("--")) throw usageError(`Unknown option: ${tokens[index]}`);
     else positionals.push(tokens[index]);
   }
-  return { positionals, recoveryProof, repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
+  return { positionals, recoveryProof, resultFile, reason, repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
+}
+function validateVerbOptions(verb, opts) {
+  if (opts.recoveryProof && verb !== "reconcile") throw usageError();
+  if (opts.resultFile && verb !== "report" || verb === "report" && !opts.resultFile) throw usageError();
+  if (opts.reason && verb !== "abandon" || verb === "abandon" && !opts.reason) throw usageError();
+}
+function resultBytes(path) {
+  let fd;
+  try {
+    const target = resolve(process.cwd(), path), entry = lstatSync(target);
+    if (!entry.isFile() || entry.isSymbolicLink() || entry.size < 2 || entry.size > 262_144) throw new Error("--result file is unsafe or exceeds bounds.");
+    fd = openSync(target, constants.O_RDONLY | constants.O_NONBLOCK | (constants.O_NOFOLLOW ?? 0));
+    const opened = fstatSync(fd); if (opened.dev !== entry.dev || opened.ino !== entry.ino || opened.size !== entry.size) throw new Error("--result file changed while opening.");
+    const bytes = Buffer.allocUnsafe(opened.size); let offset = 0;
+    while (offset < bytes.length) { const count = readSync(fd, bytes, offset, bytes.length - offset); if (count <= 0) throw new Error("--result file changed while opening."); offset += count; }
+    const after = fstatSync(fd), leaf = lstatSync(target);
+    if (after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || leaf.dev !== entry.dev || leaf.ino !== entry.ino || leaf.size !== entry.size) throw new Error("--result file changed while opening.");
+    return bytes;
+  } finally { if (fd !== undefined) closeSync(fd); }
+}
+function publicClaim(value) {
+  return { schema: "burnlist-loop-host-claim-response@1", claim: value.claim, execution: JSON.parse(value.envelope.toString("utf8")) };
 }
 
 export async function renderLoopView({ selector, repoRoot, runReader }) {
@@ -40,30 +72,40 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     const value = await runLoopConfigCli(tokens); stdout.write(value.output); return value;
   }
   const [verb, ...rest] = tokens; const opts = options(rest);
+  validateVerbOptions(verb, opts);
   if (verb === "create") {
-    if (opts.positionals.length !== 1 || opts.recoveryProof) { const error = new Error(usageText()); error.exitCode = 2; throw error; }
+    if (opts.positionals.length !== 1) throw usageError();
     const store = runStore(opts.repo), result = await createProductionRun({ repoRoot: opts.repo, store, itemRef: opts.positionals[0] });
     stdout.write(`${JSON.stringify({ schema: "burnlist-loop-status@1", ...result.projection })}\n`); return result;
   }
   if (verb === "complete") {
-    if (opts.positionals.length !== 1 || opts.recoveryProof) { const error = new Error(usageText()); error.exitCode = 2; throw error; }
+    if (opts.positionals.length !== 1) throw usageError();
     const result = completeLoopRun({ repoRoot: opts.repo, runId: opts.positionals[0] });
     stdout.write(`${JSON.stringify({ schema: "burnlist-loop-completion@1", ...result })}\n`); return result;
   }
-  if (["list", "status", "inspect", "run", "pause", "resume", "stop", "reconcile"].includes(verb)) {
+  if (["list", "status", "inspect", "next", "claim", "report", "abandon", "run", "pause", "resume", "stop", "reconcile"].includes(verb)) {
     const allowed = verb === "list" ? 0 : 1;
-    if (opts.positionals.length !== allowed) { const error = new Error(usageText()); error.exitCode = 2; throw error; }
+    if (opts.positionals.length !== allowed) throw usageError();
     const store = runStore(opts.repo);
-    if (opts.recoveryProof && verb !== "reconcile") { const error = new Error(usageText()); error.exitCode = 2; throw error; }
     const suppliedRunnerFor = runnerFor ?? ((runId) => createStoredProductionRunRunner({ repoRoot: opts.repo, store, runId }));
     const runners = new Map(), runtimeRunnerFor = (runId) => {
       if (!runners.has(runId)) runners.set(runId, suppliedRunnerFor(runId));
       return runners.get(runId);
     };
-    const controller = createLoopController({ store, runnerFor: runtimeRunnerFor });
+    const controller = createLoopController({ store, runnerFor: runtimeRunnerFor, repoRoot: opts.repo });
     const result = verb === "list" ? controller.list()
       : verb === "status" ? controller.status(opts.positionals[0])
       : verb === "inspect" ? controller.inspect(opts.positionals[0])
+      : verb === "next" ? controller.inspect(opts.positionals[0])
+      : verb === "claim" ? publicClaim(controller.claim(opts.positionals[0]))
+      : verb === "report" ? controller.report(opts.positionals[0], resultBytes(opts.resultFile))
+      : verb === "abandon" ? (() => {
+        const runId = store.resolveClaimRef(opts.positionals[0]);
+        if (store.read(runId).execution.terminal) { const error = new Error("ClaimRef is stale"); error.exitCode = 1; throw error; }
+        const active = controller.readClaim(runId);
+        if (!active || active.claim.claimId !== opts.positionals[0]) { const error = new Error("ClaimRef is stale"); error.exitCode = 1; throw error; }
+        return controller.abandonClaim(runId, { ...active.claim, reason: opts.reason });
+      })()
       : verb === "pause" ? controller.pause(opts.positionals[0])
       : verb === "stop" ? controller.stop(opts.positionals[0])
       : verb === "reconcile" ? controller.reconcile(opts.positionals[0], opts.recoveryProof ? { generation: store.read(opts.positionals[0]).execution.generation, recoveryProof: opts.recoveryProof } : null)

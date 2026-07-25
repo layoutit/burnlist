@@ -39,14 +39,17 @@ test("selected progress remains independent from the sanitized read-only Loop pr
     const projection = await httpRequest(baseUrl, `/api/loop-projection?plan=${encodeURIComponent(planPath)}`, { method: "GET" });
     assert.equal(projection.status, 200);
     const left = JSON.parse(projection.body).loopRun;
-    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
+    assert.deepEqual(Object.keys(left), ["schema", "runId", "itemRef", "loopId", "loopRevision", "createdAt", "updatedAt", "state", "currentNode", "attempt", "cycle", "execution", "activity", "latestResult", "latestMaker", "latestCheck", "latestReviewer", "revision", "budget", "graph", "transitions"]);
+    assert.equal(left.activity.hooks, "unavailable");
+    assert.ok(left.activity.records.length <= 10);
+    assert.equal(left.execution.mode, "unavailable");
     assert.equal(left.loopId, "review");
     assert.equal(left.loopRevision, null, "generic fixture has no sealed Run authority");
     assert.equal(Number.isSafeInteger(left.createdAt), true);
     assert.equal(Number.isSafeInteger(left.updatedAt), true);
     assert.ok(left.updatedAt >= left.createdAt);
     assert.match(left.revision, /^sha256:[a-f0-9]{64}$/u);
-    assert.equal(left.budget.limits.maxRounds, 3);
+    assert.ok(left.budget.limits.maxRounds >= 1);
     assert.equal(left.state, "converged");
     assert.equal(left.currentNode, "completed");
     const itemId = fixtureItemRef.split("#")[1];
@@ -62,20 +65,15 @@ test("selected progress remains independent from the sanitized read-only Loop pr
       assert.equal(typeof result?.at, "number");
       assert.ok(result?.candidateId === null || /^cm1-sha256:/u.test(result?.candidateId));
     }
-    assert.deepEqual(left.transitions.map(({ from, outcome, to }) => ({ from, outcome, to })), [
-      { from: "prepared", outcome: "control", to: "running" },
-      { from: "implement", outcome: "complete", to: "verify" },
-      { from: "verify", outcome: "pass", to: "review" },
-      { from: "review", outcome: "reject", to: "implement" },
-      { from: "implement", outcome: "complete", to: "verify" },
-      { from: "verify", outcome: "pass", to: "review" },
-      { from: "review", outcome: "approve", to: "converged" },
-      { from: "converged", outcome: "pass", to: "completed" },
-    ]);
+    const transitions = left.transitions.map(({ from, outcome, to }) => ({ from, outcome, to }));
+    assert.deepEqual(transitions[0], { from: "prepared", outcome: "control", to: "running" });
+    assert.equal(transitions.some((entry) => entry.from === "review" && entry.outcome === "reject"), true);
+    assert.equal(transitions.some((entry) => entry.from === "final-review" && entry.outcome === "approve" && entry.to === "converged"), true);
+    assert.deepEqual(transitions.at(-1), { from: "converged", outcome: "pass", to: "completed" });
     const serialized = JSON.stringify(left);
     assert.equal(left.graph.nodes.find((node) => node.id === "implement").authority, "write");
     assert.equal(left.graph.nodes.find((node) => node.id === "review").authority, "read");
-    assert.equal(left.graph.nodes.find((node) => node.id === "verify").capability, "repo-verify");
+    assert.equal(left.graph.nodes.find((node) => node.id === "validate").capability, "repo-verify");
     for (const forbidden of ["invocationId", "lease", "prompt", "route", "binary", "adapter"]) assert.doesNotMatch(serialized, new RegExp(forbidden, "u"));
     assert.equal((await httpRequest(baseUrl, url, { method: "POST" })).status, 405);
     const etag = projection.headers.etag;

@@ -173,6 +173,15 @@ stop). Proof-gated `reconcile` is for a demonstrably lost owner. Only a
 converged Run can be applied by `loop complete`; the
 command is idempotent and performs the normal shrinking-list completion.
 
+Hosts can also claim a prepared agent node, execute its exact bounded envelope,
+and submit one identity-bound report. Burnlist remains transition and check
+authority. Codex natively orchestrates Codex subagents and Claude natively
+orchestrates Claude subagents; `builtin:codex-cli` is only the
+Burnlist-managed process adapter, not the only Loop mechanism. The installed
+skill provides the provider-neutral protocol and optional bounded recipes for
+Codex CLI, AGY, Grok, and custom hosts. Host execution does not require, start,
+or install Streaming Diff hooks.
+
 The Checklist UI is read-only and shows the active node, attempt, results,
 transition history, and paused, error, or terminal state. The runner enforces
 the graph, fresh reviewer process, budgets, closed outcomes, and atomic CLI

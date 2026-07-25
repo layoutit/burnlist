@@ -92,7 +92,9 @@ burnlist oven fork <id> <newId>
   `ovenRevision` plus the same origin and catalog metadata.
 - `use` adopts a shipped Oven and, only if the shipped directory contains an
   exact `example/data.json`, validates and installs that example. Without one,
-  it adopts only and prints the exact `oven set` next step.
+  it adopts only. A catalogued Burnlist lens is supplied by core transport, so
+  it prints that no binding or `oven set` is needed; a data-bound Oven prints
+  the exact `oven set` next step.
 - `set` reads JSON from a file, stdin (`-`), or an inline JSON argument,
   validates before mutation, and atomically publishes the canonical data file
   plus binding.
@@ -120,7 +122,8 @@ selects the repository whose binding storage is used.
 
 ## Validated `use` and `set`
 
-Use a shipped Oven in a repository, then set its data when no starter exists:
+Use a data-bound shipped Oven in a repository, then set its data when no
+starter exists:
 
 ```sh
 burnlist oven use differential-testing --repo .
@@ -130,12 +133,15 @@ burnlist oven set differential-testing ./differential-testing.json --repo .
 `use` keeps the existing `adopt` and pin semantics. It looks only for the
 non-executable shipped file `ovens/<id>/example/data.json`. When that exact file
 exists, `use` validates it and transactionally installs the Oven, data, and
-binding. When it does not exist, adoption still succeeds, no data or binding is
-created, and the CLI prints `burnlist oven set <id> <data> --repo <repo>`.
-Reference/candidate inputs, test fixtures, schemas, and instructions are never
-converted into starter data. The optional example is not vendored and does not
-enter the Oven revision or pin. `--force` has the same deterministic duplicate
-behavior as `adopt`.
+binding. When it does not exist, adoption still succeeds and no data or binding
+is created. The official catalog's `routeKind` decides the next step: a
+`burnlist-lens` (for example Checklist or Loop Progress) is fed by Burnlist
+core transport and needs neither a binding nor `oven set`; a `repo-oven` prints
+`burnlist oven set <id> <data> --repo <repo>`. Never fabricate a JSON payload
+for a core-fed Oven. Reference/candidate inputs, test fixtures, schemas, and
+instructions are never converted into starter data. The optional example is not
+vendored and does not enter the Oven revision or pin. `--force` has the same
+deterministic duplicate behavior as `adopt`.
 
 Examples and fixtures test only the mechanics they target. The official catalog
 does not qualify acceptance or retained evidence. Its generated agent guidance

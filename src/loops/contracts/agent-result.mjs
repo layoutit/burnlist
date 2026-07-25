@@ -1,11 +1,18 @@
 import { rawSha256 } from "../dsl/hash.mjs";
 import { bindingsMatch, DIGESTS, exact, fail, identity, parseBoundedObject, parseResultBytes, SLUG, sortedUnique } from "./contract.mjs";
-import { nextOpenFindings, validateFindingSet } from "./finding.mjs";
+import { nextOpenFindings, validateFinding, validateFindingSet } from "./finding.mjs";
 
 const RESULT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "outcome", "findings", "resolvedFindingIds"];
-const INPUT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "itemRevision", "instructionDigest", "instructionBytes", "candidateContext", "reviewerEvidence"];
+const INPUT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "itemRevision", "execution", "intelligence", "mode", "role", "authority", "legalOutcomes", "requires", "openFindings", "instructionDigest", "instructionBytes", "itemText", "candidateContext", "reviewerEvidence"];
+const PRE_FINDINGS_INPUT_KEYS = INPUT_KEYS.filter((key) => key !== "openFindings");
+const PRE_CONTEXT_INPUT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "itemRevision", "execution", "intelligence", "instructionDigest", "instructionBytes", "candidateContext", "reviewerEvidence"];
+const LEGACY_INPUT_KEYS = ["schema", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "itemRevision", "instructionDigest", "instructionBytes", "candidateContext", "reviewerEvidence"];
 const AUTHORITY_KEYS = ["schema", "state", "runId", "nodeId", "attempt", "claimId", "assignmentId", "invocationId", "recipeRevision", "policyRevision", "inputCandidate", "itemRevision", "inputSchema", "inputDigest", "inputByteLength"];
-const OUTCOMES = Object.freeze({ task: new Set(["complete"]), review: new Set(["approve", "reject", "escalate"]) });
+export const HOST_OUTCOMES = Object.freeze({
+  task: Object.freeze(["complete"]),
+  review: Object.freeze(["approve", "reject", "escalate"]),
+});
+const OUTCOMES = { task: new Set(HOST_OUTCOMES.task), review: new Set(HOST_OUTCOMES.review) };
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 
 function base64(value, label, maximum) {
@@ -19,6 +26,12 @@ function canonicalEnvelope(value) {
     schema: value.schema, runId: value.runId, nodeId: value.nodeId, attempt: value.attempt, claimId: value.claimId,
     assignmentId: value.assignmentId, invocationId: value.invocationId, recipeRevision: value.recipeRevision,
     policyRevision: value.policyRevision, inputCandidate: value.inputCandidate, itemRevision: value.itemRevision,
+    ...(Object.hasOwn(value, "execution") ? { execution: value.execution, intelligence: value.intelligence } : {}),
+    ...(Object.hasOwn(value, "itemText") ? {
+      mode: value.mode, role: value.role, authority: value.authority, legalOutcomes: value.legalOutcomes,
+      requires: value.requires, ...(Object.hasOwn(value, "openFindings") ? { openFindings: value.openFindings } : {}),
+      itemText: value.itemText,
+    } : {}),
     instructionDigest: value.instructionDigest, instructionBytes: value.instructionBytes, candidateContext: value.candidateContext,
     reviewerEvidence: value.reviewerEvidence,
   })}\n`, "utf8");
@@ -26,12 +39,30 @@ function canonicalEnvelope(value) {
 
 /** Builds the exact adapter stdin/prompt payload; this digest is persisted before dispatch by the runner. */
 export function createInvocationInput(value) {
-  if (!exact(value, INPUT_KEYS) || value.schema !== "burnlist-loop-invocation-input@1") fail("invalid invocation input");
+  if ((!exact(value, INPUT_KEYS) && !exact(value, PRE_FINDINGS_INPUT_KEYS)
+    && !exact(value, PRE_CONTEXT_INPUT_KEYS) && !exact(value, LEGACY_INPUT_KEYS))
+    || value.schema !== "burnlist-loop-invocation-input@1") fail("invalid invocation input");
   identity(value, "invocation input");
-  if (!DIGESTS.item.test(value.itemRevision) || !DIGESTS.raw.test(value.instructionDigest)
+  if (!DIGESTS.item.test(value.itemRevision) || (Object.hasOwn(value, "execution")
+    && (!["managed", "host"].includes(value.execution) || !["fast", "standard", "strong", "critical"].includes(value.intelligence))) || !DIGESTS.raw.test(value.instructionDigest)
     || !SLUG.test(value.nodeId) || !Array.isArray(value.reviewerEvidence) || value.reviewerEvidence.length > 50
     || !sortedUnique(value.reviewerEvidence) || !value.reviewerEvidence.every((ref) => DIGESTS.artifact.test(ref))) fail("invalid invocation evidence");
   const instruction = base64(value.instructionBytes, "instruction bytes", 65_536);
+  if (Object.hasOwn(value, "itemText")) {
+    const expected = value.mode === "task" ? ["complete"] : value.mode === "review" ? ["approve", "reject", "escalate"] : null;
+    if (!expected || typeof value.role !== "string" || !value.role || Buffer.byteLength(value.role) > 64
+      || !["write", "read"].includes(value.authority) || !Array.isArray(value.legalOutcomes)
+      || JSON.stringify(value.legalOutcomes) !== JSON.stringify(expected)
+      || !Array.isArray(value.requires) || value.requires.length > 50 || !sortedUnique(value.requires)
+      || value.requires.some((id) => typeof id !== "string" || !id || Buffer.byteLength(id) > 128 || /[\0\r\n]/u.test(id))
+      || !base64(value.itemText, "item text", 65_536).length)
+      fail("invalid invocation execution contract");
+    if (Object.hasOwn(value, "openFindings")) {
+      if (!Array.isArray(value.openFindings) || value.openFindings.length > 50) fail("invalid invocation open findings");
+      const checked = value.openFindings.map(validateFinding);
+      if (!sortedUnique(checked.map((finding) => finding.id))) fail("invalid invocation open findings");
+    }
+  }
   const context = base64(value.candidateContext, "candidate context", 65_536);
   if (!instruction.length || !context.length) fail("empty invocation input");
   if (rawSha256(instruction) !== value.instructionDigest) fail("instruction digest does not match frozen bytes");
@@ -82,9 +113,9 @@ export function validateAgentResult(value, { mode, openFindings = new Map() } = 
   if (!exact(value, RESULT_KEYS) || value.schema !== "agent-result@1") fail("invalid agent result");
   identity(value, "agent result");
   if (!OUTCOMES[mode]?.has(value.outcome)) fail("agent outcome is not allowed for node mode");
-  const findings = validateFindingSet(value.findings, value.resolvedFindingIds, openFindings);
-  if (mode === "task" && (findings.findings.length || findings.resolvedFindingIds.length)) fail("task completion cannot carry findings");
-  const next = nextOpenFindings(openFindings, findings);
+  if (mode === "task" && (value.findings.length || value.resolvedFindingIds.length)) fail("task completion cannot carry findings");
+  const findings = validateFindingSet(value.findings, value.resolvedFindingIds, mode === "review" ? openFindings : new Map());
+  const next = mode === "review" ? nextOpenFindings(openFindings, findings) : openFindings;
   if (mode === "review" && value.outcome === "approve") {
     if (findings.findings.some((finding) => finding.severity === "blocker" || finding.severity === "major")
       || [...openFindings.values()].some((finding) => (finding.severity === "blocker" || finding.severity === "major") && !findings.resolvedFindingIds.includes(finding.id))

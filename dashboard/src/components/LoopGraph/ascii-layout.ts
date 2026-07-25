@@ -221,7 +221,11 @@ export function layoutAsciiGraph(graph: AsciiGraph, currentNode: string, availab
   const sideNodes = graph.nodes.filter((node) => !path.includes(node.id));
   const ordered = [...path, ...sideNodes.map((node) => node.id)];
   const usableColumns = Math.max(width, columns - 8);
-  const perRow = Math.max(1, Math.min(3, Math.floor((usableColumns + 4) / (width + 4)), ordered.length));
+  // Long serial loops need their outcome labels more than they need a shallow
+  // canvas. Keeping their success path vertical prevents labels such as
+  // "approve" from being squeezed into the inter-node gap at tablet widths.
+  const serial = path.length >= 6;
+  const perRow = serial ? 1 : Math.max(1, Math.min(3, Math.floor((usableColumns + 4) / (width + 4)), ordered.length));
   const gap = perRow > 1 ? Math.floor((usableColumns - perRow * width) / (perRow - 1)) : 0;
   const positions = new Map<string, { x: number; y: number }>();
   ordered.forEach((id, index) => {

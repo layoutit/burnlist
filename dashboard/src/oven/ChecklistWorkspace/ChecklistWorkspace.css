@@ -79,6 +79,18 @@
 .checklist-workspace__detail-loop { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(163, 172, 183, .08); }
 .checklist-workspace__direct { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(163, 172, 183, .08); color: rgba(168, 168, 168, .5); font-size: 11px; }
 .checklist-workspace__loop-head { display: flex; color: rgba(168, 168, 168, .5); font-size: 10px; justify-content: space-between; }
+.checklist-workspace__run-facts {
+  display: grid;
+  margin: 8px 0 0;
+  padding: 8px 0;
+  border-top: 1px solid rgba(163, 172, 183, .07);
+  border-bottom: 1px solid rgba(163, 172, 183, .07);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+.checklist-workspace__run-facts div { display: grid; min-width: 0; gap: 2px; }
+.checklist-workspace__run-facts dt { color: rgba(168, 168, 168, .46); font-size: 9px; text-transform: uppercase; }
+.checklist-workspace__run-facts dd { margin: 0; color: rgba(210, 216, 224, .72); font-size: 10px; overflow-wrap: anywhere; }
 .checklist-workspace__detail .loop-compact {
   display: flex;
   min-height: 88px;
@@ -86,7 +98,10 @@
   color: rgba(220, 225, 232, .8);
   font-size: 12px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  justify-content: safe center;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 .checklist-workspace__detail .loop-legend {
   display: grid;
@@ -100,10 +115,20 @@
 }
 .checklist-workspace__detail .loop-legend__row { min-width: 0; gap: 5px; grid-template-columns: 2ch minmax(0, 1fr); }
 .checklist-workspace__detail .loop-legend dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checklist-workspace__activity { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(163, 172, 183, .07); }
+.checklist-workspace__activity ol { display: grid; margin: 7px 0 0; padding: 0; color: rgba(210, 216, 224, .64); font: 10px/1.4 var(--dashboard-font); gap: 3px; list-style: none; }
+.checklist-workspace__activity li { display: flex; min-width: 0; gap: 7px; flex-wrap: wrap; }
+.checklist-workspace__activity li b { color: rgba(120, 190, 255, .75); font-weight: 500; }
+.checklist-workspace__activity li span,
+.checklist-workspace__activity li time { overflow-wrap: anywhere; }
+.checklist-workspace__activity p { margin: 7px 0 0; color: rgba(168, 168, 168, .46); font-size: 10px; }
 .checklist-workspace__empty { margin: 0; padding: 16px; color: rgba(168, 168, 168, .5); font-size: 12px; }
 
 @media (max-width: 900px) {
   .checklist-workspace { grid-template-columns: minmax(240px, 40%) minmax(0, 60%); }
+  .checklist-workspace__detail .loop-legend { grid-template-columns: minmax(0, 1fr); }
+  .checklist-workspace__detail .loop-legend dd { overflow: visible; white-space: normal; }
+  .checklist-workspace__run-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
