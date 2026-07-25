@@ -3,6 +3,7 @@ import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { LoopCompact } from "./LoopCompact";
+import { layoutCompactLoop } from "./compact-layout";
 import { LoopGraph, type LoopGraphProjection } from "./LoopGraph";
 import { LoopLegend } from "./LoopLegend";
 
@@ -128,9 +129,16 @@ test("compact topology keeps the serial dogfood Loop labelled within tablet widt
     },
   });
   const compact = renderToStaticMarkup(createElement(LoopCompact, { run, labels: "outcomes" }));
-  assert.match(compact, /S[\s\S]*D[\s\S]*I[\s\S]*R[\s\S]*F[\s\S]*G[\s\S]*B/u);
+  for (const symbol of ["S", "D", "I1", "V", "R", "I2", "F1", "F2", "G", "B"])
+    assert.match(compact, new RegExp(symbol, "u"));
   assert.match(compact, /reject/u);
   const drawing = compact.replace(/<[^>]+>/gu, "");
-  assert.ok(Math.max(...drawing.split("\n").map((line) => line.length)) < 24);
+  assert.ok(Math.max(...drawing.split("\n").map((line) => line.length)) <= 72);
+  assert.ok(drawing.split("\n").length < 14);
   assert.doesNotMatch(drawing, /┬─┬/u);
+  const wide = layoutCompactLoop(run, { availableCharacters: 100, showLabels: true });
+  const narrow = layoutCompactLoop(run, { availableCharacters: 48, showLabels: true });
+  assert.ok(Math.max(...wide.lines.map((line) => line.length)) <= 100);
+  assert.ok(Math.max(...narrow.lines.map((line) => line.length)) <= 48);
+  assert.ok(narrow.lines.length > wide.lines.length);
 });

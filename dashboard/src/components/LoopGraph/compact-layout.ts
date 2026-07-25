@@ -1,5 +1,6 @@
 import type { LoopGraphProjection } from "./LoopGraph";
 import { loopPrimaryPath, loopSymbols } from "./loop-symbols";
+import { layoutSerialCompact } from "./serial-compact-layout";
 
 type Position = { x: number; y: number };
 
@@ -36,9 +37,11 @@ function drawing(rows: number, columns: number) {
   return { cells, put, text, horizontal, vertical };
 }
 
-type CompactOptions = { showLabels?: boolean; symbols?: Record<string, string> };
+type CompactOptions = { availableCharacters?: number; showLabels?: boolean; symbols?: Record<string, string> };
 
 function serialCompact(run: LoopGraphProjection, path: string[], options: CompactOptions) {
+  const layered = layoutSerialCompact(run, path, options);
+  if (layered) return layered;
   if (path.length < 6) return null;
   const pathIds = new Set(path);
   const primary = new Set(path.slice(0, -1).map((from, index) => `${from}\0${path[index + 1]}`));

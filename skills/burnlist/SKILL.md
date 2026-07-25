@@ -207,6 +207,10 @@ workspace and its process has exited, retry the same claim with another ready
 provider. Do not write provider wrappers into the candidate repository.
 Reporting automatically
 advances Burnlist-owned checks and gates to the next agent or terminal node.
+When the user wants to watch a Loop, assign every intended item first and
+verify each with `loop view`; announce the dashboard as Loop-ready only after
+the item projections expose those assignments. Repository registration alone
+is not a Loop-visibility milestone.
 Inspect with `loop status|inspect`, control idle Runs with `loop pause|stop`,
 use proof-gated `loop reconcile` only for a demonstrably lost host claim, and
 apply a converged Run through idempotent `loop complete`.
