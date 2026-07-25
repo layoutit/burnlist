@@ -7,6 +7,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "burnlistTui": {
+    "targets": [
+      "darwin-arm64"
+    ]
+  },
   "bin": {
     "burnlist": "bin/burnlist.mjs"
   },
@@ -22,6 +27,7 @@
     "skills/",
     "ovens/",
     "dashboard/dist/",
+    "tui/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
     "!**/*.test.mjs",
@@ -29,23 +35,35 @@
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",
+    "build:tui": "tui/node_modules/.bin/bun build tui/src/main.tsx --compile --minify --target=bun-darwin-arm64 --outfile tui/dist/burnlist-tui",
     "storybook": "storybook dev -p 6006 -c dashboard/.storybook --no-open",
-    "build:storybook": "storybook build -c dashboard/.storybook -o .local/storybook",
+    "build:storybook": "npm run check:terminal-story-frames && storybook build -c dashboard/.storybook -o .local/storybook",
     "test:differential-testing": "node --test ovens/differential-testing/engine/adapter-sdk.test.mjs ovens/differential-testing/engine/contract.test.mjs ovens/differential-testing/engine/data-contract.test.mjs ovens/differential-testing/engine/handler.test.mjs ovens/differential-testing/engine/query-projection-cache.test.mjs ovens/differential-testing/engine/transport-renderer.test.mjs ovens/differential-testing/engine/transport-server.test.mjs",
     "test:model-lab": "node --test ovens/model-lab/engine/model-lab-contract.test.mjs ovens/model-lab/engine/model-lab-handler.test.mjs",
     "test:performance-tracing": "node --test ovens/performance-tracing/contract.test.mjs",
     "test:visual-parity": "node --test ovens/visual-parity/contract.test.mjs ovens/visual-parity/handler.test.mjs ovens/visual-parity/handler-cache-lifecycle.test.mjs",
+    "test:tui": "npm --prefix tui test",
+    "generate:terminal-story-frames": "npm --prefix tui run generate:story-frames",
+    "check:terminal-story-frames": "npm --prefix tui run check:story-frames",
+    "generate:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --write",
+    "check:terminal-progress-frames": "tui/node_modules/.bin/bun tui/src/catalog/progress-frame-renderer.tsx --check",
+    "tui": "npm --prefix tui run dev --",
+    "catalog:tui": "npm --prefix tui run catalog --",
+    "build:catalog:tui": "tui/node_modules/.bin/bun build tui/src/catalog/main.tsx --compile --minify --target=bun-darwin-arm64 --outfile tui/dist/burnlist-tui-catalog",
+    "verify:fast": "npm --prefix tui run typecheck && npm --prefix tui test && npm run check:terminal-story-frames && npm run check:terminal-progress-frames && node scripts/audit-terminal-oven-parity.mjs --check && node scripts/audit-terminal-oven-parity.mjs --official-ovens && node scripts/audit-terminal-oven-parity.mjs --storybook",
     "verify": "node scripts/verify.mjs",
+    "verify:gate": "npm run verify",
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "test:global-install": "node scripts/smoke-global-install.mjs",
-    "prepack": "npm run build:dashboard && npm run verify",
+    "prepack": "npm run build:dashboard && npm run build:tui && npm run build:catalog:tui && npm run verify",
     "postinstall": "node scripts/register-skills.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
+    "@babel/parser": "^7.29.7",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@storybook/addon-a11y": "^10.5.3",

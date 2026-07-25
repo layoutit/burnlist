@@ -1,0 +1,8 @@
+<oven id="terminal-status" version="1.0.0" contract="burnlist-differential-testing-data@1" theme="differential-testing">
+  <section-header title="Run overview"><bind prop="count" source="/count"/></section-header>
+  <refresh-status source="/refresh"/>
+  <domain-note source="/note">
+    <bind prop="isTarget" source="/isTarget"/>
+    <bind prop="rationale" source="/rationale"/>
+  </domain-note>
+</oven>

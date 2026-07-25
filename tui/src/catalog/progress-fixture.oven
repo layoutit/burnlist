@@ -1,0 +1,22 @@
+<oven id="terminal-progress" version="1.0.0" contract="checklist-progress@1" theme="checklist">
+  <kpi-strip title="Burnlist progress" aria-label="Progress metrics">
+    <kpi-item heading="Progress" variant="current">
+      <progress-donut slot="visual" source="/percent"/>
+      <progress-value done="/done" total="/total" percent="/percent"/>
+    </kpi-item>
+    <kpi-item heading="Burns" variant="burns">
+      <burn-donut slot="visual" source="/burns"/>
+    </kpi-item>
+    <kpi-item heading="Failures" variant="fields">
+      <waffle-metric slot="visual" source="/metric"/>
+    </kpi-item>
+    <kpi-item heading="Required" source="/required"/>
+    <kpi-item heading="Optional" source="/missing" optional="true" fallback="25">
+      <progress-donut slot="visual" source="/missing" optional="true" fallback="25"/>
+      <text slot="value" source="/missing" optional="true" fallback="waiting"/>
+    </kpi-item>
+  </kpi-strip>
+  <box element="section">
+    <kpi-item heading="Standalone" title="Independent KPI" value="ready" icon="Gauge"/>
+  </box>
+</oven>

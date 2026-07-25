@@ -1,0 +1,5 @@
+<screen id="item" title="Item" version="1">
+  <brand-header title="Burnlist" subtitle="Item detail" />
+  <item-detail source="item" />
+  <footer hints="↑/↓:scroll detail · o:catalog · q/esc:back" />
+</screen>

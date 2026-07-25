@@ -1,0 +1,30 @@
+{
+  "name": "@burnlist/tui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/main.tsx --compile --minify --outfile dist/burnlist-tui",
+    "build:catalog": "bun build src/catalog/main.tsx --compile --minify --outfile dist/burnlist-tui-catalog",
+    "dev": "bun src/main.tsx",
+    "catalog": "bun src/catalog/main.tsx",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "generate:story-frames": "bun src/catalog/frame-renderer.tsx --write",
+    "check:story-frames": "bun src/catalog/frame-renderer.tsx --check",
+    "verify": "bun run typecheck && bun test && bun run build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@glyphcss/effects": "0.1.2",
+    "@opentui/core": "0.4.5",
+    "@opentui/react": "0.4.5",
+    "@types/bun": "1.3.14",
+    "@types/react": "19.2.6",
+    "bun": "1.3.14",
+    "glyphcss": "0.1.2",
+    "react": "19.2.0",
+    "string-width": "7.2.0",
+    "typescript": "5.9.3"
+  }
+}

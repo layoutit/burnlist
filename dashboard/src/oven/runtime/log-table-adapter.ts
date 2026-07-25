@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
+import { evaluateOvenBinding } from "../../../../src/ovens/oven-value-runtime.mjs";
 
 type ColumnNode = { kind: string; attributes?: Record<string, unknown> };
 type LogTableNode = { attributes?: Record<string, unknown>; children?: ColumnNode[] };
 type ResolvePointer = (payload: unknown, pointer: string) => unknown;
-type FormatRegistry = Record<string, (value: unknown) => unknown>;
 
 export type LogTableProps = {
   columns: string[];
@@ -24,19 +24,13 @@ function columnClass(column: ColumnNode): string {
   return ["log-table-cell", label, tone].filter(Boolean).join(" ");
 }
 
-function itemValue(item: unknown, source: unknown, resolvePointer: ResolvePointer): unknown {
-  if (source === "@item") return item;
-  if (typeof source === "string" && source.startsWith("@item/")) return resolvePointer(item, source.slice(5));
-  return undefined;
-}
-
 function rowKey(item: unknown, index: number, itemKey: unknown, resolvePointer: ResolvePointer): string {
   const value = typeof itemKey === "string" ? resolvePointer(item, itemKey) : undefined;
   return typeof value === "string" || typeof value === "number" ? String(value) : String(index);
 }
 
 /** Builds the closed LogTable component contract from declarative runtime IR. */
-export function buildLogTableProps(node: LogTableNode, payload: unknown, { resolvePointer, formatRegistry }: { resolvePointer: ResolvePointer; formatRegistry: FormatRegistry }): LogTableProps {
+export function buildLogTableProps(node: LogTableNode, payload: unknown, { resolvePointer }: { resolvePointer: ResolvePointer }): LogTableProps {
   const attrs = attributes(node);
   const columns = (node.children ?? []).filter((child) => child.kind === "column");
   const entries = typeof attrs.source === "string" ? resolvePointer(payload, attrs.source) : undefined;
@@ -52,10 +46,8 @@ export function buildLogTableProps(node: LogTableNode, payload: unknown, { resol
       className: "log-row no-detail log-table-row",
       cells: columns.map((column) => {
         const columnAttrs = attributes(column);
-        const value = itemValue(item, columnAttrs.source, resolvePointer);
         const optional = columnAttrs.optional === true || columnAttrs.optional === "true";
-        if (value === undefined && !optional) throw new Error(`Missing required log-table column source: ${String(columnAttrs.source)}`);
-        const content = value === undefined ? (columnAttrs.fallback ?? "") : (formatRegistry[String(columnAttrs.format ?? "identity")] ?? formatRegistry.identity)(value);
+        const content = evaluateOvenBinding({ source: String(columnAttrs.source), format: String(columnAttrs.format ?? "identity"), optional, ...(columnAttrs.fallback !== undefined ? { fallback: columnAttrs.fallback } : {}) }, payload, item);
         return { className: columnClass(column), content };
       }),
     })),

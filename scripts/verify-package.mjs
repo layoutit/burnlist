@@ -1,9 +1,16 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
+const tuiTargets = packageJson.burnlistTui?.targets;
+if (!Array.isArray(tuiTargets) || tuiTargets.length !== 1 || tuiTargets[0] !== "darwin-arm64") {
+  console.error("npm package must declare only the current visual-review TUI target: darwin-arm64.");
+  process.exit(1);
+}
 const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -74,6 +81,8 @@ const required = [
   "ovens/visual-parity/contract.mjs",
   "ovens/visual-parity/handler.mjs",
   "dashboard/dist/index.html",
+  "tui/dist/burnlist-tui",
+  "tui/dist/burnlist-tui-catalog",
 ];
 
 for (const path of required) {
@@ -122,6 +131,13 @@ const bin = files.get("bin/burnlist.mjs");
 if ((bin.mode & 0o111) === 0) {
   console.error("npm package CLI is not executable.");
   process.exit(1);
+}
+for (const path of ["tui/dist/burnlist-tui", "tui/dist/burnlist-tui-catalog"]) {
+  const tui = files.get(path);
+  if ((tui.mode & 0o111) === 0) {
+    console.error(`npm package terminal UI is not executable: ${path}`);
+    process.exit(1);
+  }
 }
 
 console.log(`npm package payload verified: ${report.entryCount} files, ${report.unpackedSize} bytes unpacked.`);

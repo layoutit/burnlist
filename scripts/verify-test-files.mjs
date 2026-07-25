@@ -1,4 +1,6 @@
 export const verificationTestFiles = [
+  "scripts/audit-console-oven-behavior.test.mjs",
+  "scripts/audit-terminal-oven-parity.test.mjs",
   "dashboard/src/layout/layout-library.test.mjs",
   "dashboard/src/lib/oven-fit.test.mjs",
   "dashboard/src/lib/oven-catalog.test.mjs",
@@ -65,6 +67,7 @@ export const verificationTestFiles = [
   "src/server/plan-model.test.mjs",
   "src/server/fs-safe.test.mjs",
   "src/cli/lifecycle-cli.test.mjs",
+  "src/cli/interactive-cli.test.mjs",
   "src/cli/lifecycle-moves.test.mjs",
   "src/cli/registry-cli.test.mjs",
   "src/cli/git-ignore.test.mjs",

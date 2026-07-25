@@ -1,0 +1,8 @@
+<screen id="burnlist" title="Burn" version="1">
+  <brand-header title="Burnlist" subtitle="Detail" />
+  <detail-split collapse-at="88" summary-width="52">
+    <detail-summary source="selection" fire-width="12" fire-height="7" fps="12" />
+    <oven-view source="oven" />
+  </detail-split>
+  <footer hints="↑/↓:inspect · enter:item · [/]:Oven lens · o:catalog · q/esc:back" />
+</screen>

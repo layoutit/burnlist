@@ -1,0 +1,7 @@
+<oven id="terminal-waffle-metric-evidence" version="1.0.0" contract="checklist-progress@1" theme="checklist">
+  <box element="section">
+    <kpi-item heading="Waffle metric only">
+      <waffle-metric slot="visual" source="/metric"/>
+    </kpi-item>
+  </box>
+</oven>

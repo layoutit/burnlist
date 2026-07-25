@@ -7,7 +7,7 @@ import { HybridFieldList } from "./HybridFieldList";
 const meta = {
   title: "Patterns/FieldListCards",
   component: HybridFieldList,
-  parameters: { layout: "fullscreen" },
+  parameters: { layout: "fullscreen", terminalParityOwner: "oven:differential-testing" },
 } satisfies Meta<typeof HybridFieldList>;
 
 export default meta;

@@ -1,0 +1,6 @@
+<screen id="ovens" title="Oven catalog" version="1">
+  <brand-header title="Burnlist" subtitle="Oven catalog" />
+  <section-heading id="ovens-heading" title="Ovens" source="ovens" />
+  <oven-list id="oven-catalog" source="ovens" empty="No generic Ovens discovered" flex="1" />
+  <footer hints="↑/↓:navigate · enter:inspect · r:refresh · q/esc:back" />
+</screen>

@@ -87,6 +87,14 @@ test("registered Oven routes and dashboard entries isolate malformed custom Oven
     const ovens = await httpGet(baseUrl, "/api/ovens");
     assert.equal(ovens.status, 200);
     assert.equal(JSON.parse(ovens.body).ovens.some((oven) => oven.id === "checklist"), true);
+    const checklistDefinition = JSON.parse((await httpGet(baseUrl, `/api/ovens/checklist?repoKey=${fixtureKey}`)).body).oven;
+    assert.equal(checklistDefinition.repoKey, null);
+    assert.equal(checklistDefinition.version, checklistDefinition.ir.version);
+    assert.equal(checklistDefinition.contract, checklistDefinition.ir.contract);
+    assert.equal(checklistDefinition.dataInput, "json-payload");
+    for (const field of ["id", "name", "description", "builtIn", "instructions", "oven", "ovenRevision", "ir"]) {
+      assert.ok(Object.hasOwn(checklistDefinition, field), `Checklist terminal definition envelope is missing ${field}`);
+    }
     const malformed = await httpGet(baseUrl, `/api/ovens/malformed-oven?repoKey=${fixtureKey}`);
     assert.equal(malformed.status, 400);
     assert.match(JSON.parse(malformed.body).error, /lineage sidecar is invalid/u);
@@ -397,6 +405,9 @@ test("Oven discovery exposes optional lineage, skips malformed catalog entries, 
     const forked = JSON.parse((await httpGet(baseUrl, `/api/ovens/forked-oven?repoKey=${forkedKey}`)).body).oven;
     const standalone = JSON.parse((await httpGet(baseUrl, `/api/ovens/standalone-oven?repoKey=${standaloneKey}`)).body).oven;
     assert.deepEqual(forked.forkedFrom, forkedFrom);
+    assert.equal(forked.version, forked.ir.version);
+    assert.equal(forked.contract, forked.ir.contract);
+    assert.equal(forked.dataInput, "json-payload");
     assert.equal(Object.hasOwn(standalone, "forkedFrom"), false);
   });
   await withServer({

@@ -1,0 +1,5 @@
+<screen id="oven" title="Oven" version="1">
+  <brand-header title="Burnlist" subtitle="Generic Oven" />
+  <oven-detail source="oven" />
+  <footer hints="q/esc:back · arrows/enter:interact · x/f/s/m:controls · l:live" />
+</screen>
