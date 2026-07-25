@@ -1,6 +1,7 @@
 export const verificationTestFiles = [
   "scripts/audit-console-oven-behavior.test.mjs",
   "scripts/audit-terminal-oven-parity.test.mjs",
+  "scripts/terminal-component-coverage.test.mjs",
   "dashboard/src/layout/layout-library.test.mjs",
   "dashboard/src/lib/oven-fit.test.mjs",
   "dashboard/src/lib/oven-catalog.test.mjs",

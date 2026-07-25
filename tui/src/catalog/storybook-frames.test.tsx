@@ -9,7 +9,7 @@ const root = resolve(import.meta.dir, "../../..");
 const generated = resolve(root, "dashboard/src/generated/terminal-frames");
 const digest = (text: string) => createHash("sha256").update(text).digest("hex");
 
-test("Storybook consumes every indexed content-addressed frame without changing cells", async () => {
+test("legacy terminal evidence remains content-addressed after leaving Storybook", async () => {
   const index = JSON.parse(await readFile(resolve(generated, "index.json"), "utf8"));
   const entries = (index.entries as Array<FrameEntry & { fixture: string }>).filter((entry) => entry.fixture === glyphFixture.id);
   const expected = glyphFixture.states.flatMap((state) => state.viewports.map((viewport) => `${viewport}:${state.checkpoint}`)).sort();
@@ -25,7 +25,7 @@ test("Storybook consumes every indexed content-addressed frame without changing 
   expect(packedRgba(0xffe8eef1)).toBe("rgba(241, 238, 232, 1)");
 });
 
-test("shared fixture defines all independent Storybook control checkpoints", async () => {
+test("shared fixture remains deterministic while Storybook consumes component-scoped frames", async () => {
   const index = JSON.parse(await readFile(resolve(generated, "index.json"), "utf8"));
   const entries = index.entries as FrameEntry[];
   for (const state of glyphFixture.states) for (const viewport of state.viewports) expect(selectFrameEntry(entries, { viewport, interaction: state.interaction, animation: state.animation, motion: state.motion })?.checkpoint).toBe(state.checkpoint);
@@ -33,6 +33,7 @@ test("shared fixture defines all independent Storybook control checkpoints", asy
   const renderer = await readFile(resolve(root, "tui/src/catalog/frame-renderer.tsx"), "utf8");
   const viewer = await readFile(resolve(root, "dashboard/src/components/TerminalFrame/TerminalFrame.tsx"), "utf8");
   expect(renderer).toContain('from "./glyph-fixture"');
-  expect(viewer).toContain('tui/src/catalog/glyph-fixture');
+  expect(viewer).toContain("terminal-component-frames");
+  expect(viewer).not.toContain("generated/terminal-frames");
   expect(viewer).not.toMatch(/opentui|xterm|WebSocket|\\bpty\\b/iu);
 });

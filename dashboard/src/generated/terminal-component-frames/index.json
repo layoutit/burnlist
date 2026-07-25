@@ -1,0 +1,312 @@
+{
+  "schema": "burnlist-terminal-frame-index@1",
+  "generator": "burnlist-terminal-component-pairs@1",
+  "provenance": {
+    "sourceSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+    "bun": {
+      "runtimeVersion": "1.3.14",
+      "packageVersion": "1.3.14",
+      "integrity": "sha512-aB6GVd42x1Y5ie1K16SF+oLGtgSkwX9hgoDdIW88pjvfTccU8F1vfpoOt34QLv0dZ1v3XimtaxPlZUG81Gx9Zg=="
+    },
+    "packages": {
+      "@opentui/core": {
+        "version": "0.4.5",
+        "integrity": "sha512-JsgRTPkA6e+Vxmumxai6SElOSlRQkbzNKHlCfemlArRiLhfC1IZ9RXJo2QH4xSu+uBOWAM90uss73/pPlkdEig=="
+      },
+      "@opentui/react": {
+        "version": "0.4.5",
+        "integrity": "sha512-n88Vx0cMmAu++/S14WscjvdcT46IDcxve02jMtcfHQ9j6cySRHfILfGEpOB7xxc8RpCwQceEyOjkKkfzPzm6Jg=="
+      },
+      "glyphcss": {
+        "version": "0.1.2",
+        "integrity": "sha512-FEKE6S1gSNxd10AFi/dmxvzT5nLi4egENxprdmGU1vpdBYxzrpVwMDtPG5kQHVQ29FUWZQEQhaPNXrkSTnSUBA=="
+      },
+      "@glyphcss/core": {
+        "version": "0.1.2",
+        "integrity": "sha512-uP571CYTJoe93Lj3Gqc2J2uZFhY0Iu9SWvYcIGfGsPjeo2QLuOD3TOlAmYp4iDlVUv3St3v7Dy+/y66fL44v+w=="
+      },
+      "@glyphcss/effects": {
+        "version": "0.1.2",
+        "integrity": "sha512-aLL15uxfr33y2X/92e+4xFCPg4JrnI9x93B5RGKcnTkI9xVH9a3fVprnRf1fzQrDdGutomFLhqiqXMt9HZtJgQ=="
+      }
+    }
+  },
+  "entries": [
+    {
+      "id": "component-alert:72x10:default",
+      "fixture": "component-alert",
+      "path": "component-alert.72x10.default.c58d572629703e6e.json",
+      "sha256": "c58d572629703e6e7b032fd638deff96bd7b7d91fdd86ee8b961d7bac99537b6",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-badge:72x10:default",
+      "fixture": "component-badge",
+      "path": "component-badge.72x10.default.3481c5fc459fb178.json",
+      "sha256": "3481c5fc459fb178cbfcf46fecd91b632dee193948a67be215b8407c4477be85",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-button:72x10:default",
+      "fixture": "component-button",
+      "path": "component-button.72x10.default.aac5056eae9e3243.json",
+      "sha256": "aac5056eae9e324399e54e570933737fe4e4c2937d35e9638e2f68e183c90f73",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-card:72x10:default",
+      "fixture": "component-card",
+      "path": "component-card.72x10.default.4f6b040426813672.json",
+      "sha256": "4f6b040426813672784dc9f92a99f1c5827c63c8355d050e43450bd9860351b8",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-checkbox:72x10:default",
+      "fixture": "component-checkbox",
+      "path": "component-checkbox.72x10.default.db380ece88d37b6f.json",
+      "sha256": "db380ece88d37b6fd01c7cef22ee18c2fa75e361861ff1d7508037b43a982116",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-copy-button:72x10:default",
+      "fixture": "component-copy-button",
+      "path": "component-copy-button.72x10.default.af9111651506133b.json",
+      "sha256": "af9111651506133bc4935a4c3b28711377f5f50a38e90e0d27b868292fe38f32",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-dashboard-error:72x10:default",
+      "fixture": "component-dashboard-error",
+      "path": "component-dashboard-error.72x10.default.fafe38d6d340c9e2.json",
+      "sha256": "fafe38d6d340c9e2e63ca10f53eb398eeec18dade276815e4bd7932f32406201",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-empty-state:72x10:default",
+      "fixture": "component-empty-state",
+      "path": "component-empty-state.72x10.default.8af315a3111f8f6b.json",
+      "sha256": "8af315a3111f8f6b38a106fb7464f97e1a3bbc38c78a984d4ceecd8a16d86aef",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-field-list-cards:72x10:default",
+      "fixture": "component-field-list-cards",
+      "path": "component-field-list-cards.72x10.default.137b136e133f97a4.json",
+      "sha256": "137b136e133f97a4c524a42afb36fb353e2960d2b16670e8f4c4e61a4241336a",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-field:72x10:default",
+      "fixture": "component-field",
+      "path": "component-field.72x10.default.a9f42c634f2b448b.json",
+      "sha256": "a9f42c634f2b448ba689a07c4b864a6b51cfa48a68a7f8bec6326a3df77d5b6e",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-filters:72x10:default",
+      "fixture": "component-filters",
+      "path": "component-filters.72x10.default.b00c2f3ee876c6a3.json",
+      "sha256": "b00c2f3ee876c6a34076191f48a493b54dd98d64a815407471bd56e21ca90126",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-input:72x10:default",
+      "fixture": "component-input",
+      "path": "component-input.72x10.default.b93dadc3cec3f6dd.json",
+      "sha256": "b93dadc3cec3f6dde095d863059f13365a6ff27496119b6548fa49150c40baae",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-progress:72x10:default",
+      "fixture": "component-progress",
+      "path": "component-progress.72x10.default.5e61cb8f48c46975.json",
+      "sha256": "5e61cb8f48c4697559eb03bab383d1bf43f2696440d02ca1283bce14417d37f6",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-select:72x10:default",
+      "fixture": "component-select",
+      "path": "component-select.72x10.default.aa545258f6fc190e.json",
+      "sha256": "aa545258f6fc190e802cb05fc548b8244d86c0bb2e2b505d4472d9dcfbc8c426",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-separator:72x10:default",
+      "fixture": "component-separator",
+      "path": "component-separator.72x10.default.170392bad9ce2e66.json",
+      "sha256": "170392bad9ce2e66a4a7b5ce0ae8cfdbf3cc882a908bbc61f4f5e3ed91349799",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-skeleton:72x10:default",
+      "fixture": "component-skeleton",
+      "path": "component-skeleton.72x10.default.5bbf6603973edba6.json",
+      "sha256": "5bbf6603973edba698cb8f4f65b06467877f6f263028507cf34c9456ec3fd2f9",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-spinner:72x10:default",
+      "fixture": "component-spinner",
+      "path": "component-spinner.72x10.default.9f634c966d6f1da0.json",
+      "sha256": "9f634c966d6f1da0f3d44b93c7525e5cfd19c3df77ee078f2fa84fae86cf52e7",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-table:72x10:default",
+      "fixture": "component-table",
+      "path": "component-table.72x10.default.575b955ecf056a86.json",
+      "sha256": "575b955ecf056a86b44827669553da82a88ceb5304529cceee17254e62f07f6b",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-tabs:72x10:default",
+      "fixture": "component-tabs",
+      "path": "component-tabs.72x10.default.3188c61a4ae58a84.json",
+      "sha256": "3188c61a4ae58a84efd2c80fbb2cf83667e21d98017b6400bc10855367bd69e6",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-textarea:72x10:default",
+      "fixture": "component-textarea",
+      "path": "component-textarea.72x10.default.d099ffa249c994d4.json",
+      "sha256": "d099ffa249c994d4aba0789cda10a99e752c661d0aa1de1c8629d9aa3f411ea1",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-toggle-group:72x10:default",
+      "fixture": "component-toggle-group",
+      "path": "component-toggle-group.72x10.default.d5b4bca40417c6f1.json",
+      "sha256": "d5b4bca40417c6f1f5070c555d288ca383c76ffa0ae64311d0e8ca576bc3166a",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-tooltip:72x10:default",
+      "fixture": "component-tooltip",
+      "path": "component-tooltip.72x10.default.810ad143d8235587.json",
+      "sha256": "810ad143d8235587a18753d62ac72e90333e19897ec86c3930e49705334e354a",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    },
+    {
+      "id": "component-top-card:72x10:default",
+      "fixture": "component-top-card",
+      "path": "component-top-card.72x10.default.39ecad759f535929.json",
+      "sha256": "39ecad759f535929cbae4d49c3e427222700274307e4ccf495daf1a2fb6646d9",
+      "fixtureSha256": "91c853c442acd399cb189d2239a0bf52bb34973fc89665ac1dda4a18c5e59732",
+      "checkpoint": "default",
+      "viewport": {
+        "width": 72,
+        "height": 10
+      }
+    }
+  ]
+}

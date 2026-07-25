@@ -18,9 +18,11 @@ test("every renderable Storybook atom has exactly one principled owner", async (
   assert.ok(atoms.length > 0);
   assert.ok(atoms.every((atom) => typeof atom.owner === "string"));
   const terminal = atoms.filter((atom) => atom.owner === "terminal-frame");
-  assert.ok(terminal.length > 0);
-  assert.ok(terminal.every((atom) => atom.id.includes("TerminalFrame")));
-  assert.ok(atoms.filter((atom) => atom.id.includes("TerminalFrame")).every((atom) => atom.owner === "terminal-frame"));
+  assert.equal(terminal.length, 0);
+  const pairs = atoms.filter((atom) => atom.id.includes("ComponentPairs.stories.tsx"));
+  assert.ok(pairs.length > 0);
+  assert.ok(pairs.every((atom) => atom.owner === "general-display" || atom.owner === "general-interactive"));
+  assert.ok(!atoms.some((atom) => /ChecklistTerminal|VisualParityTerminal|GeneralComponentsTerminal/u.test(atom.id)));
   assert.ok(atoms.some((atom) => atom.owner.startsWith("oven:") && /oven\/|Oven|ModelLab/u.test(atom.id)));
   assert.ok(!atoms.some((atom) => atom.id.endsWith("#FILTERS")));
   assert.ok(atoms.some((atom) => atom.id.endsWith("#Filters")));

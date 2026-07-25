@@ -1,0 +1,29 @@
+{
+  "schema": "burnlist-terminal-component-coverage@1",
+  "pairStory": "Terminal counterparts/Console components",
+  "entries": [
+    { "id": "alert", "consoleStory": "UI/Alert", "consoleComponent": "Alert", "terminalExport": "TerminalAlert", "pairExport": "Alert" },
+    { "id": "badge", "consoleStory": "UI/Badge", "consoleComponent": "Badge", "terminalExport": "TerminalBadge", "pairExport": "Badge" },
+    { "id": "button", "consoleStory": "UI/Button", "consoleComponent": "Button", "terminalExport": "TerminalButton", "pairExport": "Button" },
+    { "id": "card", "consoleStory": "UI/Card", "consoleComponent": "Card", "terminalExport": "TerminalCard", "pairExport": "Card" },
+    { "id": "checkbox", "consoleStory": "UI/Checkbox", "consoleComponent": "Checkbox", "terminalExport": "TerminalCheckbox", "pairExport": "Checkbox" },
+    { "id": "field", "consoleStory": "UI/Field", "consoleComponent": "Field", "terminalExport": "TerminalField", "pairExport": "Field" },
+    { "id": "input", "consoleStory": "UI/Input", "consoleComponent": "Input", "terminalExport": "TerminalInput", "pairExport": "Input" },
+    { "id": "progress", "consoleStory": "UI/Progress", "consoleComponent": "Progress", "terminalExport": "TerminalProgress", "pairExport": "Progress" },
+    { "id": "select", "consoleStory": "UI/Select", "consoleComponent": "Select", "terminalExport": "TerminalSelect", "pairExport": "Select" },
+    { "id": "separator", "consoleStory": "UI/Separator", "consoleComponent": "Separator", "terminalExport": "TerminalSeparator", "pairExport": "Separator" },
+    { "id": "skeleton", "consoleStory": "UI/Skeleton", "consoleComponent": "Skeleton", "terminalExport": "TerminalSkeleton", "pairExport": "Skeleton" },
+    { "id": "spinner", "consoleStory": "UI/Spinner", "consoleComponent": "Spinner", "terminalExport": "TerminalSpinner", "pairExport": "Spinner" },
+    { "id": "table", "consoleStory": "UI/Table", "consoleComponent": "Table", "terminalExport": "TerminalTable", "pairExport": "Table" },
+    { "id": "tabs", "consoleStory": "UI/Tabs", "consoleComponent": "Tabs", "terminalExport": "TerminalTabs", "pairExport": "Tabs" },
+    { "id": "textarea", "consoleStory": "UI/Textarea", "consoleComponent": "Textarea", "terminalExport": "TerminalTextarea", "pairExport": "Textarea" },
+    { "id": "toggle-group", "consoleStory": "UI/ToggleGroup", "consoleComponent": "ToggleGroup", "terminalExport": "TerminalToggleGroup", "pairExport": "ToggleGroup" },
+    { "id": "tooltip", "consoleStory": "UI/Tooltip", "consoleComponent": "TooltipContent", "terminalExport": "TerminalTooltip", "pairExport": "Tooltip" },
+    { "id": "copy-button", "consoleStory": "Patterns/CopyButton", "consoleComponent": "CopyButton", "terminalExport": "TerminalCopyButton", "pairExport": "CopyButton" },
+    { "id": "dashboard-error", "consoleStory": "Patterns/DashboardError", "consoleComponent": "DashboardError", "terminalExport": "TerminalDashboardError", "pairExport": "DashboardError" },
+    { "id": "empty-state", "consoleStory": "Patterns/EmptyState", "consoleComponent": "EmptyState", "terminalExport": "TerminalEmptyState", "pairExport": "EmptyState" },
+    { "id": "filters", "consoleStory": "Patterns/Filters", "consoleComponent": "Filters", "terminalExport": "TerminalFilters", "pairExport": "Filters" },
+    { "id": "field-list-cards", "consoleStory": "Patterns/FieldListCards", "consoleComponent": "HybridFieldList", "terminalExport": "TerminalFieldListCards", "pairExport": "FieldListCards" },
+    { "id": "top-card", "consoleStory": "Patterns/TopCard", "consoleComponent": "DifferentialTestingDetail", "terminalExport": "TerminalTopCard", "pairExport": "TopCard" }
+  ]
+}
