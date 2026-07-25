@@ -63,9 +63,11 @@ function assertBoundaryEvidence(evidence) {
   }
 }
 function executableSnapshot(loopRef) {
-  if (loopRef !== "loop:builtin:review") fail(`executable source identity is unavailable for ${loopRef}`);
-  const directory = join(builtinsRoot, "review"), files = {}, evidence = [];
-  for (const [name, maximum] of [["review.loop", 65536], ["instructions.md", 262144]]) {
+  const loop = parseLoopRef(loopRef);
+  if (!loopRef.startsWith("loop:builtin:") || !["review", "gate", "branch"].includes(loop.name))
+    fail(`executable source identity is unavailable for ${loopRef}`);
+  const directory = join(builtinsRoot, loop.name), files = {}, evidence = [];
+  for (const [name, maximum] of [[`${loop.name}.loop`, 65536], ["instructions.md", 262144]]) {
     const path = join(directory, name), captured = readSnapshotBytes({ root: builtinsRoot, path, maximum });
     files[name] = captured.bytes;
     evidence.push(Object.freeze({ kind: "file", path, dev: String(captured.identity.dev), ino: String(captured.identity.ino),
@@ -75,7 +77,7 @@ function executableSnapshot(loopRef) {
       dev: String(ancestor.identity.dev), ino: String(ancestor.identity.ino), size: String(ancestor.identity.size),
       mode: String(ancestor.identity.mode), mtimeMs: String(ancestor.identity.mtimeMs), ctimeMs: String(ancestor.identity.ctimeMs) }));
   }
-  const compiled = compileLoopFiles(files);
+  const compiled = compileLoopFiles(files, { loopFile: `${loop.name}.loop` });
   if (!compiled.ok) fail("captured executable source does not compile");
   assertBoundaryEvidence(evidence);
   return { compiled, evidence };

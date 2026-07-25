@@ -37,7 +37,7 @@ These commands act on the current repository by default, or on an explicit `--re
 | `burnlist burn <id> <item> [--check] [--repo <path>]` | Complete a Burnlist item; `--check` validates it. |
 | `burnlist close <id> [--repo <path>]` | Close a completed Burnlist. |
 
-## Review Loop
+## Loops
 
 ```sh
 burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
@@ -56,11 +56,14 @@ burnlist loop capability trust <id> --revision cp1-sha256:<hex> --grants <json-f
 burnlist loop setup status [--repo <path>]
 ```
 
-The Review Loop is an optional serial maker → check → fresh reviewer workflow.
-Agent providers are invoked by the current host, never by Burnlist. `loop view`
-is deterministic ASCII graph output; `claim` and `report` cross the provider
-boundary, and reporting advances trusted checks and gates. Only `loop complete`
-applies a converged Run to the Burnlist. See [Review Loop](/loops).
+An item either runs directly with no assignment or uses one of exactly three
+built-ins: `loop:builtin:review`, `loop:builtin:gate`, or
+`loop:builtin:branch`. Branch fan-out is orchestrated by the current host;
+Burnlist does not schedule branch workers. Agent providers are invoked by the
+host, never by Burnlist. `loop view` is deterministic ASCII graph output;
+`claim` and `report` cross the provider boundary, and reporting advances
+trusted checks and gates. Only `loop complete` applies a converged Run to the
+Burnlist. See [Loops](/loops).
 
 ## Registry
 

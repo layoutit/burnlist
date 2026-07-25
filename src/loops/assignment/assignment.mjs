@@ -19,12 +19,12 @@ function atomicWrite(path, bytes) {
 }
 
 function packageDirectory(loop) {
-  if (loop.name !== "review") fail(`installed Loop ${loop.selector} was not found`);
-  return resolve(dirname(fileURLToPath(import.meta.url)), "../../../loops/review");
+  if (!["review", "gate", "branch"].includes(loop.name)) fail(`installed Loop ${loop.selector} was not found`);
+  return resolve(dirname(fileURLToPath(import.meta.url)), "../../../loops", loop.name);
 }
 export async function resolveBuiltin(loop) {
   if (!loop.selector.startsWith("loop:builtin:")) fail(`installed Loop ${loop.selector} was not found`);
-  const compiled = await compileLoopPackage(packageDirectory(loop));
+  const compiled = await compileLoopPackage(packageDirectory(loop), { loopFile: `${loop.name}.loop` });
   if (!compiled.ok) fail(`installed Loop ${loop.selector} does not compile`);
   if (loop.executable && loop.executable !== compiled.revisions.executable) fail("LoopRef executable pin does not match current package");
   return compiled;

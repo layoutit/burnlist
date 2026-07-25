@@ -35,6 +35,15 @@ test("selectors are closed, disjoint, and reject noncanonical ULID overflow", ()
   for (const value of ["loop:project:../review", "loop:project:Review", "loop:local:review", "loop:project:review/extra"]) assert.throws(() => parseLoopRef(value), TypeError);
 });
 
+test("the shipped Loop catalog contains only review, gate, and branch packages", async () => {
+  for (const name of ["review", "gate", "branch"]) {
+    const compiled = await resolveBuiltin(parseLoopRef(`loop:builtin:${name}`));
+    assert.equal(compiled.ok, true);
+    assert.equal(compiled.ir.id, name);
+  }
+  await assert.rejects(resolveBuiltin(parseLoopRef("loop:builtin:deep-review")), /was not found/u);
+});
+
 test("project Loop packages are contained, frozen, and show provenance drift without changing the item pin", async () => {
   const context = fixture();
   try {

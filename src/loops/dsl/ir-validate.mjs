@@ -57,7 +57,7 @@ function backEdges(nodes, edges, entry) {
 
 function targetAllowed(source, outcome, target) {
   return (source.kind === "agent" && source.mode === "task" && outcome === "complete" && target.kind !== "terminal") ||
-    (source.kind === "check" && outcome === "pass" && target.kind === "agent" && target.mode === "review") ||
+    (source.kind === "check" && outcome === "pass" && (target.kind === "gate" || target.kind === "agent" && target.mode === "review")) ||
     (source.kind === "check" && outcome === "fail" && target.kind === "agent" && target.mode === "task") ||
     (source.kind === "agent" && source.mode === "review" && outcome === "reject" && target.kind !== "terminal") ||
     (source.kind === "agent" && source.mode === "review" && outcome === "approve" && target.kind !== "terminal") ||
@@ -79,12 +79,12 @@ export function validateClosedIr(ir) {
   const terminals = ir.nodes.filter((node) => node.kind === "terminal");
   const agentInstructionIds = new Set(agents.map((agent) => agent.instructions));
 
-  if (makers.length < 1 || reviewers.length < 1 || checks.length < 1 || gates.length !== 1 || states.some((state) => terminals.filter((node) => node.state === state).length !== 1)) return false;
+  if (makers.length < 1 || checks.length < 1 || gates.length !== 1 || states.some((state) => terminals.filter((node) => node.state === state).length !== 1)) return false;
   if (ids.get(ir.entry)?.kind !== "agent" || ids.get(ir.entry)?.mode !== "task") return false;
   if (!reviewers.every((reviewer) => ids.get(reviewer.independentFrom)?.kind === "agent" && ids.get(reviewer.independentFrom)?.mode === "task")) return false;
   const gateRequires = new Set(gates[0].requires);
   if (gateRequires.size !== gates[0].requires.length
-    || !gates[0].requires.some((id) => ids.get(id)?.kind === "agent" && ids.get(id)?.mode === "review")
+    || !gates[0].requires.some((id) => ids.get(id)?.kind === "check" || ids.get(id)?.kind === "agent" && ids.get(id)?.mode === "review")
     || gates[0].requires.some((id) => ids.get(id)?.kind !== "check" && !(ids.get(id)?.kind === "agent" && ids.get(id)?.mode === "review"))) return false;
   if (agentInstructionIds.size !== agents.length) return false;
 

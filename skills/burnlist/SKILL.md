@@ -155,12 +155,19 @@ Burnlist has two independent installable systems. Either or both may be present:
 
 Install only the system the task needs, or both. Read `references/installation.md` for exact commands, ownership, and shared-versus-local behavior.
 
-## Built-in Review Loop (Stage 1)
+## Built-in Loops (Stage 1)
 
-Use the built-in `loop:builtin:review` only when a user or active Burnlist
-assigns an item to it. It is one serial foreground path: maker, trusted
-repository check, fresh reviewer, convergence gate, then CLI-owned completion.
-Items without an assignment keep the direct Burnlist workflow.
+Use only the execution choice assigned by the user or active Burnlist:
+
+- no assignment: direct implementation and ordinary `burnlist burn`
+- `loop:builtin:review`: implement, trusted check, independent review, Burn
+- `loop:builtin:gate`: implement, trusted check, Burn
+- `loop:builtin:branch`: plan, host-orchestrated N smaller-agent slices, merge,
+  trusted check, independent review, Burn
+
+Do not substitute one built-in for another. Branch fan-out is host-owned:
+use native or CLI subagents when available, otherwise execute the declared
+slices sequentially. Burnlist does not fabricate per-branch runtime authority.
 
 Before creating a Run, inspect and explicitly trust the repository check
 capability, then assign the item. Burnlist stores no provider profile, route,
@@ -192,7 +199,7 @@ transition or execute a managed check.
 ```sh
 burnlist loop capability inspect repo-verify
 burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants <json-file>
-burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
+burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:<review|gate|branch>
 ```
 
 Run `burnlist loop setup status` before `loop create`. Paste the complete

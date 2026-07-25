@@ -1,19 +1,26 @@
 ---
-title: Review Loop
-description: Configure and run the built-in serial maker, check, and reviewer Loop.
+title: Loops
+description: Choose direct execution or configure one of the three built-in Loop workflows.
 ---
 
-The built-in `loop:builtin:review` is an optional serial, foreground workflow:
+Every item uses one of exactly four execution choices:
 
 ```text
-Item -> maker -> check -> fresh reviewer -> gate -> CLI completion
-             ^             |
-             +-- fail/reject
+direct  Start -> Implement -> Burn
+review  Start -> Implement -> Check -> Review -> Burn
+gate    Start -> Implement -> Check -> Burn
+branch  Start -> Plan -> N host-orchestrated branches -> Merge -> Check -> Review -> Burn
 ```
 
-It does not replace normal Burnlist execution. An unassigned item uses the
-direct workflow, including `burnlist burn <id> <item> [--check]`; an assigned
-item is completed only through its converged Loop Run.
+Direct execution is represented by no Loop assignment and keeps the ordinary
+`burnlist burn <id> <item> [--check]` workflow. The three assignable built-ins
+are `loop:builtin:review`, `loop:builtin:gate`, and `loop:builtin:branch`.
+An assigned item is completed only through its converged Loop Run.
+
+Branch fan-out is host-orchestrated rather than a Burnlist scheduler: the plan
+node chooses the slices, the host invokes N native or CLI subagents when
+available (or executes the slices sequentially), and the merge node integrates
+their results before the trusted check and independent review.
 
 ## Configure and assign
 
@@ -63,7 +70,7 @@ narrow this policy.
 burnlist loop capability inspect repo-verify
 burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants /absolute/path/to/grants.json
 burnlist loop setup status
-burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:review
+burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:<review|gate|branch>
 ```
 
 `setup status` reports missing configuration rather than guessing it. An

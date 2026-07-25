@@ -148,15 +148,15 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 
-## Review Loop (Stage 1)
+## Built-in Loops (Stage 1)
 
-The built-in `review` Loop is an optional, serial foreground workflow for an
-assigned item:
+Items may use direct execution or one of exactly three built-in Loops:
 
 ```text
-maker -> repository check -> fresh reviewer -> convergence gate -> CLI completion
-  ^                                  |
-  +------------ check failure / rejection
+direct  Start -> Implement -> Burn
+review  Start -> Implement -> Check -> Review -> Burn
+gate    Start -> Implement -> Check -> Burn
+branch  Start -> Plan -> N host-orchestrated branches -> Merge -> Check -> Review -> Burn
 ```
 
 Inspect and explicitly trust the repository check with `burnlist loop
@@ -186,9 +186,10 @@ The Checklist UI is read-only and shows the active node, attempt, results,
 transition history, and paused, error, or terminal state. Burnlist enforces
 the graph, claim identity, trusted checks, budgets, closed outcomes, and atomic
 CLI writes. Provider permissions remain host-supervised, not an OS sandbox.
-Parallel execution, Docker isolation, metrics gates,
+Burnlist-native parallel scheduling, Docker isolation, metrics gates,
 forecasting, worktrees, and background execution are deliberately unsupported
-in Stage 1. Items with no Loop assignment keep the ordinary direct
+in Stage 1. The Branch host uses native or CLI subagents when available and
+falls back to the same slices sequentially. Items with no Loop assignment keep the ordinary direct
 `burnlist burn` workflow.
 
 See the [Loop CLI reference](website/src/content/docs/loops.mdx) for the exact

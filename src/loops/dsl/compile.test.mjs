@@ -13,7 +13,7 @@ import { foldRun } from "../run/run-fold.mjs";
 import { created } from "../run/m2-test-fixtures.mjs";
 import { renderDiagnostics } from "./diagnostics.mjs";
 
-const root = new URL("../../../loops/review/", import.meta.url);
+const root = new URL("./__fixtures__/compiler-review/", import.meta.url);
 const fixtures = new URL("./__fixtures__/", import.meta.url);
 async function reviewFiles() { return { "review.loop": await readFile(new URL("review.loop", root)), "instructions.md": await readFile(new URL("instructions.md", root)) }; }
 async function compiled() { const result = compileLoopFiles(await reviewFiles()); assert.equal(result.ok, true, renderDiagnostics(result.diagnostics ?? [])); return result; }
@@ -30,7 +30,7 @@ test("built-in review package compiles to deterministic canonical frozen IR", as
   assert.deepEqual([...first.ir.nodes.map((node) => node.id)].sort(), ["completed", "converged", "decompose", "exhausted", "failed", "final-review", "final-validate", "implement", "integrate", "needs-human", "review", "start", "stopped", "validate"].sort());
   assert.deepEqual([...first.ir.edges.map((edge) => edge.from)].sort(), ["start", "decompose", "implement", "validate", "validate", "review", "review", "review", "integrate", "final-validate", "final-validate", "final-review", "final-review", "final-review", "converged", "converged"].sort());
   assert.match(first.revisions.executable, /^er1-sha256:[a-f0-9]{64}$/);
-  assert.equal((await compileLoopPackage(new URL("../../../loops/review", import.meta.url).pathname)).ok, true);
+  assert.equal((await compileLoopPackage(new URL("./__fixtures__/compiler-review", import.meta.url).pathname)).ok, true);
 });
 
 test("runtime consumes persisted frozen IR and validates recipe identity", async () => {

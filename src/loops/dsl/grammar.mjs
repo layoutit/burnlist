@@ -79,16 +79,15 @@ export function validateLoop(ast) {
   const agents = nodes.filter((node) => node.kind === "agent"), checks = nodes.filter((node) => node.kind === "check"), gates = nodes.filter((node) => node.kind === "gate"), terminals = nodes.filter((node) => node.kind === "terminal");
   const taskAgents = agents.filter((node) => node.mode === "task"), reviewAgents = agents.filter((node) => node.mode === "review");
   if (taskAgents.length < 1) add(d, ast, "E_AGENT_CARDINALITY", "Stage 1 requires at least one task agent");
-  if (reviewAgents.length < 1) add(d, ast, "E_AGENT_CARDINALITY", "Stage 1 requires at least one review agent");
   if (checks.length < 1) add(d, ast, "E_NODE_CARDINALITY", "Stage 1 requires at least one check node");
   if (gates.length !== 1) add(d, ast, "E_NODE_CARDINALITY", "Stage 1 requires exactly one convergence gate");
   for (const state of terminalStates) if (terminals.filter((node) => node.state === state).length !== 1) add(d, ast, "E_TERMINAL_CARDINALITY", `Stage 1 requires exactly one ${state} terminal`);
   for (const reviewer of reviewAgents) if (!taskAgents.some((task) => task.id === reviewer.independentFrom)) add(d, ids.get(reviewer.id), "E_REVIEW_INDEPENDENCE", "Reviewer independent-from must name an existing task agent");
   const gate = gates[0], gateRequires = new Set(gate?.requires ?? []);
   if (gate && (gateRequires.size !== gate.requires.length
-    || !reviewAgents.some((node) => gateRequires.has(node.id))
+    || ![...checks, ...reviewAgents].some((node) => gateRequires.has(node.id))
     || [...gateRequires].some((id) => !checks.some((node) => node.id === id) && !reviewAgents.some((node) => node.id === id)))) {
-    add(d, ids.get(gate.id), "E_GATE_REQUIREMENTS", "Convergence gate requires must uniquely reference at least one review node and only check/review nodes");
+    add(d, ids.get(gate.id), "E_GATE_REQUIREMENTS", "Convergence gate requires must uniquely reference at least one check/review node and only check/review nodes");
   }
   if (policy) for (const [outcome, state] of Object.entries({ error: "failed", timeout: "failed", cancelled: "stopped", lost: "needs-human", exhausted: "budget-exhausted" })) { const target = ids.get(policy.attrs[outcome]); if (!target || target.attrs.state !== state) add(d, policy, "E_FAILURE_POLICY", `${outcome} must target the ${state} terminal`); }
   for (const edge of edges) {
@@ -102,7 +101,7 @@ export function validateLoop(ast) {
       (source?.kind === "agent" && source.mode === "review" && edge.on === "approve" && target?.kind !== "terminal") ||
       (source?.kind === "agent" && source.mode === "review" && edge.on === "reject" && target?.kind !== "terminal") ||
       (source?.kind === "agent" && source.mode === "review" && edge.on === "escalate" && target?.kind === "terminal" && target.state === "needs-human") ||
-      (source?.kind === "check" && edge.on === "pass" && target?.kind === "agent" && target?.mode === "review") ||
+      (source?.kind === "check" && edge.on === "pass" && (target?.kind === "gate" || target?.kind === "agent" && target?.mode === "review")) ||
       (source?.kind === "check" && edge.on === "fail" && target?.kind === "agent" && target?.mode === "task") ||
       (source?.kind === "gate" && edge.on === "pass" && target?.kind === "terminal" && target.state === "converged") ||
       (source?.kind === "gate" && edge.on === "fail" && target?.kind === "terminal" && target.state === "needs-human");

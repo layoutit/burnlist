@@ -187,7 +187,7 @@ test("Review Loop documentation command matrix runs against the production fixtu
   }
   const claim = loop("claim", runId);
   assert.equal(claim.status, 0, claim.stderr);
-  assert.equal(JSON.parse(claim.stdout).execution.nodeId, "start");
+  assert.equal(JSON.parse(claim.stdout).execution.nodeId, "implement");
   assert.equal(loop("abandon", JSON.parse(claim.stdout).execution.claimId,
     "--reason", "host-cancelled").status, 0);
 
@@ -199,7 +199,7 @@ test("Review Loop documentation command matrix runs against the production fixtu
   assert.equal(JSON.parse(paused.stdout).state, "paused");
   const resumed = loop("claim", pausedRun);
   assert.equal(resumed.status, 0, resumed.stderr);
-  assert.equal(JSON.parse(resumed.stdout).execution.nodeId, "start");
+  assert.equal(JSON.parse(resumed.stdout).execution.nodeId, "implement");
 
   const stoppedRef = "item:260722-001#L32";
   assert.equal(loop("assign", stoppedRef, "loop:builtin:review").status, 0);
@@ -212,8 +212,8 @@ test("Review Loop documentation command matrix runs against the production fixtu
   assert.equal(loop("assign", reconciledRef, "loop:builtin:review").status, 0);
   const reconciledRun = JSON.parse(loop("create", reconciledRef).stdout).runId;
   const store = runStore(repo), acquired = store.acquireLease(reconciledRun);
-  store.append(reconciledRun, acquired.lease, "node-started", { nodeId: "start", attempt: 1 });
-  store.append(reconciledRun, acquired.lease, "invocation-started", { nodeId: "start", attempt: 1, invocationId: "a".repeat(32) });
+  store.append(reconciledRun, acquired.lease, "node-started", { nodeId: "implement", attempt: 1 });
+  store.append(reconciledRun, acquired.lease, "invocation-started", { nodeId: "implement", attempt: 1, invocationId: "a".repeat(32) });
   const reconciled = loop("reconcile", reconciledRun, "--recovery-proof", acquired.recoveryProof);
   assert.equal(reconciled.status, 0, reconciled.stderr);
   assert.equal(JSON.parse(reconciled.stdout).state, "needs-human");

@@ -41,7 +41,7 @@ test("host-only CLI exposes stable reads and no managed run command", (t) => {
   assert.equal(command(repo, ["list"]), "[]\n");
   const runId = created(repo);
   const status = JSON.parse(command(repo, ["status", runId]));
-  assert.equal(status.currentNode, "start");
+  assert.equal(status.currentNode, "implement");
   assert.equal(command(repo, ["status", runId]), command(repo, ["status", runId]));
   for (const verb of ["run", "resume"]) {
     const result = invoke(repo, [verb, runId]);
@@ -66,8 +66,7 @@ test("claim and report advance checks and gates without launching a provider", (
     writeFileSync(reportPath, `${JSON.stringify(hostReport(execution, outcome))}\n`);
     command(repo, ["report", execution.claimId, "--result", reportPath]);
   }
-  assert.deepEqual(visited,
-    ["start", "decompose", "implement", "review", "integrate", "final-review"]);
+  assert.deepEqual(visited, ["implement", "review"]);
   assert.equal(JSON.parse(command(repo, ["status", runId])).state, "converged");
   assert.equal(JSON.parse(command(repo, ["complete", runId])).alreadyApplied, false);
   assert.equal(JSON.parse(command(repo, ["complete", runId])).alreadyApplied, true);
@@ -92,7 +91,7 @@ test("a claimed provider cannot be stolen and reviewer candidate drift rejects i
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const { repo } = createProductionRunAuthority(join(directory, "repo"));
   const runId = created(repo), reportPath = join(directory, "report.json");
-  for (const expected of ["start", "decompose", "implement"]) {
+  for (const expected of ["implement"]) {
     const execution = JSON.parse(command(repo, ["claim", runId])).execution;
     assert.equal(execution.nodeId, expected);
     writeFileSync(reportPath, `${JSON.stringify(hostReport(execution, "complete"))}\n`);
