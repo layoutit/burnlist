@@ -57,7 +57,7 @@ function installApi() {
 
 function installGenericRuntimeApi(missingRequired = false) {
   const genericOven = { ...oven, id: "kpi-only", name: "KPI Only" };
-  const genericBurnlist = { ...burnlist, ovenId: "kpi-only", ovenName: "KPI Only" };
+  const genericBurnlist = { ...burnlist, planPath: null, ovenId: "kpi-only", ovenName: "KPI Only" };
   const source = `<oven id="kpi-only" version="1.0.0" contract="checklist-progress@1" theme="checklist"><kpi-strip title="Executable KPI surface"><kpi-item variant="current" heading="Current" source="${missingRequired ? "/absent/value" : "/current/value"}"/><kpi-item heading="Progress"><progress-donut slot="visual" source="/progress/percent"/><progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/></kpi-item></kpi-strip></oven>`;
   const compiled = compileOven(source);
   if (!compiled.ok) throw new Error("generic runtime fixture did not compile");
@@ -66,7 +66,7 @@ function installGenericRuntimeApi(missingRequired = false) {
     if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }] });
     if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [genericBurnlist] });
     if (path === "/api/ovens") return Response.json({ ovens: [genericOven] });
-    if (path === "/api/progress") return Response.json(progress);
+    if (path === "/api/oven-data/kpi-only") return Response.json({ ovenId: "kpi-only", validated: true, payload: { current: { value: 1 }, progress: { done: 1, total: 2, percent: 50 } } });
     if (path === "/api/ovens/kpi-only") return Response.json({ oven: { ...genericOven, instructions: "# KPI Only", oven: source, ovenRevision: `o1-sha256:${"b".repeat(64)}`, ir: compiled.ir } });
     return Response.json({ error: `unexpected ${path}` }, { status: 404 });
   }) as typeof fetch;

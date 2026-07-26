@@ -31,7 +31,7 @@ function selectedScope(node: TerminalNode, payload: JsonValue | undefined, selec
 }
 
 function images(raw: unknown): readonly Image[] {
-  return Array.isArray(raw) ? raw.slice(0, 3).map((entry, index) => {
+  return Array.isArray(raw) ? raw.map((entry, index) => {
     const image = record(entry); return { label: string(image?.label) || ["Current", "Reference", "Difference"][index]!, src: typeof image?.src === "string" ? image.src : null };
   }) : [];
 }
@@ -59,7 +59,7 @@ export function validateMediaRoots(nodes: readonly TerminalNode[], payload: Json
   const model = mediaModel(nodes, payload, controls);
   if (nodes.some((node) => node.kind === "frame-card") && !model.frames.length) throw new Error("Visual Parity frame-card requires a selected frame collection.");
   for (const frame of model.frames) {
-    if (frame.images.length !== 3 || frame.images.some((image) => !image.src)) throw new Error("Visual Parity frame-card requires current, reference, and difference PNG images.");
+    if (!frame.images.length || frame.images.some((image) => !image.src)) throw new Error("Visual Parity frame-card requires PNG images.");
     for (const image of frame.images) decodePngDataUri(image.src!);
   }
   return model;
@@ -94,7 +94,7 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
     <text fg={palette.muted}>{fitText(frame.summary, width)}</text>
     <text>{fitText(frame.images.map((image) => image.label.split(/\s+/u)[0] ?? image.label).join(" · "), width)}</text>
   </box>;
-  const imageWidth = Math.max(4, Math.floor((width - 4) / 3));
+  const imageWidth = Math.max(4, Math.floor((width - Math.max(0, frame.images.length - 1)) / Math.max(1, frame.images.length)));
   const imageHeight = Math.max(1, Math.min(7, height - 3));
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
     <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>

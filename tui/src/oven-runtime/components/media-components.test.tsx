@@ -68,6 +68,17 @@ test("hostile Visual Parity tails stay admitted instead of being truncated befor
   expect(mediaModel(compiled().root, payloadWithTail, {}).frames.at(-1)?.frame).toBe("TAIL-18");
 });
 
+test("custom Visual Parity frame cards retain every declared image", () => {
+  const custom = JSON.parse(JSON.stringify(payload));
+  custom.byDomain.desktop.frames[0].images.push(
+    { ...custom.byDomain.desktop.frames[0].images[0], label: "Mask" },
+    { ...custom.byDomain.desktop.frames[0].images[1], label: "Output" },
+  );
+  const labels = mediaModel(compiled().root, custom, {}).frames[0]?.images.map((image) => image.label);
+  expect(labels).toHaveLength(5);
+  expect(labels?.slice(-2)).toEqual(["Mask", "Output"]);
+});
+
 test("frame keyboard state windows around a selected hostile tail in the real viewport", async () => {
   const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 14 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `FRAME-${index}` }));
   const ir = compiled(), initial = initTerminalRuntime(ir, long), state = reduceTerminalRuntime(initial, { type: "mediaFrameMoved", direction: -1 }, ir);

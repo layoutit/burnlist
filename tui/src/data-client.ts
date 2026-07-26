@@ -55,6 +55,9 @@ async function getJson<T>(base: string, path: string, cache: Map<string, CachedJ
 export function createDataClient(input: string) {
   const base = baseUrl(input);
   const cache = new Map<string, CachedJson>();
+  const ovenDataBytes = (contract?: string) => contract === "burnlist-visual-parity-data@1"
+    ? TERMINAL_RESOURCE_LIMITS.visualParityHttpJsonBytes
+    : TERMINAL_RESOURCE_LIMITS.httpJsonBytes;
   return Object.freeze({
     base,
     async landing(signal?: AbortSignal): Promise<LandingSnapshot> {
@@ -77,13 +80,11 @@ export function createDataClient(input: string) {
     progressResult(planPath: string, signal?: AbortSignal): Promise<SnapshotFetch<ProgressSnapshot>> {
       return getJsonResult(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
     },
-    ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<OvenDataSnapshot> {
-      const maximumBytes = ovenId === "visual-parity" ? TERMINAL_RESOURCE_LIMITS.visualParityHttpJsonBytes : TERMINAL_RESOURCE_LIMITS.httpJsonBytes;
-      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, maximumBytes);
+    ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<OvenDataSnapshot> {
+      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
     },
-    ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<SnapshotFetch<OvenDataSnapshot>> {
-      const maximumBytes = ovenId === "visual-parity" ? TERMINAL_RESOURCE_LIMITS.visualParityHttpJsonBytes : TERMINAL_RESOURCE_LIMITS.httpJsonBytes;
-      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, maximumBytes);
+    ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<SnapshotFetch<OvenDataSnapshot>> {
+      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
     },
     async streamingFeeds(repoKey: string, signal?: AbortSignal) {
       const raw = await getJson<unknown>(base, `/api/oven-data/streaming-diff?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);

@@ -21,6 +21,7 @@ import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
 import { itemDetailMaxOffset } from "./item-view";
 import { admitTerminalOven, type JsonValue, type TerminalOvenIR } from "./oven-runtime/terminal-contract";
+import { terminalPayload } from "./oven-runtime/terminal-payload";
 import { initStreamingDiffNavigation, reduceStreamingDiffNavigation, type StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import { useStreamingDiffSession } from "./use-streaming-diff-session";
 import { loadStreamingFeeds, streamingRepositories } from "./streaming-diff-feeds";
@@ -50,6 +51,8 @@ function terminalChecklistPayload(progress: ProgressSnapshot): JsonValue {
   });
   return JSON.parse(JSON.stringify(payload)) as JsonValue;
 }
+const isManagedChecklist = (oven: OvenSummary | null | undefined, burnlist: BurnlistSummary | null | undefined) =>
+  oven?.contract === "checklist-progress@1" && typeof burnlist?.planPath === "string" && burnlist.planPath.length > 0;
 export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): void }) {
   const dimensions = useTerminalDimensions();
   const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
@@ -91,7 +94,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const selectedItem = items[safeItemIndex] ?? null;
   const ovenRuntime = useMemo(() => {
     if (!ovenDetail) return null;
-    const payload = activeOven?.contract === "checklist-progress@1" && progress ? terminalChecklistPayload(progress) : displayData?.payload;
+    const payload = isManagedChecklist(activeOven, selectedBurnlist) && progress ? terminalChecklistPayload(progress) : displayData?.payload;
     if (payload === undefined) return null;
     return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, terminalState ?? undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   }, [activeOven?.contract, displayData?.payload, ovenDetail, progress, terminalState]);
@@ -140,7 +143,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     }
     if (resetItem) setItemIndex(0);
     try {
-      if (oven?.contract === "checklist-progress@1") {
+      if (oven && isManagedChecklist(oven, burnlist)) {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
         const [progressResponse, definitionResponse] = await Promise.all([client.progressResult(burnlist.planPath, request.signal), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
@@ -153,18 +156,19 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
         const currentDefinition = ovenDetail?.id === oven.id ? ovenDetail : null;
         const query = currentDefinition ? terminalServerQuery(currentDefinition.ir as unknown as TerminalOvenIR, terminalRuntimeRef.current?.state ?? null) : undefined;
         terminalQueryRef.current = JSON.stringify([burnlist.repoKey, oven.id, currentDefinition?.repoKey ?? null, query ?? {}]);
-        const [snapshotResponse, definitionResponse] = await Promise.all([client.ovenDataResult(oven.id, burnlist.repoKey, request.signal, query), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
+        const [snapshotResponse, definitionResponse] = await Promise.all([client.ovenDataResult(oven.id, burnlist.repoKey, request.signal, query, oven.contract), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
         const snapshot = snapshotResponse.data;
-        setOvenData(snapshot);
+        const payload = terminalPayload(oven.contract, snapshot.payload as JsonValue);
+        setOvenData({ ...snapshot, payload });
         setOvenDetail(definitionResponse.data);
-        acceptTerminalPayload(definitionResponse.data, snapshot.payload as JsonValue, JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
-        const payload = visualParityPayload(snapshot);
+        acceptTerminalPayload(definitionResponse.data, payload, JSON.stringify([burnlist.repoKey, oven.id, definitionResponse.data.ovenRevision]));
+        const visualPayload = visualParityPayload({ ...snapshot, payload });
         const retainedDomain = domainIdRef.current;
-        const target = Math.max(0, payload?.domains.findIndex((domain) => domain.qualification === "target") ?? 0);
-        const nextDomain = retainedDomain ? payload?.domains.findIndex((domain) => domain.id === retainedDomain) ?? -1 : -1;
+        const target = Math.max(0, visualPayload?.domains.findIndex((domain) => domain.qualification === "target") ?? 0);
+        const nextDomain = retainedDomain ? visualPayload?.domains.findIndex((domain) => domain.id === retainedDomain) ?? -1 : -1;
         const index = nextDomain >= 0 ? nextDomain : target;
-        domainIdRef.current = payload?.domains[index]?.id ?? null;
+        domainIdRef.current = visualPayload?.domains[index]?.id ?? null;
         setDomainIndex(index);
         setActiveLive((current) => reduceLiveSnapshot(current, snapshotResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       }
@@ -219,7 +223,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   useEffect(() => { void loadLanding(); }, [loadLanding]);
   useEffect(() => () => ovenRequest.current.controller?.abort(), []);
   useEffect(() => {
-    if (!selectedBurnlist || !activeOven || activeOven.contract === "checklist-progress@1" || !ovenDetail || !terminalState) return;
+    if (!selectedBurnlist || !activeOven || isManagedChecklist(activeOven, selectedBurnlist) || !ovenDetail || !terminalState) return;
     const query = terminalServerQuery(ovenDetail.ir as unknown as TerminalOvenIR, terminalState);
     const key = JSON.stringify([selectedBurnlist.repoKey, activeOven.id, ovenDetail.repoKey, query]);
     if (terminalQueryRef.current === key) return;

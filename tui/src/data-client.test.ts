@@ -48,7 +48,8 @@ describe("Burnlist TUI data client", () => {
     globalThis.fetch = mock(async () => Response.json({ ovenId: "fixture", payload: { padding } })) as unknown as typeof fetch;
     const client = createDataClient("http://127.0.0.1:4815");
     await expect(client.ovenData("checklist", "abc123")).rejects.toThrow("RESOURCE_HTTP_BYTES");
-    await expect(client.ovenData("visual-parity", "abc123")).resolves.toMatchObject({ payload: { padding } });
+    await expect(client.ovenData("visual-parity", "abc123", undefined, undefined, "burnlist-visual-parity-data@1")).resolves.toMatchObject({ payload: { padding } });
+    await expect(client.ovenData("glyph-scene-inputs", "abc123", undefined, undefined, "burnlist-visual-parity-data@1")).resolves.toMatchObject({ payload: { padding } });
   });
 
   test("loads a generic Oven package without a repository binding", async () => {

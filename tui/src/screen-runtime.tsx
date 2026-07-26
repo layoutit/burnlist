@@ -62,7 +62,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
   const contentHeight = Math.max(1, height - 4);
-  const checklist = props.activeOven?.id === "checklist";
+  const checklist = props.progress !== null && props.progress !== undefined;
   const sidebarWidth = checklist ? summaryWidth : Math.min(38, summaryWidth);
   const sidebarHeight = collapsed && checklist ? Math.max(12, Math.floor(contentHeight * 0.58)) : collapsed ? 6 : contentHeight;
   const ovenWidth = collapsed ? width : Math.max(1, width - sidebarWidth);
@@ -167,7 +167,8 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       return <ItemDetail key={key} item={props.selectedItem} width={width} height={Math.max(1, height - 4)} scrollOffset={props.itemDetailScroll} />;
     case "footer":
       {
-        const ovenHints = props.screen.id === "burnlist" && props.activeOven?.id !== "checklist"
+        const managedChecklist = props.progress !== null && props.progress !== undefined;
+        const ovenHints = props.screen.id === "burnlist" && !managedChecklist
           ? officialOvenFixture(props.activeOven?.id)?.footer ?? "arrows/enter:interact · x/f/s/m:controls · q/esc:back"
           : String(node.attributes.hints);
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
