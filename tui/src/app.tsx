@@ -145,7 +145,8 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     try {
       if (oven && isManagedChecklist(oven, burnlist)) {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
-        const [progressResponse, definitionResponse] = await Promise.all([client.progressResult(burnlist.planPath, request.signal), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
+        if (!burnlist.repoKey) throw new Error("This Checklist Burnlist has no repository identity.");
+        const [progressResponse, definitionResponse] = await Promise.all([client.progressResult(burnlist.repoKey, burnlist.id, request.signal), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
         setProgress(progressResponse.data);
         setOvenDetail(definitionResponse.data);

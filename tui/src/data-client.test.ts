@@ -28,8 +28,19 @@ describe("Burnlist TUI data client", () => {
 
   test("surfaces server errors", async () => {
     globalThis.fetch = mock(async () => Response.json({ error: "not ready" }, { status: 409 })) as unknown as typeof fetch;
-    expect(createDataClient("http://127.0.0.1:4815").progress("/tmp/a"))
+    expect(createDataClient("http://127.0.0.1:4815").progress("repo-a", "list-a"))
       .rejects.toThrow("not ready");
+  });
+
+  test("loads progress through the same repository and Burnlist identity as the dashboard", async () => {
+    let requested = "";
+    globalThis.fetch = mock(async (request: string | URL | Request) => {
+      requested = String(request);
+      return Response.json({ title: "Fixture", active: [], completed: [] });
+    }) as unknown as typeof fetch;
+    await createDataClient("http://127.0.0.1:4815").progress("aaaaaaaaaaaa", "260722-001");
+    expect(new URL(requested).pathname + new URL(requested).search)
+      .toBe("/api/progress?repoKey=aaaaaaaaaaaa&id=260722-001");
   });
 
   test("loads a repository-scoped Oven payload", async () => {

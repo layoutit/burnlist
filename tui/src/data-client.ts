@@ -74,11 +74,13 @@ export function createDataClient(input: string) {
         ...(typeof ovenPayload.writeToken === "string" ? { writeToken: ovenPayload.writeToken } : {}),
       };
     },
-    progress(planPath: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
-      return getJson(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
+    progress(repoKey: string, id: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
+      const query = new URLSearchParams({ repoKey, id });
+      return getJson(base, `/api/progress?${query}`, cache, signal);
     },
-    progressResult(planPath: string, signal?: AbortSignal): Promise<SnapshotFetch<ProgressSnapshot>> {
-      return getJsonResult(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
+    progressResult(repoKey: string, id: string, signal?: AbortSignal): Promise<SnapshotFetch<ProgressSnapshot>> {
+      const query = new URLSearchParams({ repoKey, id });
+      return getJsonResult(base, `/api/progress?${query}`, cache, signal);
     },
     ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<OvenDataSnapshot> {
       return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
