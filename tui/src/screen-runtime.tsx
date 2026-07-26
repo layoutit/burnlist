@@ -8,7 +8,7 @@ import { genericOvens } from "./oven-fit";
 import { officialOvenFixture } from "./catalog/official-oven-fixtures";
 import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
 import { TerminalStreamingFeedList } from "./oven-runtime/components/streaming-diff-components";
-import { TerminalLoopProgress } from "./oven-runtime/components/loop-components";
+import { TerminalLoopProgress, terminalLoopProgressRows } from "./oven-runtime/components/loop-components";
 import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { fitText } from "./theme";
@@ -95,7 +95,16 @@ function DetailSplit({ node, props, width, height, chrome }: {
   }) : null;
   const listHeight = Math.max(3, sidebarHeight - 6);
   const inspectorWidth = Math.max(1, ovenWidth - 4);
-  const loopHeight = Math.max(5, Math.min(14, Math.floor(contentHeight * 0.45)));
+  const splitInspector = inspectorWidth >= 96 && ovenHeight >= 14;
+  const splitItemWidth = splitInspector ? Math.max(32, Math.floor(inspectorWidth * 0.36)) : inspectorWidth;
+  const splitLoopWidth = splitInspector ? Math.max(1, inspectorWidth - splitItemWidth - 1) : inspectorWidth;
+  const loopRenderWidth = splitInspector ? Math.max(1, splitLoopWidth - 2) : splitLoopWidth;
+  const measuredLoopHeight = selectedPayload
+    ? terminalLoopProgressRows(DETAIL_LOOP_NODE, selectedPayload, loopRenderWidth, splitInspector)
+    : 5;
+  const loopHeight = Math.max(5, Math.min(measuredLoopHeight, Math.max(5, ovenHeight - 4)));
+  const topHeight = splitInspector ? loopHeight : 0;
+  const remainingHeight = Math.max(1, ovenHeight - (splitInspector ? topHeight + 1 : loopHeight + 1));
   return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : sidebarWidth}
@@ -124,9 +133,20 @@ function DetailSplit({ node, props, width, height, chrome }: {
     </box>
     <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden" paddingLeft={checklist ? 0 : 2} paddingRight={checklist ? 0 : 2}>
       {checklist && selectedPayload ? <box height={ovenHeight} paddingLeft={2} paddingRight={2} flexDirection="column" overflow="hidden">
-        <TerminalLoopProgress node={DETAIL_LOOP_NODE} payload={selectedPayload} width={inspectorWidth} height={loopHeight} />
+        {splitInspector ? <box width={inspectorWidth} height={topHeight} flexDirection="row" overflow="hidden">
+          <ItemDetail item={props.selectedItem} width={splitItemWidth} height={topHeight} section="header" />
+          <box width={1} height={topHeight} border={["right"]} borderColor={chrome.faintLine} />
+          <box width={splitLoopWidth} height={topHeight} paddingLeft={2} overflow="hidden">
+            <TerminalLoopProgress node={DETAIL_LOOP_NODE} payload={selectedPayload} width={loopRenderWidth} height={topHeight} topologyOnly />
+          </box>
+        </box> : <TerminalLoopProgress node={DETAIL_LOOP_NODE} payload={selectedPayload} width={inspectorWidth} height={loopHeight} />}
         <box height={1} border={["top"]} borderColor={chrome.faintLine} />
-        <ItemDetail item={props.selectedItem} width={inspectorWidth} height={Math.max(1, ovenHeight - loopHeight - 1)} />
+        <ItemDetail
+          item={props.selectedItem}
+          width={inspectorWidth}
+          height={remainingHeight}
+          section={splitInspector ? "content" : "all"}
+        />
       </box> : checklist ? <ItemDetail
         item={props.selectedItem}
         width={collapsed ? width : width - sidebarWidth}

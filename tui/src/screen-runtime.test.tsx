@@ -171,6 +171,25 @@ describe("dashboard-shaped .glyph runtime", () => {
     root.unmount();
   });
 
+  test("composes a wide Checklist inspector as item and Loop columns above remaining detail", async () => {
+    const items = detailItems(ovens[0]!, progress, null);
+    const { frame, root } = await renderFrame(180, 38, props({
+      screen: parsed(burnlistSource), progress, selectedBurnlist: checklistBurnlist,
+      activeOven: ovens[0]!, ovenLenses: [ovens[0]!], items, itemIndex: 1, selectedItem: items[1]!,
+      ovenRuntime: checklistRuntime(progress, 124, 34),
+    }));
+    const lines = frame.split("\n");
+    const itemRow = lines.findIndex((line) => line.includes("DONE · ui-02 · LATEST"));
+    const loopRow = lines.findIndex((line) => line.includes("LOOP Direct work"));
+    const detailRow = lines.findIndex((line) => line.includes("Animated with glyphcss."));
+    expect(itemRow).toBeGreaterThan(0);
+    expect(loopRow).toBe(itemRow);
+    expect(lines[itemRow]!.indexOf("LOOP")).toBeGreaterThan(lines[itemRow]!.indexOf("LATEST"));
+    expect(detailRow).toBeGreaterThan(itemRow);
+    expect(frame).not.toContain("ASSIGNED LOOP");
+    root.unmount();
+  });
+
   test("gives non-Checklist Ovens the main pane and renders Visual Parity directly", async () => {
     for (const [width, height] of [[72, 28], [120, 34]] as const) {
       const { frame, root } = await renderFrame(width, height, props({

@@ -87,6 +87,12 @@ function selectedItem(data: Record<string, JsonValue>) {
   return [...active, ...completed].find((item) => text(item.id) === selected) ?? active[0] ?? completed[0] ?? {};
 }
 
+export function terminalLoopProgressRows(node: TerminalNode, payload: JsonValue | undefined, width: number, topologyOnly = false) {
+  const data = source(node, payload);
+  const layout = compactTopology(record(data.loopRun), selectedItem(data), width);
+  return (topologyOnly ? 1 : 3) + (layout?.lines.length ?? 1);
+}
+
 export function TerminalLoopGraph({ node, payload, width, height = 3 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette(), run = source(node, payload), layout = graphLines(run, {}, width);
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
@@ -96,7 +102,13 @@ export function TerminalLoopGraph({ node, payload, width, height = 3 }: { node: 
   </box>;
 }
 
-export function TerminalLoopProgress({ node, payload, width, height = 18 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
+export function TerminalLoopProgress({ node, payload, width, height = 18, topologyOnly = false }: {
+  node: TerminalNode;
+  payload?: JsonValue;
+  width: number;
+  height?: number;
+  topologyOnly?: boolean;
+}) {
   const palette = useTerminalPalette(), data = source(node, payload), active = selectedItem(data), run = record(data.loopRun);
   const completed = rows(data.completed).map(record).some((item) => text(item.id) === text(active.id));
   const state = text(record(active.work).state || run.state || (completed || !active.id ? "COMPLETED" : "PENDING"));
@@ -104,14 +116,14 @@ export function TerminalLoopProgress({ node, payload, width, height = 18 }: { no
   const assigned = loopLabel(active, run);
   const stateColor = state === "BLOCKED" ? palette.red : state === "ACTIVE" ? palette.green : palette.amber;
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <box height={1} flexDirection="row">
+    {topologyOnly ? <text fg={palette.foreground}>{fitText(`LOOP  ${assigned}`, width)}</text> : <><box height={1} flexDirection="row">
       <text fg={palette.dim}>ITEM  </text>
       <text fg={palette.foreground}>{fitText(active.id ? `${text(active.id)} · ${text(active.title)}` : "No active item", Math.max(1, width - state.length - 8))}</text>
       <text fg={stateColor}>{`  ${state}`}</text>
     </box>
     <text fg={palette.muted}>{fitText(text(record(run.latestResult).summary || (active.id ? `Current step: ${text(run.currentNode || "ready")}` : "Burnlist complete")), width)}</text>
-    <text fg={palette.foreground}>{fitText(`ASSIGNED LOOP  ${assigned}`, width)}</text>
-    {layout ? layout.lines.slice(0, Math.max(1, height - 3)).map((line: string, row: number) => {
+    <text fg={palette.foreground}>{fitText(`ASSIGNED LOOP  ${assigned}`, width)}</text></>}
+    {layout ? layout.lines.slice(0, Math.max(1, height - (topologyOnly ? 1 : 3))).map((line: string, row: number) => {
       const fitted = fitDiagramText(line, width);
       const current = layout.positions.get(layout.currentNode);
       if (!current || current.y !== row || current.x >= fitted.length) {

@@ -27,13 +27,17 @@ function wrap(value: unknown, width: number): string[] {
   return lines;
 }
 
-/** Canonical item text is expanded into a viewport window, never clipped or elided. */
-export function itemDetailLines(item: DetailItem, width: number): DetailLine[] {
-  const lines: DetailLine[] = [
+function itemHeaderLines(item: DetailItem, width: number): DetailLine[] {
+  return [
     ...wrap(`${item.status}  ·  ${item.id || "—"}${item.latest ? "  ·  LATEST" : ""}`, width).map((text) => ({ text, tone: "status" as const })),
     ...wrap(item.title, width).map((text) => ({ text, tone: "normal" as const })),
     ...(item.completedAt ? wrap(`Completed ${compactTime(item.completedAt)} · ${item.completedAt}`, width).map((text) => ({ text, tone: "dim" as const })) : []),
   ];
+}
+
+/** Canonical item text is expanded into a viewport window, never clipped or elided. */
+export function itemDetailLines(item: DetailItem, width: number): DetailLine[] {
+  const lines = itemHeaderLines(item, width);
   for (const [label, value] of Object.entries(item.fields ?? {})) {
     lines.push(...wrap(label.toUpperCase(), width).map((text) => ({ text, tone: "blue" as const })));
     lines.push(...wrap(value, width).map((text) => ({ text, tone: "muted" as const })));
@@ -44,6 +48,14 @@ export function itemDetailLines(item: DetailItem, width: number): DetailLine[] {
   }
   if (!Object.keys(item.fields ?? {}).length && !item.detail) lines.push({ text: "No additional item detail was recorded.", tone: "dim" });
   return lines;
+}
+
+function itemSectionLines(item: DetailItem, width: number, section: "all" | "header" | "content") {
+  const all = itemDetailLines(item, width);
+  const header = itemHeaderLines(item, width);
+  if (section === "header") return header;
+  if (section === "content") return all.slice(header.length);
+  return all;
 }
 
 export function itemDetailMaxOffset(item: DetailItem | null, width: number, height: number): number {
@@ -61,10 +73,16 @@ function color(line: DetailLine, palette: TerminalPalette, active: boolean) {
   return palette.foreground;
 }
 
-export function ItemDetail({ item, width, height = 20, scrollOffset = 0 }: { item: DetailItem | null; width: number; height?: number; scrollOffset?: number }) {
+export function ItemDetail({ item, width, height = 20, scrollOffset = 0, section = "all" }: {
+  item: DetailItem | null;
+  width: number;
+  height?: number;
+  scrollOffset?: number;
+  section?: "all" | "header" | "content";
+}) {
   const palette = useTerminalPalette();
   if (!item) return <box height={height} padding={2}><text fg={palette.dim}>No item is selected.</text></box>;
-  const lines = itemDetailLines(item, Math.max(1, width - 4));
+  const lines = itemSectionLines(item, Math.max(1, width - 4), section);
   const reserveHint = lines.length > height;
   const visible = Math.max(1, height - (reserveHint ? 1 : 0));
   const maxOffset = Math.max(0, lines.length - visible);
