@@ -31,7 +31,7 @@ function compiled(): TerminalOvenIR {
   return result.ir as TerminalOvenIR;
 }
 
-test("Loop Progress renders a compact topology and selected item", async () => {
+test("Loop Progress renders the same ASCII topology as the web Loop graph", async () => {
   const payload = { raw: {
     selectedItemId: "H3",
     active: [
@@ -47,7 +47,7 @@ test("Loop Progress renders a compact topology and selected item", async () => {
     flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />));
     await setup.renderOnce();
     const frame = setup.captureCharFrame();
-    for (const token of ["H3 · Review the terminal", "ACTIVE", "ASSIGNED LOOP · Review Loop", "M make", "V verify", "R review", "D done", "M ──▶ V ──▶ R ──▶ D", "q:back"]) expect(frame).toContain(token);
+    for (const token of ["ACTIVE: REVIEW", "MODE: unavailable · ACTIVE", "MAKE", "VERIFY", "REVIEW", "DONE", "approve", "q:back"]) expect(frame).toContain(token);
     expect(frame).not.toContain("First item");
   } finally {
     root.unmount();

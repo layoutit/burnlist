@@ -1,4 +1,4 @@
-import type { LoopRunProjection as LoopGraphProjection } from "../../lib/types";
+import type { LoopGraphProjection } from "./LoopGraph";
 import { loopSymbols } from "./loop-symbols";
 
 type Position = { x: number; y: number };

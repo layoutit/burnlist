@@ -3,9 +3,6 @@ import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
 import { layoutAsciiGraph, type AsciiGraph } from "../../../../dashboard/src/components/LoopGraph/ascii-layout";
-import { layoutCompactLoop } from "../../../../dashboard/src/components/LoopGraph/compact-layout";
-import { loopPrimaryPath, loopSymbols } from "../../../../dashboard/src/components/LoopGraph/loop-symbols";
-import type { LoopRunProjection } from "../../../../dashboard/src/lib/types";
 
 const record = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, JsonValue> : {};
 const rows = (value: unknown) => Array.isArray(value) ? value : [];
@@ -27,27 +24,16 @@ function graphLines(run: Record<string, JsonValue>, item: Record<string, JsonVal
   return layoutAsciiGraph(model.graph, model.current, width);
 }
 
-function compactGraph(run: Record<string, JsonValue>, item: Record<string, JsonValue>, width: number) {
-  const model = graphModel(run, item);
-  if (!Array.isArray(model.graph.nodes) || !model.graph.nodes.length) return { lines: ["No Loop topology"], current: null, legend: "" };
-  const projection = { ...run, graph: model.graph, currentNode: model.current } as unknown as LoopRunProjection;
-  const layout = layoutCompactLoop(projection, { availableCharacters: width, showLabels: false });
-  const path = loopPrimaryPath(projection.graph), symbols = loopSymbols(projection.graph.nodes);
-  const legend = path.map((id) => `${symbols.get(id)} ${id}`).join("  ·  ");
-  return { lines: layout.lines, current: layout.positions.get(model.current) ?? null, legend };
+function graphWindow(layout: ReturnType<typeof graphLines>, rows: number) {
+  if (layout.lines.length <= rows) return { lines: layout.lines, offset: 0 };
+  const activeTop = layout.current?.y ?? 0;
+  const offset = Math.max(0, Math.min(layout.lines.length - rows, activeTop - Math.floor((rows - 3) / 2)));
+  return { lines: layout.lines.slice(offset, offset + rows), offset };
 }
 
 function selectedItem(data: Record<string, JsonValue>) {
   const active = rows(data.active).map(record), completed = rows(data.completed).map(record), selected = text(data.selectedItemId);
   return [...active, ...completed].find((item) => text(item.id) === selected) ?? active[0] ?? completed[0] ?? {};
-}
-
-function loopLabel(item: Record<string, JsonValue>, run: Record<string, JsonValue>) {
-  const selector = text(run.loopId || record(item.loop).selector);
-  if (selector.endsWith(":review")) return "Review Loop";
-  if (selector.endsWith(":gate")) return "Gate Loop";
-  if (selector.endsWith(":branch")) return "Branch Loop";
-  return selector === "—" ? "Direct work" : selector;
 }
 
 export function TerminalLoopGraph({ node, payload, width, height = 3 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
@@ -62,16 +48,17 @@ export function TerminalLoopGraph({ node, payload, width, height = 3 }: { node: 
 export function TerminalLoopProgress({ node, payload, width, height = 18 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette(), data = source(node, payload), active = selectedItem(data), run = record(data.loopRun);
   const state = text(record(active.work).state || run.state || (active.id ? "PENDING" : "COMPLETED"));
-  const layout = compactGraph(run, active, width), assigned = loopLabel(active, run);
+  const layout = graphLines(run, active, width);
+  const activeNode = text(run.currentNode || "ready");
+  const rowsAvailable = Math.max(1, height - 2);
+  const window = graphWindow(layout, rowsAvailable);
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <box height={1} flexDirection="row">
-      <text fg={palette.foreground}>{fitText(active.id ? `${text(active.id)} · ${text(active.title)}` : "No active item", Math.max(1, width - state.length - 3))}</text>
-      <text fg={state === "BLOCKED" ? palette.red : state === "ACTIVE" ? palette.green : palette.amber}>{`  ${state}`}</text>
-    </box>
-    <text fg={palette.muted}>{fitText(`ASSIGNED LOOP · ${assigned}`, width)}</text>
-    <text fg={palette.dim}>{fitText(text(record(run.latestResult).summary || (active.id ? `Current step: ${text(run.currentNode || "ready")}` : "Burnlist complete")), width)}</text>
-    {layout.legend ? <text fg={palette.dim}>{fitText(layout.legend, width)}</text> : null}
-    {layout.lines.slice(0, Math.max(1, height - (layout.legend ? 4 : 3))).map((line, row) =>
-      <text key={row} fg={layout.current?.y === row ? palette.blue : palette.muted}>{fitText(line, width)}</text>)}
+    <text fg={palette.blue}>{fitText(`ACTIVE: ${activeNode.toUpperCase()}`, width)}</text>
+    <text fg={palette.dim}>{fitText(`MODE: ${text(record(run.execution).mode || "unavailable")} · ${state}`, width)}</text>
+    {window.lines.map((line, row) => {
+      const sourceRow = row + window.offset;
+      const isCurrent = Boolean(layout.current && sourceRow >= layout.current.y && sourceRow <= layout.current.y + 2);
+      return <text key={sourceRow} fg={isCurrent ? palette.blue : palette.muted}>{fitText(line, width)}</text>;
+    })}
   </box>;
 }
