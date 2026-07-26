@@ -17,6 +17,7 @@ import { terminalKeyboardAction, terminalSearchControl } from "./oven-runtime/ke
 import { initialLiveSnapshot, isMissingSnapshotStatus, reduceLiveSnapshot, terminalServerQuery, type LiveSnapshot } from "./oven-runtime/live-snapshot";
 import { initTerminalRuntime, reduceTerminalRuntime, type TerminalRuntimeAction, type TerminalRuntimeState } from "./oven-runtime/state-runtime";
 import { orderedBurnlists } from "./landing-groups";
+import { cycleLandingFilter, filteredLanding, type LandingFilter } from "./landing-filter";
 import { associatedOven, genericOvens, ovenLenses } from "./oven-fit";
 import { ScreenRuntime } from "./screen-runtime";
 import { itemDetailMaxOffset } from "./item-view";
@@ -62,6 +63,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [ovenData, setOvenData] = useState<OvenDataSnapshot | null>(null); const [ovenDetail, setOvenDetail] = useState<OvenPackageDetail | null>(null);
   const [navigation, setNavigation] = useState<View[]>(["home"]); const [selectedBurnlist, setSelectedBurnlist] = useState<BurnlistSummary | null>(null); const [activeOven, setActiveOven] = useState<OvenSummary | null>(null);
   const [selections, setSelections] = useState<Record<string, number>>({ burnlists: 0, ovens: 0 }); const [itemIndex, setItemIndex] = useState(0); const [itemDetailScroll, setItemDetailScroll] = useState(0); const [domainIndex, setDomainIndex] = useState(0);
+  const [landingFilter, setLandingFilter] = useState<LandingFilter>("active");
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
   const [activeLive, setActiveLive] = useState<LiveSnapshot<true>>(initialLiveSnapshot());
@@ -90,7 +92,8 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (!landing.writeToken) return null;
     try { return createModelLabClient({ endpoint: serverUrl, token: landing.writeToken }); } catch { return null; }
   }, [landing.writeToken, serverUrl]);
-  const burnlists = useMemo(() => orderedBurnlists(landing), [landing]);
+  const visibleLanding = useMemo(() => filteredLanding(landing, landingFilter), [landing, landingFilter]);
+  const burnlists = useMemo(() => orderedBurnlists(visibleLanding), [visibleLanding]);
   const lenses = useMemo(() => selectedBurnlist ? ovenLenses(selectedBurnlist, landing.ovens) : [], [landing.ovens, selectedBurnlist]);
   const streamingSession = streamingNavigation?.page === "session" ? streamingNavigation.session : null; const activeStreamingData = useMemo(() => { const identity = (ovenData?.payload as { identity?: { logicalRepoKey?: string; worktreeKey?: string; session?: string } } | undefined)?.identity; return streamingSession && identity?.logicalRepoKey === streamingSession.identity.logicalRepoKey && identity.worktreeKey === streamingSession.identity.worktreeKey && identity.session === streamingSession.identity.session ? ovenData : null; }, [ovenData, streamingSession?.href]); const displayData = streamingSession ? activeStreamingData : ovenData;
   const items = useMemo(() => detailItems(activeOven, progress, displayData), [activeOven, displayData, progress]);
@@ -394,6 +397,11 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "home") {
+      if (key.name === "left" || key.name === "right") {
+        setLandingFilter((filter) => cycleLandingFilter(filter, key.name === "left" ? -1 : 1));
+        setSelections((current) => ({ ...current, burnlists: 0 }));
+        return;
+      }
       if (key.name === "up") return moveList("burnlists", burnlists.length, -1);
       if (key.name === "down") return moveList("burnlists", burnlists.length, 1);
       if (key.name === "return" || key.name === "enter") {
@@ -460,7 +468,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : null;
   return <ScreenRuntime
     screen={screens[view]}
-    landing={landing}
+    landing={view === "home" ? visibleLanding : landing}
     progress={renderProgress}
     selectedBurnlist={selectedBurnlist}
     activeOven={activeOven}
@@ -478,5 +486,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     notice={notice}
     ovenRuntime={ovenRuntime}
     streamingNavigation={streamingNavigation}
+    landingFilter={landingFilter}
   />;
 }

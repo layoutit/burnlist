@@ -45,11 +45,11 @@ export function DetailItemList({ items, selected, width, height }: {
         backgroundColor={active ? chrome.selected : undefined}
       >
         <text fg={active ? palette.foreground : item.kind === "active" ? palette.green : palette.muted}>{active ? ">" : " "}</text>
-        <text fg={item.kind === "active" ? palette.green : palette.blue} attributes={active ? createTextAttributes({ bold: true, underline: true }) : undefined}>{fitText(state, stateWidth)}</text>
+        <text fg={item.kind === "active" ? palette.green : palette.blue} attributes={active ? createTextAttributes({ bold: true }) : undefined}>{fitText(state, stateWidth)}</text>
         <text> </text>
-        <text fg={palette.muted} attributes={active ? createTextAttributes({ bold: true, underline: true }) : undefined}>{fitText(item.id || "—", idWidth)}</text>
+        <text fg={active ? palette.foreground : palette.muted} attributes={active ? createTextAttributes({ bold: true }) : undefined}>{fitText(item.id || "—", idWidth)}</text>
         <text> </text>
-        <text fg={active ? palette.foreground : palette.muted} attributes={active ? createTextAttributes({ bold: true, underline: true }) : undefined}>{fitText(`${item.latest ? "LATEST · " : ""}${item.title}`, titleWidth)}</text>
+        <text fg={active ? palette.foreground : palette.muted} attributes={active ? createTextAttributes({ bold: true }) : undefined}>{fitText(`${item.latest ? "LATEST · " : ""}${item.title}`, titleWidth)}</text>
       </box>;
     })}
     {!items.length ? <box paddingLeft={2}><text fg={palette.dim}>No checklist items.</text></box> : null}

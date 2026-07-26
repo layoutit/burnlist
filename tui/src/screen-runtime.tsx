@@ -26,6 +26,7 @@ import type {
 } from "./types";
 import type { JsonValue, TerminalNode } from "./oven-runtime/terminal-contract";
 import type { StreamStatus } from "./event-stream";
+import type { LandingFilter } from "./landing-filter";
 
 export interface ScreenRuntimeProps {
   screen: GlyphScreen;
@@ -47,6 +48,7 @@ export interface ScreenRuntimeProps {
   notice?: { message: string; tone: "error" | "info" } | null;
   ovenRuntime?: TerminalRenderResult | null;
   streamingNavigation?: StreamingDiffNavigation | null;
+  landingFilter?: LandingFilter;
 }
 
 function listRows(height: number): number {
@@ -175,7 +177,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       const subtitle = props.screen.id === "home"
         ? `${props.landing.burnlists.length} Burnlists · ${props.landing.projects.length} ${props.landing.projects.length === 1 ? "project" : "projects"} · ${props.streamStatus === "live" ? "LIVE" : "SYNC"}`
         : String(node.attributes.subtitle);
-      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} activity={props.notice} />;
+      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} activity={props.notice} landingFilter={compact ? props.landingFilter : undefined} />;
     }
     case "section-heading":
       return <LandingSectionHeading

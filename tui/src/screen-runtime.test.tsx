@@ -105,7 +105,7 @@ async function renderFrame(width: number, height: number, runtimeProps: ScreenRu
 
 describe("dashboard-shaped .glyph runtime", () => {
   test("keeps the landing focused entirely on Burnlists", async () => {
-    const { frame, root } = await renderFrame(120, 36, props());
+    const { frame, root } = await renderFrame(120, 36, props({ landingFilter: "active" }));
     expect(frame).toContain("⟁");
     expect(frame).toContain("Burnlists");
     expect(frame).toContain("Terminal UI");
@@ -113,6 +113,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).not.toContain("checklist-progress@1");
     expect(frame).not.toContain("Private View");
     expect(frame).not.toContain("╭");
+    expect(frame).toMatch(/ACTIVE\s+READY\s+DRAFT\s+DONE\s+ALL/);
     root.unmount();
   });
 
