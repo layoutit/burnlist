@@ -35,7 +35,7 @@ Read references only when their trigger applies:
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
 - `references/host-execution.md`: generic host next/execute/submit protocol for a prepared Loop Run; read before a host executes an agent node.
 - `references/operational-ux.md`: optional per-item recommendations, coarse-to-fine defaults, P0-P4 review handling, truthful live states, provenance, and task-fit Oven visual proof.
-- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet.
+- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet. Its two top-level keys are inputs to *different* commands — `catalog` is the flat body of `.burnlist/loop-capabilities.json`, `grants` is the `--grants` file for `loop capability trust`. Copying the file verbatim to either location fails; see `references/host-execution.md`.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
 
@@ -172,6 +172,36 @@ Honor the choice already assigned by the user or active item:
 Do not substitute a different Loop because it is more convenient. Read
 `references/host-execution.md` for the core CLI protocol; it is intentionally
 not duplicated here.
+
+### Running an assigned Loop is mandatory
+
+**If an active item carries a Loop assignment, you MUST execute it.** An
+assigned Loop is the item's declared proof path, not a suggestion.
+
+```sh
+burnlist loop create item:<burnlist-id>#<item-id>   # note the `item:` prefix
+burnlist loop next run:<id>                         # claims node, returns the worker prompt
+burnlist loop submit run:<id> --outcome complete    # or approve / reject / escalate
+```
+
+`burnlist burn` refuses an item that carries Loop metadata
+(`direct burn is blocked by Loop metadata`). That refusal means *run the
+Loop*, not *remove the Loop*.
+
+**`burnlist loop unassign` is not an escape hatch.** Unassigning an item that
+has no terminal Run, then burning it directly, silently converts declared
+multi-agent work into unverified solo work and defeats the assignment. Doing
+so is a **scope change that requires explicit user approval** — state plainly
+that the item was assigned `<loop>`, that you intend to burn it without
+running that Loop, and why, then wait. Never unassign merely because the
+direct path is faster or because the Loop protocol is unfamiliar; if the CLI
+grammar is unclear, read `references/host-execution.md` rather than routing
+around it.
+
+Legitimate reasons to unassign are narrow: the user asks for it, the Loop's
+trusted-check capability provably cannot exist yet (e.g. the repo has nothing
+for `repo-verify` to run), or the item's scope changed enough to need a
+different Loop. Record which one applied.
 
 The host—not Burnlist—chooses and supervises each native agent or provider CLI.
 If provider availability is unknown, read `references/loop-provider-setup.md`,

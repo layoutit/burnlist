@@ -29,8 +29,8 @@ function run(context, args, env = {}) {
   });
 }
 
-function target(context, agent, root = context.repo) {
-  return join(root, agent === "claude" ? ".claude" : ".agents", "skills", "burnlist");
+function target(context, agent, root = context.repo, skill = "burnlist") {
+  return join(root, agent === "claude" ? ".claude" : ".agents", "skills", skill);
 }
 
 function assertLink(path, source = skillSource) {
@@ -132,18 +132,20 @@ test("uninstall removes owned excludes for missing or foreign targets without to
   const context = fixture();
   try {
     assert.equal(run(context, ["install"]).status, 0);
-    const claude = target(context, "claude");
-    const codex = target(context, "codex");
-    rmSync(claude, { recursive: true, force: true });
-    rmSync(codex, { recursive: true, force: true });
-    mkdirSync(codex);
-    writeFileSync(join(codex, "SKILL.md"), "foreign\n");
+    const skills = ["burnlist", "burnlist-loop"];
+    for (const skill of skills) {
+      rmSync(target(context, "claude", context.repo, skill), { recursive: true, force: true });
+      const codex = target(context, "codex", context.repo, skill);
+      rmSync(codex, { recursive: true, force: true });
+      mkdirSync(codex);
+      writeFileSync(join(codex, "SKILL.md"), "foreign\n");
+    }
     const result = run(context, ["uninstall"]);
     assert.equal(result.status, 0);
-    assert.equal(lstatSync(codex).isDirectory(), true);
-    assert.doesNotMatch(exclude(context), /# burnlist-managed:skills@1\n\/\.(?:claude|agents)\/skills\/burnlist/u);
+    for (const skill of skills) assert.equal(lstatSync(target(context, "codex", context.repo, skill)).isDirectory(), true);
+    assert.doesNotMatch(exclude(context), /# burnlist-managed:skills@1\n\/\.(?:claude|agents)\/skills\/burnlist(?:-loop)?/u);
     assert.match(result.stderr, /left .* untouched/u);
-    assert.match(result.stdout, /removed 2 owned local exclude entries/u);
+    assert.match(result.stdout, /removed 4 owned local exclude entries/u);
     assert.doesNotMatch(result.stdout, /nothing installed to remove/u);
   } finally { context.cleanup(); }
 });
