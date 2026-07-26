@@ -1,5 +1,3 @@
-import { useEffect, useRef } from "react";
-import type { ScrollBoxRenderable } from "@opentui/core";
 import { GlyphImage } from "../../glyph-image";
 import { decodePngDataUri } from "../../png-glyph";
 import { fitText } from "../../theme";
@@ -89,38 +87,43 @@ export function TerminalMetricTiles({ model, width }: { model: MediaModel; width
   return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
-function Frame({ frame, width, height, selected }: { frame: MediaModel["frames"][number]; width: number; height: number; selected: boolean }) {
+function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; width: number; height: number }) {
   const palette = useTerminalPalette();
-  if (width < 48) return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`${selected ? "▎" : " "} Frame F${frame.frame} · ${frame.status}`, width)}</text>
-    <text fg={palette.muted}>{fitText(frame.summary, width)}</text>
-    <text>{fitText(frame.images.map((image) => image.label.split(/\s+/u)[0] ?? image.label).join(" · "), width)}</text>
-  </box>;
+  if (width < 48) {
+    const imageHeight = Math.max(1, Math.floor((height - 2) / Math.max(1, frame.images.length)));
+    return <box width={width} height={height} flexDirection="column" overflow="hidden">
+      <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
+      {frame.images.map((image) => <box key={image.label} height={imageHeight} flexDirection="row" overflow="hidden">
+        <text width={Math.min(14, width)}>{fitText(image.label, Math.min(14, width))}</text>
+        <GlyphImage source={image.src} width={Math.max(1, width - Math.min(14, width))} height={imageHeight} />
+      </box>)}
+    </box>;
+  }
   const imageWidth = Math.max(4, Math.floor((width - Math.max(0, frame.images.length - 1)) / Math.max(1, frame.images.length)));
-  const imageHeight = Math.max(1, Math.min(7, height - 3));
+  const imageHeight = Math.max(1, height - 2);
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`${selected ? "▎" : " "} Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
+    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
     <box height={1} flexDirection="row">{frame.images.map((image) => <text key={image.label} width={imageWidth}>{fitText(image.label, imageWidth)}</text>)}</box>
-    <box height={imageHeight} flexDirection="row">{selected
-      ? frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)
-      : <text fg={palette.dim}>{fitText("  Select this frame to render its images", width)}</text>}
-    </box>
+    <box height={imageHeight} flexDirection="row">{frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)}</box>
   </box>;
 }
 
+function frameRail(model: MediaModel, selected: number, width: number) {
+  const slots = Math.max(1, Math.floor((width - 18) / 7));
+  const start = Math.max(0, Math.min(selected - Math.floor(slots / 2), Math.max(0, model.frames.length - slots)));
+  const visible = model.frames.slice(start, start + slots).map((frame, offset) => {
+    const index = start + offset, label = `F${frame.frame}`;
+    return index === selected ? `[${label}]` : label;
+  });
+  return fitText(`${selected + 1}/${model.frames.length}  ${visible.join("  ")}`, width);
+}
+
 export function TerminalFrameCards({ model, width, height, selectedIndex = 0 }: { model: MediaModel; width: number; height: number; selectedIndex?: number }) {
-  const scroll = useRef<ScrollBoxRenderable | null>(null);
   const selected = Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1)));
-  const frameHeight = width < 48 ? 4 : 6;
-  useEffect(() => {
-    const timer = setTimeout(() => scroll.current?.scrollTo({ x: 0, y: selected * frameHeight }), 0);
-    return () => clearTimeout(timer);
-  }, [frameHeight, selected]);
+  const palette = useTerminalPalette(), active = model.frames[selected];
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text>{fitText(`${model.frames.length} frames · ↑/↓ scroll`, width)}</text>
-    <scrollbox ref={scroll} width={width} height={Math.max(1, height - 1)} scrollY viewportCulling>
-      {model.frames.map((item, index) => <Frame key={`${item.frame}-${item.label}-${index}`} frame={item} selected={index === selected} width={Math.max(1, width - 1)} height={frameHeight} />)}
-    </scrollbox>
+    <text fg={palette.muted}>{fitText(`Frames · ↑/↓ select   ${frameRail(model, selected, Math.max(1, width - 22))}`, width)}</text>
+    {active ? <Frame frame={active} width={width} height={Math.max(1, height - 1)} /> : null}
   </box>;
 }
 

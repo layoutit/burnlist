@@ -16,7 +16,7 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
   const chrome = useTerminalChrome();
   const { width } = useCoalescedTerminalDimensions();
   const loadingGlyph = useTerminalLoadingGlyph(activity?.tone === "info");
-  const right = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? (center ? subtitle.toUpperCase() : "");
+  const right = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? "";
   const innerWidth = Math.max(0, width - 4);
   const leftWidth = Math.min(12, innerWidth);
   const rightWidth = right && width >= 64 ? Math.min(24, Math.max(10, Math.floor(width * 0.22))) : 0;

@@ -36,7 +36,7 @@ test("official Visual Parity IR renders readable wide and narrow real OpenTUI me
     expect(output).not.toContain("esc:exit");
     expect(output.split("\n").every((line) => Array.from(line).length <= width)).toBe(true);
     if (width < 48) {
-      expect(output).toContain("Current · Reference · Difference");
+      for (const label of ["Current F7", "Reference F7", "Difference F7"]) expect(output).toContain(label);
       expect(output).not.toContain("┌");
       expect(output.split("\n").filter((line) => line.includes("─")).every((line) => /^[─\s]+$/u.test(line))).toBe(true);
       expect(output.split("\n").some((line) => /\[$/u.test(line.trimEnd()))).toBe(false);
@@ -79,7 +79,7 @@ test("custom Visual Parity frame cards retain every declared image", () => {
   expect(labels?.slice(-2)).toEqual(["Mask", "Output"]);
 });
 
-test("the vertical frame feed scrolls a selected hostile tail into the real viewport", async () => {
+test("the frame rail selects a hostile tail and devotes the viewport to its media", async () => {
   const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 14 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `FRAME-${index}` }));
   const ir = compiled(), initial = initTerminalRuntime(ir, long), state = reduceTerminalRuntime(initial, { type: "mediaFrameMoved", direction: -1 }, ir);
   const selected = { ...state, selections: { ...state.selections, "frame-card": "13" } }, result = admitTerminalOven(ir, { status: "ready", payload: long }, { viewport: { width: 72, height: 22 }, controls: selected.controls, selections: selected.selections }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);

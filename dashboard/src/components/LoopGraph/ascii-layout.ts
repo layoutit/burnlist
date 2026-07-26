@@ -66,7 +66,7 @@ function primaryPath(graph: AsciiGraph) {
 
 function canvas(rows: number, columns: number) {
   const cells = Array.from({ length: rows }, () => Array(columns).fill(" "));
-  const lineMasks = Array.from({ length: rows }, () => Array(columns).fill(0));
+  const lineMasks: number[][] = Array.from({ length: rows }, () => Array<number>(columns).fill(0));
   const glyphs: Record<number, string> = {
     1: "│", 2: "─", 3: "└", 4: "│", 5: "│", 6: "┌", 7: "├",
     8: "─", 9: "┘", 10: "─", 11: "┴", 12: "┐", 13: "┤", 14: "┬", 15: "┼",
@@ -102,7 +102,7 @@ function fanoutLayout(graph: AsciiGraph, currentNode: string, columns: number, w
   if (branchEdges.length < 2 || width * branchEdges.length + 8 * (branchEdges.length - 1) > columns - 4) return null;
   const outgoing = (id: string) => graph.edges.filter((edge) => edge.from === id);
   const reachable = (start: string) => {
-    const result = new Map<string, number>(), queue = [[start, 0] as const];
+    const result = new Map<string, number>(), queue: Array<[string, number]> = [[start, 0]];
     while (queue.length) {
       const [id, depth] = queue.shift()!;
       if (result.has(id)) continue;

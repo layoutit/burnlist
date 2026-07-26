@@ -18,7 +18,7 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: kpiRows(node, width) }, row), source: node.source };
   if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: node.kind === "refresh-status" ? 1 : 2 }, row), source: node.source };
   if (["metric-tiles", "frame-card", "domain-tabs", "verdict-header"].includes(node.kind)) {
-    const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(7, Math.min(12, Math.floor(width / 7)));
+    const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(12, Math.min(24, Math.floor(width / 6)));
     return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: rows }, row), source: node.source };
   }
   if (node.kind === "streaming-diff-heading") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
@@ -32,8 +32,8 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   if (node.kind === "checklist-current") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
   if (node.kind === "checklist-workspace") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 5 }, row), source: node.source };
   if (node.kind === "checklist-event-cards") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(6, Math.floor(width / 10))) }, row), source: node.source };
-  if (node.kind === "loop-graph") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
-  if (node.kind === "loop-progress") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 6 }, row), source: node.source };
+  if (node.kind === "loop-graph") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(8, Math.min(18, Math.floor(width / 7))) }, row), source: node.source };
+  if (node.kind === "loop-progress") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(12, Math.min(22, Math.floor(width / 6))) }, row), source: node.source };
   if (node.kind === "model-lab-view") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(14, Math.min(24, Math.floor(width / 3))) }, row), source: node.source };
   if (node.kind !== "kpi-strip") return node;
   const items = node.children.filter((child) => child.kind === "kpi-item");

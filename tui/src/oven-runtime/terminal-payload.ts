@@ -1,4 +1,6 @@
 import type { JsonValue } from "./terminal-contract";
+import { adaptVisualParity } from "../../../dashboard/src/lib/visual-parity-oven-adapter";
+import type { VisualParityPayload } from "../../../dashboard/src/lib/visual-parity";
 
 const record = (value: JsonValue | undefined): Readonly<Record<string, JsonValue>> | null =>
   value && typeof value === "object" && !Array.isArray(value) ? value as Readonly<Record<string, JsonValue>> : null;
@@ -10,7 +12,11 @@ const record = (value: JsonValue | undefined): Readonly<Record<string, JsonValue
  */
 export function terminalPayload(contract: string, payload: JsonValue): JsonValue {
   if (contract !== "burnlist-visual-parity-data@1") return payload;
-  const root = record(payload), domains = record(root?.byDomain);
+  const source = record(payload);
+  const adapted = source && Array.isArray(source.domains) && Array.isArray(source.comparisons) && !source.byDomain
+    ? adaptVisualParity(payload as unknown as VisualParityPayload) as unknown as JsonValue
+    : payload;
+  const root = record(adapted), domains = record(root?.byDomain);
   if (!root || !domains) return payload;
   const byDomain = Object.fromEntries(Object.entries(domains).map(([id, value]) => {
     const domain = record(value);

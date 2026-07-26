@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { terminalPayload } from "./terminal-payload";
+import { visualParityFixture } from "../catalog/visual-parity-fixture";
 
 test("Visual Parity terminal payload drops unbound scene tiles but retains every image", () => {
   const payload = {
@@ -21,4 +22,10 @@ test("Visual Parity terminal payload drops unbound scene tiles but retains every
 test("non-media contracts retain payload identity", () => {
   const payload = { rows: [{ tiles: [1] }] } as const;
   expect(terminalPayload("checklist-progress@1", payload)).toBe(payload);
+});
+
+test("Visual Parity raw server payload uses the console adapter before terminal admission", () => {
+  const adapted = terminalPayload("burnlist-visual-parity-data@1", visualParityFixture.raw as never) as any;
+  expect(adapted.verdict).toEqual({ targetPass: true, framesCount: 3, error: "" });
+  expect(adapted.byDomain.desktop.frames[0].images).toHaveLength(3);
 });

@@ -13,7 +13,8 @@ export function DetailItemList({ items, selected, width, height }: {
   const chrome = useTerminalChrome();
   const bodyRows = Math.max(1, height - 2);
   const window = visibleWindow(items, selected, bodyRows);
-  const idWidth = Math.max(4, Math.min(9, Math.floor(width * 0.18)));
+  const longestId = items.reduce((longest, item) => Math.max(longest, (item.id || "—").length), 2);
+  const idWidth = Math.max(3, Math.min(8, longestId));
   const stateWidth = width >= 40 ? 7 : 2;
   const titleWidth = Math.max(1, width - stateWidth - idWidth - 5);
 
