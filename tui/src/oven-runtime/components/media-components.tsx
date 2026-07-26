@@ -92,7 +92,7 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
   if (width < 48) {
     const imageHeight = Math.max(1, Math.floor((height - 2) / Math.max(1, frame.images.length)));
     return <box width={width} height={height} flexDirection="column" overflow="hidden">
-      <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
+      <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · F${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
       {frame.images.map((image) => <box key={image.label} height={imageHeight} flexDirection="row" overflow="hidden">
         <text width={Math.min(14, width)}>{fitText(image.label, Math.min(14, width))}</text>
         <GlyphImage source={image.src} width={Math.max(1, width - Math.min(14, width))} height={imageHeight} />
@@ -108,22 +108,22 @@ function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; 
   </box>;
 }
 
-function frameRail(model: MediaModel, selected: number, width: number) {
-  const slots = Math.max(1, Math.floor((width - 18) / 7));
-  const start = Math.max(0, Math.min(selected - Math.floor(slots / 2), Math.max(0, model.frames.length - slots)));
-  const visible = model.frames.slice(start, start + slots).map((frame, offset) => {
-    const index = start + offset, label = `F${frame.frame}`;
-    return index === selected ? `[${label}]` : label;
-  });
-  return fitText(`${selected + 1}/${model.frames.length}  ${visible.join("  ")}`, width);
-}
-
 export function TerminalFrameCards({ model, width, height, selectedIndex = 0 }: { model: MediaModel; width: number; height: number; selectedIndex?: number }) {
-  const selected = Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1)));
-  const palette = useTerminalPalette(), active = model.frames[selected];
+  const palette = useTerminalPalette(), contentHeight = Math.max(1, height - 2);
+  const rows = Math.max(1, Math.floor(contentHeight / 7));
+  const cardHeight = Math.max(4, Math.floor(contentHeight / rows));
+  const pageCount = Math.max(1, Math.ceil(model.frames.length / rows));
+  const page = Math.max(0, Math.min(selectedIndex, pageCount - 1)), start = page * rows;
+  const visible = model.frames.slice(start, start + rows), end = start + visible.length;
+  const pagination = pageCount > 1 ? `page ${page + 1}/${pageCount} · showing ${start + 1}–${end} · ↑/↓ page` : `${model.frames.length} frame${model.frames.length === 1 ? "" : "s"}`;
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text fg={palette.muted}>{fitText(`Frames · ↑/↓ select   ${frameRail(model, selected, Math.max(1, width - 22))}`, width)}</text>
-    {active ? <Frame frame={active} width={width} height={Math.max(1, height - 1)} /> : null}
+    <text fg={palette.muted}>{fitText(`Frames · ${model.frames.length}`, width)}</text>
+    <box width={width} height={contentHeight} position="relative" overflow="hidden">
+      {visible.map((frame, index) => <box key={`${frame.frame}:${start + index}`} position="absolute" left={0} top={index * cardHeight} width={width} height={cardHeight} overflow="hidden">
+        <Frame frame={frame} width={width} height={cardHeight} />
+      </box>)}
+    </box>
+    <text fg={palette.muted}>{fitText(pagination, width)}</text>
   </box>;
 }
 

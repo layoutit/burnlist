@@ -29,7 +29,7 @@ export function terminalFieldListFrame(
   options: Readonly<{ width: number; height: number; mode: string; selectedId?: string; expanded?: boolean; palette: PairPalette }>,
 ): CellGrid {
   const canvas = createCellCanvas(options.width, options.height), layout = fieldCardPairLayout(options.width);
-  if (options.height <= 4) {
+  if (options.height < 15) {
     const visible = fields.slice(0, Math.min(3, options.height));
     visible.forEach((field, index) => {
       const selected = field.id === options.selectedId, status = field.blocked ? "blocked" : field.failed ? "failed" : "pass";
@@ -56,40 +56,17 @@ export function terminalFieldListFrame(
     const selectedIndex = visible.findIndex((field) => field.id === options.selectedId);
     const selected = visible[selectedIndex];
     if (selectedIndex >= 0 && selected?.detail && options.expanded && options.height > 1) {
-      const detailY = selectedIndex === visible.length - 1 ? Math.max(0, selectedIndex - 1) : selectedIndex + 1;
+      const detailY = Math.min(options.height - 1, selectedIndex + 1);
       writeCanvasText(canvas, 0, detailY, `↳ ${selected.detail}`, options.palette.dim, options.width);
     }
     return canvasCellGrid(canvas);
   }
-  if (options.height <= 6 && fields.length >= 3) {
-    fields.slice(0, 3).forEach((field, index) => {
-      const top = index * 2, selected = field.id === options.selectedId;
-      const status = field.blocked ? "blocked" : field.failed ? "failed" : "pass";
-      const tone = field.blocked ? options.palette.amber : field.failed ? options.palette.red : options.palette.green;
-      writeCanvasText(canvas, 0, top, `${selected ? "› " : ""}${field.label} · ${status}`, tone, layout.narrow ? options.width : layout.metadataWidth);
-      if (selected && options.expanded && field.detail) {
-        writeCanvasText(canvas, 0, top + 1, `↳ ${field.detail}`, options.palette.dim, options.width);
-      } else if (layout.narrow) {
-        writeCanvasText(canvas, 0, top + 1, `${field.failures}/${field.missing} · Δ ${field.delta}`, options.palette.muted, options.width);
-      } else {
-        renderPairSeriesChart(
-          canvas,
-          normalizeSeriesChart(field.samples, { mode: options.mode === "current" ? "value" : "delta" }),
-          layout.chartX,
-          top,
-          layout.chartWidth,
-          2,
-          options.palette,
-        );
-        writeCanvasText(canvas, 0, top + 1, `${field.failures}/${field.missing} · Δ ${field.delta}`, options.palette.muted, layout.metadataWidth);
-      }
-    });
-    return canvasCellGrid(canvas);
-  }
-  fields.slice(0, layout.starts.length).forEach((field, index) => {
-    const top = layout.starts[index]!;
+  const cardStride = layout.starts[1]! - layout.starts[0]!;
+  const starts = Array.from({ length: Math.max(1, Math.ceil(options.height / cardStride)) }, (_, index) => index * cardStride);
+  fields.slice(0, starts.length).forEach((field, index) => {
+    const top = starts[index]!;
     if (top >= options.height) return;
-    const selected = field.id === options.selectedId, status = field.blocked ? "BLOCKED" : field.failed ? "FAILED" : "PASS";
+    const selected = field.id === options.selectedId, status = field.blocked ? "blocked" : field.failed ? "failed" : "pass";
     writeCanvasText(canvas, layout.metadataX, top, `${selected ? "› " : ""}${field.label}`, options.palette.foreground, layout.metadataWidth - 1);
     writeCanvasText(
       canvas,
@@ -101,8 +78,8 @@ export function terminalFieldListFrame(
     );
     if (!layout.narrow) writeCanvasText(canvas, layout.metadataX, top + 2, `max Δ ${field.delta}`, options.palette.muted, layout.metadataWidth - 1);
     if (selected && options.expanded && field.detail && !layout.narrow) {
-      const detailY = top + 3;
-      writeCanvasText(canvas, layout.metadataX, detailY, `↳ ${field.detail}`, options.palette.dim, layout.narrow ? options.width - 2 : layout.metadataWidth - 1);
+      const detailY = top + 4;
+      writeCanvasText(canvas, layout.metadataX, detailY, `↳ ${field.detail}`, options.palette.dim, options.width - 2);
     }
     renderPairSeriesChart(
       canvas,

@@ -1,14 +1,19 @@
 import { fitText, visibleWindow } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import { TerminalLineChart, type TerminalChartPoint } from "../../terminal-line-chart";
+import { nativeImageMode } from "../../native-image-capability";
+import { terminalSeriesPngDataUri } from "../../terminal-series-chart-png";
 import "../../glyph-surface";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
 import { terminalFieldListFrame, type TerminalFieldCard } from "./field-list-frame";
+import { fieldCardPairLayout } from "./paired-layout";
 import { terminalKpiFrame } from "./kpi-frame";
 import { terminalTableFrame, type TerminalListModel } from "./list-components";
 import { progressGlyphFrame } from "./progress-glyph";
 import { burnDonutCounts } from "./progress-components";
+// @ts-expect-error Shared pure chart authority is JavaScript by design.
+import { normalizeSeriesChart } from "../../../../src/ovens/series-chart-model.mjs";
 
 type RecordValue = Record<string, JsonValue>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
@@ -99,7 +104,7 @@ export function TerminalHybridFieldList({ node, payload, width, height = 8, expa
   }
   const chosen = selectedId || text(record(allFields.find((value) => { const sample = list(record(value).samples).at(-1); return Array.isArray(sample) && typeof sample[1] === "number" && typeof sample[2] === "number"; }) ?? allFields[0]).id);
   const selectedIndex = Math.max(0, allFields.findIndex((value) => text(record(value).id) === chosen));
-  const fields = visibleWindow([...allFields], selectedIndex, height <= 6 ? 3 : 2).items.map((value): TerminalFieldCard => {
+  const fields = visibleWindow([...allFields], selectedIndex, expanded ? 1 : 3).items.map((value): TerminalFieldCard => {
     const field = record(value), sample = list(field.samples).at(-1), limit = Array.isArray(sample) ? sample[1] : null, actual = Array.isArray(sample) ? sample[2] : null;
     const unit = text(field.unit) === "—" ? "" : text(field.unit);
     return {
@@ -115,5 +120,25 @@ export function TerminalHybridFieldList({ node, payload, width, height = 8, expa
     };
   });
   const frame = terminalFieldListFrame(fields, { width, height, mode: "delta", selectedId: chosen, expanded, palette });
-  return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
+  const native = height >= 15 && nativeImageMode(process.env) === "iterm", layout = fieldCardPairLayout(width);
+  const stride = layout.starts[1]! - layout.starts[0]!;
+  return <box width={frame.cols} height={frame.rows}>
+    <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />
+    {native ? fields.map((field, index) => {
+      const top = index * stride + layout.chartOffsetY;
+      if (top + layout.chartHeight > height) return null;
+      const model = normalizeSeriesChart(field.samples, { mode: "delta" });
+      const image = terminalSeriesPngDataUri(model, layout.chartWidth, layout.chartHeight);
+      return <image
+        key={field.id}
+        source={image}
+        protocol="iterm"
+        position="absolute"
+        left={layout.chartX}
+        top={top}
+        width={layout.chartWidth}
+        height={layout.chartHeight}
+      />;
+    }) : null}
+  </box>;
 }

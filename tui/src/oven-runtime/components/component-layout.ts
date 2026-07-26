@@ -13,18 +13,20 @@ const kpiRows = (node: TerminalNode, width: number) => node.children.some((child
   ? visualRows(node, width)
   : visualRows(node, width) + 2;
 
-function reserve(node: TerminalNode, width: number): TerminalNode {
+function reserve(node: TerminalNode, width: number, viewportHeight?: number): TerminalNode {
   if (node.kind === "log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(10, Math.floor(width / 8))) }, row), source: node.source };
   if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: kpiRows(node, width) }, row), source: node.source };
   if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: node.kind === "refresh-status" ? 1 : 2 }, row), source: node.source };
   if (["metric-tiles", "frame-card", "domain-tabs", "verdict-header"].includes(node.kind)) {
-    const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : Math.max(12, Math.min(24, Math.floor(width / 6)));
+    const rows = ["domain-tabs", "verdict-header"].includes(node.kind) ? 1 : node.kind === "metric-tiles" ? width < 48 ? 4 : 2 : viewportHeight
+      ? Math.max(12, viewportHeight - (width < 48 ? 10 : 8))
+      : Math.max(12, Math.min(24, Math.floor(width / 6)));
     return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: rows }, row), source: node.source };
   }
   if (node.kind === "streaming-diff-heading") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
   if (node.kind === "differential-kpi-strip") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: width < 56 ? 6 : 3 }, row), source: node.source };
   if (node.kind === "differential-log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: width < 56 ? 1 : 3 }, row), source: node.source };
-  if (node.kind === "field-list") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
+  if (node.kind === "field-list") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 15 }, row), source: node.source };
   if (["progress-chart", "frame-delta-chart"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 4 }, row), source: node.source };
   if (node.kind === "diff-card") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(5, Math.min(14, Math.floor(width / 4))) }, row), source: node.source };
   if (node.kind === "checklist-ledger") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 4 }, row), source: node.source };
@@ -46,7 +48,7 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
 }
 
 /** Projects component roots to measured structural rows while retaining paths. */
-export function projectComponentLayout(nodes: readonly TerminalNode[], width: number, payload?: unknown, controls: Readonly<Record<string, string | boolean>> = {}): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
+export function projectComponentLayout(nodes: readonly TerminalNode[], width: number, payload?: unknown, controls: Readonly<Record<string, string | boolean>> = {}, viewportHeight?: number): Readonly<{ nodes: readonly TerminalNode[]; roots: readonly ComponentRoot[] }> {
   const roots: ComponentRoot[] = [];
   const visit = (node: TerminalNode, path: string): TerminalNode => {
     if (node.kind === "switch") {
@@ -59,7 +61,7 @@ export function projectComponentLayout(nodes: readonly TerminalNode[], width: nu
     if (node.kind === "case") return { ...node, children: [] };
     if (node.kind === "field-toolbar" || node.kind === "pagination" || node.kind === "mode-toggle") return { ...node, children: [] };
     if (node.kind === "collection") return { ...node, children: node.children.filter((child) => child.kind === "field-list").map((child, index) => visit(child, `${path}/${index}`)) };
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card", "checklist-current", "checklist-workspace", "checklist-ledger", "checklist-burn-panel", "checklist-event-cards", "loop-graph", "loop-progress", "model-lab-view"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width); }
+    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card", "checklist-current", "checklist-workspace", "checklist-ledger", "checklist-burn-panel", "checklist-event-cards", "loop-graph", "loop-progress", "model-lab-view"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width, viewportHeight); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };

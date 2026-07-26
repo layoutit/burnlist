@@ -44,7 +44,7 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
 export function prepareTerminalComponentResult(result: TerminalRenderResult): TerminalRenderResult {
   if (result.status !== "ready" || !result.ir || result.payload === undefined) return result;
   try {
-    const projected = projectComponentLayout(result.ir.root, result.state.viewport.width, result.payload, result.state.controls);
+    const projected = projectComponentLayout(result.ir.root, result.state.viewport.width, result.payload, result.state.controls, result.state.viewport.height);
     for (const root of projected.roots) {
       if (root.node.kind === "kpi-strip") kpiStripModel(root.node, result.payload, result.state.viewport.width);
       else if (root.node.kind === "kpi-item") kpiFromNode(root.node, result.payload, result.state.viewport.width);
@@ -79,7 +79,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
     return <box width={viewport.width} height={viewport.height} overflow="hidden"><text>{fitTerminalText(message, viewport.width)}</text></box>;
   }
-  const projected = projectComponentLayout(prepared.ir.root, viewport.width, prepared.payload, prepared.state.controls);
+  const projected = projectComponentLayout(prepared.ir.root, viewport.width, prepared.payload, prepared.state.controls, viewport.height);
   const expandedEventPath = prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:"))
     ? projected.roots.find((root) => root.node.kind === "checklist-event-cards")?.path
     : undefined;

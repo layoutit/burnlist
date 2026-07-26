@@ -69,6 +69,21 @@ test("Differential trends reserve three Braille plot rows below their label", as
   }
 });
 
+test("Differential field cards render three-row Braille trends in the admitted Oven", async () => {
+  const setup = await createTestRenderer({ width: 78, height: 15, useThread: false }), root = createRoot(setup.renderer);
+  try {
+    flushSync(() => root.render(<TerminalHybridFieldList node={compiled.ir.root[0]!} payload={differentialFixture.payload} width={78} height={15} />));
+    await setup.renderOnce();
+    const rows = setup.captureCharFrame().split("\n");
+    expect(rows[0]).toContain("Position");
+    expect(rows.slice(1, 4)).toHaveLength(3);
+    expect(rows.slice(1, 4).join("").match(/[\u2801-\u28ff]/gu)?.length ?? 0).toBeGreaterThan(2);
+  } finally {
+    root.unmount();
+    setup.renderer.destroy();
+  }
+});
+
 test("hostile Differential tail field is retained and selected-window reachable", async () => {
   const payload = { ...differentialFixture.payload, fields: Array.from({ length: 70 }, (_, index) => ({ ...differentialFixture.payload.fields[0], id: `tail-${index}`, label: `Tail ${index}` })) };
   const setup = await createTestRenderer({ width: 60, height: 8, useThread: false }), root = createRoot(setup.renderer);

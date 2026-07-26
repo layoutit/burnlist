@@ -12,7 +12,7 @@ import { visualParityFixture } from "../../catalog/visual-parity-fixture";
 import { visualParityPng } from "../../catalog/visual-parity-fixture";
 import { decodePngDataUri } from "../../png-glyph";
 import { prepareTerminalComponentResult } from "./terminal-oven-viewport";
-import { mediaModel } from "./media-components";
+import { mediaModel, TerminalFrameCards } from "./media-components";
 
 const payload = visualParityFixture.payload;
 
@@ -79,10 +79,28 @@ test("custom Visual Parity frame cards retain every declared image", () => {
   expect(labels?.slice(-2)).toEqual(["Mask", "Output"]);
 });
 
-test("the frame rail selects a hostile tail and devotes the viewport to its media", async () => {
+test("a tall viewport fits as many full-width frame rows as its readable height allows", async () => {
+  const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 8 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `ROW-${index}` }));
+  const model = mediaModel(compiled().root, long, {});
+  const setup = await createTestRenderer({ width: 90, height: 30, useThread: false }), root = createRoot(setup.renderer);
+  try {
+    flushSync(() => root.render(<TerminalFrameCards model={model} width={90} height={30} />)); await setup.renderOnce();
+    const output = setup.captureCharFrame();
+    for (const frame of ["ROW-0", "ROW-1", "ROW-2", "ROW-3"]) expect(output).toContain(`Frame ${frame}`);
+    expect(output).not.toContain("Frame ROW-4");
+    expect(output).toContain("page 1/2");
+  } finally { root.unmount(); setup.renderer.destroy(); }
+});
+
+test("the full-width frame collection paginates to a hostile tail", async () => {
   const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 14 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `FRAME-${index}` }));
   const ir = compiled(), initial = initTerminalRuntime(ir, long), state = reduceTerminalRuntime(initial, { type: "mediaFrameMoved", direction: -1 }, ir);
   const selected = { ...state, selections: { ...state.selections, "frame-card": "13" } }, result = admitTerminalOven(ir, { status: "ready", payload: long }, { viewport: { width: 72, height: 22 }, controls: selected.controls, selections: selected.selections }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   const setup = await createTestRenderer({ width: 72, height: 22, useThread: false }), root = createRoot(setup.renderer);
-  try { flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await Bun.sleep(1); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("Frame FRAME-13"); } finally { root.unmount(); setup.renderer.destroy(); }
+  try {
+    flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await Bun.sleep(1); await setup.renderOnce();
+    const output = setup.captureCharFrame();
+    expect(output).toContain("Frame FRAME-13");
+    expect(output).toContain("page 14/14");
+  } finally { root.unmount(); setup.renderer.destroy(); }
 });

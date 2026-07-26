@@ -3,10 +3,13 @@ import { useTerminalPalette } from "./terminal-accessibility";
 import {
   bucketTerminalSeries,
   terminalSeriesChartFrame,
+  terminalSeriesModel,
   terminalSeriesRasterSize,
   terminalSeriesLevels,
   type TerminalChartPoint,
 } from "./terminal-series-chart-model";
+import { nativeImageMode } from "./native-image-capability";
+import { terminalSeriesPngDataUri } from "./terminal-series-chart-png";
 import "./glyph-surface";
 
 export {
@@ -33,9 +36,14 @@ export function TerminalSeriesChart({ height, points, title, width }: {
     </box>;
   }
   const frame = terminalSeriesChartFrame(points, width, rows - 1, palette);
+  const native = nativeImageMode(process.env) === "iterm";
+  const image = native ? terminalSeriesPngDataUri(terminalSeriesModel(points), width, rows - 1) : null;
   return <box width={width} height={rows} flexDirection="column" overflow="hidden">
     <text fg={palette.muted}>{fitText(title, width)}</text>
-    <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />
+    <box width={frame.cols} height={frame.rows}>
+      <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />
+      {image ? <image source={image} protocol="iterm" position="absolute" left={0} top={0} width={frame.cols} height={frame.rows} /> : null}
+    </box>
   </box>;
 }
 
