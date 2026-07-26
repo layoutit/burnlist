@@ -60,6 +60,7 @@ const required = [
   "scripts/unregister-skills.mjs",
   "src/cli/skills-install-cli.mjs",
   "src/cli/skills-register.mjs",
+  "src/cli/agent-monitor-cli.mjs",
   "src/cli/oven-cli.mjs",
   "src/cli/registry-cli.mjs",
   "src/events/oven-event-contract.mjs",
@@ -76,6 +77,9 @@ const required = [
   "skills/burnlist/references/burnlist-creation.md",
   "skills/burnlist/references/oven-event-coordination.md",
   "ovens/catalog.json",
+  "ovens/agent-monitor/instructions.md",
+  "ovens/agent-monitor/agent-monitor.oven",
+  "ovens/agent-monitor/engine/agent-monitor-handler.mjs",
   "ovens/checklist/instructions.md",
   "ovens/differential-testing/instructions.md",
   "ovens/differential-testing/differential-testing.oven",
@@ -180,7 +184,7 @@ if ((bin.mode & 0o111) === 0) {
   process.exit(1);
 }
 
-if (report.entryCount > 224 || report.unpackedSize > 2_500_000) {
+if (report.entryCount > 236 || report.unpackedSize > 2_500_000) {
   console.error(`npm package exceeds its bounded payload budget: ${report.entryCount} files, ${report.unpackedSize} bytes.`);
   process.exit(1);
 }
