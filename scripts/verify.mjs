@@ -412,6 +412,7 @@ assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard sti
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
 assertSkillSet(repoRoot, ["burnlist"]);
 const officialOvenExpectations = new Map([
+  ["agent-monitor", { name: "Agent Monitor" }],
   ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
   ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
   ["loop-progress", { name: "Loop Progress", validator: "validateGenericJsonData" }],

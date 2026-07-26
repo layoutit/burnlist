@@ -1,0 +1,185 @@
+.custom-oven-view {
+  display: grid;
+  min-width: 0;
+  width: min(calc(100% - 32px), 1200px);
+  margin: 12px auto 0;
+  padding: 0 0 32px;
+  gap: 16px;
+}
+
+.custom-oven-view > .shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.custom-oven-view > * {
+  min-width: 0;
+}
+
+.custom-oven-view > .dashboard-error {
+  margin: 0;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) h2 {
+  margin: 2px 0 0;
+  color: var(--foreground);
+  font: 400 22px/1.25 var(--dashboard-title-font);
+  letter-spacing: -.01em;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-kpi-strip {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .driving-parity-kpi-item {
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .driving-parity-kpi-item:first-child {
+  border-left: 1px solid var(--line);
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .driving-parity-kpi-heading {
+  overflow: visible;
+  color: var(--muted);
+  font: 400 12px/1.2 var(--dashboard-title-font);
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .driving-parity-kpi-ratio {
+  overflow: visible;
+  color: var(--foreground);
+  font-size: 18px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .oven-kpi-empty-value {
+  color: var(--muted);
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-list {
+  display: table;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-spacing: 0;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted-foreground);
+  table-layout: fixed;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-table-header,
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row {
+  display: table-row;
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-table-header span,
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row .log-table-cell {
+  display: table-cell;
+  min-width: 0;
+  padding: 10px 16px;
+  overflow: hidden;
+  text-align: right;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-table-header span {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 400 12px/1.2 var(--dashboard-title-font);
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row .log-table-cell {
+  border-bottom: 1px solid rgba(163, 172, 183, .09);
+  color: rgba(232, 232, 232, .78);
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row:last-of-type .log-table-cell {
+  border-bottom: 0;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-table-header span:first-child,
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row .log-table-cell:first-child {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  text-align: left;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .oven-log-empty {
+  display: table-caption;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 18px 16px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  caption-side: bottom;
+}
+
+.custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-list:has(> .oven-log-empty) {
+  overflow: visible;
+  border-radius: 8px 8px 0 0;
+}
+
+.custom-oven-view .oven-runtime-state {
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .custom-oven-view {
+    width: calc(100% - 20px);
+    margin-top: 10px;
+    padding-bottom: 20px;
+    gap: 12px;
+  }
+
+  .custom-oven-view:not(:has(> .shell.driving-parity-view)) h2 {
+    font-size: 20px;
+  }
+
+  .custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-kpi-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .custom-oven-view:not(:has(> .shell.driving-parity-view)) .driving-parity-kpi-item {
+    min-height: 68px;
+    padding: 12px 14px;
+  }
+
+  .custom-oven-view:not(:has(> .shell.driving-parity-view)) .checklist-log-table-header span,
+  .custom-oven-view:not(:has(> .shell.driving-parity-view)) .log-row.log-table-row .log-table-cell {
+    padding-inline: 12px;
+  }
+}

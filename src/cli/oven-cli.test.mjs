@@ -209,6 +209,7 @@ test("oven list exposes the validated official catalog revision and origin", () 
     const ovens = JSON.parse(run(context, "oven", "list", "--json"));
     const official = ovens.filter(({ origin }) => origin === "official");
     assert.deepEqual(official.map(({ id }) => id), [
+      "agent-monitor",
       "checklist",
       "differential-testing",
       "loop-progress",
@@ -220,6 +221,7 @@ test("oven list exposes the validated official catalog revision and origin", () 
     assert.equal(new Set(official.map(({ catalogRevision }) => catalogRevision)).size, 1);
     assert.match(official[0].catalogRevision, /^[a-f0-9]{64}$/u);
     const expectedContracts = new Map([
+      ["agent-monitor", "checklist-progress@1"],
       ["checklist", "checklist-progress@1"],
       ["differential-testing", "burnlist-differential-testing-data@1"],
       ["loop-progress", "checklist-progress@1"],

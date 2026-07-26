@@ -1408,12 +1408,12 @@ const server = createServer(async (req, res) => {
       const oven = findOven(id, requestedRepoKey);
       const handler = oven?.builtIn || !oven ? getOvenHandler(id) : null;
       const ovenDataBindings = resolvedOvenDataBindings();
-      if (id === "streaming-diff") {
+      if (id === "streaming-diff" || id === "agent-monitor") {
         const repoKeys = url.searchParams.getAll("repoKey");
         if (repoKeys.length > 1 || (url.searchParams.has("list") && repoKeys.length !== 1)
           || repoKeys.some((repoKey) => !/^[a-f0-9]{12}$/u.test(repoKey))) {
           return json(res, 400, { error: url.searchParams.has("list")
-            ? "Streaming Diff list requires one lowercase 12-character hexadecimal repoKey"
+            ? `${id === "streaming-diff" ? "Streaming Diff" : "Agent Monitor"} list requires one lowercase 12-character hexadecimal repoKey`
             : "repoKey must be a lowercase 12-character hexadecimal key" });
         }
       }

@@ -10,6 +10,18 @@ import "./oven-runtime-state.css";
 
 export const OvenRuntimeContext = createContext<{ state: OvenState; dispatch: (action: OvenAction) => void } | null>(null);
 type RootNode = NonNullable<OvenIr["root"]>[number];
+type RuntimeStateKind = "error" | "loading" | "stale";
+
+function OvenRuntimeState({ detail, kind, title }: { detail: string; kind: RuntimeStateKind; title: string }) {
+  const failed = kind === "error";
+  return <div className={`oven-runtime-state is-${kind}`} role={failed ? "alert" : "status"}>
+    <span aria-hidden="true" className="oven-runtime-state-indicator" />
+    <span className="oven-runtime-state-copy">
+      <strong className="oven-runtime-state-title">{title}</strong>
+      <span className="oven-runtime-state-detail">{detail}</span>
+    </span>
+  </div>;
+}
 
 export function resolveOvenRuntimeInputs({ initialPayload, payload, refreshSeconds }: {
   initialPayload?: unknown;
@@ -56,10 +68,14 @@ export function OvenRuntime({ ir, initialPayload, payload, controls, pages, init
   const theme = getOvenTheme(ir.theme);
   const themedView = theme?.runtimeLayout === "differential-testing" ? <DifferentialTestingThemeView ir={ir} state={state} dispatch={dispatch} /> : null;
   const emptyState = !themedView && state.payload === undefined
-    ? <div className={`oven-runtime-state${state.refresh.phase === "failed" ? " is-error" : ""}`} role={state.refresh.phase === "failed" ? "alert" : "status"}>{state.refresh.phase === "failed" ? String(state.refresh.error || "Could not load Oven data.") : "Loading Oven data…"}</div>
+    ? state.refresh.phase === "failed"
+      ? <OvenRuntimeState detail={String(state.refresh.error || "Could not load Oven data.")} kind="error" title="Oven data unavailable" />
+      : <OvenRuntimeState detail="Waiting for the canonical snapshot." kind="loading" title="Loading Oven data" />
     : null;
   const staleState = state.payload !== undefined && state.refresh.stale
-    ? <div className={`oven-runtime-state is-stale${state.refresh.phase === "failed" ? " is-error" : ""}`} role={state.refresh.phase === "failed" ? "alert" : "status"}>{state.refresh.phase === "failed" ? `Showing the last canonical snapshot. ${String(state.refresh.error || "Canonical refresh failed.")}` : "Showing the last canonical snapshot while canonical data refreshes."}</div>
+    ? state.refresh.phase === "failed"
+      ? <OvenRuntimeState detail={`Showing the last canonical snapshot. ${String(state.refresh.error || "Canonical refresh failed.")}`} kind="error" title="Canonical refresh failed" />
+      : <OvenRuntimeState detail="Showing the last canonical snapshot while canonical data refreshes." kind="stale" title="Refreshing canonical data" />
     : null;
   const staticView = !themedView && root.every(isStaticOvenDocument) ? <OvenView def={lowerOvenIr(ir)} payload={state.payload as any} /> : null;
   const regions = themedRegions(root, theme, (node, index) => <OvenNode key={index} node={node} ir={ir} state={state} dispatch={dispatch} />);

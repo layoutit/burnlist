@@ -10,6 +10,8 @@ export type { DifferentialLogEntry, DifferentialLogRows, DifferentialLogTablePro
 export { KpiItem } from "./KpiItem";
 export { KpiStrip } from "./KpiStrip";
 export { FeedList } from "./FeedList";
+export { AgentMonitorActivityChart, buildAgentMonitorActivity } from "./AgentMonitorActivityChart";
+export { AgentMonitorEventCard } from "./AgentMonitorEventCard";
 export { DiffCard } from "./DiffCard";
 export { DiffCardList } from "./DiffCardList";
 export { FileDiff } from "./FileDiff";

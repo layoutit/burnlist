@@ -1,5 +1,6 @@
 export { formatListTime, formatTime } from "./format";
-export { burnlistHref, burnlistLensContext, currentSection, customOvenSelection, filterFromUrl, listHref, ovenExplainerSelection, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
+export { agentMonitorAutoOpenHref, agentMonitorFeedHref, agentMonitorRepositories, agentMonitorSnapshotNotice, mapAgentMonitorFeeds, mapAgentMonitorLandingFeeds, parseAgentMonitorSnapshot } from "./agent-monitor.mjs";
+export { agentMonitorSelection, burnlistHref, burnlistLensContext, currentSection, customOvenSelection, filterFromUrl, listHref, ovenExplainerSelection, ovenRepoKey, selectedBurnlist, streamingDiffSelection } from "./hrefs";
 export { burnlistOvenHref, differentialTestingScenarioHref, parseRoute, repoOvenHref } from "./route-model.mjs";
 export { BURNLIST_DATA_CONTRACT, fittingOvens, ovenFitsContract, ovenInRepoScope, ovenLensChoices } from "./oven-fit.mjs";
 export { buildLocalOvenInventory, buildOfficialOvenCatalog, buildOvenCatalog } from "./oven-catalog.mjs";
@@ -11,6 +12,6 @@ export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
 export { visualParityDomainSummary } from "./visual-parity";
 export type { VisualParityDifference, VisualParityDomain, VisualParityDomainComparison, VisualParityImage, VisualParityPayload } from "./visual-parity";
-export type { Burnlist, ChecklistProgressData, ChecklistItem, CompletedItem, Filter, HistoryPoint, OfficialOvenCatalogEntry, OfficialOvenCatalogResponse, OvenSummary, ProgressData, Project, SelectedBurnlist, StreamingDiffCard, StreamingDiffFeed, StreamingDiffFile, StreamingDiffFileKind, StreamingDiffIdentity, Warning } from "./types";
+export type { AgentMonitorFeed, AgentMonitorIdentity, AgentMonitorPayload, Burnlist, ChecklistProgressData, ChecklistItem, CompletedItem, Filter, HistoryPoint, OfficialOvenCatalogEntry, OfficialOvenCatalogResponse, OvenSummary, ProgressData, Project, SelectedBurnlist, StreamingDiffCard, StreamingDiffFeed, StreamingDiffFile, StreamingDiffFileKind, StreamingDiffIdentity, Warning } from "./types";
 export { cn, joinClasses } from "./utils";
 export type { ClassValue } from "./utils";

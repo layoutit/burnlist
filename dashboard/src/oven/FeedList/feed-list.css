@@ -1,0 +1,50 @@
+.session-feed-view {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.session-feed-heading { margin-bottom: 20px; }
+.session-feed-heading h1 { margin: 0; font: 400 24px/1.2 var(--dashboard-title-font); }
+.session-feed-heading p { margin: 6px 0 0; color: var(--muted-foreground); }
+
+.session-feed-message {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--muted-foreground);
+}
+
+.session-feed-message.is-error { border-color: rgba(239, 68, 68, .35); color: var(--destructive-foreground); }
+.session-feed-list { display: grid; gap: 12px; }
+
+.session-feed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 4px 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.session-feed:hover, .session-feed:focus-visible {
+  border-color: rgba(90, 162, 255, .55);
+  background: var(--accent);
+  outline: none;
+}
+
+.session-feed-session { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-feed[data-state="Live"] .session-feed-session { color: rgba(97, 211, 148, .88); }
+.session-feed-detail, .session-feed-worktree, .session-feed-time { color: var(--muted-foreground); font-size: 12px; }
+.session-feed-detail { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-feed-time { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .session-feed-view { width: min(100% - 24px, 960px); padding-top: 16px; }
+  .session-feed { grid-template-columns: minmax(0, 1fr); }
+  .session-feed-time { grid-column: auto; grid-row: auto; }
+}

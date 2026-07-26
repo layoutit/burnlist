@@ -1,20 +1,96 @@
 .oven-runtime-state {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
   margin: 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border, #d1d5db);
-  border-radius: 0.5rem;
-  color: var(--foreground, #111827);
-  background: var(--card, #fff);
+  padding: 16px 18px;
+  border: 1px solid var(--line, rgba(232, 232, 232, .1));
+  border-radius: 8px;
+  background: var(--panel, #111);
+  color: var(--foreground, #e8e8e8);
+}
+
+.oven-runtime-state-indicator {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(232, 232, 232, .12);
+  border-radius: 10px;
+  background: rgba(232, 232, 232, .035);
+  color: var(--muted-foreground, #a8a8a8);
+  place-items: center;
+}
+
+.oven-runtime-state-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.oven-runtime-state-title {
+  font: 400 14px/1.25 var(--dashboard-title-font, sans-serif);
+}
+
+.oven-runtime-state-detail {
+  color: var(--muted-foreground, #a8a8a8);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.oven-runtime-state.is-loading .oven-runtime-state-indicator::after {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: oven-runtime-spin .8s linear infinite;
+  content: "";
 }
 
 .oven-runtime-state.is-stale {
-  border-color: #d97706;
-  background: #fffbeb;
-  color: #92400e;
+  min-height: 0;
+  grid-template-columns: 8px minmax(0, 1fr);
+  padding-block: 12px;
+  border-color: rgba(217, 119, 6, .28);
+  background: rgba(217, 119, 6, .075);
+}
+
+.oven-runtime-state.is-stale .oven-runtime-state-indicator {
+  width: 8px;
+  height: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: #d8a25a;
 }
 
 .oven-runtime-state.is-error {
-  border-color: #dc2626;
-  background: #fef2f2;
-  color: #991b1b;
+  border-color: rgba(239, 68, 68, .3);
+  background: rgba(239, 68, 68, .075);
+}
+
+.oven-runtime-state.is-error .oven-runtime-state-indicator {
+  border-color: rgba(248, 113, 113, .26);
+  background: rgba(239, 68, 68, .08);
+  color: rgba(248, 113, 113, .9);
+}
+
+.oven-runtime-state.is-error .oven-runtime-state-indicator::after {
+  font: 600 15px/1 var(--dashboard-title-font, sans-serif);
+  content: "!";
+}
+
+.oven-runtime-state.is-error .oven-runtime-state-title {
+  color: rgba(248, 113, 113, .92);
+}
+
+@keyframes oven-runtime-spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oven-runtime-state.is-loading .oven-runtime-state-indicator::after { animation: none; }
 }

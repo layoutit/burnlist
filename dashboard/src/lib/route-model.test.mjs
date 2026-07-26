@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  agentMonitorFeedHref,
   burnlistHref,
   burnlistOvenHref,
   differentialTestingScenarioHref,
@@ -21,6 +22,7 @@ test("parseRoute recognizes the dashboard path model", () => {
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/differential-testing", search: "?scenario=case-1" }), { section: "differential-testing", repoKey: "repo", ovenId: "differential-testing", scenario: "case-1" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/model-lab", search: "" }), { section: "model-lab", repoKey: "repo", ovenId: "model-lab" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/performance-tracing", search: "" }), { section: "performance-tracing", repoKey: "repo", ovenId: "performance-tracing" });
+  assert.deepEqual(parseRoute({ pathname: "/r/repo/o/agent-monitor", search: "?worktreeKey=work&session=s1" }), { section: "agent-monitor", repoKey: "repo", ovenId: "agent-monitor", worktreeKey: "work", session: "s1" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/streaming-diff", search: "?worktreeKey=work&session=s1" }), { section: "streaming-diff", repoKey: "repo", ovenId: "streaming-diff", worktreeKey: "work", session: "s1" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/visual-parity", search: "" }), { section: "visual-parity", repoKey: "repo", ovenId: "visual-parity" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/list/o/differential-testing", search: "?scenario=case-1" }), { section: "differential-testing", repoKey: "repo", burnlistId: "list", ovenId: "differential-testing", scenario: "case-1" });
@@ -35,6 +37,7 @@ test("href builders put repo keys only in path segments", () => {
     repoOvenHref({ repoKey: null, ovenId: "custom oven" }),
     burnlistHref({ repoKey: "repo/key", burnlistId: "burn/list", query: { filter: "active" } }),
     burnlistOvenHref({ repoKey: "repo/key", burnlistId: "burn/list", ovenId: "custom oven", query: { filter: "active" } }),
+    agentMonitorFeedHref({ repoKey: "repo/key", worktreeKey: "work tree", session: "session 1" }),
     streamingDiffFeedHref({ repoKey: "repo/key", worktreeKey: "work tree", session: "session 1" }),
     differentialTestingScenarioHref({ repoKey: "repo/key", scenario: "case 1" }),
   ];
@@ -43,6 +46,7 @@ test("href builders put repo keys only in path segments", () => {
     "/ovens/custom%20oven",
     "/r/repo%2Fkey/burn%2Flist?filter=active",
     "/r/repo%2Fkey/burn%2Flist/o/custom%20oven?filter=active",
+    "/r/repo%2Fkey/o/agent-monitor?worktreeKey=work+tree&session=session+1",
     "/r/repo%2Fkey/o/streaming-diff?worktreeKey=work+tree&session=session+1",
     "/r/repo%2Fkey/o/differential-testing?scenario=case+1",
   ]);

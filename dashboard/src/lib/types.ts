@@ -36,7 +36,7 @@ export type ChecklistItem = {
     graph?: LoopRunProjection["graph"] | null;
   };
 };
-export type CompletedItem = { id: string; title: string; completedAt: string; detail: string; work?: ChecklistItemWork };
+export type CompletedItem = { id: string; title: string; completedAt: string; detail: string; key?: string; work?: ChecklistItemWork };
 export type Warning = { severity: "error" | "warning"; message: string };
 export type HistoryPoint = { time: string; done: number; remaining: number; total: number; percent: number };
 export type LoopRunProjection = {
@@ -262,6 +262,21 @@ export type StreamingDiffFileKind = "modified" | "added" | "deleted" | "binary" 
 export type StreamingDiffFile = { path: string; kind: StreamingDiffFileKind; diff?: string; meta?: { bytes?: number; reason?: string; redacted?: true } };
 export type StreamingDiffCard = { revId: string; toolUseId: string; ts: string; status: "captured" | "partial"; partialReason?: string; files: StreamingDiffFile[] };
 export type StreamingDiffFeed = { identity: StreamingDiffIdentity; updatedAt: string | null; href: string; repoLabel?: string };
+
+export type AgentMonitorIdentity = { logicalRepoKey: string; worktreeKey: string; session: string };
+export type AgentMonitorFeed = {
+  identity: AgentMonitorIdentity;
+  updatedAt: string | null;
+  href: string;
+  repoLabel?: string;
+  title?: string;
+  detail?: string;
+  state?: "Live" | "Idle" | null;
+};
+export type AgentMonitorPayload = Record<string, unknown> & {
+  contract: "burnlist-agent-monitor-data@1";
+  identity: AgentMonitorIdentity;
+};
 
 export type SelectedBurnlist = { repo?: string; repoKey?: string; id?: string; plan?: string; item?: string };
 export type ProgressData = ChecklistProgressData;

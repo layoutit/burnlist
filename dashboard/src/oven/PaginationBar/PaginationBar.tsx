@@ -10,6 +10,7 @@ export type PaginationBarProps = {
   onPageSizeChange?: (size: number) => void;
   onPrev?: () => void;
   onNext?: () => void;
+  subject?: string;
 };
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
@@ -24,6 +25,7 @@ export function PaginationBar({
   onPageSizeChange,
   onPrev,
   onNext,
+  subject = "Differential Testing",
 }: PaginationBarProps) {
   const hidden = total <= pageSize;
   const prevDisabled = pageIndex === 0;
@@ -40,7 +42,7 @@ export function PaginationBar({
   >
     <select
       id="driving-parity-page-size"
-      aria-label="Differential Testing rows per page"
+      aria-label={`${subject} rows per page`}
       defaultValue={String(pageSize)}
       onChange={handlePageSizeChange}
     >
@@ -49,7 +51,7 @@ export function PaginationBar({
     <button
       type="button"
       id="driving-parity-page-prev"
-      aria-label="Differential Testing previous page"
+      aria-label={`${subject} previous page`}
       disabled={prevDisabled}
       onClick={onPrev}
     >Prev</button>
@@ -57,7 +59,7 @@ export function PaginationBar({
     <button
       type="button"
       id="driving-parity-page-next"
-      aria-label="Differential Testing next page"
+      aria-label={`${subject} next page`}
       disabled={nextDisabled}
       onClick={onNext}
     >Next</button>

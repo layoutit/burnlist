@@ -128,7 +128,7 @@ test("custom validation checks literal-or-pointer runtime attributes", () => {
   ]);
 });
 
-test("interactive nodes nested under each do not inherit its item scope", () => {
+test("nested collections and tables stay root-scoped while a switch follows its iterated item", () => {
   const oven = {
     id: "custom-shape",
     oven: customSource(`
@@ -166,6 +166,9 @@ test("interactive nodes nested under each do not inherit its item scope", () => 
   };
   assert.deepEqual(validateOvenData(nested, {
     rows: [{ id: "a", mode: "on", events: [{ message: "visible" }] }],
+  }).errors.map((error) => error.path), ["@item/events"]);
+  assert.deepEqual(validateOvenData(nested, {
+    rows: [{ id: "a", events: [{ message: "visible" }] }],
   }).errors.map((error) => error.path), ["@item/mode", "@item/events"]);
 });
 

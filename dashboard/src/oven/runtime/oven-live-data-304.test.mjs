@@ -43,7 +43,7 @@ test("the declarative runtime maps a shared 304 to an unchanged reducer generati
     assert.deepEqual(actions, [
       { type: "payloadRequested", generation: 10 },
       { type: "payloadAccepted", payload: { version: 1 }, generation: 10 },
-      { type: "payloadRequested", generation: 11 },
+      { type: "payloadRequested", generation: 11, background: true },
       { type: "payloadUnchanged", generation: 11 },
     ]);
   } finally {

@@ -1,4 +1,5 @@
 const ovenSections = new Map([
+  ["agent-monitor", "agent-monitor"],
   ["differential-testing", "differential-testing"],
   ["model-lab", "model-lab"],
   ["performance-tracing", "performance-tracing"],
@@ -33,7 +34,7 @@ function ovenRoute({ repoKey, burnlistId, ovenId, search }) {
   const section = ovenSections.get(ovenId) ?? "custom-oven";
   const fields = section === "differential-testing"
     ? ["scenario", "plan", "filter", "page"]
-    : section === "streaming-diff"
+    : section === "streaming-diff" || section === "agent-monitor"
       ? ["worktreeKey", "session", "plan", "filter", "page"]
       : ["plan", "filter", "page"];
   return { section, repoKey, ...(burnlistId ? { burnlistId } : {}), ovenId, ...queryFields(search, fields) };
@@ -87,6 +88,10 @@ export function burnlistOvenHref({ repoKey, burnlistId, ovenId, query } = {}) {
 
 export function streamingDiffFeedHref({ repoKey, worktreeKey, session } = {}) {
   return repoOvenHref({ repoKey, ovenId: "streaming-diff", query: { worktreeKey, session } });
+}
+
+export function agentMonitorFeedHref({ repoKey, worktreeKey, session } = {}) {
+  return repoOvenHref({ repoKey, ovenId: "agent-monitor", query: { worktreeKey, session } });
 }
 
 export function differentialTestingScenarioHref({ repoKey, scenario } = {}) {

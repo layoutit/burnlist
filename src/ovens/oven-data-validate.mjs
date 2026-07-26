@@ -176,6 +176,10 @@ function sourceErrors(ir, payload) {
   }
 
   const sourceBindings = Object.freeze({
+    "agent-monitor-activity-chart": "events",
+    "agent-monitor-event-card": "event",
+    "alert-description": "children",
+    "alert-title": "children",
     "burn-donut": "entries",
     "checklist-burn-panel": "data",
     "checklist-event-cards": "data",
@@ -192,6 +196,7 @@ function sourceErrors(ir, payload) {
     "waffle-metric": "metric",
   });
   const arrayBindings = new Set([
+    "agent-monitor-activity-chart:events",
     "burn-donut:entries",
     "diff-card:cards",
     "differential-log-table:entries",
@@ -276,7 +281,7 @@ function sourceErrors(ir, payload) {
       check(runtimePointer, itemContexts, {
         optional: node.attributes?.optional === true && typeof node.attributes?.selectionFrom !== "string",
         array: arraySources.has(node.kind),
-        mode: "root",
+        mode: node.kind === "switch" && itemContexts !== null ? "contextual" : "root",
       });
     }
     const nestedItems = node.kind === "collection" || node.kind === "log-table"

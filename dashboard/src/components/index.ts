@@ -1,3 +1,4 @@
+export { AgentMonitor } from "./AgentMonitor";
 export { AppHeader } from "./AppHeader";
 export { NewOvenPage, RunBurnPage } from "./BurnOvens";
 export { ChecklistDashboard, ChecklistOvenView } from "./ChecklistDashboard";

@@ -38,6 +38,7 @@ test("loads and freezes the exact shipped Oven catalog", () => {
   const catalog = loadOfficialOvenCatalog({ ovensDir, handlers });
 
   assert.deepEqual(catalog.entries.map(({ id }) => id), [
+    "agent-monitor",
     "checklist",
     "differential-testing",
     "loop-progress",
@@ -112,7 +113,7 @@ test("rejects package identity drift", () => {
 
   assert.throws(
     () => loadOfficialOvenCatalog({ ovensDir: target, handlers }),
-    /checklist package identity does not match/u,
+    /agent-monitor package identity does not match/u,
   );
 });
 

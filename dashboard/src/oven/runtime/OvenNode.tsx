@@ -9,6 +9,7 @@ import { ControlAdapter } from "./control-adapters";
 import { ChecklistWidgetAdapter, WidgetAdapter } from "./widget-adapters";
 import { Box } from "../Box/Box";
 import { LogTable } from "../LogTable";
+import { SectionHeader } from "../SectionHeader";
 import { formatRegistry } from "../OvenView/registries";
 import { buildLogTableProps } from "./log-table-adapter";
 import { ModelLabView, type ModelLabPayload } from "../ModelLabView";
@@ -17,11 +18,14 @@ import { LoopProgress } from "../LoopProgress";
 
 export type OvenNodeDef = { kind: string; attributes?: Record<string, unknown>; bindings?: Record<string, unknown>; children?: OvenNodeDef[] };
 export type OvenNodeProps = { node: OvenNodeDef; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown; path?: string };
-const staticKinds = new Set(["box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "section-header", "progress-value", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "differential-empty-state", "icon", "text", "bind"]);
+const staticKinds = new Set(["agent-monitor-activity-chart", "agent-monitor-event-card", "alert", "alert-title", "alert-description", "box", "grid", "panel", "stack", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "section-header", "progress-value", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "differential-empty-state", "icon", "text", "bind"]);
 const documentStaticKinds = new Set([...staticKinds, "checklist-burn-panel", "checklist-ledger", "checklist-event-cards", "streaming-diff-heading", "diff-card", "feed-list", "file-diff"]);
 const attrs = (node: OvenNodeDef) => node.attributes ?? {};
 
-export function isStaticOvenNode(node: OvenNodeDef): boolean { return staticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenNode); }
+export function isStaticOvenNode(node: OvenNodeDef): boolean {
+  if (node.kind === "section-header" && typeof attrs(node).collectionFrom === "string") return false;
+  return staticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenNode);
+}
 export function isStaticOvenDocument(node: OvenNodeDef): boolean { return documentStaticKinds.has(node.kind) && (node.children ?? []).every(isStaticOvenDocument); }
 function scopedNode(node: OvenNodeDef): OvenNodeDef {
   const pointer = (source: unknown) => typeof source !== "string" ? source : source === "@item" ? "/__ovenItem" : source.startsWith("@item/") ? `/__ovenItem${source.slice(5)}` : source.startsWith("/") || source === "" ? `/__ovenRoot${source || "/"}` : source;
@@ -39,7 +43,10 @@ function staticView(node: OvenNodeDef, ir: OvenIr, root: unknown, item?: unknown
   const sections = lowered.sections.length === 1 && lowered.sections[0].element === "div" && !lowered.sections[0].className
     ? [{ ...lowered.sections[0], element: "fragment" as const }]
     : lowered.sections;
-  return <OvenView def={{ sections }} payload={payload as JsonValue} />;
+  return <OvenView
+    def={{ ...lowered, sections, shellClassName: undefined, bodyClassName: undefined, bodyId: undefined }}
+    payload={payload as JsonValue}
+  />;
 }
 function layoutStyle(node: OvenNodeDef): Record<string, string> {
   const a = attrs(node);
@@ -49,21 +56,30 @@ function layoutStyle(node: OvenNodeDef): Record<string, string> {
   return {};
 }
 
+export function collectionItemIdentity(item: unknown, index: number, itemKey: unknown): string {
+  const value = typeof itemKey === "string" ? resolvePointer(item, itemKey) : undefined;
+  return typeof value === "string" || typeof value === "number" ? String(value) : String(index);
+}
+
 /** Trusted dispatcher: static IR is lowered, while the closed interactive vocabulary uses adapters. */
 export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: OvenNodeProps) {
   if (isStaticOvenNode(node)) return <Fragment key={path}>{staticView(node, ir, state.payload, item)}</Fragment>;
   if (node.kind === "switch") {
     const source = attrs(node).source;
     const selected = typeof source === "string"
-      ? resolvePointer(state.payload, source)
+      ? runtimeSource(state.payload, item, source)
       : selectMode(state, String(attrs(node).modeFrom ?? ""));
     const branch = (node.children ?? []).find((child) => child.kind === "case" && attrs(child).value === selected) ?? (node.children ?? []).find((child) => child.kind === "case" && attrs(child).default === true);
     return <>{(branch?.children ?? []).map((child, index) => <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />)}</>;
   }
   if (node.kind === "collection") {
     const selection = selectCollection(state, ir, String(attrs(node).id ?? ""), resolvePointer);
+    const itemKey = attrs(node).itemKey ?? attrs(node)["item-key"];
     return <>{(node.children ?? []).flatMap((child, index) => {
-      if (child.kind === "each") return selection.pageItems.map((pageItem, itemIndex) => <OvenNode key={`${path}-${index}-${itemIndex}`} node={child} ir={ir} state={state} dispatch={dispatch} item={pageItem} path={`${path}-${index}-${itemIndex}`} />);
+      if (child.kind === "each") return selection.pageItems.map((pageItem, itemIndex) => {
+        const identity = collectionItemIdentity(pageItem, itemIndex, itemKey);
+        return <OvenNode key={`${path}-${index}-${identity}`} node={child} ir={ir} state={state} dispatch={dispatch} item={pageItem} path={`${path}-${index}-${identity}`} />;
+      });
       return <OvenNode key={`${path}-${index}`} node={child} ir={ir} state={state} dispatch={dispatch} item={item} path={`${path}-${index}`} />;
     })}</>;
   }
@@ -74,6 +90,14 @@ export function OvenNode({ node, ir, state, dispatch, item, path = "root" }: Ove
     return <LoopGraph run={run} diagnostic={run?.diagnostic} title={typeof attrs(node).title === "string" ? String(attrs(node).title) : undefined} />;
   }
   if (node.kind === "loop-progress") return <LoopProgress data={runtimeSource(state.payload, item, attrs(node).source) as any} />;
+  if (node.kind === "section-header" && typeof attrs(node).collectionFrom === "string") {
+    const selection = selectCollection(state, ir, String(attrs(node).collectionFrom), resolvePointer);
+    return <SectionHeader
+      className={typeof attrs(node).class === "string" ? attrs(node).class : undefined}
+      count={selection.totalCount}
+      title={String(attrs(node).title ?? "")}
+    />;
+  }
   if (node.kind === "log-table") return <LogTable {...buildLogTableProps(node, state.payload, { resolvePointer, formatRegistry })} />;
   if (["checklist-current", "checklist-workspace", "checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) return <ChecklistWidgetAdapter node={node} payload={state.payload} />;
   if (["mode-toggle", "domain-tabs", "field-toolbar", "pagination"].includes(node.kind)) return <ControlAdapter node={node} ir={ir} state={state} dispatch={dispatch} />;

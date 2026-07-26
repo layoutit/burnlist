@@ -63,7 +63,7 @@ export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
   return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><LogTable
     columns={["Age", "Event", "Result", "Delta", "Done"]}
     rows={rows.map((item) => ({
-      key: `${item.id}/${item.completedAt}`,
+      key: item.key ?? `${item.id}/${item.completedAt}`,
       className: "log-row log-table-row",
       cells: [
         { className: "log-table-cell age", content: compactAge(item.completedAt, data.generatedAt) },
@@ -97,7 +97,7 @@ function EventDetail({ detail }: { detail: string }) {
 export function EventCardList({ data }: { data: ChecklistProgressData }) {
   const rows = eventRows(data);
   return <section className="checklist-events-section"><div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div><div className="event-card-list">{rows.map((item) => {
-    const key = `${item.id}/${item.completedAt}`;
+    const key = item.key ?? `${item.id}/${item.completedAt}`;
     const fields = item.detail ? checklistEventDetailFields(item.detail) : [];
     const hasDetail = fields.some((field) => field.label !== "Completed" && field.values.length);
     return <article className="event-card" data-event-card="true" key={key}>

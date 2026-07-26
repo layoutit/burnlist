@@ -64,6 +64,7 @@ export function PaginationAdapter({ node, ir, state, dispatch }: Props) {
   const start = page.totalCount === 0 ? 0 : page.pageIndex * page.pageSize + 1;
   const end = page.totalCount === 0 ? 0 : Math.min(page.totalCount, start + page.pageItems.length - 1);
   return <PaginationBar pageSize={page.pageSize} pageIndex={page.pageIndex} pageCount={page.pageCount} start={start} end={end} total={page.totalCount}
+    subject={typeof attrs(node).subject === "string" ? String(attrs(node).subject) : undefined}
     onPrev={() => dispatch({ type: "pagePrevious", collectionId })} onNext={() => dispatch({ type: "pageNext", collectionId })}
     onPageSizeChange={(pageSize) => dispatch({ type: "pageSizeChanged", collectionId, pageSize })} />;
 }

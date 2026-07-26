@@ -10,6 +10,7 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const knownSubcommands = new Set([
   "install",
   "uninstall",
+  "agent-monitor",
   "differential-testing",
   "streaming-diff",
   "hooks",
@@ -119,6 +120,7 @@ Usage:
   burnlist differential-testing validate-bundle <bundle/current.json>
   burnlist differential-testing schema
   burnlist differential-testing sdk
+  burnlist agent-monitor <start|stop|status|run|url> ...
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
   burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
   burnlist oven <list|view|use|set|bind|unbind|bindings|event|create|update|adopt|upgrade|fork> ...
@@ -179,6 +181,8 @@ if (args[0] !== "oven" && (args.includes("--version") || args.includes("-v"))) {
 
 if (args[0] === "oven") {
   await import("../src/cli/oven-cli.mjs");
+} else if (args[0] === "agent-monitor") {
+  await import("../src/cli/agent-monitor-cli.mjs");
 } else if (args[0] === "streaming-diff") {
   await import("../src/cli/streaming-diff-cli.mjs");
 } else if (args[0] === "hooks") {

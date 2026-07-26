@@ -1,5 +1,8 @@
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { ArrowLeft, ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@layout";
+import { AgentMonitorActivityChart } from "../AgentMonitorActivityChart";
+import { AgentMonitorEventCard } from "../AgentMonitorEventCard";
 import { DiffCard } from "../DiffCard";
 import { DiffCardList } from "../DiffCardList";
 import { DomainNote } from "../DomainNote";
@@ -69,6 +72,11 @@ function relativeAge(value: unknown): string {
 }
 
 export const componentRegistry: Record<string, ComponentType<any>> = Object.freeze(Object.assign(Object.create(null), {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+  AgentMonitorActivityChart,
+  AgentMonitorEventCard,
   KpiStrip,
   KpiItem,
   ProgressDonut,

@@ -14,6 +14,7 @@ test("reserved and path-scoped dashboard routes serve the SPA shell", { timeout:
     for (const pathname of [
       "/ovens",
       "/ovens/example-oven",
+      "/r/aaaaaaaaaaaa/o/agent-monitor",
       "/r/aaaaaaaaaaaa/o/model-lab",
       "/r/aaaaaaaaaaaa/fixture/o/streaming-diff",
     ]) assert.equal((await httpGet(baseUrl, pathname)).status, 200);
@@ -91,9 +92,10 @@ test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled
     assert.equal(response.status, 200);
     const catalog = JSON.parse(response.body);
     assert.equal(catalog.schema, "burnlist-official-oven-catalog@1");
-    assert.equal(catalog.catalogVersion, "1.0.0");
+    assert.equal(catalog.catalogVersion, "1.2.0");
     assert.match(catalog.catalogRevision, /^[a-f0-9]{64}$/u);
     assert.deepEqual(catalog.entries.map(({ id }) => id), [
+      "agent-monitor",
       "checklist",
       "differential-testing",
       "loop-progress",
