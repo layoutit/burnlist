@@ -99,6 +99,7 @@ describe("terminal capability accessibility", () => {
     expect(colors[0]).not.toEqual(colors[1]);
     expect(colors[1]).not.toEqual(colors[2]);
     expect(colors[3]!.size).toBeLessThanOrEqual(3);
+    expect(tiers[0]!.frame.lines.flatMap((line) => line.spans).some((span) => span.bg.toInts().slice(0, 3).join(",") === "56,56,64")).toBe(true);
     const monochromeSpans = tiers[3]!.frame.lines.flatMap((line) => line.spans);
     expect(monochromeSpans.some((span) => (span.attributes & TextAttributes.UNDERLINE) !== 0)).toBe(false);
     expect(monochromeSpans.some((span) => (span.attributes & TextAttributes.BOLD) !== 0)).toBe(true);

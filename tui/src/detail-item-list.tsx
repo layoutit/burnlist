@@ -39,6 +39,7 @@ export function DetailItemList({ items, selected, width, height }: {
       return <box
         key={item.key}
         height={1}
+        width="100%"
         paddingLeft={1}
         flexDirection="row"
         overflow="hidden"

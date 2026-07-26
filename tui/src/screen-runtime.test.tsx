@@ -110,6 +110,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("Burnlists");
     expect(frame).toContain("Terminal UI");
     expect(frame).toContain("o:Oven catalog");
+    expect(frame).toContain("←/→:filter");
     expect(frame).not.toContain("checklist-progress@1");
     expect(frame).not.toContain("Private View");
     expect(frame).not.toContain("╭");
@@ -130,7 +131,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(lines[0]).toContain("⟁ Burnlist  2 Burnlists · 1 project · LIVE");
     expect(columns).not.toContain("BURNLIST");
     const footer = lines.find((line) => line.includes("↑/↓:navigate"))!;
-    expect(footer.indexOf("↑")).toBe(3);
+    expect(footer.indexOf("←")).toBe(3);
     root.unmount();
   });
 

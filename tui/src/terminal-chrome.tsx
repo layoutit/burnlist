@@ -16,7 +16,7 @@ const fallback: TerminalChrome = {
   background: "transparent",
   header: "transparent",
   surface: "#202024",
-  selected: "#303036",
+  selected: "#383840",
   line: "#3a3a40",
   faintLine: "#29292e",
 };
@@ -42,7 +42,7 @@ export function terminalChrome(colors: TerminalColors | null | undefined, access
     background: "transparent",
     header: "transparent",
     surface: mix(background, foreground, 0.07),
-    selected: mix(background, foreground, 0.15),
+    selected: mix(background, foreground, 0.22),
     line: mix(background, foreground, 0.18),
     faintLine: mix(background, foreground, 0.10),
   };
