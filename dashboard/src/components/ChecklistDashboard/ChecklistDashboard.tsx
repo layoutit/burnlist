@@ -49,7 +49,7 @@ export function ProgressChart({ history }: { history: HistoryPoint[] }) {
 }
 
 export function ProgressPanel({ data }: { data: ChecklistProgressData }) {
-  return <section className="panel progress-panel"><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
+  return <section className="panel progress-panel"><div className="checklist-progress-mobile-title">Progress</div><div className="score"><ProgressChart history={progressHistory(data)} /></div></section>;
 }
 
 export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
