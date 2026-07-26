@@ -1,0 +1,26 @@
+{
+  "catalog": {
+    "schema": "burnlist-loop-capabilities@1",
+    "capabilities": [
+      {
+        "id": "repo-verify",
+        "argv": ["/absolute/path/to/repository-check", "--verify"],
+        "cwd": ".",
+        "environment": { "inherit": ["PATH"], "set": {} },
+        "network": "deny",
+        "filesystem": { "read": ["src"], "write": [] },
+        "output": { "maxBytes": 65536 },
+        "maxMilliseconds": 60000
+      }
+    ]
+  },
+  "grants": {
+    "argv": ["/absolute/path/to/repository-check", "--verify"],
+    "cwd": ".",
+    "environment": { "inherit": ["PATH"], "set": {} },
+    "network": "deny",
+    "filesystem": { "read": ["src"], "write": [] },
+    "output": { "maxBytes": 65536 },
+    "maxMilliseconds": 60000
+  }
+}

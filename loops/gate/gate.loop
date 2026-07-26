@@ -1,0 +1,17 @@
+<loop id="gate" version="0.1.0" entry="implement">
+  <budget max-rounds="5" max-minutes="30" max-agent-runs="5" max-check-runs="5" max-transitions="14" max-output-bytes="131072"/>
+  <agent id="implement" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>
+  <check id="validate" capability="repo-verify"/>
+  <gate id="converged" kind="convergence" requires="validate"/>
+  <terminal id="completed" state="converged"/>
+  <terminal id="needs-human" state="needs-human"/>
+  <terminal id="failed" state="failed"/>
+  <terminal id="stopped" state="stopped"/>
+  <terminal id="exhausted" state="budget-exhausted"/>
+  <failure-policy error="failed" timeout="failed" cancelled="stopped" lost="needs-human" exhausted="exhausted"/>
+  <edge from="implement" on="complete" to="validate"/>
+  <edge from="validate" on="pass" to="converged"/>
+  <edge from="validate" on="fail" to="implement" max-visits="3"/>
+  <edge from="converged" on="pass" to="completed"/>
+  <edge from="converged" on="fail" to="needs-human"/>
+</loop>

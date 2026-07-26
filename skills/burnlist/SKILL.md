@@ -32,6 +32,11 @@ Read references only when their trigger applies:
 - `references/oven-authoring.md`: authoring or inspecting Ovens from the `burnlist oven` CLI, the widget/format vocabulary, and source-binding conventions.
 - `references/creating-ovens.md`: authoring a new .oven declarative source (grammar, elements, binding, themes, compile-to-IR walkthrough).
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
+- `references/host-execution.md`: generic host next/execute/submit protocol for a prepared Loop Run; read before a host executes an agent node.
+- `references/operational-ux.md`: optional per-item recommendations, coarse-to-fine defaults, P0-P4 review handling, truthful live states, provenance, and task-fit Oven visual proof.
+- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet.
+- `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
+- `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -118,7 +123,7 @@ For detailed examples and banned narration, read `references/burnlist-visible-ou
 
 ## Dashboard Boundary
 
-The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task.
+The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize any dashboard server lifecycle or UI inspection.
 
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
@@ -148,6 +153,49 @@ Read `references/burnlist-dashboard.md` only for dashboard/chart/log/timeline/re
 Burnlist has two independent installable systems. Either or both may be present:
 
 - **Skill discovery** (`burnlist install`) makes this Burnlist skill discoverable to both agents. The default is a per-repository, untracked-local registration in `<repo>/.claude/skills/burnlist` for Claude Code and `<repo>/.agents/skills/burnlist` for Codex. `--global` instead uses `~/.claude/skills/burnlist` and `~/.agents/skills/burnlist`; a global npm installation of Burnlist automatically registers both global skills. Use `--commit` only for a per-repository portable copy intended for Git; `--agent codex,claude` limits targets and `--dry-run` previews. `burnlist uninstall` is the inverse; `burnlist uninstall --global --purge` also removes the global npm package.
-- **Streaming Diff hooks** (`burnlist hooks install`) install per-repository edit-capture commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` for session/edit events and merge with existing hook entries. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
+- **Native observability hooks** (`burnlist hooks install`) install per-repository edit-capture and advisory Loop-observation commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` around edits and `burnlist hooks observe` for supported native lifecycle events, merging with existing entries. Observations are bounded local facts and never semantic Loop outcomes. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
+- **Run retention** keeps operational reads bounded without a global history cap. `burnlist loop list` returns the newest bounded window; item hazards validate every relevant Run and fail closed on relevant corruption. `burnlist loop prune --retain <count>` explicitly archives only safely terminal, non-current Runs and never deletes active/converged authority.
 
 Install only the system the task needs, or both. Read `references/installation.md` for exact commands, ownership, and shared-versus-local behavior.
+
+## Built-in Loops (Stage 1)
+
+Honor the choice already assigned by the user or active item:
+
+- no assignment: implement directly and use ordinary `burnlist burn`
+- `loop:builtin:gate`: maker, trusted repository check, Burn
+- `loop:builtin:review`: maker, trusted check, independent reviewer, Burn
+- `loop:builtin:branch`: plan, host-selected slices, merge, trusted check,
+  independent reviewer, Burn
+
+Do not substitute a different Loop because it is more convenient. Read
+`references/host-execution.md` for the core CLI protocol; it is intentionally
+not duplicated here.
+
+The host—not Burnlist—chooses and supervises each native agent or provider CLI.
+If provider availability is unknown, read `references/loop-provider-setup.md`,
+show the safe inventory, and ask what the user wants enabled. Then read only
+the selected provider recipe. Give workers the prepared task, not this skill:
+workers need no Burnlist commands, claim identities, graph knowledge, or
+lifecycle authority.
+
+Make semantic decisions only from evidence:
+
+- submit `complete` after the maker has implemented and checked its work
+- submit `approve` only from a fresh independent read-only review with no open blocker
+- submit `reject` with specific findings that the next maker can resolve
+- submit `escalate` when evidence cannot support approval or bounded repair
+
+Never invent an outcome, choose a graph edge, run the trusted check on the
+worker's behalf, or treat hooks/forecasts as proof. Burnlist owns those checks,
+transitions, budgets, and completion.
+
+For Branch, choose genuinely separable slices and use independent workers when
+available; otherwise execute the same slices sequentially. Keep integration
+with one owner. Burnlist records the canonical branch node, while slice names
+and native worker state remain host evidence.
+
+If a provider fails before changing the workspace and its process has
+definitely exited, retry the same provider-neutral task with another ready
+provider. If cleanup or candidate state is uncertain, stop and use the
+recovery guidance instead of submitting a made-up result.

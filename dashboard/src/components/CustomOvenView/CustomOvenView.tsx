@@ -14,6 +14,10 @@ function unwrapPayload(raw: unknown) {
   return raw && typeof raw === "object" && "payload" in raw ? (raw as { payload: unknown }).payload : raw;
 }
 
+export function burnlistOvenPayload(progress: ProgressData) {
+  return adaptChecklist(progress);
+}
+
 export function CustomOvenRuntime({ burnlistId, ir, payload }: { burnlistId?: string; ir: OvenIr; payload?: unknown }) {
   if (burnlistId) {
     return <><LensSwitcher /><OvenRuntime ir={{ ...ir, refreshSeconds: undefined }} payload={payload} /></>;
@@ -27,12 +31,12 @@ export function CustomOvenView({ error, loading, progress, stale }: { error: str
   if (selection.burnlistId && loading && !progress) return <EmptyState title="Loading Oven" detail="Reading canonical Burnlist data." />;
   if (selection.burnlistId && !progress) return error ? <DashboardError message={error} /> : <EmptyState title="Loading Oven" detail="Reading canonical Burnlist data." />;
   return <>
-    {selection.burnlistId && (error || stale) && <DashboardError message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}
+    {selection.burnlistId && (error || stale) && <DashboardError floating message={error || "Showing the last canonical Burnlist snapshot while fresh data loads."} />}
     <OvenDefinition id={selection.id} repoKey={selection.repoKey}>{(ir) => (
       <CustomOvenRuntime
         burnlistId={selection.burnlistId ?? undefined}
         ir={ir}
-        payload={selection.burnlistId ? adaptChecklist(progress!) : undefined}
+        payload={selection.burnlistId ? burnlistOvenPayload(progress!) : undefined}
       />
     )}</OvenDefinition>
   </>;

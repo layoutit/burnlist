@@ -25,4 +25,19 @@ The engine receives this payload from the dashboard on each data refresh. The ov
 
 ## Active Checklist
 
-The canonical `burnlist.md` Active Checklist remains the ordered source of pending work. Its completed ledger supplies the burned items shown by this read-only view; the dashboard never replaces or silently mutates either source of truth.
+### Work State
+
+The canonical `burnlist.md` Active Checklist remains the ordered source of
+queued work, but position never implies execution:
+
+- `PENDING`: no canonical Run or claim.
+- `ACTIVE`: a canonical Run executes a deterministic node or has a live claim.
+- `WAITING`: a Run awaits a host task, resume, or atomic completion.
+- `BLOCKED`: canonical Run state requires intervention or cannot be projected.
+- `COMPLETED`: the completed ledger records the item.
+
+Recent bounded, invocation-correlated hooks may label an active item
+`progressing`; they remain observational and cannot create state, satisfy a
+gate, or complete an item. The item detail names both provenance classes. The
+completed ledger supplies the burned items shown by this read-only view; the
+dashboard never replaces or silently mutates either source of truth.

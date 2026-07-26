@@ -58,8 +58,8 @@ function discoverBundledTests(directory) {
   return files.sort();
 }
 
-const testEntries = discoverTests(ovenDir);
-console.log(`=== Oven TypeScript tests (${testEntries.length}) ===`);
+const testEntries = discoverTests(sourceDir);
+console.log(`=== Dashboard TypeScript tests (${testEntries.length}) ===`);
 
 if (testEntries.length === 0) process.exit(0);
 
@@ -76,7 +76,7 @@ try {
     packages: "external",
     sourcemap: "inline",
     outdir: outputDir,
-    outbase: ovenDir,
+    outbase: sourceDir,
     entryNames: "[dir]/[name]",
     outExtension: { ".js": ".mjs" },
     alias,

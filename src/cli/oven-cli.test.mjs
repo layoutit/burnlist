@@ -211,6 +211,7 @@ test("oven list exposes the validated official catalog revision and origin", () 
     assert.deepEqual(official.map(({ id }) => id), [
       "checklist",
       "differential-testing",
+      "loop-progress",
       "model-lab",
       "performance-tracing",
       "streaming-diff",
@@ -221,6 +222,7 @@ test("oven list exposes the validated official catalog revision and origin", () 
     const expectedContracts = new Map([
       ["checklist", "checklist-progress@1"],
       ["differential-testing", "burnlist-differential-testing-data@1"],
+      ["loop-progress", "checklist-progress@1"],
       ["model-lab", "burnlist-model-lab-data@1"],
       ["performance-tracing", "burnlist-differential-testing-data@1"],
       ["streaming-diff", "burnlist-streaming-diff-data@2"],

@@ -1,0 +1,37 @@
+[
+  {
+    "checkpoint": "review/1/reject",
+    "projectionBytes": 3560,
+    "projectionSha256": "e269ab436bd602cf2be9ba9ad0ee1e8cab11a48ace11c0a717b534acf7437b28",
+    "domBytes": 12814,
+    "domSha256": "8e04609fd5c2f6a2b23ca07c7fd69f41fecae40af986a94cda7b54364d120bb2"
+  },
+  {
+    "checkpoint": "implement/2/complete",
+    "projectionBytes": 3829,
+    "projectionSha256": "a9be55e85fff41141bd03d4a2061f5c10f98313fd037e4cf21b51ad539ac0366",
+    "domBytes": 13001,
+    "domSha256": "377e54a5edccdd7be794eb0a4d4f044b8e65d082df82d415623e36f5e71ecd96"
+  },
+  {
+    "checkpoint": "review/2/approve",
+    "projectionBytes": 3963,
+    "projectionSha256": "fa26cf02b2bbf3a47d8246d782b9c7ee4dfd3f7c99692834775d591069d73e2b",
+    "domBytes": 12993,
+    "domSha256": "5c6b77a389fbf16b3b15271663b8793f9f4b1a034318dcb10237bfc66ef4d133"
+  },
+  {
+    "checkpoint": "converged/1/approve",
+    "projectionBytes": 3989,
+    "projectionSha256": "99d26c58766df3425692f8a3d23f740544e2cc5218037bf3be450719a1404518",
+    "domBytes": 12950,
+    "domSha256": "1b7f95d4a647f14a6fe1e77a4f6d182edd05bc048f0573947d52413ec8587efe"
+  },
+  {
+    "checkpoint": "completed/1/approve",
+    "projectionBytes": 3991,
+    "projectionSha256": "1ade6bffe5db0e839527569b027e9d9575057e69c4f80bae327eb6fbe663a1d5",
+    "domBytes": 12921,
+    "domSha256": "5db1e17bbf923c1aeaaaff5c26cacf77bf38e596c78338c25f97c9fab5784df5"
+  }
+]

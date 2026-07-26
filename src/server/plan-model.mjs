@@ -1,5 +1,6 @@
 import { basename, dirname, normalize, relative, resolve } from "node:path";
 import { readTextFileWithLimit, safeStat } from "./fs-safe.mjs";
+import { findLoopMetadata, locateItemSpan } from "../loops/assignment/item-metadata.mjs";
 
 export function twoDigit(value) {
   return String(value).padStart(2, "0");
@@ -74,6 +75,13 @@ export function parseActiveItems(lines) {
     }
   }
   return items;
+}
+
+/** Read-only exact-span helper for Loop-aware observers; it never normalizes markdown. */
+export function loopAssignmentForItem(markdown, itemId) {
+  const located = locateItemSpan(markdown, itemId);
+  const metadata = findLoopMetadata(located);
+  return metadata ? { ...metadata.values, itemStart: located.startByte, itemEnd: located.endByte } : null;
 }
 
 export function parseCompleted(lines) {

@@ -47,6 +47,27 @@ test("global dry-run describes Claude and Codex targets", () => {
   } finally { context.cleanup(); }
 });
 
+test("global Codex registration warns when a legacy native skill can shadow it", () => {
+  const context = fixture();
+  try {
+    const legacy = join(context.home, ".codex", "skills", "burnlist");
+    mkdirSync(legacy, { recursive: true });
+    writeFileSync(join(legacy, "SKILL.md"), "stale\n");
+    const warnings = [];
+    registerSkills({
+      sourceRoot: join(repoRoot, "skills"),
+      scope: "global",
+      cwd: context.repo,
+      env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home },
+      agents: ["codex"],
+      log: () => {},
+      warn: (message) => warnings.push(message),
+    });
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /\.codex\/skills\/burnlist may shadow/u);
+  } finally { context.cleanup(); }
+});
+
 test("repo dry-run describes both agent targets at the worktree root", () => {
   const context = fixture();
   try {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { hookConfigStatus, updateHookConfigs } from "./hooks-config.mjs";
+import { runLoopObservationHook } from "./loop-hook-cli.mjs";
 
 const tokens = process.argv.slice(2);
 if (tokens[0] === "hooks") tokens.shift();
@@ -32,7 +33,11 @@ function print(result, { install = false } = {}) {
     if (entry.forcedUntracked) console.warn(`${entry.agent}: --untracked cannot hide an already tracked config.`);
   }
 }
-try {
+if (subcommand === "observe") {
+  const index = tokens.indexOf("--agent");
+  const provider = index >= 0 ? tokens[index + 1] : null;
+  if (tokens.length === 2 && index === 0) await runLoopObservationHook({ provider });
+} else try {
   if (["--help", "-h"].includes(subcommand) || tokens.includes("--help") || tokens.includes("-h")) console.log("Usage: burnlist hooks <install|uninstall|status> [--agent codex,claude] [--untracked]");
   else {
     const options = parse();

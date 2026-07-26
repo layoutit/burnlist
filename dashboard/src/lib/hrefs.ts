@@ -2,7 +2,14 @@ import { burnlistHref as buildBurnlistHref, parseRoute } from "./route-model.mjs
 import type { Burnlist, Filter, SelectedBurnlist } from "./types";
 
 function route() {
-  return parseRoute({ pathname: window.location.pathname, search: window.location.search });
+  return parseRoute(typeof window === "undefined"
+    ? { pathname: "/", search: "" }
+    : { pathname: window.location.pathname, search: window.location.search });
+}
+function itemFromHash() {
+  if (typeof window === "undefined") return undefined;
+  if (window.location.hash.length <= 1) return undefined;
+  try { return decodeURIComponent(window.location.hash.slice(1)); } catch { return undefined; }
 }
 
 export function currentSection() {
@@ -17,7 +24,7 @@ export function customOvenSelection(): { id: string; repoKey: string | null; bur
 export function ovenExplainerSelection(): { ovenId: string; repoKey: string | null } | null {
   const current = route();
   return current.section === "oven-explainer"
-    ? { ovenId: current.ovenId, repoKey: new URLSearchParams(window.location.search).get("repoKey") }
+    ? { ovenId: current.ovenId, repoKey: new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("repoKey") }
     : null;
 }
 
@@ -44,13 +51,14 @@ export function streamingDiffSelection() {
 
 export function selectedBurnlist(): SelectedBurnlist | null {
   const current = route();
-  if (current.plan) return { plan: current.plan };
-  if (current.repoKey && current.burnlistId) return { repoKey: current.repoKey, id: current.burnlistId };
-  return current.repo && current.burnlistId ? { repo: current.repo, id: current.burnlistId } : null;
+  const item = itemFromHash();
+  if (current.plan) return { plan: current.plan, ...(item ? { item } : {}) };
+  if (current.repoKey && current.burnlistId) return { repoKey: current.repoKey, id: current.burnlistId, ...(item ? { item } : {}) };
+  return current.repo && current.burnlistId ? { repo: current.repo, id: current.burnlistId, ...(item ? { item } : {}) } : null;
 }
 
 export function filterFromUrl(filters: Array<{ value: Filter }>): Filter {
-  const value = new URLSearchParams(window.location.search).get("filter") as Filter | null;
+  const value = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("filter") as Filter | null;
   return filters.some((filter) => filter.value === value) ? value! : "active";
 }
 

@@ -1,0 +1,200 @@
+---
+title: Loops
+description: Choose direct execution or configure one of the three built-in Loop workflows.
+---
+
+Every item uses one of four execution choices:
+
+```text
+direct  Start -> Implement -> Burn
+gate    Start -> Implement -> Check -> Burn
+review  Start -> Implement -> Check -> Review -> Burn
+branch  Start -> Plan -> N host-orchestrated branches -> Merge -> Check -> Review -> Burn
+```
+
+Direct work has no Loop assignment and keeps the ordinary
+`burnlist burn <id> <item> [--check]` workflow. The three assignable built-ins
+are `loop:builtin:gate`, `loop:builtin:review`, and `loop:builtin:branch`.
+An assigned item leaves the checklist only through its converged Loop Run.
+
+Burnlist provides soft orchestration: it owns the frozen graph, trusted check,
+legal transitions, budgets, and completion. The host chooses and supervises
+providers; the repository still owns implementation and proof.
+
+## Choose the lightest control
+
+Ask for one optional recommendation before assigning a remaining checklist
+item:
+
+```sh
+burnlist recommend <burnlist-id>#<item-id>
+burnlist recommend <burnlist-id>#<item-id> --json
+```
+
+| Item shape | Typical control | Model class / effort |
+| --- | --- | --- |
+| Small docs or low-risk change | direct | fast / low |
+| Bounded implementation with a trusted check | gate | standard / medium |
+| Security, data, public-contract, concurrency, or production risk | review | strong / high or xhigh |
+| Genuinely independent streams with integration risk | branch | strong / high |
+
+The output also suggests review handling, a task-fit metric, a coarse-to-fine
+sequence, and the next command. It is deterministic and advisory; the user may
+accept, change, or ignore it. Model class is provider-neutral, and Burnlist
+never installs, authenticates, selects, or launches a provider.
+
+## Configure and assign
+
+The trusted check is a repository-owned declarative capability, not a shell
+command embedded in the Loop. Put the catalog entry in
+`.burnlist/loop-capabilities.json`, keep its grants in a private local file,
+inspect both, then trust the exact revision:
+
+```json title=".burnlist/loop-capabilities.json"
+{
+  "schema": "burnlist-loop-capabilities@1",
+  "capabilities": [{
+    "id": "repo-verify",
+    "argv": ["/absolute/path/to/repository-check", "--verify"],
+    "cwd": ".",
+    "environment": { "inherit": ["PATH"], "set": {} },
+    "network": "deny",
+    "filesystem": { "read": ["src"], "write": [] },
+    "output": { "maxBytes": 65536 },
+    "maxMilliseconds": 60000
+  }]
+}
+```
+
+The grants object repeats every field except `id` and may only narrow this
+policy.
+
+```sh
+burnlist loop capability inspect repo-verify
+burnlist loop capability trust repo-verify --revision cp1-sha256:<hex> --grants /absolute/path/to/grants.json
+burnlist loop setup status
+burnlist loop assign item:<burnlist-id>#<item-id> loop:builtin:<gate|review|branch>
+burnlist loop view item:<burnlist-id>#<item-id>
+```
+
+`setup status` reports missing configuration rather than guessing. Assignment
+freezes the selected Loop authority for the item. `loop view` is the
+authoritative graph, pins, retry limits, and completion path; `loop list`
+lists created Runs, not assignments.
+
+Branch fan-out is host-orchestrated, not scheduled by Burnlist. The plan node
+defines genuinely independent slices, the host executes them concurrently
+when available or sequentially otherwise, and one merge owner integrates
+their results.
+
+## Normal host flow: next, execute, submit
+
+Create the Run, then repeat the small host protocol until it is terminal:
+
+```sh
+burnlist loop create item:<burnlist-id>#<item-id>
+burnlist loop next run:<id>
+burnlist loop submit run:<id> --outcome complete
+burnlist loop next run:<id>
+burnlist loop submit run:<id> --outcome approve
+burnlist loop complete run:<id>
+```
+
+`next` atomically prepares the current agent node and returns one small
+`burnlist-loop-host-task@1` packet. Give its `prompt` to the selected native
+agent or provider. The worker needs no Burnlist commands, claim identity,
+graph knowledge, or telemetry instructions. It must respect the packet's
+read/write authority and legal outcomes, and must not choose an edge or run
+the trusted check.
+
+Submit only the semantic outcome by RunRef. Task nodes accept `complete`;
+review nodes accept `approve`, `reject`, or `escalate`. Burnlist binds the
+submission to the sealed claim, validates candidate identity, selects the
+declared edge, advances checks and graph-only nodes, and stops at the next host
+task or terminal state.
+
+Rejection, escalation, findings, or truthful optional telemetry use one
+regular, non-symlink file no larger than 256 KiB:
+
+```json title="host-result.json"
+{"schema":"burnlist-loop-host-result@1","outcome":"reject","findings":[],"resolvedFindingIds":[],"telemetry":null}
+```
+
+```sh
+burnlist loop submit run:<id> --result ./host-result.json
+```
+
+Never guess telemetry. A forecast returned by `next` is a bounded planning
+range with confidence and provenance—not proof, a deadline, or a billing
+estimate.
+
+Only a converged Run can complete its item. `loop complete` rechecks the
+assignment and candidate, atomically updates the shrinking checklist and
+ledger, and records an idempotent receipt.
+
+## P0–P4 review policy
+
+| Priority | Severity | Completion handling |
+| --- | --- | --- |
+| P0 | blocker | Stop and escalate safety, security, data-loss, or invalid-authority risk. |
+| P1 | major | Reject a high-impact correctness or contract defect. |
+| P2 | material major | Reject when acceptance or a material user outcome is affected. |
+| P3 | minor | Do not block; record one bounded follow-up when useful. |
+| P4 | note | Optional style or preference note; omit noise. |
+
+Approval cannot leave P0, P1, or material P2 findings open. A gate consumes
+canonical check and review evidence—not recent activity, forecasts, or agent
+confidence.
+
+## Visibility
+
+The Checklist and Loop Progress lenses are read-only. They derive PENDING,
+ACTIVE, WAITING, BLOCKED, and COMPLETED from canonical Burnlist and Run/claim
+state, never queue position. Hooks may refine an already ACTIVE item to
+**progressing**, but cannot choose an outcome or satisfy a gate. See
+[Truthful item state](/dashboard#truthful-item-state).
+
+Loop Progress answers “what is happening to this item right now?” PENDING
+shows identity, status, its compact assigned Loop or direct-work label, and a
+no-agent message. ACTIVE, WAITING, and BLOCKED reveal only populated current
+facts; detailed telemetry and provenance stay behind secondary disclosure.
+
+## Advanced recovery and diagnostics
+
+Ordinary execution does not need claim envelopes. Use these lower-level
+commands only to inspect or recover a specific Run:
+
+```sh
+burnlist loop status run:<id>
+burnlist loop inspect run:<id>
+burnlist loop claim run:<id>
+burnlist loop report cl1-sha256:<claim-id> --outcome complete
+burnlist loop report cl1-sha256:<claim-id> --result ./host-report.json
+burnlist loop abandon cl1-sha256:<claim-id> --reason host-cancelled
+burnlist loop pause run:<id>
+burnlist loop stop run:<id>
+burnlist loop reconcile run:<id> --recovery-proof <64-lowercase-hex>
+```
+
+Treat a claim envelope as opaque, bounded, and single-use. `abandon` accepts
+only `host-cancelled`, `host-lost`, or—after lease expiry—`expired`.
+`pause` and `stop` require an idle Run. `reconcile` is for a demonstrably lost
+claim; it folds frozen authority and terminalizes as `needs-human` rather than
+rerunning work or making the host transition authority.
+
+## Guarantees and limits
+
+Burnlist enforces graph grammar, frozen assignment and candidate identity,
+closed outcomes, trusted checks, budgets, fresh reviewer mode, canonical
+journaling, and atomic completion. Provider invocation and reviewer
+instructions are host-supervised, not Docker or an OS sandbox.
+
+Auto-worktrees, background execution, nested agents, and Burnlist-scheduled
+parallelism are unsupported. Missing model, effort, usage, or cost stays
+unavailable; Burnlist never infers subscription pricing or progress from
+silence.
+
+`burnlist install` makes the skill discoverable.
+`burnlist hooks install` separately adds optional per-repository Streaming Diff
+and native observation hooks. Either, both, or neither may be installed;
+neither configures or starts a Loop. See [Install](/install).

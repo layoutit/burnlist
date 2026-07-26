@@ -7,6 +7,7 @@ import "../src/ovens/built-in-handlers.mjs";
 import { loadOfficialOvenCatalog } from "../src/ovens/official-oven-catalog.mjs";
 import { listOvenHandlers } from "../src/ovens/oven-registry.mjs";
 import { assertBuiltInOven, assertBuiltInOvenDataDocs, assertBuiltInOvenSet, assertSkillSet } from "./verify-oven-assertions.mjs";
+import { shouldScanSourceRelativePath } from "./verify-source-scan.mjs";
 import { verificationSerialTestFiles, verificationTestFiles } from "./verify-test-files.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -72,7 +73,8 @@ function withoutCanonicalTemplateVocabulary(text) {
     .replaceAll(/driving parity/giu, "")
     .replaceAll(/visual-parity/giu, "")
     .replaceAll(/visual parity/giu, "")
-    .replaceAll(/parity progress/giu, "");
+    .replaceAll(/parity progress/giu, "")
+    .replaceAll(/renderer into parity/giu, "");
 }
 
 const leakPatterns = [
@@ -87,25 +89,9 @@ const leakPatterns = [
   { name: "repo-specific term", pattern: new RegExp(`\\b(?:${repoSpecificTerms.join("|")})\\b`, "iu") },
 ];
 
-const sourceScanExcludes = [
-  ".git/",
-  ".claude/",
-  ".local/",
-  "build/",
-  "dist/",
-  "node_modules/",
-  ".playwright-cli/",
-  "notes/burnlists/",
-  "output/",
-  "research/",
-  "website/node_modules/",
-  "website/dist/",
-  "website/.astro/",
-];
-
 function shouldScanSourceFile(path) {
   const normalized = relative(repoRoot, path).replace(/\\/g, "/");
-  return !sourceScanExcludes.some((prefix) => normalized === prefix.slice(0, -1) || normalized.startsWith(prefix));
+  return shouldScanSourceRelativePath(normalized);
 }
 
 function assertNoLeaks(label, text) {
@@ -428,6 +414,7 @@ assertSkillSet(repoRoot, ["burnlist"]);
 const officialOvenExpectations = new Map([
   ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
   ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
+  ["loop-progress", { name: "Loop Progress", validator: "validateGenericJsonData" }],
   ["model-lab", { name: "Model Lab", validator: "validateModelLabRuntimeData" }],
   ["performance-tracing", { name: "Performance Tracing", validator: "validatePerformanceTracingRuntimeData" }],
   ["streaming-diff", { name: "Streaming Diff" }],

@@ -1,21 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
 import type { ChecklistProgressData, HistoryPoint } from "@lib";
-import { checklistEventDetailFields, compactAge, eventRows, formatDuration, progressHistory, timing } from "@lib/checklist-adapter";
+import { checklistEventDetailFields, compactAge, effectiveItemWork, eventRows, formatDuration, progressHistory, timing } from "@lib/checklist-adapter";
 export { checklistEventDetailFields } from "@lib/checklist-adapter";
 import "./ChecklistDashboard.css";
 import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
+import { LoopGraph } from "@/components/LoopGraph";
+import { ChecklistWorkspace } from "@/oven/ChecklistWorkspace";
 
 function ChecklistKpis({ data }: { data: ChecklistProgressData }) {
   const durations = timing(data);
-  const current = data.active[0];
+  const current = data.active.find((item) => effectiveItemWork(data, item).state === "ACTIVE")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "BLOCKED")
+    ?? data.active.find((item) => effectiveItemWork(data, item).state === "WAITING")
+    ?? data.active[0];
+  const currentState = current ? effectiveItemWork(data, current).state : "PENDING";
   const metrics = [
     { icon: Clock3, heading: "Elapsed", value: formatDuration(durations.elapsed) },
     { icon: Gauge, heading: "Avg pace", value: formatDuration(durations.pace) },
     { icon: TimerReset, heading: "Time left", value: formatDuration(durations.timeLeft) },
   ];
   return <KpiStrip ariaLabel="Burnlist progress KPIs" className="driving-parity-kpi-strip has-burns checklist-kpi-strip">
-    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · Active` : "Complete"} />
+    <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section checklist-kpi-current" title={current?.title ?? "No active task"} visual={<ClipboardList aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} heading="Current" value={current ? `${current.id} · ${currentState}` : "Complete"} />
     <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section driving-parity-kpi-progress" title={`${data.done} of ${data.total} tasks complete`} visual={<ProgressDonut percent={data.percent} />} heading="Progress" value={<><span className="pass">{data.done}</span><span className="separator">·</span><span className="total">{data.total}</span> <span className="pass">({data.percent}%)</span></>} />
     {metrics.map(({ icon: Icon, heading, value }) => <KpiItem className="driving-parity-kpi-item driving-parity-kpi-section" heading={heading} key={heading} value={value} visual={<Icon aria-hidden="true" className="driving-parity-kpi-gauge driving-parity-kpi-scenario-icon" />} />)}
   </KpiStrip>;
@@ -101,10 +107,19 @@ export function EventCardList({ data }: { data: ChecklistProgressData }) {
   })}{!rows.length && <p className="target-empty">No completed events yet.</p>}</div></section>;
 }
 
+export function LoopRunPanel({ data }: { data: ChecklistProgressData }) {
+  return <LoopGraph
+    run={data.loopRun}
+    diagnostic={data.loopRun?.diagnostic ?? data.loopProjectionDiagnostic}
+    message={data.loopProjectionMessage}
+    title="Current item Loop"
+  />;
+}
+
 export function ChecklistDashboard({ data }: { data: ChecklistProgressData }) {
   useEffect(() => {
     document.body.classList.add("driving-parity-view", "checklist-detail-view");
     return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
   }, []);
-  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><EventCardList data={data} /></main></div>;
+  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><ChecklistWorkspace data={data} /><EventCardList data={data} /></main></div>;
 }

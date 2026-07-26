@@ -108,6 +108,7 @@ declared bounds. `panel` requires `id`.
 | `image-triptych`, `feed-list`, `diff-card`, `file-diff` | `image-triptych` and `feed-list` take `id` and `bind`. `diff-card` and `file-diff` take `id`, `source`, `format`, `optional`, `fallback`, `slot`, and may contain `bind`, `text`, `icon`. |
 | `refresh-status` / `streaming-diff-heading` | `refresh-status` takes `id`, `source`, `format`, `optional`, `fallback`, `slot`. `streaming-diff-heading` takes `id`, `session`, `back-href`. |
 | Checklist widgets | `checklist-burn-panel`, `checklist-ledger`, and `checklist-event-cards` each take `id`, `source`, `format`, `optional`, `fallback`, `slot`. |
+| Loop graph | `loop-graph` requires `source` and optionally takes `id`, `title`, `format`, `optional`, `fallback`, `slot`. Use a root pointer for a global placement or `@item/loopRun` inside `each`; Burnlist owns rendering and live projection refresh. |
 | Differential widgets | `differential-kpi-strip`, `differential-log-table`, `progress-chart`, and `frame-delta-chart` each take `id`, `source`, `format`, `optional`, `fallback`, `slot`. `differential-empty-state` takes `id`, `title`. |
 
 Only registered icons may be used by `<icon name="...">` or `kpi-item`
@@ -120,7 +121,7 @@ Only registered icons may be used by `<icon name="...">` or `kpi-item`
 | --- | --- |
 | `switch` / `case` | A switch takes `id`, `source`, `mode-from` and contains `case`; it requires exactly one of `source` or `mode-from`. A case takes `value`, `default`, and requires either `value` or `default="true"`. |
 | `collection` | Requires `id`, `source`, `item-key`, `paging`, `page-size`; it may also use `search-from`, `filter-from`, `sort-from`, and contains `each`, `field-list`, and/or `pagination`. `paging` is `client`, `server`, or `auto`. |
-| `each` / `field-list` / `pagination` | `each` has no attributes and contains a grid, stack, panel, KPI item, section header, table, or switch. `field-list` takes `id`, `collection-from`, `mode-from` and contains `bind`. `pagination` requires `collection-from`, `page-sizes`, and must be inside a collection. |
+| `each` / `field-list` / `pagination` | `each` has no attributes and contains a grid, stack, panel, KPI item, section header, table, `loop-graph`, or switch. `field-list` takes `id`, `collection-from`, `mode-from` and contains `bind`. `pagination` requires `collection-from`, `page-sizes`, and must be inside a collection. |
 | `field-toolbar` | Requires `id` and contains `search`, `mode-toggle`, `sort-toggle`, and/or `filter-toggle`. |
 | Toolbar controls | `search`: `id`, `placeholder`, `aria-label`, `match-fields`, `debounce-ms`; `mode-toggle`: `id`, `initial`, `aria-label`, with at least two `option` children; `option`: `value`, `label`; `sort-toggle`: `id`, `key`, `label`, `initial`, `requires-source`, `requires-value`, `unavailable-text`; `filter-toggle`: `id`, `key`, `label`, `initial`. |
 

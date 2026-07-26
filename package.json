@@ -19,13 +19,19 @@
   "files": [
     "bin/",
     "src/",
+    "loops/",
     "skills/",
     "ovens/",
     "dashboard/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
     "!**/*.test.mjs",
-    "!**/*.test.js"
+    "!**/*.test.js",
+    "!**/__fixtures__/",
+    "!src/loops/minimal-review-e2e-fixtures.mjs",
+    "!src/loops/run/m2-test-fixtures.mjs",
+    "!src/loops/run/run-test-fixtures.mjs",
+    "!src/server/dashboard-routes-fixtures.mjs"
   ],
   "scripts": {
     "build:dashboard": "vite build --config dashboard/vite.config.mjs",

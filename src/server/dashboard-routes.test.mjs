@@ -96,6 +96,7 @@ test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled
     assert.deepEqual(catalog.entries.map(({ id }) => id), [
       "checklist",
       "differential-testing",
+      "loop-progress",
       "model-lab",
       "performance-tracing",
       "streaming-diff",

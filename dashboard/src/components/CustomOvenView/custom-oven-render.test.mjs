@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -14,6 +14,7 @@ const ovenSource = `<oven id="widget-oven" version="0.1.0" contract="checklist-p
   <kpi-strip>
     <kpi-item variant="current" heading="Widget" title="/widget/name" value="/widget/count"/>
   </kpi-strip>
+  <loop-graph source="/loopRun"/>
 </oven>`;
 
 test("custom Oven runtime modes use canonical live snapshots and controlled Burnlist data", { timeout: 20_000 }, async () => {
@@ -31,12 +32,19 @@ test("custom Oven runtime modes use canonical live snapshots and controlled Burn
       packages: "external",
       target: "node18",
     });
-    const { CustomOvenRuntime } = await import(`${new URL(`file://${runtimeOutput}`).href}?test=${Date.now()}`);
+    const { burnlistOvenPayload, CustomOvenRuntime } = await import(`${new URL(`file://${runtimeOutput}`).href}?test=${Date.now()}`);
     const compiled = compileOven(ovenSource, { file: "widget-oven.oven" });
     assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
     if (!compiled.ok) return;
 
-    const payload = { widget: { name: "Sprockets", count: 42 } };
+    const payload = {
+      widget: { name: "Sprockets", count: 42 },
+      loopRun: {
+        loopId: "review", state: "running", currentNode: "verify", attempt: 1, cycle: 0,
+        graph: { entry: "implement", nodes: [{ id: "implement", kind: "agent" }, { id: "verify", kind: "check" }], edges: [{ from: "implement", on: "complete", to: "verify" }] },
+        transitions: [{ sequence: 1, from: "implement", outcome: "complete", to: "verify" }],
+      },
+    };
     const ir = { ...compiled.ir, refreshSeconds: 7 };
     const standalone = CustomOvenRuntime({ ir });
     assert.equal(standalone.props.ir, ir);
@@ -53,6 +61,37 @@ test("custom Oven runtime modes use canonical live snapshots and controlled Burn
     assert.equal("initialPayload" in controlled.props, false);
     assert.equal(controlled.props.ir.refreshSeconds, undefined);
     assert.equal(controlled.props.adapt, undefined);
+    assert.match(renderToStaticMarkup(burnlist), /aria-current="step"/u);
+    assert.match(renderToStaticMarkup(burnlist), /VERIFY/u);
+
+    const loopProgressSource = await readFile(new URL("../../../../ovens/loop-progress/loop-progress.oven", import.meta.url), "utf8");
+    const loopProgress = compileOven(loopProgressSource, { file: "loop-progress.oven" });
+    assert.equal(loopProgress.ok, true, loopProgress.ok ? "" : JSON.stringify(loopProgress.diagnostics));
+    if (!loopProgress.ok) return;
+    const progress = {
+      generatedAt: "2026-07-24T20:00:00Z", repoKey: "028543435173", title: "Host Loop",
+      repo: "burnlist", planLabel: "inprogress", selectedItemId: "O0",
+      total: 1, done: 0, remaining: 1, percent: 0, warnings: [], completed: [], history: [],
+      active: [{ id: "O0", title: "Seed the Loop Progress Oven", fields: {
+        Action: "Show the current work simply.",
+        "Files/search": "ovens/ dashboard/src/oven/",
+      }, loop: null }],
+      loopRun: null,
+    };
+    const canonicalPayload = burnlistOvenPayload(progress);
+    const page = CustomOvenRuntime({ burnlistId: "260724-002", ir: loopProgress.ir, payload: canonicalPayload });
+    const pageRuntime = page.props.children[1];
+    assert.equal(pageRuntime.props.payload.raw, progress);
+    assert.equal(pageRuntime.props.ir.refreshSeconds, undefined);
+    const pageMarkup = renderToStaticMarkup(page);
+    assert.match(pageMarkup, /Seed the Loop Progress Oven/u);
+    assert.match(pageMarkup, /No agent is working on this item yet/u);
+    assert.match(pageMarkup, /ASSIGNED LOOP/u);
+    assert.match(pageMarkup, /Direct work/u);
+    assert.doesNotMatch(pageMarkup, /RIGHT NOW/u);
+    assert.doesNotMatch(pageMarkup, /More details/u);
+    assert.doesNotMatch(pageMarkup, /ovens\/ dashboard\/src\/oven\//u);
+    assert.doesNotMatch(pageMarkup, /HOOKS|Unavailable/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
   }

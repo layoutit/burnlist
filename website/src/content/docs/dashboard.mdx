@@ -30,6 +30,28 @@ burnlist --scan-root /path/to/repo,/path/to/another-repo
 
 The dashboard parses top metadata, `Goal: ./goal.md`, `## Active Checklist`, and the terse `## Completed` ledger. The completed ledger is the only completion source of truth; Tasks KPI equals completed plus remaining. Do not add chart metadata, telemetry, or progress fields to a Burnlist.
 
+## Truthful item state
+
+Checklist and Loop Progress use five labels derived from canonical Burnlist
+and Run state:
+
+| State | Meaning |
+| --- | --- |
+| `PENDING` | No canonical Run or claim exists. Queue position does not imply execution. |
+| `ACTIVE` | A canonical Run is executing a deterministic node or has a live host claim. |
+| `WAITING` | A Run awaits a host task, resume, or atomic Burnlist completion. |
+| `BLOCKED` | Canonical Run state needs human action, failed, stopped, exhausted its budget, or cannot be projected safely. |
+| `COMPLETED` | The canonical completed ledger records the item. |
+
+For PENDING work, Loop Progress keeps the primary view to identity, status,
+the assigned Loop or direct-work label, and a plain no-agent message. ACTIVE,
+WAITING, and BLOCKED progressively reveal only populated, decision-useful
+facts; timing, usage, paths, and provenance stay in secondary details.
+
+Recent invocation-correlated hooks may refine `ACTIVE` to **progressing**.
+They never create ACTIVE state, choose a Loop outcome, satisfy a gate, or
+complete an item.
+
 ## The project registry
 
 The dashboard observes Burnlists across a machine-local registry of repository roots (`~/.burnlist/roots.json`) unioned with the current repository, so one dashboard can cover every registered project. Registration is always explicit: the CLI is the only writer, and nothing auto-registers.
@@ -51,7 +73,20 @@ Run Burn derives the effective Oven from the selected target repository and Oven
 
 Dashboard URLs keep the repository key in the path. A `repoKey` is 12 hexadecimal characters. The index is `/`; a Burnlist detail is `/r/<repoKey>/<burnlistId>`; and a Burnlist through an Oven lens is `/r/<repoKey>/<burnlistId>/o/<ovenId>`. A repo-scoped Oven is `/r/<repoKey>/o/<ovenId>`.
 
-A Burnlist detail has a lens-switcher that includes only Ovens whose data contract fits its `checklist-progress@1` contract. Its links open the Burnlist-scoped Oven URL, the active lens is highlighted, and `checklist` is the default lens. For example, the checklist lens is `/r/<repoKey>/<burnlistId>/o/checklist`.
+A Burnlist detail has a lens-switcher that includes only Ovens whose data
+contract fits its `checklist-progress@1` contract. Its links open the
+Burnlist-scoped Oven URL, the active lens is highlighted, and `checklist` is
+the default lens. The canonical lenses are:
+
+```text
+/r/<repoKey>/<burnlistId>/o/checklist
+/r/<repoKey>/<burnlistId>/o/loop-progress
+```
+
+`burnlist new`, `show`, `recommend`, lifecycle moves, Loop assignment, and
+relevant Oven commands print an actionable next command and canonical
+dashboard URL. Use those paths in handoffs instead of reconstructing routes.
+An item deep link appends `#<itemId>` to its Burnlist URL.
 
 The Oven catalog is `/ovens`. Its official section comes only from `/api/oven-catalog` and shows the catalog revision, manifest order, producer, input contract, render contract, route kind, maturity, and runtime compatibility. A separate repository-inventory section comes from `/api/ovens` and labels locally available vendored and custom Ovens by origin and `repoKey`. Local availability does not create official membership.
 
@@ -68,6 +103,21 @@ burnlist oven set <id> <path>
 ```
 
 An Oven explainer lives at `/ovens/<ovenId>`. Repository-local explainers use `/ovens/<ovenId>?repoKey=<repoKey>`, preserve `official`, `vendored`, or `custom` origin, and link to `/r/<repoKey>/o/<ovenId>`. A vendored definition receives the official sample only when its content revision matches the current official package. Open the scoped Oven URL to see the live data-bound view.
+
+## Observation is not canonical state
+
+| Source | What it may report | What it cannot decide |
+| --- | --- | --- |
+| Burnlist files and Loop Run | lifecycle, queue/ledger, node, claim, transitions, checks, review, budgets, blockers, retries | — |
+| Native hooks | correlated agent/model/effort, tools, paths, timing, and available reported usage | state, outcomes, gates, or completion |
+| Oven events | bounded publication/progress notices used to wake a consumer and refetch canonical data | snapshot contents, proof, or project truth |
+
+The replayable `GET /api/events` endpoint serves bounded JSON by default and
+Server-Sent Events with `?stream=1` or an SSE `Accept` header. Filter by
+`repoKey` and `ovenId`; resume from the opaque cursor. Events are
+observational invalidations, not a second state store. Consumers must reopen
+canonical data before making a decision. Missing observations are omitted or
+labelled unavailable, never inferred from silence.
 
 ## Local state
 

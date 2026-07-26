@@ -25,6 +25,17 @@
       "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {
+      "id": "loop-progress",
+      "version": "0.1.0",
+      "inputContract": "checklist-progress@1",
+      "renderContract": "checklist-progress@1",
+      "dataInput": "json-payload",
+      "producer": "burnlist-checklist-progress",
+      "routeKind": "burnlist-lens",
+      "maturity": "shipped",
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
+    },
+    {
       "id": "model-lab",
       "version": "0.1.0",
       "inputContract": "burnlist-model-lab-data@1",
