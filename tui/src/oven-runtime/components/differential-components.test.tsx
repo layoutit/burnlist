@@ -9,7 +9,7 @@ import { admitTerminalOven } from "../terminal-contract";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./terminal-capabilities";
 import { TerminalOvenViewport } from "./terminal-oven-viewport";
 import { initTerminalRuntime, reduceTerminalRuntime } from "../state-runtime";
-import { TerminalHybridFieldList } from "./differential-components";
+import { TerminalDifferentialChart, TerminalHybridFieldList } from "./differential-components";
 // @ts-expect-error Canonical validator intentionally remains JavaScript.
 import { validateDifferentialTestingData } from "../../../../ovens/differential-testing/engine/data-contract.mjs";
 
@@ -48,6 +48,24 @@ test("compiled Differential progress-mode defaults to delta and reducer selects 
   for (const [state, label] of [[initial, "Frame delta"], [reduceTerminalRuntime(initial, { type: "modeSelected", id: "progress-mode", value: "progress" }, compiled.ir), "Progress"]] as const) {
     const result = admitTerminalOven(compiled.ir, { status: "ready", payload: differentialFixture.payload }, { viewport: { width: 78, height: 22 }, controls: state.controls }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
     const setup = await createTestRenderer({ width: 78, height: 22, useThread: false }), root = createRoot(setup.renderer); flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain(label); root.unmount(); setup.renderer.destroy();
+  }
+});
+
+test("Differential trends reserve three Braille plot rows below their label", async () => {
+  const chart = compiled.ir.root.flatMap((node: { children?: readonly unknown[] }) => node.children ?? [])
+    .find((node: unknown) => (node as { kind?: string }).kind === "frame-delta-chart");
+  const fallback = { kind: "frame-delta-chart", attributes: { source: "/progress" }, bindings: {}, children: [], source: { offset: 0, line: 1, column: 1 } };
+  const setup = await createTestRenderer({ width: 60, height: 4, useThread: false }), root = createRoot(setup.renderer);
+  try {
+    flushSync(() => root.render(<TerminalDifferentialChart node={(chart ?? fallback) as never} payload={differentialFixture.payload} width={60} />));
+    await setup.renderOnce();
+    const rows = setup.captureCharFrame().split("\n").slice(0, 4);
+    expect(rows[0]).toContain("Frame delta");
+    expect(rows.slice(1)).toHaveLength(3);
+    expect(rows.slice(1).join("").match(/[\u2801-\u28ff]/gu)?.length ?? 0).toBeGreaterThan(2);
+  } finally {
+    root.unmount();
+    setup.renderer.destroy();
   }
 });
 

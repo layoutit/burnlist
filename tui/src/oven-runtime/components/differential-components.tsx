@@ -39,7 +39,7 @@ export function TerminalDifferentialKpiStrip({ payload, width, height = width < 
   return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
-export function TerminalDifferentialChart({ node, payload, width, height = 2 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
+export function TerminalDifferentialChart({ node, payload, width, height = 4 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const sourcePoints = list(source(node, payload)), latest = record(sourcePoints.at(-1));
   const total = Math.max(0, number(latest.frames)), done = Math.max(0, Math.min(total, number(latest.frame)));
   const chartPoints: TerminalChartPoint[] = sourcePoints.map((entry, index) => {

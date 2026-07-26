@@ -23,9 +23,9 @@ function reserve(node: TerminalNode, width: number): TerminalNode {
   }
   if (node.kind === "streaming-diff-heading") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
   if (node.kind === "differential-kpi-strip") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: width < 56 ? 6 : 3 }, row), source: node.source };
-  if (node.kind === "differential-log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
+  if (node.kind === "differential-log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: width < 56 ? 1 : 3 }, row), source: node.source };
   if (node.kind === "field-list") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 3 }, row), source: node.source };
-  if (["progress-chart", "frame-delta-chart"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
+  if (["progress-chart", "frame-delta-chart"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 4 }, row), source: node.source };
   if (node.kind === "diff-card") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(5, Math.min(14, Math.floor(width / 4))) }, row), source: node.source };
   if (node.kind === "checklist-ledger") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 4 }, row), source: node.source };
   if (node.kind === "checklist-burn-panel") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: 2 }, row), source: node.source };
