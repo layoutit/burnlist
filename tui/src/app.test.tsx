@@ -128,7 +128,7 @@ describe("TUI navigation stack", () => {
     await setup.renderOnce();
     await waitForRenderedFrame(
       setup,
-      (frame) => frame.includes("Missing required oven binding source") && frame.includes("/absent/value") && frame.includes("Current item"),
+      (frame) => frame.includes("Missing required oven binding source") && frame.includes("/absent/value"),
       "the required-binding runtime diagnostic",
     );
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");

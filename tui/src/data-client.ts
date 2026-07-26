@@ -48,8 +48,8 @@ async function getJsonResult<T>(base: string, path: string, cache: Map<string, C
   return { data: cloneJson(body as T), outcome: "accepted" };
 }
 
-async function getJson<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal): Promise<T> {
-  return (await getJsonResult<T>(base, path, cache, signal)).data;
+async function getJson<T>(base: string, path: string, cache: Map<string, CachedJson>, signal?: AbortSignal, maximumBytes = TERMINAL_RESOURCE_LIMITS.httpJsonBytes): Promise<T> {
+  return (await getJsonResult<T>(base, path, cache, signal, maximumBytes)).data;
 }
 
 export function createDataClient(input: string) {
@@ -78,10 +78,12 @@ export function createDataClient(input: string) {
       return getJsonResult(base, `/api/progress?plan=${encodeURIComponent(planPath)}`, cache, signal);
     },
     ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<OvenDataSnapshot> {
-      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal);
+      const maximumBytes = ovenId === "visual-parity" ? TERMINAL_RESOURCE_LIMITS.visualParityHttpJsonBytes : TERMINAL_RESOURCE_LIMITS.httpJsonBytes;
+      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, maximumBytes);
     },
     ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery): Promise<SnapshotFetch<OvenDataSnapshot>> {
-      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal);
+      const maximumBytes = ovenId === "visual-parity" ? TERMINAL_RESOURCE_LIMITS.visualParityHttpJsonBytes : TERMINAL_RESOURCE_LIMITS.httpJsonBytes;
+      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, maximumBytes);
     },
     async streamingFeeds(repoKey: string, signal?: AbortSignal) {
       const raw = await getJson<unknown>(base, `/api/oven-data/streaming-diff?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);

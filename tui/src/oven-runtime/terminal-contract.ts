@@ -104,8 +104,15 @@ const payloadValue = (payload: JsonValue, source: string): JsonValue | undefined
   }
   return current;
 };
+const payloadBudget = (ir: TerminalOvenIR) => ({
+  prefix: "PAYLOAD" as const,
+  nodes: TERMINAL_RESOURCE_LIMITS.payloadNodes,
+  depth: TERMINAL_RESOURCE_LIMITS.payloadDepth,
+  stringBytes: ir.contract === "burnlist-visual-parity-data@1" ? TERMINAL_RESOURCE_LIMITS.visualParityPayloadStringBytes : TERMINAL_RESOURCE_LIMITS.payloadStringBytes,
+  textBytes: ir.contract === "burnlist-visual-parity-data@1" ? TERMINAL_RESOURCE_LIMITS.visualParityPayloadTextBytes : TERMINAL_RESOURCE_LIMITS.payloadTextBytes,
+});
 const payloadLimit = (ir: TerminalOvenIR, payload: JsonValue): TerminalDiagnostic | null => {
-  const resource = inspectJsonBudget(payload, { prefix: "PAYLOAD", nodes: TERMINAL_RESOURCE_LIMITS.payloadNodes, depth: TERMINAL_RESOURCE_LIMITS.payloadDepth, stringBytes: TERMINAL_RESOURCE_LIMITS.payloadStringBytes, textBytes: TERMINAL_RESOURCE_LIMITS.payloadTextBytes });
+  const resource = inspectJsonBudget(payload, payloadBudget(ir));
   if (resource) return d(resource.code, resource.message);
   for (const collection of ir.collections) {
     if (collection.paging === "server") continue;
@@ -119,7 +126,7 @@ export function admitTerminalOven(irValue: unknown, envelope: unknown, state?: u
   if (errors.length) return { status: "error", state: normalized, diagnostics: errors };
   const ir = irValue as TerminalOvenIR;
   if (stateFailure) return { status: "error", ir, state: normalized, diagnostics: [stateFailure] };
-  const envelopeResource = inspectJsonBudget(envelope, { prefix: "PAYLOAD", nodes: TERMINAL_RESOURCE_LIMITS.payloadNodes, depth: TERMINAL_RESOURCE_LIMITS.payloadDepth, stringBytes: TERMINAL_RESOURCE_LIMITS.payloadStringBytes, textBytes: TERMINAL_RESOURCE_LIMITS.payloadTextBytes });
+  const envelopeResource = inspectJsonBudget(envelope, payloadBudget(ir));
   if (envelopeResource) return { status: "error", ir, state: normalized, diagnostics: [d(envelopeResource.code, envelopeResource.message)] };
   if (!envelope || typeof envelope !== "object" || Array.isArray(envelope) || !isJsonValue(envelope)) return { status: "error", ir, state: normalized, diagnostics: [d("ENVELOPE_JSON", "Payload envelope must be descriptor-safe JSON")] };
   const envelopeKeys = keys(envelope);

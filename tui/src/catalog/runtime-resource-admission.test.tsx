@@ -34,6 +34,15 @@ test("payload admission fails closed rather than slicing client collections", as
   expect(admitTerminalOven(minimalIr(), { status: "ready", payload: [...atLimit, 0] }, undefined, [], caps).diagnostics[0]?.code).toBe("RESOURCE_PAYLOAD_NODES");
 });
 
+test("Visual Parity alone admits bounded embedded PNG-sized strings", async () => {
+  // @ts-expect-error Production compiler is JavaScript by design.
+  const compiled = (await import("../../../src/ovens/dsl/oven-compile.mjs")).compileOven('<oven id="visual-parity" version="1.0.0" contract="burnlist-visual-parity-data@1" theme="visual-parity"><section-header title="Visual Parity"/></oven>');
+  if (!compiled.ok) throw new Error("Visual Parity fixture did not compile");
+  const image = "x".repeat(TERMINAL_RESOURCE_LIMITS.payloadStringBytes + 1);
+  expect(admitTerminalOven(minimalIr(), { status: "ready", payload: { image } }, undefined, [], caps).diagnostics[0]?.code).toBe("RESOURCE_PAYLOAD_STRING");
+  expect(admitTerminalOven(compiled.ir, { status: "ready", payload: { image } }, undefined, [], { ...caps, kinds: ["section-header"], components: ["section-header"] }).status).toBe("ready");
+});
+
 test("state admission fails closed before retaining oversized cells or expanded keys", () => {
   const valid = Object.freeze({ viewport: Object.freeze({ width: TERMINAL_RESOURCE_LIMITS.terminalCells, height: 1 }), expandedKeys: Object.freeze(Array.from({ length: TERMINAL_RESOURCE_LIMITS.expandedKeys }, (_, index) => `key-${index}`)) });
   const before = structuredClone(valid);

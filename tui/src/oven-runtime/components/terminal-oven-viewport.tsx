@@ -69,7 +69,7 @@ function StructuralCell({ cell }: { cell: LayoutCell }) {
  */
 export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", streaming }: { result: TerminalRenderResult; footer?: string; streaming?: { selectedCard: number; selectedFile: number; expandedKey: string | null } }) {
   const palette = useTerminalPalette();
-  const prepared = prepareTerminalComponentResult(result), viewport = prepared.state.viewport, footerHeight = 2, bodyHeight = Math.max(1, viewport.height - footerHeight);
+  const prepared = prepareTerminalComponentResult(result), viewport = prepared.state.viewport, footerHeight = footer ? 2 : 0, bodyHeight = Math.max(1, viewport.height - footerHeight);
   if (prepared.status !== "ready" || !prepared.ir || prepared.payload === undefined) {
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
     return <box width={viewport.width} height={viewport.height} overflow="hidden"><text>{fitTerminalText(message, viewport.width)}</text></box>;
@@ -98,6 +98,6 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}
-    <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor={palette.dim}><text>{fitTerminalText(footer, viewport.width)}</text></box>
+    {footer ? <box position="absolute" left={0} top={bodyHeight} width={viewport.width} height={footerHeight} overflow="hidden" border={["top"]} borderColor={palette.dim}><text>{fitTerminalText(footer, viewport.width)}</text></box> : null}
   </box>;
 }

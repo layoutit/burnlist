@@ -62,13 +62,20 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
   const contentHeight = Math.max(1, height - 4);
-  const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
-  const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: collapsed ? width : summaryWidth, height: Math.max(1, sidebarHeight - 5) } } }) : null;
   const checklist = props.activeOven?.id === "checklist";
+  const sidebarWidth = checklist ? summaryWidth : Math.min(38, summaryWidth);
+  const sidebarHeight = collapsed && checklist ? Math.max(12, Math.floor(contentHeight * 0.58)) : collapsed ? 6 : contentHeight;
+  const ovenWidth = collapsed ? width : Math.max(1, width - sidebarWidth);
+  const ovenContentWidth = Math.max(1, ovenWidth - 4);
+  const ovenHeight = collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight;
+  const runtime = props.ovenRuntime ? prepareTerminalComponentResult({
+    ...props.ovenRuntime,
+    state: { ...props.ovenRuntime.state, viewport: { width: ovenContentWidth, height: ovenHeight } },
+  }) : null;
   const listHeight = Math.max(3, sidebarHeight - 6);
   return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
-      width={collapsed ? "100%" : summaryWidth}
+      width={collapsed ? "100%" : sidebarWidth}
       height={collapsed ? sidebarHeight : "100%"}
       flexShrink={0}
       minHeight={0}
@@ -82,25 +89,22 @@ function DetailSplit({ node, props, width, height, chrome }: {
           burnlist={props.selectedBurnlist}
           progress={props.progress}
           compact
-          width={collapsed ? width : summaryWidth}
+          width={collapsed ? width : sidebarWidth}
         />
       </box>
       {checklist ? <DetailItemList
         items={props.items}
         selected={props.itemIndex}
-        width={collapsed ? width : summaryWidth}
+        width={collapsed ? width : sidebarWidth}
         height={listHeight}
-      /> : runtime ? <TerminalOvenViewport
-        result={runtime}
-        footer="q:back"
-      /> : <box padding={2} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", Math.max(1, width - 6)).trimEnd()}</text></box>}
+      /> : null}
     </box>
-    <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden">
-      <ItemDetail
+    <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden" paddingLeft={checklist ? 0 : 2} paddingRight={checklist ? 0 : 2}>
+      {checklist ? <ItemDetail
         item={props.selectedItem}
-        width={collapsed ? width : width - summaryWidth}
+        width={collapsed ? width : width - sidebarWidth}
         height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
-      />
+      /> : runtime ? <TerminalOvenViewport result={runtime} footer="" /> : <box paddingTop={1} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", ovenContentWidth).trimEnd()}</text></box>}
     </box>
   </box>;
 }
@@ -162,9 +166,14 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "item-detail":
       return <ItemDetail key={key} item={props.selectedItem} width={width} height={Math.max(1, height - 4)} scrollOffset={props.itemDetailScroll} />;
     case "footer":
+      {
+        const ovenHints = props.screen.id === "burnlist" && props.activeOven?.id !== "checklist"
+          ? officialOvenFixture(props.activeOven?.id)?.footer ?? "arrows/enter:interact · x/f/s/m:controls · q/esc:back"
+          : String(node.attributes.hints);
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
-        <text fg={palette.dim}>{fitText(String(node.attributes.hints), Math.max(1, width - 6)).trimEnd()}</text>
+        <text fg={palette.dim}>{fitText(ovenHints, Math.max(1, width - 6)).trimEnd()}</text>
       </box>;
+      }
     default:
       return null;
   }

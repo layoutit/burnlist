@@ -1,6 +1,7 @@
 /** Deterministic allocation and input ceilings for the terminal viewer. */
 export const TERMINAL_RESOURCE_LIMITS = Object.freeze({
   httpJsonBytes: 2 * 1024 * 1024,
+  visualParityHttpJsonBytes: 48 * 1024 * 1024,
   definitionBytes: 512 * 1024,
   sseFrameBytes: 64 * 1024,
   sseRemainderBytes: 128 * 1024,
@@ -18,6 +19,8 @@ export const TERMINAL_RESOURCE_LIMITS = Object.freeze({
   payloadDepth: 48,
   payloadStringBytes: 32 * 1024,
   payloadTextBytes: 1024 * 1024,
+  visualParityPayloadStringBytes: 3 * 1024 * 1024,
+  visualParityPayloadTextBytes: 48 * 1024 * 1024,
   terminalCells: 240 * 80,
   imageCells: 160 * 50,
   streamingCards: 200,

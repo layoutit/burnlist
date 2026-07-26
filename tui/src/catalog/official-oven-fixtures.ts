@@ -41,7 +41,7 @@ const fixtures: readonly OfficialOvenFixture[] = [
   {
     id: "visual-parity",
     payload: visualParityFixture.payload as JsonValue,
-    footer: "←/→:domain · q:back",
+    footer: "←/→:domain · ↑/↓:frame · q/esc:back",
   },
 ];
 
@@ -50,4 +50,3 @@ const byId = new Map(fixtures.map((fixture) => [fixture.id, fixture]));
 export function officialOvenFixture(id: string | null | undefined): OfficialOvenFixture | null {
   return typeof id === "string" ? byId.get(id) ?? null : null;
 }
-

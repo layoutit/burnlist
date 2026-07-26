@@ -18,6 +18,7 @@ import type { BurnlistSummary, LandingSnapshot, OvenPackageDetail, ProgressSnaps
 import { admitTerminalOven } from "./oven-runtime/terminal-contract";
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components/terminal-capabilities";
 import { streamingDiffFixture } from "./catalog/streaming-diff-fixture";
+import { visualParityFixture } from "./catalog/visual-parity-fixture";
 
 const renderers: Array<{ destroy(): void }> = [];
 afterEach(() => { while (renderers.length) renderers.pop()?.destroy(); });
@@ -66,6 +67,12 @@ function checklistRuntime(value: ProgressSnapshot, width = 52, height = 26) {
     completed: value.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
   });
   return admitTerminalOven(compiledChecklist.ir, { status: "ready", payload }, { viewport: { width, height } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
+}
+const visualSource = readFileSync(new URL("../../ovens/visual-parity/visual-parity.oven", import.meta.url), "utf8");
+const compiledVisual = compileOven(visualSource);
+if (!compiledVisual.ok) throw new Error("Visual Parity fixture did not compile.");
+function visualRuntime(width: number, height: number) {
+  return admitTerminalOven(compiledVisual.ir, { status: "ready", payload: visualParityFixture.payload }, { viewport: { width, height } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
 }
 const ovenDetail: OvenPackageDetail = {
   ...ovens[1]!, instructions: "# Visual Parity\n\nCompare trusted reference and candidate frames.\n\n## Data Shape\n\nRead-only JSON payload.",
@@ -160,6 +167,29 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(selectedLine).toBeDefined();
     expect(selectedLine!.indexOf("Render the fire")).toBeLessThan(selectedLine!.indexOf("│"));
     root.unmount();
+  });
+
+  test("gives non-Checklist Ovens the main pane and renders Visual Parity directly", async () => {
+    for (const [width, height] of [[72, 28], [120, 34]] as const) {
+      const { frame, root } = await renderFrame(width, height, props({
+        screen: parsed(burnlistSource),
+        selectedBurnlist: visualBurnlist,
+        activeOven: ovens[1]!,
+        ovenLenses: [ovens[1]!],
+        ovenRuntime: visualRuntime(width, height - 4),
+      }));
+      const lines = frame.split("\n");
+      expect(frame).toContain("Current");
+      expect(frame).toContain("Reference");
+      expect(frame).toContain("Difference");
+      expect(frame).not.toContain("No item is selected");
+      expect(lines.at(-2)).toContain("←/→:domain");
+      if (width >= 88) {
+        const media = lines.find((line) => line.includes("Current"))!;
+        expect(media.indexOf("Current")).toBeGreaterThan(media.indexOf("│"));
+      }
+      root.unmount();
+    }
   });
 
   test("shows refresh activity without moving screen content", async () => {
