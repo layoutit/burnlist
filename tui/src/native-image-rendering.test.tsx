@@ -31,3 +31,26 @@ test("disabled native images paint only the glyph fallback", async () => {
 test("enabled native images register one bounded overlay above the glyph fallback", async () => {
   expect(await registeredImages("1")).toBe(1);
 });
+
+test("a native image triptych shares one row and advances only by its columns", async () => {
+  process.env.BURNLIST_NATIVE_IMAGES = "1";
+  const setup = await createTestRenderer({ width: 80, height: 12, useThread: false });
+  const root = createRoot(setup.renderer);
+  try {
+    flushSync(() => root.render(<box width={72} height={8} flexDirection="row">
+      {Object.values(visualParityPng).map((source, index) =>
+        <GlyphImage key={index} source={source} width={24} height={8} />)}
+    </box>));
+    await setup.renderOnce();
+    const placements = (setup.renderer as unknown as { nativeImages: readonly { x: number; y: number; width: number; height: number }[] }).nativeImages;
+    expect(placements).toHaveLength(3);
+    expect(placements.map(({ x, y, width, height }) => [x, y, width, height])).toEqual([
+      [0, 0, 24, 8],
+      [24, 0, 24, 8],
+      [48, 0, 24, 8],
+    ]);
+  } finally {
+    root.unmount();
+    setup.renderer.destroy();
+  }
+});
