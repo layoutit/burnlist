@@ -19,6 +19,12 @@ An Oven is a named, declarative recipe for a Burn. It has two canonical files in
 
 An Oven cannot execute commands or code, collect or transform project data, own or replace canonical project state, mutate Burnlists or other files, import arbitrary UI, or start an agent. It is data, never code.
 
+An Oven is useful only when its source-owned producer exposes an honest,
+task-fit signal. The trusted repository check is often enough; do not add an
+Oven merely to create a number. See [Designing Ovens](/ovens/designing-ovens)
+for metric selection and the required browser verification of an Oven used as
+task proof.
+
 ## Official Ovens
 
 The validated, non-executable `ovens/catalog.json` is the only official Oven
@@ -46,6 +52,7 @@ burnlist oven set <id> <path|-|json> [--repo <path>]
 burnlist oven bind <id> <path> [--repo <path>]  # bind an Oven to a normalized data payload
 burnlist oven unbind <id> [--repo <path>]
 burnlist oven bindings [--repo <path>]          # list this repo's Oven data bindings
+burnlist oven event <id> --subject <id> --kind <kind> --phase <phase> --cursor <cursor>
 ```
 
 `view` derives structure from the compiled IR. Any file input accepts `-` for standard input. `--name` owns the level-one heading. `create` scaffolds a starter `.oven` when one is omitted, and refuses an existing id; use `update`, or `--force`. Official Ovens are read-only, so fork one to customize it.
@@ -58,6 +65,10 @@ atomically publishing `.local/burnlist/data/<id>.json` and its binding. A
 custom Oven without a runtime validator receives `shape-only` pointer
 validation, which does not prove truth. This CLI never executes Oven
 instructions.
+
+`oven event` publishes a compact observational notice only after the
+producer's canonical data is durable. It does not contain or replace the
+snapshot or its proof; consumers must refetch canonical data.
 
 Structure, widgets, and formats are the `.oven` DSL vocabulary. See the [.oven DSL reference](/ovens/dsl-reference) and [The .oven system](/ovens/oven-system).
 

@@ -27,6 +27,12 @@ import { setOvenDataFromCli } from "./oven-set.mjs";
 import { createOvenCatalog, persistOven, resolvePackageInput } from "./oven-storage.mjs";
 import { useShippedOven } from "./oven-use.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
+import {
+  dashboardCatalogUrl,
+  dashboardHandoff,
+  dashboardRuntime,
+  dashboardUrl,
+} from "./actionable-output.mjs";
 
 // ── argv ────────────────────────────────────────────────────────────────────
 // process.argv is [node, bin/burnlist.mjs, "oven", <subcommand>, ...rest].
@@ -79,6 +85,15 @@ function publishDefinitionChange(root, saved, action) {
     generation: saved.pin?.pinnedAt ?? basename(saved.path),
     occurredAt,
   }), { onError: mutationError(`${action} Oven ${saved.id}`) });
+}
+
+function printOvenHandoff(id, next, { catalog = false } = {}) {
+  const root = repoRoot();
+  const runtime = dashboardRuntime();
+  const url = catalog
+    ? dashboardCatalogUrl(id, { runtime })
+    : dashboardUrl(root, { ovenId: id, runtime });
+  console.log(dashboardHandoff(root, url, next, { runtime }));
 }
 
 // ── storage locations (mirror the dashboard server) ──────────────────────────
@@ -236,6 +251,9 @@ try {
     console.log(line(header));
     console.log(line(widths.map((width) => "─".repeat(width))));
     for (const row of rows) console.log(line(row));
+    const runtime = dashboardRuntime();
+    console.log(dashboardHandoff(repoRoot(), dashboardCatalogUrl(null, { runtime }),
+      "burnlist oven view <id>", { runtime }));
     return;
   }
 
@@ -261,6 +279,9 @@ try {
       return;
     }
     printOven(oven);
+    printOvenHandoff(oven.id,
+      oven.builtIn ? `burnlist oven use ${oven.id} --repo ${JSON.stringify(repoRoot())}` : "open the dashboard URL above",
+      { catalog: oven.builtIn });
     return;
   }
 
@@ -272,6 +293,7 @@ try {
       onError: mutationError(`Bound Oven ${ovenId(id)}`),
     });
     console.log(`Bound Oven ${ovenId(id)} to ${logicalPath}\nStore: ${result.path}`);
+    printOvenHandoff(ovenId(id), "open the dashboard URL above");
     return;
   }
 
@@ -302,6 +324,7 @@ try {
     const result = setOvenDataFromCli({ positionals, repoRoot: bindingRepo(), launchCwd, findOven });
     for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
     console.log(result.output);
+    printOvenHandoff(ovenId(positionals[0]), "open the dashboard URL above");
     return;
   }
 
@@ -317,6 +340,7 @@ try {
     });
     for (const warning of result.warnings) console.warn(`burnlist oven: warning: ${warning}`);
     console.log(result.output);
+    printOvenHandoff(ovenId(id), result.output.includes("\nNext:") ? null : "open the dashboard URL above");
     return;
   }
 
@@ -361,6 +385,8 @@ try {
     publishDefinitionChange(customRepoRoot, saved, subcommand === "update" ? "updated" : "created");
     console.log(`${subcommand === "update" ? "Updated" : "Created"} Oven ${pkg.id} at ${path}\n`);
     printOven(saved);
+    printOvenHandoff(pkg.id,
+      `burnlist oven set ${pkg.id} <data> --repo ${JSON.stringify(customRepoRoot)}`);
     return;
   }
 
@@ -380,6 +406,8 @@ try {
     });
     publishDefinitionChange(customRepoRoot, readOvenDir(customOvensDir, pkg.id, false), "forked");
     console.log(`Forked Oven ${pkg.id} at ${path}\nForked from ${source.id}@${sourceRevision}`);
+    printOvenHandoff(pkg.id,
+      `burnlist oven set ${pkg.id} <data> --repo ${JSON.stringify(customRepoRoot)}`);
     return;
   }
 
@@ -406,6 +434,7 @@ try {
     publishDefinitionChange(targetRoot, saved, subcommand === "adopt" ? "adopted" : "upgraded");
     if (subcommand === "adopt") console.log(`Adopted Oven ${saved.id}@${saved.version} at ${targetPath}`);
     else console.log(`Upgraded Oven ${saved.id}@${saved.version} at ${targetPath}\nrevision: ${saved.revision}`);
+    printOvenHandoff(saved.id, `burnlist oven view ${saved.id} --repo ${JSON.stringify(targetRoot)}`);
     return;
   }
 

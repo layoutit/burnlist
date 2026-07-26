@@ -198,7 +198,7 @@ function httpRequest(baseUrl, path, { method, headers, body }) {
       const chunks = [];
       response.setEncoding("utf8");
       response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => resolveResponse({ status: response.statusCode, body: chunks.join("") }));
+      response.on("end", () => resolveResponse({ status: response.statusCode, headers: response.headers, body: chunks.join("") }));
     });
     req.once("error", reject);
     req.end(body);

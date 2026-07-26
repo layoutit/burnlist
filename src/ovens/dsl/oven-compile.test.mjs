@@ -28,3 +28,34 @@ test("oven version requires major.minor.patch", () => {
     assert.ok(result.diagnostics.some((diagnostic) => diagnostic.code === "SCALAR_VERSION"), JSON.stringify(result.diagnostics));
   }
 });
+
+test("loop-graph is a closed root or item-scoped Oven component", () => {
+  const root = compileOven('<oven id="loop-view" version="0.1.0" contract="checklist-progress@1" theme="checklist"><loop-graph source="/loopRun"/></oven>');
+  assert.equal(root.ok, true, JSON.stringify(root.diagnostics));
+  assert.ok(root.ir.requirements.components.includes("loop-graph"));
+  const item = compileOven('<oven id="loop-items" version="0.1.0" contract="checklist-progress@1" theme="checklist"><collection id="items" source="/items" item-key="/id" paging="client" page-size="10"><each><loop-graph source="@item/loopRun"/></each></collection></oven>');
+  assert.equal(item.ok, true, JSON.stringify(item.diagnostics));
+  const missing = compileOven('<oven id="loop-view" version="0.1.0" contract="checklist-progress@1" theme="checklist"><loop-graph/></oven>');
+  assert.equal(missing.ok, false);
+  assert.ok(missing.diagnostics.some((diagnostic) => diagnostic.code === "GRAMMAR_REQUIRED"));
+});
+
+test("loop-progress is a closed declarative component", () => {
+  const result = compileOven('<oven id="loop-progress" version="0.1.0" contract="checklist-progress@1" theme="checklist"><loop-progress source="/raw"/></oven>');
+  assert.equal(result.ir.root[0].kind, "loop-progress");
+  assert.equal(result.ir.root[0].attributes.source, "/raw");
+});
+
+test("loop-progress composes through the same standard containers as loop-graph", () => {
+  const bodies = [
+    '<grid columns="1"><loop-progress source="/raw"/></grid>',
+    '<stack><loop-progress source="/raw"/></stack>',
+    '<panel id="progress"><loop-progress source="/raw"/></panel>',
+    '<switch source="/mode"><case value="live"><loop-progress source="/raw"/></case></switch>',
+    '<collection id="items" source="/items" item-key="/id" paging="client" page-size="10"><each><loop-progress source="@item/raw"/></each></collection>',
+  ];
+  for (const body of bodies) {
+    const result = compileOven(`<oven id="loop-progress" version="0.1.0" contract="checklist-progress@1" theme="checklist">${body}</oven>`);
+    assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
+  }
+});

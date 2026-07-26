@@ -24,6 +24,13 @@ function compiled(source: string, file: string): TerminalOvenIR {
 function admitted(ir: TerminalOvenIR, payload: JsonValue, width: number, height = 12): TerminalRenderResult {
   return admitTerminalOven(ir, { status: "ready", payload }, { viewport: { width, height } }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
 }
+function findNode(nodes: readonly TerminalNode[], kind: string): TerminalNode | undefined {
+  for (const node of nodes) {
+    if (node.kind === kind) return node;
+    const found = findNode(node.children, kind);
+    if (found) return found;
+  }
+}
 async function frame(result: TerminalRenderResult) {
   const setup = await createTestRenderer({ width: result.state.viewport.width, height: result.state.viewport.height, useThread: false }), root = createRoot(setup.renderer);
   try { flushSync(() => root.render(<TerminalOvenViewport result={result} />)); await setup.renderOnce(); return setup.captureCharFrame(); } finally { root.unmount(); setup.renderer.destroy(); }
@@ -34,7 +41,7 @@ test("full official Checklist admission uses the implemented composite roots", (
   const result = admitted(ir, checklistPayload, 60, 20);
   expect(result.status).toBe("ready");
   expect(result.diagnostics).toEqual([]);
-  const officialKpis = kpiStripModel(ir.root[0]!, checklistPayload, 120);
+  const officialKpis = kpiStripModel(findNode(ir.root, "kpi-strip")!, checklistPayload, 120);
   expect(officialKpis.items.map((item) => item.heading)).toEqual(["Current", "Progress", "Elapsed", "Avg pace", "Time left"]);
   expect(officialKpis.items[1]).toMatchObject({ value: "4 · 7 (57%)" });
 });

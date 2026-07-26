@@ -9,12 +9,59 @@ import { checklistFixture as data } from "./ChecklistDashboard.fixture.mjs";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const stylesheetPath = new URL("./ChecklistDashboard.css", import.meta.url).pathname;
+const indexStylesheetPath = new URL("../../index.css", import.meta.url).pathname;
+const appPath = new URL("../../App.tsx", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
 const ovenPath = new URL("../../oven", import.meta.url).pathname;
 
 test("checklist progress owns its workspace height instead of inheriting the differential default", async () => {
   const stylesheet = await readFile(stylesheetPath, "utf8");
   assert.match(stylesheet, /body\.checklist-detail-view \.shell\.checklist-detail-shell #burnlist-detail \.checklist-overview:not\(\[hidden\]\) \+ \.checklist-progress-workspace \{\s+height: 232px;\s+min-height: 232px;\s+max-height: 232px;/u);
+});
+
+test("checklist progress stacks into one full-width column at narrow widths", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+  const responsiveBlock = stylesheet.slice(stylesheet.indexOf("@media (max-width: 1100px)"), stylesheet.indexOf("@media (max-width: 640px)"));
+  assert.match(responsiveBlock, /\.checklist-overview:not\(\[hidden\]\) \+ \.checklist-progress-workspace,/u);
+  assert.match(responsiveBlock, /min-height: 0;/u);
+  assert.match(responsiveBlock, /flex: none;/u);
+  assert.match(responsiveBlock, /grid-template-columns: minmax\(0, 1fr\);/u);
+  assert.match(responsiveBlock, /grid-template-rows: 236px auto;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-workspace::before \{\s+inset: 36px 0 0;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-chart-column \{[\s\S]*?height: 236px;[\s\S]*?grid-column: 1;\s+grid-row: 1;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-mobile-title \{[\s\S]*?padding: 8px 12px 8px 0;/u);
+  assert.match(responsiveBlock, /\.event-ledger-panel > \.work-panel-head \{\s+display: none;/u);
+  assert.match(responsiveBlock, /\.event-ledger-panel \{\s+grid-column: 1;\s+grid-row: 2;/u);
+  assert.match(responsiveBlock, /\.progress-panel \{\s+height: 200px;\s+min-height: 200px;\s+flex: 1 1 auto;/u);
+  assert.doesNotMatch(stylesheet, /min-height: 612px;/u);
+});
+
+test("checklist ledger typography stays 14px at every responsive breakpoint", async () => {
+  const stylesheet = await readFile(indexStylesheetPath, "utf8");
+  const rules = [...stylesheet.matchAll(/\.checklist-detail-shell \.event-ledger-panel \.log-row\.log-table-row \{ font-size: (\d+)px; \}/gu)];
+  assert.deepEqual(rules.map((match) => match[1]), ["14", "14"]);
+});
+
+test("checklist KPIs become a compact text-first rail on phones", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+  const mobileBlock = stylesheet.slice(stylesheet.indexOf("@media (max-width: 760px)"), stylesheet.indexOf("@media (max-width: 640px)"));
+  assert.match(mobileBlock, /height: 68px;\s+min-height: 68px;/u);
+  assert.match(mobileBlock, /grid-template-columns: minmax\(116px, 1\.25fr\) minmax\(112px, 1\.2fr\) repeat\(3, minmax\(80px, 1fr\)\);/u);
+  assert.match(mobileBlock, /overflow-x: auto;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-gauge \{\s+display: none;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-heading \{[\s\S]*?font-size: 12px;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-ratio \{[\s\S]*?font-size: 14px;/u);
+});
+
+test("event summaries clamp rich outcomes to two lines", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+  assert.match(stylesheet, /\.event-card-field-outcome \.event-card-field-value > p:first-child \{[\s\S]*?-webkit-line-clamp: 2;/u);
+});
+
+test("routine retained-data refreshes do not insert layout-shifting banners", async () => {
+  const source = await readFile(appPath, "utf8");
+  assert.doesNotMatch(source, /Showing the last canonical Burnlist (?:snapshot|index) while fresh data loads\./u);
+  assert.match(source, /\{error && <DashboardError message=\{error\} \/>\}<LensSwitcher \/>/u);
 });
 
 test("checklist detail renders the split progress surface and event card list", async () => {
@@ -38,8 +85,10 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.match(markup, /<div class="driving-parity-kpi-heading">Time left<\/div>/u);
     assert.match(markup, /class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"/u);
     assert.match(markup, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="100\.000 0\.000"/u);
-    assert.match(markup, /aria-label="Completion percentage over time"/u);
-    assert.match(markup, /<span class="burn-chart-label">Completion<\/span>/u);
+    assert.match(markup, /aria-label="Remaining work over time"/u);
+    assert.match(markup, /class="checklist-progress-chart-column"><div class="checklist-progress-mobile-title">Progress<\/div><section class="panel progress-panel">/u);
+    assert.doesNotMatch(markup, /class="panel progress-panel"><div class="checklist-progress-mobile-title"/u);
+    assert.doesNotMatch(markup, /burn-chart-label|>Completion<\/span>/u);
     assert.doesNotMatch(markup, /aria-label="Burnlist progress chart view"/u);
     assert.match(markup, /<span>Age<\/span><span>Event<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
     assert.match(markup, /class="event-card-list"/u);
@@ -47,7 +96,8 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.equal(markup.indexOf("Second event") < markup.indexOf("First event"), true);
     assert.match(markup, /First proof\./u);
     assert.match(markup, /Second proof\./u);
-    assert.equal((markup.match(/class="event-card-field-label">Outcome/gu) ?? []).length, 2);
+    assert.doesNotMatch(markup, /class="event-card-field-label">Outcome/u);
+    assert.equal((markup.match(/class="event-card-field event-card-field-outcome"/gu) ?? []).length, 2);
     assert.equal((markup.match(/class="event-card-summary"/gu) ?? []).length, 2);
     assert.equal((markup.match(/class="event-card-description"/gu) ?? []).length, 2);
     assert.match(markup, /<details class="event-card-field event-card-field-collapsible"><summary><span>Changed<\/span><span class="event-card-field-count">1<\/span><\/summary>/u);
@@ -63,6 +113,30 @@ test("checklist detail renders the split progress surface and event card list", 
       { label: "Outcome", values: ["Second proof."] },
       { label: "Follow-up", values: ["None."] },
     ]);
+    assert.deepEqual(checklistEventDetailFields("- First result wraps\n  onto one logical bullet.\n- Second result."), [
+      { label: "Detail", values: ["First result wraps onto one logical bullet.", "Second result."] },
+    ]);
+    const emptyMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: {
+      ...data,
+      completed: [{ ...data.completed[0], detail: "" }],
+      done: 1,
+      total: 2,
+      remaining: 1,
+      percent: 50,
+    } }));
+    assert.match(emptyMarkup, /data-event-card="true"/u);
+    assert.doesNotMatch(emptyMarkup, /class="event-card-description"|Completed\./u);
+    const richMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: {
+      ...data,
+      completed: [{ ...data.completed[0], detail: "- First result wraps\n  onto one logical bullet.\n- Second result." }],
+      done: 1,
+      total: 2,
+      remaining: 1,
+      percent: 50,
+    } }));
+    assert.match(richMarkup, /<p>First result wraps onto one logical bullet\.<\/p>/u);
+    assert.match(richMarkup, /class="event-card-field event-card-field-collapsible event-card-field-details"><summary><span>Details<\/span><span class="event-card-field-count">1<\/span>/u);
+    assert.match(richMarkup, /<li>Second result\.<\/li>/u);
     assert.doesNotMatch(markup, /Completed: 2026/u);
     assert.doesNotMatch(markup, />DONE</u);
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);

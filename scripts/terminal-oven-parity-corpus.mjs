@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { compileOven } from "../src/ovens/dsl/oven-compile.mjs";
-import { ELEMENTS, REGISTRY, REQUIRED_PROPS } from "../src/ovens/dsl/oven-grammar.mjs";
+import { ELEMENTS, REGISTRY, REQUIRED_ATTRIBUTES, REQUIRED_PROPS } from "../src/ovens/dsl/oven-grammar.mjs";
 export const CORPUS_SCHEMA = "burnlist-terminal-oven-corpus@1";
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const esc = (value) => String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;");
@@ -8,7 +8,7 @@ const attrs = (row) => Object.entries(row).map(([key, value]) => ` ${key}="${esc
 const pointer = "/value";
 let serial = 0;
 const valueFor = (key, index = 0) => ({ id: `node-${index}`, version: "1.0.0", contract: [...REGISTRY.contracts][index % REGISTRY.contracts.size], theme: [...REGISTRY.themes][index % REGISTRY.themes.size], "refresh-seconds": "1", element: "div", class: "corpus", text: "Corpus", "data-detail-tab": "detail", columns: "1", rows: "1", "row-height": "1", direction: "vertical", gap: "1", title: "Corpus", column: "1", row: "1", "column-span": "1", "row-span": "1", "mode-from": "mode", source: pointer, value: "value", default: "true", "item-key": "/id", "search-from": "search", "filter-from": "filter", "sort-from": "sort", paging: "client", "page-size": "1", prop: "value", format: [...REGISTRY.formats][index % REGISTRY.formats.size], optional: "true", fallback: "-", slot: "value", name: [...REGISTRY.icons][index % REGISTRY.icons.size], label: "Corpus", tone: "default", "aria-label": "Corpus", heading: "Corpus", icon: [...REGISTRY.icons][index % REGISTRY.icons.size], variant: "current", done: "1", total: "1", percent: "100", "empty-text": "Empty", session: "session", "back-href": "/", "collection-from": "collection", "selection-from": "tabs", "initial-source": pointer, initial: "one", placeholder: "Search", "match-fields": "title", "debounce-ms": "1", key: key === "key" ? [...REGISTRY.sorts][0] : "value", "requires-source": pointer, "requires-value": "value", "unavailable-text": "Unavailable", "page-sizes": "1 2" })[key] ?? "value";
-function element(name, index = 0, patch = {}, children = "") { const required = { oven: ["id", "version", "contract", "theme"], box: ["element"], grid: ["columns"], panel: ["id"], collection: ["id", "source", "item-key", "paging", "page-size"], bind: ["prop", "source"], icon: ["slot", "name"], column: ["label", "source"], "log-table": ["source"], "model-lab-view": ["source"], "field-toolbar": ["id"], "domain-tabs": ["id", "source"], "mode-toggle": ["id", "initial", "aria-label"], option: ["value", "label"], search: ["id", "placeholder", "aria-label", "match-fields"], "sort-toggle": ["id", "key", "label", "initial"], "filter-toggle": ["id", "key", "label", "initial"], pagination: ["collection-from", "page-sizes"] }[name] || [];
+function element(name, index = 0, patch = {}, children = "") { const required = REQUIRED_ATTRIBUTES[name] || [];
   const row = Object.fromEntries(required.map((key) => [key, valueFor(key, index)])); if ("id" in row) row.id = `${name.replaceAll("-", "")}-${index}-${serial++}`; Object.assign(row, patch);
   if (name === "filter-toggle" && !("key" in patch)) row.key = [...REGISTRY.filters][0];
   if (name === "switch" && !("source" in row) && !("mode-from" in row)) row.source = pointer;

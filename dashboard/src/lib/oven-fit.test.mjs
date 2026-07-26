@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BURNLIST_DATA_CONTRACT, fittingOvens } from "./oven-fit.mjs";
+import { BURNLIST_DATA_CONTRACT, fittingOvens, ovenLensChoices } from "./oven-fit.mjs";
 
 test("fittingOvens selects contract-compatible Ovens in the burnlist repository scope", () => {
   const ovens = [
@@ -37,4 +37,15 @@ test("fittingOvens uses the repository-scoped Oven for a duplicate id without ch
   assert.equal(lenses[0].name, "Vendored Checklist");
   assert.equal(lenses[0].repoKey, "abc123");
   assert.equal(lenses[1].name, "Release readiness");
+});
+
+test("ovenLensChoices suppresses a singleton and retains real choices", () => {
+  const checklist = { id: "checklist", name: "Checklist", contract: BURNLIST_DATA_CONTRACT, repoKey: null, builtIn: true };
+  const readiness = { id: "release-readiness", name: "Release readiness", contract: BURNLIST_DATA_CONTRACT, repoKey: "abc123", builtIn: false };
+
+  assert.deepEqual(ovenLensChoices([checklist], BURNLIST_DATA_CONTRACT, { repoKey: "abc123" }), []);
+  assert.deepEqual(
+    ovenLensChoices([checklist, readiness], BURNLIST_DATA_CONTRACT, { repoKey: "abc123" }).map(({ id }) => id),
+    ["checklist", "release-readiness"],
+  );
 });

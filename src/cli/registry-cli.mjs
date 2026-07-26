@@ -16,6 +16,7 @@ import {
   unregisterRoot,
 } from "../server/registry.mjs";
 import { gitProbe } from "./git-ignore.mjs";
+import { dashboardHandoff, dashboardRuntime } from "./actionable-output.mjs";
 
 const LIFECYCLE_FOLDERS = ["draft", "ready", "inprogress", "completed"];
 const IGNORE_LINES = ["/notes/burnlists/", "/.local/"];
@@ -116,6 +117,10 @@ function printUsage() {
 function runRegister(path) {
   const result = registerRoot(path);
   console.log(`${result.added ? "Registered" : "Already registered"} ${result.root}`);
+  const runtime = dashboardRuntime();
+  console.log(dashboardHandoff(result.root, runtime.baseUrl,
+    runtime.live ? `open ${runtime.baseUrl}` : `burnlist --scan-root ${JSON.stringify(result.root)}`,
+    { runtime }));
 }
 
 function runUnregister(path) {
@@ -148,6 +153,9 @@ function runInit(path, track) {
   else if (ignoreState === "already ignored") console.log("notes/burnlists/ and .local/ are already ignored locally.");
   else console.log("Ignored /notes/burnlists/ and /.local/ locally.");
   console.log(`${registration.added ? "Registered" : "Already registered"} ${registration.root}.`);
+  const runtime = dashboardRuntime();
+  console.log(dashboardHandoff(registration.root, runtime.baseUrl,
+    `burnlist new --repo ${JSON.stringify(registration.root)}`, { runtime }));
 }
 
 async function main() {

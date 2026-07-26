@@ -15,7 +15,11 @@ test("checklist progress chart uses compact time and completion markers", () => 
   const compactedGap = chart.points[2].x - chart.points[1].x;
   assert.equal(compactedGap > firstGap && compactedGap < firstGap * 2, true);
   assert.equal(chart.timeScale, "compact");
-  assert.equal(chart.plot.bottom, 156);
+  assert.equal(chart.plot.bottom, chart.height);
+  assert.equal(chart.plot.left, 0);
+  assert.equal(chart.plot.right, chart.width);
+  assert.equal(chart.points[0].x, 0);
+  assert.equal(chart.last.x, chart.width);
   assert.deepEqual(chart.yTicks.map((tick) => tick.label), ["0%", "25%", "50%", "75%", "100%"]);
   assert.deepEqual(chart.markers.map((marker) => marker.type), ["completion", "split", "completion", "completion"]);
 });
@@ -24,5 +28,6 @@ test("burn mode plots remaining item counts", () => {
   const chart = buildChecklistProgressChart(history, "burn", { width: 640, height: 180 });
   assert.deepEqual(chart.points.map((point) => point.value), [3, 3, 2]);
   assert.equal(chart.last.value, 2);
+  assert.equal(chart.last.y > chart.points[0].y, true);
   assert.deepEqual(chart.yTicks.map((tick) => tick.label), ["0", "1", "2", "3", "4"]);
 });

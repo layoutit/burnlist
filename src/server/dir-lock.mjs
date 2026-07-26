@@ -14,6 +14,7 @@ import {
   writeSync,
 } from "node:fs";
 import os from "node:os";
+import { execFileSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 
 export const LOCK_MAX_AGE_MS = 15 * 60_000;
@@ -29,6 +30,14 @@ const safePid = (value) => Number.isSafeInteger(value) && value > 0;
 const safeTime = (value) => Number.isFinite(value) && Number.isInteger(value) && value >= 0;
 const sleepSync = (milliseconds) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 const defaultFs = { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, renameSync, rmdirSync, unlinkSync, writeSync };
+
+export function processStartIdentity(pid, { exec = execFileSync, environment = process.env } = {}) {
+  try {
+    const value = exec("ps", ["-o", "lstart=", "-p", String(pid)],
+      { encoding: "utf8", timeout: 1000, maxBuffer: 4096, env: { ...environment, LC_ALL: "C", LANG: "C" } }).trim().replace(/\s+/gu, " ");
+    return value || null;
+  } catch { return null; }
+}
 
 function ignored(error) {
   return error?.code === "ENOENT";
@@ -75,8 +84,9 @@ function parseRecord(text) {
 }
 
 function validV2(record, token) {
-  return record?.version === 1 && safePid(record.pid) && typeof record.hostname === "string" && record.hostname !== ""
-    && tokenPattern.test(record.token) && record.token === token && safeTime(record.createdAt);
+  return [1, 2].includes(record?.version) && safePid(record.pid) && typeof record.hostname === "string" && record.hostname !== ""
+    && tokenPattern.test(record.token) && record.token === token && safeTime(record.createdAt)
+    && (record.version === 1 || record.startedAt === null || typeof record.startedAt === "string" && record.startedAt.length > 0 && record.startedAt.length <= 128);
 }
 
 function legacyRecord(record) {
@@ -87,18 +97,23 @@ function legacyRecord(record) {
   return !Object.hasOwn(record, "hostname") ? record : null;
 }
 
-function stale(record, now, hostname, pidProbe) {
+function stale(record, now, hostname, pidProbe, reclaimLiveAfterAge, processIdentity) {
   if (record.hostname !== hostname) return false;
-  return staleSameHost(record, now, pidProbe);
+  return staleSameHost(record, now, pidProbe, reclaimLiveAfterAge, processIdentity);
 }
 
-function staleSameHost(record, now, pidProbe) {
+function staleSameHost(record, now, pidProbe, reclaimLiveAfterAge = true, processIdentity = () => null) {
   let live = true;
   try { pidProbe(record.pid); } catch (error) { live = error?.code !== "ESRCH"; }
-  return !live || now - record.createdAt >= LOCK_MAX_AGE_MS;
+  if (!live) return true;
+  if (record.version === 2 && record.startedAt !== null) {
+    let identity = null; try { identity = processIdentity(record.pid); } catch { return false; }
+    if (identity !== null && identity !== record.startedAt) return true;
+  }
+  return reclaimLiveAfterAge && now - record.createdAt >= LOCK_MAX_AGE_MS;
 }
 
-function inspectCanonical(fs, lockPath, { now, hostname, pidProbe, readFile }) {
+function inspectCanonical(fs, lockPath, { now, hostname, pidProbe, readFile, reclaimLiveAfterAge, processIdentity }) {
   const inspectionNow = now();
   let stat;
   try { stat = fs.lstatSync(lockPath); } catch (error) {
@@ -129,7 +144,7 @@ function inspectCanonical(fs, lockPath, { now, hostname, pidProbe, readFile }) {
       throw error;
     }
     if (!validV2(record, match[1])) return { kind: "corrupt" };
-    return { kind: "v2", record, token: match[1], stale: stale(record, inspectionNow, hostname, pidProbe) };
+    return { kind: "v2", record, token: match[1], stale: stale(record, inspectionNow, hostname, pidProbe, reclaimLiveAfterAge, processIdentity) };
   }
   if (!stat.isFile()) return { kind: "corrupt" };
   let text;
@@ -140,7 +155,7 @@ function inspectCanonical(fs, lockPath, { now, hostname, pidProbe, readFile }) {
   const record = legacyRecord(parseRecord(text));
   if (!record) return { kind: "corrupt" };
   // Only v2 directory records use hostname as a cross-host safety boundary.
-  return { kind: "legacy", record, text, stale: staleSameHost(record, inspectionNow, pidProbe) };
+  return { kind: "legacy", record, text, stale: staleSameHost(record, inspectionNow, pidProbe, reclaimLiveAfterAge) };
 }
 
 function buildCandidate(fs, lockPath, context) {
@@ -161,7 +176,7 @@ function buildCandidate(fs, lockPath, context) {
     try {
       hooks.afterCandidateDirectory?.({ candidate, token: value });
       const path = join(candidate, ownerName(value));
-      const record = `${JSON.stringify({ version: 1, pid: process.pid, hostname, token: value, createdAt })}\n`;
+      const record = `${JSON.stringify({ version: 2, pid: process.pid, hostname, token: value, createdAt, startedAt: context.processIdentity(process.pid) })}\n`;
       const bytes = Buffer.from(record, "utf8");
       const fd = fs.openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600);
       let primary;
@@ -236,13 +251,14 @@ function gc(fs, lockPath, context) {
 }
 
 /** Test seams are deliberately optional; production callers use only lockPath, fn, and errorFactory. */
-export function withDirectoryLock({ lockPath, fn, errorFactory, adapters = {}, hooks = {} }) {
+export function withDirectoryLock({ lockPath, fn, errorFactory, adapters = {}, hooks = {}, reclaimLiveAfterAge = true }) {
   const fs = { ...defaultFs, ...adapters.fs };
   const context = {
     hostname: adapters.hostname?.() ?? os.hostname(), now: adapters.now ?? Date.now,
     pidProbe: adapters.pidProbe ?? ((pid) => process.kill(pid, 0)), sleep: adapters.sleep ?? sleepSync,
+    processIdentity: adapters.processIdentity ?? processStartIdentity,
     token: adapters.token ?? (() => randomBytes(32).toString("hex")), logger: adapters.logger ?? (() => {}),
-    readFile: adapters.readFileSync ?? readFileSync, hooks,
+    readFile: adapters.readFileSync ?? readFileSync, hooks, reclaimLiveAfterAge,
   };
   if (typeof context.hostname !== "string" || context.hostname === "") throw new Error("Cannot create a lock without a hostname.");
   fs.mkdirSync(dirname(lockPath), { recursive: true });

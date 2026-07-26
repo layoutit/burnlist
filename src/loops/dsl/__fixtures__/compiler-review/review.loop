@@ -1,0 +1,34 @@
+<loop id="review" version="0.1.0" entry="start">
+  <budget max-rounds="12" max-minutes="60" max-agent-runs="18" max-check-runs="8" max-transitions="40" max-output-bytes="262144"/>
+  <agent id="start" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="start"/>
+  <agent id="decompose" mode="task" execution="host" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="decompose"/>
+  <agent id="implement" mode="task" execution="host" intelligence="standard" role="maker" route="implementation.standard" authority="write" instructions="implement"/>
+  <agent id="review" mode="review" execution="host" intelligence="strong" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="review"/>
+  <agent id="integrate" mode="task" execution="host" intelligence="strong" role="maker" route="implementation.standard" authority="write" instructions="integrate"/>
+  <agent id="final-review" mode="review" execution="host" intelligence="critical" role="reviewer" route="review.strong" authority="read" independent-from="implement" requires="fresh-session:enforced,filesystem-write-deny:supervised" instructions="final-review"/>
+  <check id="validate" capability="repo-verify"/>
+  <check id="final-validate" capability="repo-verify"/>
+  <gate id="converged" kind="convergence" requires="final-validate,final-review"/>
+  <terminal id="completed" state="converged"/>
+  <terminal id="needs-human" state="needs-human"/>
+  <terminal id="failed" state="failed"/>
+  <terminal id="stopped" state="stopped"/>
+  <terminal id="exhausted" state="budget-exhausted"/>
+  <failure-policy error="failed" timeout="failed" cancelled="stopped" lost="needs-human" exhausted="exhausted"/>
+  <edge from="start" on="complete" to="decompose"/>
+  <edge from="decompose" on="complete" to="implement"/>
+  <edge from="implement" on="complete" to="validate"/>
+  <edge from="validate" on="pass" to="review"/>
+  <edge from="validate" on="fail" to="decompose" max-visits="3"/>
+  <edge from="review" on="approve" to="integrate"/>
+  <edge from="review" on="reject" to="decompose" max-visits="3"/>
+  <edge from="review" on="escalate" to="needs-human"/>
+  <edge from="integrate" on="complete" to="final-validate"/>
+  <edge from="final-validate" on="pass" to="final-review"/>
+  <edge from="final-validate" on="fail" to="decompose" max-visits="3"/>
+  <edge from="final-review" on="approve" to="converged"/>
+  <edge from="final-review" on="reject" to="decompose" max-visits="3"/>
+  <edge from="final-review" on="escalate" to="needs-human"/>
+  <edge from="converged" on="pass" to="completed"/>
+  <edge from="converged" on="fail" to="needs-human"/>
+</loop>

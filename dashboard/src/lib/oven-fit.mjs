@@ -23,3 +23,8 @@ export function fittingOvens(ovens, dataContract, { repoKey } = {}) {
   }
   return fitted;
 }
+
+export function ovenLensChoices(ovens, dataContract, options) {
+  const choices = fittingOvens(ovens, dataContract, options);
+  return choices.length > 1 ? choices : [];
+}

@@ -31,6 +31,21 @@ The built-in ovens follow this rule. Differential Testing measures byte-identica
 | Bug fix | The failing reproduction now passes, with 0 regressions |
 | Performance | Real measured timings against a baseline—never “feels faster” |
 
+## Choose a task-fit metric
+
+Use an Oven only when it makes the user-approved outcome clearer:
+
+| Work | Typical evidence |
+| --- | --- |
+| UI, CSS, layout, or rendering | Visual Parity screenshots with explained pixel drift |
+| Reference/candidate, migration, or compatibility work | Differential Testing |
+| Latency, frame pacing, throughput, or budget work | Performance Tracing against a real baseline |
+| Model, geometry, or animation work | Model Lab against its declared model contract |
+| Everything else | The trusted repository check may be enough |
+
+Do not add an Oven merely to produce a number. A hand-entered metric, an
+unapproved proxy, or a compile-only screenshot is not outcome evidence.
+
 ## From signal to Oven
 
 Map each signal onto the built-in view vocabulary:
@@ -84,3 +99,17 @@ Validate and snapshot it with `burnlist oven set migration-status .local/burnlis
 An Oven signal is only evidence if a Burnlist item cites it. Write the done/delete condition to point at the number: "Done/delete when Oven `migration-status` shows `validatedFraction = 100%` and `schemaFailures = 0`." This is advisory evidence a human or agent reads—Burnlist does not execute the Oven or auto-verify the number; `burnlist burn` and `--check` never read Oven data. The honesty is structural: the proof points at an adapter-computed signal the worker cannot type by hand.
 
 If a number can be typed by hand without doing the work, it is not evidence.
+
+## Visually verify proof Ovens
+
+After creating, adopting, or changing an Oven used as task proof:
+
+1. Publish real or explicit fixture data through the source-owned producer.
+2. Open the [canonical dashboard URL](/dashboard#dashboard-urls).
+3. Inspect desktop and narrow/mobile layouts in a browser.
+4. Exercise relevant empty, waiting, blocked, stale, error, and completed states.
+5. Confirm labels, values, overflow, hierarchy, and provenance are readable.
+6. Record the user-approved signal in the Burnlist item's proof contract.
+
+Compilation and DOM tests are necessary but not sufficient visual evidence.
+The dashboard remains read-only and the Oven remains declarative.

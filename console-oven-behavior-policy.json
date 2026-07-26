@@ -34,8 +34,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:208814ca503d64c8",
-      "fingerprint": "208814ca503d64c8fb108051fdd47a8e643a7f9b289b3dfc1a6ad0dc4fd59bcb",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:3f9dd4948879086e",
+      "fingerprint": "3f9dd4948879086e4c6599576c739a8e8f4e7ffb67849810e4dcf23a2532c8ed",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -50,24 +50,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:3d26781e5136dfc9",
-      "fingerprint": "3d26781e5136dfc99fcf40a39b03a265da104e2d146be52c0fdb6e77f3eb5ff8",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:4425626dd98c67db",
-      "fingerprint": "4425626dd98c67db82d65a10f32eb2a28821a337460e5052571d562fc78a3f62",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:4333dcaf71667d08",
+      "fingerprint": "4333dcaf71667d08108529b9420ebf1363f9630ceb483537013710d8ebab9bb1",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -114,8 +98,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:728627d16877e4c7",
-      "fingerprint": "728627d16877e4c73aa0cd48c635c44b0a6f3fd6a23204e42e945f1810250de3",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:5ba000b86bebf3c8",
+      "fingerprint": "5ba000b86bebf3c8f16ecce4acbb7a7c1f512a31acb08ca6d3263e7f88c7cd6c",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -130,8 +114,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:7de1f44a9736a8c2",
-      "fingerprint": "7de1f44a9736a8c26722db6f0b9652540108a3b007a2b1dfa65bc8533445c83b",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:7d3765175c92ae64",
+      "fingerprint": "7d3765175c92ae644ab7e8855b741b70a96ba3cf523c86f7040498ad373dd15e",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -146,8 +130,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:8f5c7635aa0ba4fc",
-      "fingerprint": "8f5c7635aa0ba4fcd7a163890f733d384fae7a9bb35b65569df0e036e9d96618",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:879c4c24e5fd2fba",
+      "fingerprint": "879c4c24e5fd2fbaa2ec3d0ef72164470cecdcf5a2dc03d1f9a1419d764bc0bd",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -178,8 +162,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:a55c617610bbadb8",
-      "fingerprint": "a55c617610bbadb8071de976062a794e29b6d65f60342240ae513a2b36b4d66c",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:9719effcb0f55d0f",
+      "fingerprint": "9719effcb0f55d0ffaee19bfd07a27f4b745d21081986c9c7e53309c57862b9e",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -210,6 +194,22 @@
       }
     },
     {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:abfb2f8b91d2e983",
+      "fingerprint": "abfb2f8b91d2e9831c1fb05036b407b18156aaba72a6e5c1b5164a5085efc9b6",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:b46cbdb494510e42",
       "fingerprint": "b46cbdb494510e4227e20f95d4ddc1f0f48976bc77236cab175747f18288f30f",
       "classification": "blocker-to-migrate",
@@ -226,8 +226,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:b5e2bf796a2d03dd",
-      "fingerprint": "b5e2bf796a2d03dd73b37d136ddba91c9750190f18e6a7e11172c58ec9356e6a",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:b75437f13ae72c3e",
+      "fingerprint": "b75437f13ae72c3ece5807ee0f60b4cbbb6c01c7a96828e4424639c2a3277c61",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -242,8 +242,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:baced15ab3dce1ec",
-      "fingerprint": "baced15ab3dce1ec173ba9bc14778989a0411be9f24e8cde403993749df172e2",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c29844d6d52a0c91",
+      "fingerprint": "c29844d6d52a0c91c3a1cc62bb9ba91ecc79f9dd6f50d16947ffe07f93bfd413",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -258,8 +258,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c19e9c10e5bf1bc0",
-      "fingerprint": "c19e9c10e5bf1bc08e2982ff58ae70015d8b734bb4ca3c980f94e748ba9aedc5",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c91790aa853c7954",
+      "fingerprint": "c91790aa853c7954bb192592b21dd9e57d126463c95a88fff81f1dd31c862d67",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -274,8 +274,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:cc7819aa9d517c09",
-      "fingerprint": "cc7819aa9d517c0997fb629aee5e412d0439243fbbd152ffe6a619afa250cf35",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:e5e69239b717d7ed",
+      "fingerprint": "e5e69239b717d7ed083f57f7581e511c4d236ce9c4e5342c9b275a3ec42bf3a5",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -290,8 +290,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:ef79561f7fc1c688",
-      "fingerprint": "ef79561f7fc1c688cd8a7a52ce1d40b96ff8de402a5e00109397320667e380bd",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:ec0dec63345d49fe",
+      "fingerprint": "ec0dec63345d49febfe15e61ed75a2e4d1300fe40bee3efff9df07e27fd28c15",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -306,8 +306,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:fcecb06e30087d28",
-      "fingerprint": "fcecb06e30087d28e1ada12a6beb2ca284f2765547fd862ba66d7a7495690a2f",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:f4aaac745193880e",
+      "fingerprint": "f4aaac745193880e0d70587453da4e3423a346212bc48e1862d66c5cea346a22",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -370,22 +370,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:42db6fb200fa153f",
-      "fingerprint": "42db6fb200fa153fdb33fdba06e5fae17bac63d84a59882cc3268720a414f0e7",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:62769dae15dabf3e",
       "fingerprint": "62769dae15dabf3eb85e55aaaa7917e2737fc2f629738d87b7b8d72d1660d932",
       "classification": "blocker-to-migrate",
@@ -434,38 +418,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:71c8281d70e85cdb",
-      "fingerprint": "71c8281d70e85cdb0aebd90bfa30812efe101c0ebe07027c0065178e6b54e42e",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:ad7db8260d43c256",
-      "fingerprint": "ad7db8260d43c256d46a3a6ad3637628ebdcf01f421e8b82ba6e496e307e0182",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:b67210fdce841e44",
       "fingerprint": "b67210fdce841e44b3cd523e0c3ecc3dbe2e908d9fa2b9c9dad297789908d9c0",
       "classification": "blocker-to-migrate",
@@ -498,8 +450,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:c294a64a61729656",
-      "fingerprint": "c294a64a617296565d02e804c184964c6a5cf9266449b5404fc90ff10cc62e8f",
+      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:f544cfff6fbd0177",
+      "fingerprint": "f544cfff6fbd017720d2f15163f8a1e22ad91e399cb75729cd698b9ac28abb1d",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -514,24 +466,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:c294a64a61729656:1",
-      "fingerprint": "c294a64a617296565d02e804c184964c6a5cf9266449b5404fc90ff10cc62e8f",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:e4534f6d155e65a6",
-      "fingerprint": "e4534f6d155e65a6a5e60e4c63adc57741a1ceea853fb05d973d4e63fb4cf869",
+      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:f544cfff6fbd0177:1",
+      "fingerprint": "f544cfff6fbd017720d2f15163f8a1e22ad91e399cb75729cd698b9ac28abb1d",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -562,8 +498,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/components/CustomOvenView/CustomOvenView.tsx:CustomOvenView:ConditionalExpression:5c9538d2fe99c6a7",
-      "fingerprint": "5c9538d2fe99c6a785e6b26b98a4c432823fc569bc9fbcad7f0e509e7d9d0418",
+      "id": "branch:dashboard/src/components/CustomOvenView/CustomOvenView.tsx:CustomOvenView:ConditionalExpression:60f2dc01523d85b9",
+      "fingerprint": "60f2dc01523d85b9db3be4f81cc500484bb7652daa79282a5d99cddf1474683a",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -706,8 +642,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/components/CustomOvenView/CustomOvenView.tsx:CustomOvenView:LogicalExpression:85cf0f2198b27b22",
-      "fingerprint": "85cf0f2198b27b22c910c20c323105f3cced29f6b9d20eeff558a437f41bb323",
+      "id": "branch:dashboard/src/components/CustomOvenView/CustomOvenView.tsx:CustomOvenView:LogicalExpression:87782df15f05f50b",
+      "fingerprint": "87782df15f05f50b211231a6ff48279525e7c56b32c130a05c64499f23789b4f",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -1458,6 +1394,22 @@
       }
     },
     {
+      "id": "branch:dashboard/src/lib/hrefs.ts:filterFromUrl:ConditionalExpression:651d8dee5828ea7e",
+      "fingerprint": "651d8dee5828ea7e22759d51e44d7afd6b70e3f40ca860faa14e8e74aa9db98d",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "filterFromUrl",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:filterFromUrl"
+      }
+    },
+    {
       "id": "branch:dashboard/src/lib/hrefs.ts:filterFromUrl:ConditionalExpression:8198820b33e49756",
       "fingerprint": "8198820b33e49756dc869c074d8c6dde351f80a78b90ac061de85c654a767c0d",
       "classification": "blocker-to-migrate",
@@ -1490,8 +1442,72 @@
       }
     },
     {
-      "id": "branch:dashboard/src/lib/hrefs.ts:ovenExplainerSelection:ConditionalExpression:efc2d81ed1ef9bee",
-      "fingerprint": "efc2d81ed1ef9beea70f13d0c99acb6bc3cc449ed81b6b48e9c24be345fd7536",
+      "id": "branch:dashboard/src/lib/hrefs.ts:module:ConditionalExpression:c66dbbf45e2ea538",
+      "fingerprint": "c66dbbf45e2ea5384297540224755ae7abd13d2cbc05cedd1b00dfb526697dfb",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:module"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:module:IfStatement:004a58821b2851ab",
+      "fingerprint": "004a58821b2851abc38f4f8717f1394e93b8dd08dd09008b1c6e441cfa8587e3",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:module"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:module:IfStatement:7647a8bd769eead1",
+      "fingerprint": "7647a8bd769eead17ce9bf4f7a1120caf35cd998446e36db2835fbcbb6c2a0af",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:module"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:ovenExplainerSelection:ConditionalExpression:30010cf344a61277",
+      "fingerprint": "30010cf344a612779d25311c724094a5a3d8e7669b48c06d64b3052daeb97fa5",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "ovenExplainerSelection",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:ovenExplainerSelection"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:ovenExplainerSelection:ConditionalExpression:651d8dee5828ea7e",
+      "fingerprint": "651d8dee5828ea7e22759d51e44d7afd6b70e3f40ca860faa14e8e74aa9db98d",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -1522,8 +1538,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:ConditionalExpression:1b040533b33e3724",
-      "fingerprint": "1b040533b33e372457c6eee0c7256d3180591fa20d7bf28555906caa8ef61004",
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:ConditionalExpression:3d54fade51f76251",
+      "fingerprint": "3d54fade51f762516a2d3bb8afea3045acce5f8d181df7550a82080e58c7147f",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -1538,8 +1554,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:IfStatement:1b13b104c2649bbd",
-      "fingerprint": "1b13b104c2649bbdc647d59a10d4b1b05a86cff5a84f628340bc5df25114054e",
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:ConditionalExpression:ef204c2aa7047c16",
+      "fingerprint": "ef204c2aa7047c1678101730e8c82b6ab745dea0fc15e3b6de3b1048475f0f12",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -1554,8 +1570,56 @@
       }
     },
     {
-      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:IfStatement:89b96c93d21c9cfb",
-      "fingerprint": "89b96c93d21c9cfb4539d83765224dca952321866d2bb35cdc6ee2e3fe9a02be",
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:ConditionalExpression:ef204c2aa7047c16:1",
+      "fingerprint": "ef204c2aa7047c1678101730e8c82b6ab745dea0fc15e3b6de3b1048475f0f12",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "selectedBurnlist",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:selectedBurnlist"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:ConditionalExpression:ef204c2aa7047c16:2",
+      "fingerprint": "ef204c2aa7047c1678101730e8c82b6ab745dea0fc15e3b6de3b1048475f0f12",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "selectedBurnlist",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:selectedBurnlist"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:IfStatement:92c9454b732c5e4b",
+      "fingerprint": "92c9454b732c5e4b4cbfab18ed626c0fee695c2ce318e928a28ad9b6753a83ef",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/lib/hrefs.ts",
+        "export": "selectedBurnlist",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/lib/hrefs.ts:selectedBurnlist"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/lib/hrefs.ts:selectedBurnlist:IfStatement:ee65016ce7abf4e6",
+      "fingerprint": "ee65016ce7abf4e6ba1b7180e31f97a2d6cdfe3759638cff1118e34d85d56c06",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -2298,6 +2362,1038 @@
         "ownerTarget": "dashboard/src/oven/BurnDonut/BurnDonut.tsx:BurnDonut",
         "path": "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
         "export": "BurnDonut",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:08194b5dfcd25e03",
+      "fingerprint": "08194b5dfcd25e03b477c4709c1374b31be76e11ea6df8fba9757ceab9a246c3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:0a85fd349312ee5f",
+      "fingerprint": "0a85fd349312ee5faaee17108bdb9197fa3312caec934b1e0c4f748730317dd8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:2087c2c807ce8197",
+      "fingerprint": "2087c2c807ce8197e21cb1db5c69e2f220431ae176c5e03519d883710f08659f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:32b6aa9d80818d22",
+      "fingerprint": "32b6aa9d80818d22e0633a3afcbf03eb05d5daf6bef8c11e1634f83f78f533ee",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:659ec66a257d2489",
+      "fingerprint": "659ec66a257d2489f6fa61526c8f0e85b60b12f2b75fc165e67422133139df72",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:6cf46e76e63fe7dd",
+      "fingerprint": "6cf46e76e63fe7ddf3a4a24daac5710458664ee5950289fe7087414c7ed5a8ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:a4732e8d63276c0b",
+      "fingerprint": "a4732e8d63276c0bfb10bee255633e0ebba7a62370032fc1c07dc3e822f30b6f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:ddf97dc0deac5928",
+      "fingerprint": "ddf97dc0deac59282ec085ea528d5360b034f6ba466747b72c0155b770501b47",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:ConditionalExpression:f38c4d7821c5cea7",
+      "fingerprint": "f38c4d7821c5cea7cc5fa8f6826c84db85a5077dbfad4cfcb27891d09772f4b5",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:IfStatement:e131fa974a30c315",
+      "fingerprint": "e131fa974a30c3156137ac43132bb787ba7715ab3d299b6dda468692f7c9bb17",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:LogicalExpression:164a045522393f01",
+      "fingerprint": "164a045522393f0180c9ab750f0029bff5a93a98e0c75c0d9735737db2789884",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:LogicalExpression:9ff0e193ffb28c2c",
+      "fingerprint": "9ff0e193ffb28c2c81d9281abeb1e6cb5e3853bf3c5c5550b89491bb2e678f6c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent:LogicalExpression:c0172b974e1b0088",
+      "fingerprint": "c0172b974e1b0088e9285de2e7367a98ee87783aa9088034f8210ea892285d83",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:ChecklistCurrent",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "ChecklistCurrent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module:IfStatement:25c5aab089639fdc",
+      "fingerprint": "25c5aab089639fdc4b3f2448b776ab1b64e852bac1ecd8bd0c88d0a1de295ce1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module:IfStatement:36b3ce9e97f18066",
+      "fingerprint": "36b3ce9e97f180660bf9efbd82008ba92b35ce9eece5979994b3fc1507ce93bd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module:LogicalExpression:7a6632d7fc7334b8",
+      "fingerprint": "7a6632d7fc7334b884302929bd8eb7cb936e3bee6673c019a67248e381ee595a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx:module",
+        "path": "dashboard/src/oven/ChecklistCurrent/ChecklistCurrent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:00e9febb41fb9293",
+      "fingerprint": "00e9febb41fb9293514dd4935d76dfc3f5d9b86a6908dda94e2d672e5057b3dc",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:01edec699fdf5a75",
+      "fingerprint": "01edec699fdf5a7505114ccc508791b04875c2523cdf3771686b68d3a7fab2e8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:01edec699fdf5a75:1",
+      "fingerprint": "01edec699fdf5a7505114ccc508791b04875c2523cdf3771686b68d3a7fab2e8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:0c02447977e47c87",
+      "fingerprint": "0c02447977e47c87ee0227eb97326e011747281b1a1342d39df15121f11a64f4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:1ea1f123de2d9dbb",
+      "fingerprint": "1ea1f123de2d9dbbf3585990e88d54b295b77cdf754b97e1d13771bdaa61ceec",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:280ee5eb4488f698",
+      "fingerprint": "280ee5eb4488f69859e61d139112654af8fdb9609e7e9cf654608fe121ee9544",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:2e10c1d3b09fcc63",
+      "fingerprint": "2e10c1d3b09fcc639e5e7ad0d0ef61c35fcd9a1c16f0f8ca91b9818008aa91b5",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:2f9a683bdbb557ef",
+      "fingerprint": "2f9a683bdbb557ef375bd5a92609553fe7d44f4663dd4f9a1563855b52cd796c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:35ba5076fa549dba",
+      "fingerprint": "35ba5076fa549dba07dc31c098090999490ebcfafcadd7a686134507c848a788",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:371b0b052088fd1a",
+      "fingerprint": "371b0b052088fd1afe3cfd6ccf2e8431614a19371101b691b221b60c35b81b78",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:4317fc7b22847b9c",
+      "fingerprint": "4317fc7b22847b9ca38deb39e81ad300c9fe07dcb96067e5003cabcbb3450d74",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:4545000551126dd3",
+      "fingerprint": "4545000551126dd3c6b16d894e2b41d102347534bfe4452e9ace6427952d6b9f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:4762fa1c46e0dc9f",
+      "fingerprint": "4762fa1c46e0dc9fd73b2ba6aaac67308ca0247f41fe2a5ea864c061a4408bbf",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:48365c9694f150c2",
+      "fingerprint": "48365c9694f150c252059260360102f3e11f78187fcd7f8057dee235c5309a20",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:52ec2accd428c9f8",
+      "fingerprint": "52ec2accd428c9f814d02749d390f2b94b2a48b07fea1fca537ba0b81a50cd89",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:55a76e0f6eb9ee03",
+      "fingerprint": "55a76e0f6eb9ee03427a831efe6f72ed286f10d94ff4b70910568b3e62aa0f94",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:5ac9466f731e6f14",
+      "fingerprint": "5ac9466f731e6f14c1a67ea48daae86608b34803165eb81c6ae181922de09509",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:5e68684e1713e13d",
+      "fingerprint": "5e68684e1713e13d4aec61116cff26c059485edfd780ed1a3b288528600d82ba",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:6b1caaf31ce77d62",
+      "fingerprint": "6b1caaf31ce77d62d1627b644b27e869dc02b6caed05a83f8acc6d1d926d5d7a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:6cf46e76e63fe7dd",
+      "fingerprint": "6cf46e76e63fe7ddf3a4a24daac5710458664ee5950289fe7087414c7ed5a8ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:6e8f0dbd40b2703e",
+      "fingerprint": "6e8f0dbd40b2703e26b2e72c48b363070d8d94dbb806ddd072957083591bc600",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:745113c5ab9db380",
+      "fingerprint": "745113c5ab9db380563d446a9138a32849df52a10b0193435f5b5bf16d1ef887",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:9357a2f224fec7c4",
+      "fingerprint": "9357a2f224fec7c4944efbeb3732a779f7a928e4c69ce753d44244e27c60fc75",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:98e1921cdad88885",
+      "fingerprint": "98e1921cdad888852299416bddc325274e592d069da75f50a66e62230c6a7911",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:9c6f38ff1157790b",
+      "fingerprint": "9c6f38ff1157790ba4bfce928061fdb9faf2baa0aa02661d76c96abd3ccb338e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:9f2c8891981e6711",
+      "fingerprint": "9f2c8891981e67111dffa30abdd9c1b924fec861700790dd4e3a5f261f1d032d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:adf4f75546dd1eda",
+      "fingerprint": "adf4f75546dd1edaf5994a0844d0c4b2a82aeea8618ebc59e9092e7e6b30cc85",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:adf4f75546dd1eda:1",
+      "fingerprint": "adf4f75546dd1edaf5994a0844d0c4b2a82aeea8618ebc59e9092e7e6b30cc85",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:b00c726ebf628424",
+      "fingerprint": "b00c726ebf62842472a10f743ef2d158723eb3d9c826d59cc9dff5bb4115e710",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:b467271803a7137c",
+      "fingerprint": "b467271803a7137c36077c7f0440e7c1f2a6ffef0549777aeac7494b22f20aaf",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:b5e342a92fdcf060",
+      "fingerprint": "b5e342a92fdcf0609dcbec3bd97f87d0c7b9d6875bb6a1e8237d344afc1d5df4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:bba5cd1009958bc5",
+      "fingerprint": "bba5cd1009958bc5f872a8408e4cd75dcffb930c919682d5642a3e68dc5c643d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:bd15d70763807dd5",
+      "fingerprint": "bd15d70763807dd57c6a5bec24dade7f7235856021ef9d7fa1a0cb2d8982cae5",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:c2926f5e6e4bd01b",
+      "fingerprint": "c2926f5e6e4bd01be51d0f2507758e65ceff9f1a72bae98d916299a90534da77",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:c8ad18b92238627d",
+      "fingerprint": "c8ad18b92238627d72d9ccbfe0eba3d6b17148e4c4834704cc858d46e91dd171",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:cbf25a02868470d4",
+      "fingerprint": "cbf25a02868470d4f45c0f2417cb59219090fdaeb964ea4b0085b07f38beff5d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:dcd41c90e89ad0fc",
+      "fingerprint": "dcd41c90e89ad0fc81b63ad81d56ac65d07e89dd779c414ebdb1fd74600dc1ab",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:ddf97dc0deac5928",
+      "fingerprint": "ddf97dc0deac59282ec085ea528d5360b034f6ba466747b72c0155b770501b47",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:ddf97dc0deac5928:1",
+      "fingerprint": "ddf97dc0deac59282ec085ea528d5360b034f6ba466747b72c0155b770501b47",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:e399fb563a439ab0",
+      "fingerprint": "e399fb563a439ab084e1fab11b08b53455741778d66333360cd0030ecdf14a2d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:ef9cc646656b3071",
+      "fingerprint": "ef9cc646656b3071c19dad2760bc6776357c61812b767df848228f8e83391e8a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:fc5e184afefca275",
+      "fingerprint": "fc5e184afefca275d160968e383a2c86a6bc3194bba0bfd594e701ae7f49d2f6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:fd0abbde193bb804",
+      "fingerprint": "fd0abbde193bb804d9b3079bb76d23b4cad27c5fdcb8f6222070751805fd1348",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:ConditionalExpression:ffe8214f34d9b870",
+      "fingerprint": "ffe8214f34d9b8706b758cb28b6a074cc4583f0650b44456800457734818067e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:IfStatement:0ee7a5deef88f0bf",
+      "fingerprint": "0ee7a5deef88f0bfce31e2e1383db9bfa301e58b252913cc60eb34efbcc25baf",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:IfStatement:11d0af66854adfbf",
+      "fingerprint": "11d0af66854adfbfff5d8d94147e0140c3759edd8ef6d9f1ae2ac367e5e3f6cc",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:IfStatement:264343041e284630",
+      "fingerprint": "264343041e2846309aa1f19d06d91aea6dfc366922c5e65dd387bea2b840c7b8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:IfStatement:56a75df6df9f95e5",
+      "fingerprint": "56a75df6df9f95e527a76674d324677d4df92a3e9ab7a550212e03479b75640f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:IfStatement:de87743b835ac3df",
+      "fingerprint": "de87743b835ac3dfa90973cfe3049dc40d0f5abbcb8c1bc520c1d717d7d23337",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:0a89bb9de19edd6a",
+      "fingerprint": "0a89bb9de19edd6a3bbe75c6c505d31720f037f5e5d2f89934e6acfd8faee2fc",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:0bcff2d72ff46340",
+      "fingerprint": "0bcff2d72ff4634033da8ce46f112e55700fb97a7fba68898afb500a512d703c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:19afbb0367818566",
+      "fingerprint": "19afbb03678185660aab60d2ecd68b919d02692ba6cb89ee2e3b4cdcdc659b6e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:1a21cb192be140e6",
+      "fingerprint": "1a21cb192be140e6fddbd821284c6213eec38b76daa22efb2c60e33bfa5d9c27",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:24d13dcedb297fbc",
+      "fingerprint": "24d13dcedb297fbcdf7319e5fc57e02cb99915402ba480af82215a7fb0f60a97",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:5ebfc6882d416ada",
+      "fingerprint": "5ebfc6882d416ada692c8f40a37009f9ec4b0930ce4027b8b49f07ab5d14b474",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:6df84b140ee73124",
+      "fingerprint": "6df84b140ee7312433066fc67ff8b6ce4e3343aaeefd42ba9b2f8aca0572f72b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:6f4e070ba2f8f5f9",
+      "fingerprint": "6f4e070ba2f8f5f9763a2d32238c889658e50309279af54470b2846121909c47",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:812cc3f5c104050b",
+      "fingerprint": "812cc3f5c104050baf9175579ec4e7e61105a819dbfd39648ca028a51f70d49a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:8871d3e047d5cc71",
+      "fingerprint": "8871d3e047d5cc7191e3159a780eded6abab134a52574fff95027f6a8abef27c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:9cc1233c4aed1b14",
+      "fingerprint": "9cc1233c4aed1b14dd2d1a0ae38c356ddcf94c529d714128b26bce56a21becb9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:9ff0e193ffb28c2c",
+      "fingerprint": "9ff0e193ffb28c2c81d9281abeb1e6cb5e3853bf3c5c5550b89491bb2e678f6c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:a514216252601063",
+      "fingerprint": "a51421625260106365bce1ff5f1285bf86af4ba2da7337da87a114ce1e073c25",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:a58336e217baed1b",
+      "fingerprint": "a58336e217baed1b93ad78e819c4c2266330d0a02c236e6a8d001d4e27eadb41",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:b0f7891356002f3e",
+      "fingerprint": "b0f7891356002f3ec75ef7069847f274611b536b0e5b8bd3a5d9b08598d9a9b6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:b3f5a53410a8f6c4",
+      "fingerprint": "b3f5a53410a8f6c46da3855bf55ffaccc414d11af28970d4d1931a8df083df93",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:bab0a1e81c29f639",
+      "fingerprint": "bab0a1e81c29f639ee46d37eaa6da982e65432d5b2cc46fb6cb3c9ecb9eea6d0",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:c0172b974e1b0088",
+      "fingerprint": "c0172b974e1b0088e9285de2e7367a98ee87783aa9088034f8210ea892285d83",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:c0172b974e1b0088:1",
+      "fingerprint": "c0172b974e1b0088e9285de2e7367a98ee87783aa9088034f8210ea892285d83",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:ee3e2175de3d0131",
+      "fingerprint": "ee3e2175de3d0131ff7600564371cb5d284263af5de96b13d96afd13471928c3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module:LogicalExpression:f9e03efd028b691a",
+      "fingerprint": "f9e03efd028b691a26cbefe9069979b27a2f7853da42001d5709215ed8e98a5b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx:module",
+        "path": "dashboard/src/oven/ChecklistWorkspace/ChecklistWorkspace.tsx",
+        "export": "module",
         "version": "burnlist-console-oven-behavior@1"
       }
     },
@@ -14302,6 +15398,1482 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:1202ddc8896cdf22",
+      "fingerprint": "1202ddc8896cdf22ba48fe8a3ea086a82de866eaaa33c9b1cfdd95d00b206c40",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:12ba4613c2595938",
+      "fingerprint": "12ba4613c25959383f996ee04fc5dbcc290c90ed8ab7bfdbcd0da577fffdc8c1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:2e7e2dbb354cfa57",
+      "fingerprint": "2e7e2dbb354cfa576422a8c09a9b8cbc357be091d580d75f488a20dcd6b10106",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:35c2a6d455048ee7",
+      "fingerprint": "35c2a6d455048ee782ef684effcba2e41e7bafbd4398f7bbd67ac2cbd85e40d6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:386d1a69a212ed02",
+      "fingerprint": "386d1a69a212ed02b596e6e56ab7430c9603cf41544e2290ea6a5cf59bdd0d1d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:3ea5af62aa9ba9db",
+      "fingerprint": "3ea5af62aa9ba9db48f3023e960a719e710def1542482117b72dc321f553ffc3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:421d9643429bc9f7",
+      "fingerprint": "421d9643429bc9f75bc7a42732f27af627bf538bd9b129ec9476d9c2037cce0c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:4f74333faae30b67",
+      "fingerprint": "4f74333faae30b676d5ffa942cb96746a0bc2d0a499c3cefc173bac979cdb34a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:57e586a482b1d591",
+      "fingerprint": "57e586a482b1d591a4ada1e1f7f78f7fe8f81abe8deb588a5804369369bbd2f3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:5bf3ddf38f2b8bd6",
+      "fingerprint": "5bf3ddf38f2b8bd681c926af9f072b76986fb207682a612b58e3068bdd733858",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:6554b42c158df82c",
+      "fingerprint": "6554b42c158df82c712630cbe460a80f05a0ad02d97c5df8684d5c7b4d9e1dec",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:6f06ec787d98d33f",
+      "fingerprint": "6f06ec787d98d33f09c0229b3af8f4c55c03a975172baad41afd1315d055fa3d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:74abd9516b6d7ad0",
+      "fingerprint": "74abd9516b6d7ad0e65429f4a2302ce281fff4cf307392a29370788e58261e08",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:89c968590344804e",
+      "fingerprint": "89c968590344804e4d700f945f29f0b4baae509c74f0d91693e984cc72a1b2e7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:9e8488bb9df30410",
+      "fingerprint": "9e8488bb9df30410e4a9b8e9e89d6c5c043564462c53a9f69c1a4f09d5ee8a92",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:a45b54d9eff33735",
+      "fingerprint": "a45b54d9eff33735e3b3e53c464d87dc6a690a802a8a1bc225785af9cf7fac61",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:a79d5db01cde14b8",
+      "fingerprint": "a79d5db01cde14b86c6e89fe35450e739d0cd520cff67b915048eb81b5eb3f07",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:ae234159b7104ed7",
+      "fingerprint": "ae234159b7104ed710d6d02b63718933ed3ff2beb19761d50e13b81bbcac2dee",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:b0986b8d82547794",
+      "fingerprint": "b0986b8d82547794598b49a3cc42e37bc05df66d3868a81629695da03fb823a7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:b39a0e2cac3a04da",
+      "fingerprint": "b39a0e2cac3a04daa09fcec621ab7b9afe6499a179f4dcca6a9f7602086ff57c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:b520d77a774cbbd6",
+      "fingerprint": "b520d77a774cbbd6793124097b1cb3a57d24e701890858489abf803539fff309",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:b7b9a73419999af1",
+      "fingerprint": "b7b9a73419999af18194696f7e5c4a6cc8ab6a35a82f1fc872e029b3880870ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:bb89ba705bce7744",
+      "fingerprint": "bb89ba705bce7744d8bf09a85dcc15be538176d7431e9621da0d1b3eb1657586",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:c5ed8c171fe8a4ae",
+      "fingerprint": "c5ed8c171fe8a4aeb84f0f0dc51d68d61cb45d1ee43dacae011d3723657691f2",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:cfdd2658e4f18243",
+      "fingerprint": "cfdd2658e4f1824365d7507d86b6d887cd7e11ae8920a3805a8880bb1edfa79d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:d172cdfbff55f8b2",
+      "fingerprint": "d172cdfbff55f8b2373c44165832e27d1838f5547a650608d70f23c53cb42ef5",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:e196a7a042ba1a30",
+      "fingerprint": "e196a7a042ba1a30eab7a9ac07d73d5eff20b949144dea4b95be9d75bcd66178",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:e253ad16f3ae9825",
+      "fingerprint": "e253ad16f3ae98250eeddeb76e9bd41644ad4a98c31c6a272bf11033584167c6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:ec6f24d3ec2c6a14",
+      "fingerprint": "ec6f24d3ec2c6a14eb943b0a5c4bd6e83eb9669f7bbb2ee1b4fc3d3c3972672c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:ed971faa2f1766ea",
+      "fingerprint": "ed971faa2f1766ea6ad9a498d7372cfb9a2ec6d87aeafa3bade2c16f3aa3da4d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:ConditionalExpression:f5343f19b976d3eb",
+      "fingerprint": "f5343f19b976d3eb677c61fbaba589d51c59403a8fca7999d2768195e7720fa4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:04a6afaa5883b929",
+      "fingerprint": "04a6afaa5883b92918072fe4dc247ea5480b6718b5f8ed359e11a638d3c42999",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:0a144ca4681b594b",
+      "fingerprint": "0a144ca4681b594b50bbd0077fc76118479be2f07f1b20e2329becc6afaed2d1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:0a180e024367b9fa",
+      "fingerprint": "0a180e024367b9fad601d85657844938d2b1ed1d68a25c158cab55081991155f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:0feda9023b024a06",
+      "fingerprint": "0feda9023b024a06b6a1fe15797fe646b823c2b72353ceb07963109885af6dc4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:13479fbbef06f9ce",
+      "fingerprint": "13479fbbef06f9ceb86f8deffc4b185d635f7be9adf74ea6d954369cacb73963",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:237cd3194b20993e",
+      "fingerprint": "237cd3194b20993e87d64a91ad0994a15627f07bc51cc3eb485ecc52d102c55d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:23aa5a602cc25baa",
+      "fingerprint": "23aa5a602cc25baaa6fbb2bd1736fbd77b9e4810db8ab38d832bdd5c836b4dc7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:2461e12fc9ebaeb2",
+      "fingerprint": "2461e12fc9ebaeb27342e67d545afca0fc86f3734ef68574c308a2d5a108a10f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:27c2e8bd1ee7410f",
+      "fingerprint": "27c2e8bd1ee7410f8572dee00406f9d5c05cbc036b2ab889eaf92d0fb4530157",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:2a56faaa6a4583c9",
+      "fingerprint": "2a56faaa6a4583c9def0a8fc4f59f9bba3e4777612240b308e4b982fb744be5e",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:30f5d8503dbac144",
+      "fingerprint": "30f5d8503dbac1443c9700d06b33e169888396bb95c5306790ea61a93e1dcbd9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:39dea59db1197284",
+      "fingerprint": "39dea59db11972840107d8ce8ff185cb23896d8c48ac52b4302e839c95798558",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:3a7a1d2174407bfc",
+      "fingerprint": "3a7a1d2174407bfc0d14fb7c9cc24dbf713ac19f13908d9273387223bf7b6092",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:439149ea9d283971",
+      "fingerprint": "439149ea9d283971d9c530a081b13378f43c6f889690c2bf117910f725702b1d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:43930f3e7afd335e",
+      "fingerprint": "43930f3e7afd335ec06b38ba82aff41eb762844011267876b958426b91881d1d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:47760b3b214b347a",
+      "fingerprint": "47760b3b214b347a20645707ab674fcb44ff42f2311316d2d29087d32865a9ed",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:4cacd6690fb8b87d",
+      "fingerprint": "4cacd6690fb8b87d6b8ba38baa875886907a0b895908f88ff87b32916e027517",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:5b66448738161636",
+      "fingerprint": "5b66448738161636290a2a69903d84b4a24df62f54af507a961b1c4dd21e0f2b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:6a033968bbece2af",
+      "fingerprint": "6a033968bbece2af4b0b3273423133d0fc2418404ef5dcfb1ee4c86bdefa7e09",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:716ed089cdae17d2",
+      "fingerprint": "716ed089cdae17d2fd54373020293f7b50e210ad3c046e7274edd46304c53634",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:873c89583c4fc4da",
+      "fingerprint": "873c89583c4fc4daa084fdb6979ea7c55a57c339a4e0e53f8dc46b839879a84b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:a339695c80f7f918",
+      "fingerprint": "a339695c80f7f91818df212d026ed08dcb0c6c568ba7496a9003a2e86ff104d3",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:ae72bfd7348f45da",
+      "fingerprint": "ae72bfd7348f45da88b479e63a701dd963c8c07c12ee5701dad34f3d0ec9205a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:b67bcdb020f866bb",
+      "fingerprint": "b67bcdb020f866bba57748151e1468082921bb837121a479b0177365e37a1017",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:baa091e82160236c",
+      "fingerprint": "baa091e82160236cb4eceb37eba5553936d62d95a8e87cd756681f757a7a8470",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:c1ac2891f9716f48",
+      "fingerprint": "c1ac2891f9716f489bac71401f3491e91b3cd92c7e17cf5b64b0157c88f9746a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:cc321477a5a281c4",
+      "fingerprint": "cc321477a5a281c4ca5e59cd06ececf33352c62bcef6f27f3d639d1953f47338",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:d17b8188803b2f28",
+      "fingerprint": "d17b8188803b2f284cc51bef5a6b0a4d457797c1b33943694a021d0569a32533",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:d3586e7d3cbeb058",
+      "fingerprint": "d3586e7d3cbeb058ff59dd2a212bcbbaf3da3b03cfa75e72496dfd8f0329e1e8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:dcd2acd3ad7e195f",
+      "fingerprint": "dcd2acd3ad7e195fc7a87585330a2c221f6cbe833b391122e2ded6444285a555",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:dd08fe5b27a26c9a",
+      "fingerprint": "dd08fe5b27a26c9a33bb17698ace398a0dceb1f669ed11feb5a16b59d9fc6310",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:de8e5713ed856979",
+      "fingerprint": "de8e5713ed856979b059221a660070dc9f9aa54a545df25c5b198ce0b8bf0588",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress:LogicalExpression:e73ac6d3b67e5e94",
+      "fingerprint": "e73ac6d3b67e5e9491c475fd173a62f728390ff6dcd1f6148f5870202e88cbb2",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:LoopProgress",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "LoopProgress",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:08bbb1112c8f2958",
+      "fingerprint": "08bbb1112c8f29589ccc22e3e831543c2d3b3da98f067e60e9b83888f19c8bae",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:0c02447977e47c87",
+      "fingerprint": "0c02447977e47c87ee0227eb97326e011747281b1a1342d39df15121f11a64f4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:483c2a0d4a71136b",
+      "fingerprint": "483c2a0d4a71136b8ca56f4aee92fef99413c884c665ce53453fd12200bdf5c2",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:5fee9d777e131554",
+      "fingerprint": "5fee9d777e131554885b106a32d1bcb8af2a05b2a0b3edbda058f5789c52b143",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:78a99ac708c3c8ef",
+      "fingerprint": "78a99ac708c3c8efbd1c954225c5697a0831a1f1be50034fbb331f5ecaeccf75",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:7da807026f4300af",
+      "fingerprint": "7da807026f4300af37820735ed09a1c55b4e809f55aa8caa97de41fb9f5399f9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:ConditionalExpression:c563772f097f6279",
+      "fingerprint": "c563772f097f62794a7d41ead2b4449b11e4d9bea820acc14a83f0e6b5e7d6bf",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:01880df3b388013b",
+      "fingerprint": "01880df3b388013b290168465e919486c43c311e552bca8cba690eba0e7aa028",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:18a9346216b46224",
+      "fingerprint": "18a9346216b46224ef71e0ba98c2b4a7b9d3116250add15fe713cd1a9e2d6e46",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:2628084a088aae9e",
+      "fingerprint": "2628084a088aae9e31b0b6d3a3fe200b78572a384aa6efb2be4587678327179d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:46499c78774d2dca",
+      "fingerprint": "46499c78774d2dcab1a62282edfcd9a021e49ad62cde961ea8975c5dc6554047",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:4a41a08aa5e9d98b",
+      "fingerprint": "4a41a08aa5e9d98b5a7e2c808434692be0482e9ae384ea950225e4ee5e7c5f6c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:4bdf29e426009e04",
+      "fingerprint": "4bdf29e426009e04e0ffcbd95407336d5d742fb9dfed44671b3285c783e70ba8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:4c9131aab2885e90",
+      "fingerprint": "4c9131aab2885e90f85d0d434e678543d66c8b52d47fc482ad0d62f5b3a3c2bb",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:4ce1b414226011ad",
+      "fingerprint": "4ce1b414226011ad2417964082b4f77ccf47b76097e4cffe6ea734b3839feb86",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:5df031ffc623cf2a",
+      "fingerprint": "5df031ffc623cf2a9db1e45ee697fba308fb542143ea2c02d91953dec80874df",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:66da66b8fd103848",
+      "fingerprint": "66da66b8fd103848e4851a606d72fd2bba68d4a7db7c561bdea3c29bbcc9a9e8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:6e468dc0873a111c",
+      "fingerprint": "6e468dc0873a111ca7e606c8a47f8ba4accd26b386f68b5696e9a4b08c4b8356",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:8a79256ad18a0706",
+      "fingerprint": "8a79256ad18a070658c3f16ae7e19881c1f9559e9c02453c1a3cba312bde4f13",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:98c722a3d5ec0218",
+      "fingerprint": "98c722a3d5ec021848a78020b4b18434c03e6b9a15a885240d66e401bd836cfc",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:9c51121bf0fd5abf",
+      "fingerprint": "9c51121bf0fd5abf5139b812b0052da3eccd4590a88e0b9e0a2ca37ee29479f9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:9c5cb236fdf13dfb",
+      "fingerprint": "9c5cb236fdf13dfb0c7ea2a21c6868ae234556c57a32375890f80c2836e1d640",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:9fc82e9b8a081ba0",
+      "fingerprint": "9fc82e9b8a081ba05da0ef88b55cc06193bea947abf584757238227a27b5921d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:a4800a7ba8a7cbe3",
+      "fingerprint": "a4800a7ba8a7cbe34379490a3762e6b16556fa62ad85630a4b115d05d31cac31",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:e99a9f21f2fc0200",
+      "fingerprint": "e99a9f21f2fc0200ac8b4909624f0f10f615ad2d8d6cd9056380b3084f164df1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:f2675ba1a5fed5d1",
+      "fingerprint": "f2675ba1a5fed5d1ef81e9dd4bf33427e0f98b461ff0f275312d51ffc5070935",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:f5f45ab2b3600f8f",
+      "fingerprint": "f5f45ab2b3600f8f5b320c155e53bd9a8bcdf47ef4dfbd64d2f07f7b5c6fc619",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:fcdf7b8a4057bd5e",
+      "fingerprint": "fcdf7b8a4057bd5ef955d03e831ac8104ccb9079d7aefeac1cbb8d25873be8a6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:IfStatement:fdb07280987ccf9b",
+      "fingerprint": "fdb07280987ccf9bb8992f69371249d49eea0000a73915c21a287c58411180c6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:08c285ea0c395c04",
+      "fingerprint": "08c285ea0c395c0443f67cf25096b70c4fb92aae1bbd8fcb85b3a94280a42f27",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:0b20eca55b1633ed",
+      "fingerprint": "0b20eca55b1633edd518bbd2a708957071e9d35309a8ae370c5a50b95a56d7e7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:149d107a23b1f008",
+      "fingerprint": "149d107a23b1f0086c8a8d8294c654204264d64c23105d0fa5707eeb91d3988d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:1bc950b2b13f0bcf",
+      "fingerprint": "1bc950b2b13f0bcf10a6394aacea7aec140f0e967f8dfd3da8afc371c79cd942",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:25d0d34e542b2ca0",
+      "fingerprint": "25d0d34e542b2ca0361ce5abeb6408b6ae63f2064b653ad5dc93243f2dc05cbd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:25e8b937457a0016",
+      "fingerprint": "25e8b937457a0016827816a978c14768d7c20da0c511680aba4dbede8c4f13fb",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:268ea71b6804ea2a",
+      "fingerprint": "268ea71b6804ea2a62d228100273b776cd0744e179127a318ed2abf967bacd49",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:27378254b695840d",
+      "fingerprint": "27378254b695840dc280ef341967370b12551c0427f522842e67883c89f139ab",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:314d668601943d43",
+      "fingerprint": "314d668601943d43f8adff7324e14c8809b899e469b0ddcd21ec204430fa3dfd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:34a4a65c799d3436",
+      "fingerprint": "34a4a65c799d343607291d1e40c087ecdcf1dd4ea145fa42e5fd2d279e001996",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:354dfb2517a90aff",
+      "fingerprint": "354dfb2517a90aff69f921b8909f05a0597ed542aae8b845eb31d99755ee4bdd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:5912941313918264",
+      "fingerprint": "59129413139182648fec08fd2a8f657b8c10dd63bc8ca194ffa72226c3757811",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:5cca2b022bbdb0f4",
+      "fingerprint": "5cca2b022bbdb0f4b54e237632ef159a03f197795422860d9fe7ab906d7f6257",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:705be0719f0c9289",
+      "fingerprint": "705be0719f0c928931e2404b71f9ff1845d71eedfa7c1e7b0cfc10241c89d48d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:7729033b67f931a8",
+      "fingerprint": "7729033b67f931a80e48388335dfd904afa1bb969a29ad498000330bd8966681",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:7ae5b26572b7e26a",
+      "fingerprint": "7ae5b26572b7e26a1765a3d4bfceb27ebd29bbd2a7bd007d85dd711dccca6c59",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:7b709ed559cc2300",
+      "fingerprint": "7b709ed559cc230053c29158d42d1849472286677960d79223da57c74aabf6b1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:7c2be0e56d42a789",
+      "fingerprint": "7c2be0e56d42a78943769c5ad600ce4d49804b58482ca7609300c3ced3f0d0c6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:874fd1d5ad0e48af",
+      "fingerprint": "874fd1d5ad0e48afe2b0346c79ff98d2a699c7da291642d5db6722c052cba94a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:8e8b776c7ab34376",
+      "fingerprint": "8e8b776c7ab34376b224046f5615686d7d2b63e4528d460cb912874ab9d3a6ef",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:8f70419201f42c06",
+      "fingerprint": "8f70419201f42c06a98f15a5bb711e773898fcb7fbe515e3fab1494bb3a85237",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:95081b4c87a5a6f1",
+      "fingerprint": "95081b4c87a5a6f1f62684a0e86f9573f6a8cfee70feeb2058e7dee275c905b1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:9754d5650cdcd3fb",
+      "fingerprint": "9754d5650cdcd3fbcbd6007a86da3b63360f668c5a877f7ba946bb39c12715d1",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:988ea1546f4d9ec5",
+      "fingerprint": "988ea1546f4d9ec5e4223eb995215abbbe75257fbf4746c5556724a732d6d41a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:a1ee2ca94946b643",
+      "fingerprint": "a1ee2ca94946b6431f56f14ca08210ab5761cebd29f4d7ad94da6d2adf9e7029",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:bba702c371b6ebfa",
+      "fingerprint": "bba702c371b6ebfa8f3a61de0478a90b1dad4f95cfd579f124ef9fedd892f667",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:d5d6f3604c38eb01",
+      "fingerprint": "d5d6f3604c38eb0133eca2f7b38cf44a9b956696bb4182f3432c1f50776a0226",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:d7766511a19baf26",
+      "fingerprint": "d7766511a19baf26a0ce2fbdcdbb52a741a7509d44c50c185b345430384b705a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:e518e2059b68ed3b",
+      "fingerprint": "e518e2059b68ed3b09bbf9558308976d8893c797e4631cdffc720ef0e74ae714",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/LoopProgress/LoopProgress.tsx:module:LogicalExpression:fc4f366f9474bd2a",
+      "fingerprint": "fc4f366f9474bd2a8ecd7c8cc013500ca7bfc0329394ba424f6f16bb0fc4871a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/LoopProgress/LoopProgress.tsx:module",
+        "path": "dashboard/src/oven/LoopProgress/LoopProgress.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/ModelLabView/ModelLabView.tsx:ModelLabView:ConditionalExpression:0cf16e9ef3eb0f20",
       "fingerprint": "0cf16e9ef3eb0f20df2eee9567dd9b1de0dd99a8d02c8e6a90d6827352213c01",
       "classification": "closed-shared-adapter",
@@ -20350,6 +22922,18 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:ConditionalExpression:55c1394109b7a842",
+      "fingerprint": "55c1394109b7a8426b6a2d930954d68bbeaf8b636114e5a66fb521fe8ccbf594",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:ConditionalExpression:5dfdee0450330628",
       "fingerprint": "5dfdee0450330628ab65957625567c3afaca410991e56db8f1213af4b2f8737d",
       "classification": "closed-shared-adapter",
@@ -20494,8 +23078,44 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:IfStatement:208b0b1bd81f7612",
+      "fingerprint": "208b0b1bd81f7612ef069030a73d6d0aff9582b980bce5223524143907973c76",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:IfStatement:2571c45285ee824f",
       "fingerprint": "2571c45285ee824f6595db30dd076eedc2270a97117e3b73f4d1e655aa230f16",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:IfStatement:caeb039ea4f6791f",
+      "fingerprint": "caeb039ea4f6791f159271f7a96bb07c38208efa4f2190f40b72bc9ce55b805d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:IfStatement:e2aa5d1b92fef634",
+      "fingerprint": "e2aa5d1b92fef634b51b1ec18e45917de276da135714608465b39f269513875d",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -20566,6 +23186,30 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:LogicalExpression:9964055fa79a386b",
+      "fingerprint": "9964055fa79a386b551c7da096df11f8596d5bce286584937fa920d7d9787409",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:LogicalExpression:a87e03538cd4f2bf",
+      "fingerprint": "a87e03538cd4f2bfb0ae918f31002c2368efee9fb6f7102d238f3815b5282c58",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:module",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:module:LogicalExpression:ea42251c21c8f12b",
       "fingerprint": "ea42251c21c8f12bd5b8b2f9a83b9517725353353a11903c146eb9d2b6b83f57",
       "classification": "closed-shared-adapter",
@@ -20616,6 +23260,18 @@
     {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:ConditionalExpression:7f382864dfd4c1e1",
       "fingerprint": "7f382864dfd4c1e1fa3641a1c0fe56fb85679951b6d907d61a67b109b3092755",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:OvenNode",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "OvenNode",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:ConditionalExpression:97ee8237c820c21d",
+      "fingerprint": "97ee8237c820c21da325b35d2951fdd042abc410213cf0130e8d053a0e271b35",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -20698,6 +23354,30 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:2830df900ad80152",
+      "fingerprint": "2830df900ad801527a99270e71bd3371eda95100d200cdceed02d036bcff3fda",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:OvenNode",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "OvenNode",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:3964d6fb6bcb9769",
+      "fingerprint": "3964d6fb6bcb9769d7a4339a18ee4b3dd780fb946f1f50046ea2d1a3d6f01d73",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenNode.tsx:OvenNode",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "OvenNode",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:5152465376a9c911",
       "fingerprint": "5152465376a9c9114826b4c7e2eb3409a1b1d25cf6d56369894f8a0aae5fb147",
       "classification": "closed-shared-adapter",
@@ -20746,8 +23426,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:895670383b9d4c54",
-      "fingerprint": "895670383b9d4c54429af60e205b0ef2490c6f1e3502a270ffd7f50b255379ea",
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:8bcb1228c6d36d4c",
+      "fingerprint": "8bcb1228c6d36d4cf5bca470d5a7b14762351c4ea6358e50a33afb37c88b1181",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -20770,24 +23450,24 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:bcf69466deb7cdfa",
-      "fingerprint": "bcf69466deb7cdfaac08f9b45a42e2c6d5cf04d9f6140d03abdb60b53b8d2024",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "LogTable",
-        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
-        "export": "OvenNode",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f2b611589fe81b52",
       "fingerprint": "f2b611589fe81b5225465b1cb3472de837c87704c279a4a1bedc6e5eb9d65674",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
         "ownerTarget": "WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/OvenNode.tsx",
+        "export": "OvenNode",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f4e0aadda15a4518",
+      "fingerprint": "f4e0aadda15a451829446891d53b67dd57f9ed7112749db3a292b3027af08488",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "LogTable",
         "path": "dashboard/src/oven/runtime/OvenNode.tsx",
         "export": "OvenNode",
         "version": "burnlist-console-oven-behavior@1"
@@ -20998,6 +23678,18 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:ConditionalExpression:388d2f159fb9a778",
+      "fingerprint": "388d2f159fb9a778c674171387a5aec00780938d9d8afe32bbe9a40a27fbe31d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
+        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
+        "export": "OvenRuntime",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:ConditionalExpression:40f55403640c6433",
       "fingerprint": "40f55403640c643392f586da7109c6fbdca82c680f8bf28cb7c98b9ab2e08cf0",
       "classification": "closed-shared-adapter",
@@ -21106,18 +23798,6 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:290e21b61bf96d76",
-      "fingerprint": "290e21b61bf96d769b23e5757febc95ce96e51be2d93bd2143ecfde9cfa2888d",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
-        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
-        "export": "OvenRuntime",
-        "version": "burnlist-console-oven-behavior@1"
-      }
-    },
-    {
       "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:2e1a9901af757e60",
       "fingerprint": "2e1a9901af757e60e55fea0bf73ccaa4c82df737d8f8a5ac76ffea035c3cd209",
       "classification": "closed-shared-adapter",
@@ -21132,6 +23812,30 @@
     {
       "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:3694c58514d95f39",
       "fingerprint": "3694c58514d95f39eb9b711caa6f81d3ef6b8185c681ba0d85473d7057c268eb",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
+        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
+        "export": "OvenRuntime",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:4774ac1c6182af1f",
+      "fingerprint": "4774ac1c6182af1fc9bee0c0eb486a45ded6a5b7d26c46ed275a5f07b7c40920",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
+        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
+        "export": "OvenRuntime",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:584c6e5d0df022ec",
+      "fingerprint": "584c6e5d0df022ec762381a88f9cf1073813f434b34e26824e287e41ac3f546c",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -21192,6 +23896,30 @@
     {
       "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:9deb70aff1bf0e96",
       "fingerprint": "9deb70aff1bf0e960dde7b12a1c8cbc3d13eb22f7f4d719d7ff6442106da6a79",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
+        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
+        "export": "OvenRuntime",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:c78e7750854385e7",
+      "fingerprint": "c78e7750854385e71f3804aac0bf69547a04c94b869b35e866fef8686703b1d0",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime",
+        "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
+        "export": "OvenRuntime",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/OvenRuntime.tsx:OvenRuntime:LogicalExpression:c9ec1e38eb1097d2",
+      "fingerprint": "c9ec1e38eb1097d20921218c63f7ee0d2681d89ebf0cc0660d3ff68cce4be868",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -21448,6 +24176,30 @@
     {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:ChecklistWidgetAdapter:IfStatement:b30e9c23f2cff360",
       "fingerprint": "b30e9c23f2cff360fd80e8102eceea92728417b01c875e55199662e9c51d481a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:ChecklistWidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "ChecklistWidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:ChecklistWidgetAdapter:IfStatement:b9e39e47912da04e",
+      "fingerprint": "b9e39e47912da04efbe701f805c055453a7d406ce242652363065001cb6f29be",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:ChecklistWidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "ChecklistWidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:ChecklistWidgetAdapter:IfStatement:f9efc150a1ea11fa",
+      "fingerprint": "f9efc150a1ea11fac9b4887eff7dadd684459f0edc2f8457ee132d7ae311abcb",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -25827,7 +28579,7 @@
     },
     {
       "id": "surface:dashboard/src/App.tsx",
-      "fingerprint": "80bd139be0d20533982b6ac36b8171253634915410a7c01eac69bd54ece9d8e4",
+      "fingerprint": "080397df0fba73862698bb023ad8077a37c1a3ed9e3cca70f190346e4d2bbcab",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -25859,7 +28611,7 @@
     },
     {
       "id": "surface:dashboard/src/components/CustomOvenView/CustomOvenView.tsx",
-      "fingerprint": "25890433b6d74549638c1abc5e9ff7780c945e152958a93c3bd6d04c9cb7b1fd",
+      "fingerprint": "50662dc969a5935aa0bb5a58f31fbabbf345f99c7528cf42fcf3a6ef623bf729",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -25987,7 +28739,7 @@
     },
     {
       "id": "surface:dashboard/src/lib/hrefs.ts",
-      "fingerprint": "857270689d84805e5f77421bef5e67a4c83a3ec0cf813849ee2964b27e9fef6b",
+      "fingerprint": "012245e959c91a44299f58a02f5edaa455a03bc9f1ec4136101635ff9b194532",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -26175,6 +28927,22 @@
       "blocker": {
         "burnlistItem": "B17",
         "condition": "terminal theme equivalence for checklist:region:1:kind:checklist-burn-panel"
+      }
+    },
+    {
+      "id": "theme:checklist:region:1:kind:checklist-current",
+      "fingerprint": "785addb3437e213f01165aedbf760d9a34d0a68cf841e56560c98e9035d8dcad",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/oven/runtime/theme-registry.ts",
+        "export": "checklist",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal theme equivalence for checklist:region:1:kind:checklist-current"
       }
     },
     {

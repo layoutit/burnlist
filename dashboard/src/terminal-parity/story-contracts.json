@@ -332,6 +332,278 @@
       ]
     },
     {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#BranchAndCombine",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "BranchAndCombine",
+            "sourceFingerprint": "dbad38ec142358dca0f6c29e52444569895991870118b7605bd3422188a11f87",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#BranchAndCombineNarrow",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "BranchAndCombineNarrow",
+            "sourceFingerprint": "5f7b98a45f4a285fb8066e85b7019d5daee80ee68dcebddeb4cfd027dabd5b66",
+            "selection": "initial",
+            "content": "24px"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#Compact",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Compact",
+            "sourceFingerprint": "e10df62ff998b816914e1c7c60f69ed465a1be56d47ed28311e1cfbdc8ac9baf",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#CompactBranchWithLegend",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "CompactBranchWithLegend",
+            "sourceFingerprint": "b7a35770228634c9f90e894da8d77fc9a04dbbf07cfc14c4c021bc8f23ed4928",
+            "selection": "initial",
+            "content": "grid"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#CompactLabeledBranchWithLegend",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "CompactLabeledBranchWithLegend",
+            "sourceFingerprint": "76a113403bac34655ef526d59d34d95e626703d6d821eb37da0a71e176f2e080",
+            "selection": "initial",
+            "content": "grid | outcomes"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#CompactWithLegend",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "CompactWithLegend",
+            "sourceFingerprint": "d669cf2abd8ce346709025c999f07caa1f71d6edf470462e59dce830c3e692b2",
+            "selection": "initial",
+            "content": "grid"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#CompactWithOutcomeLabels",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "CompactWithOutcomeLabels",
+            "sourceFingerprint": "4acd9a9c7ff8b753da9c85acc3d74ebc0505f541bd604407be4fa4dbc9f70c52",
+            "selection": "initial",
+            "content": "outcomes"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#Converged",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Converged",
+            "sourceFingerprint": "da734f3151c9aed4e1558daf1e16999cf4fba41f10c970be2263a34f9425a15d",
+            "selection": "initial",
+            "content": "converged | verify | pass | review | approve"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#CorruptProjection",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "CorruptProjection",
+            "sourceFingerprint": "ef96154f201075cf295d6b9fba8158d5b2df17d4f730ab2913599f919e3e4e8c",
+            "arg.diagnostic": "corrupt",
+            "arg.message": "The journal could not be verified. The last trusted projection is retained.",
+            "selection": "initial",
+            "content": "corrupt | The journal could not be verified. The last trusted projection is retained."
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#ImplementAndVerify",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "ImplementAndVerify",
+            "sourceFingerprint": "37e1e3b60ea8686b4c7d98003c07dbb36bae805ffecd0bcf42437ee081dc8b0d",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#Legend",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Legend",
+            "sourceFingerprint": "8a036b20f464c63ca72cc0ee2f69de1388deb6d7359dded15d50f96c82ae8ee3",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#MetricGate",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "MetricGate",
+            "sourceFingerprint": "ef40f3b19fc05a36167e628c599d8b52b1922caa289a9f793cf2148db83b2a69",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#NarrowResponsive",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "NarrowResponsive",
+            "sourceFingerprint": "b49d9716dbb560364d8bc9343427975482bb28481c8aa0c2c3a7de3ab1228565",
+            "selection": "initial",
+            "content": "24px"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#NeedsHuman",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "NeedsHuman",
+            "sourceFingerprint": "0df4881818ac23b226f46899753e9fb2f527b37b2170073a335412bdc7a48469",
+            "selection": "initial",
+            "content": "needs-human | review | escalated | Reviewer evidence could not establish convergence."
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#Prepared",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Prepared",
+            "sourceFingerprint": "2d29736a5d078d6f28298a26f2d8f5f97b78ca1c818c06b92e1b9665fb652919",
+            "selection": "initial",
+            "content": "prepared | implement"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#RepairCycle",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "RepairCycle",
+            "sourceFingerprint": "7cfda6a2eea448f9fda3298b59d3d8312a4d23fd26330ac32cadb12e646c1d9e",
+            "selection": "initial",
+            "content": "implement | verify | fail | check-failed | Repository verification requested a repair."
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#Running",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "Running",
+            "sourceFingerprint": "1f4765bc8bf00b746585b97c2a2801943095aa8efd9dadca2aaa2b2c1ab53538",
+            "selection": "initial",
+            "content": "component:LoopGraph"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
+      "id": "dashboard/src/components/LoopGraph/LoopGraph.stories.tsx#WithLegend",
+      "states": [
+        {
+          "id": "state-initial",
+          "sourceState": {
+            "storyExport": "WithLegend",
+            "sourceFingerprint": "7650fa75b4185ae1b87e7d6fff2798a76f72664b3d471bde6db53d7a39f9da11",
+            "selection": "initial",
+            "content": "grid"
+          },
+          "actions": []
+        }
+      ]
+    },
+    {
       "id": "dashboard/src/layout/Alert/Alert.stories.tsx#Playground",
       "states": [
         {

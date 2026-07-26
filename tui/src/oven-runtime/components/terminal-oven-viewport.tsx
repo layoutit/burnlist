@@ -8,7 +8,8 @@ import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
 import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
 import { differentialKpiModel, TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
-import { TerminalChecklistBurnPanel, TerminalChecklistEventCards, TerminalChecklistLedger } from "./checklist-components";
+import { TerminalChecklistBurnPanel, TerminalChecklistCurrent, TerminalChecklistEventCards, TerminalChecklistLedger, TerminalChecklistWorkspace } from "./checklist-components";
+import { TerminalLoopGraph, TerminalLoopProgress } from "./loop-components";
 import { TerminalModelLabView } from "./model-lab-components";
 import { fitTerminalText } from "../../terminal-text";
 import { useTerminalPalette } from "../../terminal-accessibility";
@@ -31,7 +32,11 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
   "diff-card": TerminalStreamingDiff,
   "checklist-ledger": TerminalChecklistLedger,
   "checklist-burn-panel": TerminalChecklistBurnPanel,
+  "checklist-current": TerminalChecklistCurrent,
+  "checklist-workspace": TerminalChecklistWorkspace,
   "checklist-event-cards": TerminalChecklistEventCards,
+  "loop-graph": TerminalLoopGraph,
+  "loop-progress": TerminalLoopProgress,
   "model-lab-view": TerminalModelLabView,
 });
 
@@ -74,7 +79,11 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
     const message = prepared.diagnostics.at(-1)?.message ?? prepared.status;
     return <box width={viewport.width} height={viewport.height} overflow="hidden"><text>{fitTerminalText(message, viewport.width)}</text></box>;
   }
-  const projected = projectComponentLayout(prepared.ir.root, viewport.width, prepared.payload, prepared.state.controls), layout = layoutTerminalNodes(projected.nodes, viewport, prepared.state.focusId, footerHeight);
+  const projected = projectComponentLayout(prepared.ir.root, viewport.width, prepared.payload, prepared.state.controls);
+  const expandedEventPath = prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:"))
+    ? projected.roots.find((root) => root.node.kind === "checklist-event-cards")?.path
+    : undefined;
+  const layout = layoutTerminalNodes(projected.nodes, viewport, expandedEventPath ?? prepared.state.focusId, footerHeight);
   const roots = new Map(projected.roots.map((root) => [root.path, root])), componentPaths = [...roots.keys()];
   return <box width={viewport.width} height={viewport.height} position="relative" overflow="hidden">
     {layout.cells.map((cell) => {

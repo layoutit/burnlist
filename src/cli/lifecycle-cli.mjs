@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
-import { homedir } from "node:os";
+import { readdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   LIFECYCLES,
@@ -19,6 +18,15 @@ import {
 import { repoKey, readRegistry } from "../server/registry.mjs";
 import { atomicDirectory, safeStat } from "../server/fs-safe.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
+import {
+  dashboardHandoff,
+  dashboardRuntime,
+  dashboardUrl,
+} from "./actionable-output.mjs";
+import {
+  recommendOperationalProfile,
+  renderOperationalRecommendation,
+} from "../operations/recommendation.mjs";
 
 const MAX_RESERVATION_ATTEMPTS = 1000;
 
@@ -28,11 +36,11 @@ function fail(message, code = 1) {
 }
 
 function usage() {
-  fail("Usage: burnlist new [--repo <path>] | burnlist show <id>[#<item>] [--repo <path>] | burnlist ready|start|close <id> [--repo <path>] | burnlist burn <id> <item> [--check] [--repo <path>]", 2);
+  fail("Usage: burnlist new [--repo <path>] | burnlist show <id>[#<item>] [--repo <path>] | burnlist recommend <id>#<item> [--json] [--repo <path>] | burnlist ready|start|close <id> [--repo <path>] | burnlist burn <id> <item> [--check] [--repo <path>]", 2);
 }
 
 function parseArgs(tokens) {
-  const opts = { check: false, repo: null, positionals: [] };
+  const opts = { check: false, json: false, repo: null, positionals: [] };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--repo") {
@@ -42,6 +50,8 @@ function parseArgs(tokens) {
       index += 1;
     } else if (token === "--check") {
       opts.check = true;
+    } else if (token === "--json") {
+      opts.json = true;
     } else if (token.startsWith("--")) {
       throw new Error(`Unknown option: ${token}`);
     } else {
@@ -125,6 +135,13 @@ function create(repoRoot) {
       console.log(id);
       console.log(planPath);
       console.log(`${repoKey(canonicalRoot)}/${id}`);
+      const runtime = dashboardRuntime();
+      console.log(dashboardHandoff(
+        canonicalRoot,
+        dashboardUrl(canonicalRoot, { burnlistId: id, runtime }),
+        `edit ${JSON.stringify(join(folder, "goal.md"))} and ${JSON.stringify(planPath)}, then run burnlist ready ${id} --repo ${JSON.stringify(canonicalRoot)}`,
+        { runtime },
+      ));
       return;
     } catch (error) {
       if (error?.code === "ENOTEMPTY" || error?.code === "EEXIST") continue;
@@ -218,19 +235,36 @@ function show(reference, opts) {
   }
   const handle = `${repoKey(repoRoot)}/${parsed.id}${parsed.item ? `#${parsed.item}` : ""}`;
   console.log(`Copy handle: ${handle}`);
-  const globalServerPath = join(homedir(), ".burnlist", "server.json");
-  try {
-    if (existsSync(globalServerPath)) {
-      const server = JSON.parse(readFileSync(globalServerPath, "utf8"));
-      process.kill(server.pid, 0);
-      const base = String(server.url).endsWith("/") ? server.url : `${server.url}/`;
-      console.log(`URL: ${base}r/${handle}`);
-    }
-  } catch {
-    // A stale or malformed global dashboard record must not affect show.
-  }
+  const runtime = dashboardRuntime();
+  console.log(`URL: ${dashboardUrl(repoRoot, { burnlistId: parsed.id, runtime })}${parsed.item ? `#${encodeURIComponent(parsed.item)}` : ""}`);
   console.log(`Path: ${planPath}`);
   console.log(`Title: ${plan.title}`);
+}
+
+function recommend(reference, opts) {
+  const parsed = parseReference(reference);
+  if (!parsed.item) throw new Error("recommend requires <id>#<item>.");
+  const repoRoot = realpathSync(resolveRepo(opts));
+  const { planPath } = findPlan(repoRoot, parsed.id);
+  const plan = parsePlan(planPath);
+  const item = plan.items.find((entry) => entry.id === parsed.item);
+  if (!item) throw new Error(`Active item ${parsed.item} was not found.`);
+  const recommendation = recommendOperationalProfile(item);
+  if (opts.json) console.log(JSON.stringify({ itemRef: `${parsed.id}#${parsed.item}`, ...recommendation }));
+  else {
+    console.log(renderOperationalRecommendation(`${parsed.id}#${parsed.item}`, recommendation));
+    const loopRef = recommendation.loop === "direct" ? null : `loop:builtin:${recommendation.loop}`;
+    const next = loopRef
+      ? `burnlist loop assign item:${parsed.id}#${parsed.item} ${loopRef} --repo ${JSON.stringify(repoRoot)}`
+      : `burnlist show ${parsed.id}#${parsed.item} --repo ${JSON.stringify(repoRoot)}`;
+    const runtime = dashboardRuntime();
+    console.log(dashboardHandoff(
+      repoRoot,
+      dashboardUrl(repoRoot, { burnlistId: parsed.id, runtime }),
+      next,
+      { runtime },
+    ));
+  }
 }
 
 async function main() {
@@ -239,17 +273,33 @@ async function main() {
   const opts = parseArgs(tokens);
   if (verb === "new" && opts.positionals.length === 0) return create(resolveRepo(opts));
   if (verb === "show" && opts.positionals.length === 1) return show(opts.positionals[0], opts);
+  if (verb === "recommend" && opts.positionals.length === 1) return recommend(opts.positionals[0], opts);
   if (verb === "ready" && opts.positionals.length === 1) {
     const id = assertValidBurnlistId(opts.positionals[0]);
-    return readyLifecycle(resolveRepo(opts), id);
+    const repoRoot = resolveRepo(opts);
+    const result = readyLifecycle(repoRoot, id);
+    const runtime = dashboardRuntime();
+    console.log(dashboardHandoff(repoRoot, dashboardUrl(repoRoot, { burnlistId: id, runtime }),
+      `burnlist start ${id} --repo ${JSON.stringify(repoRoot)}`, { runtime }));
+    return result;
   }
   if (verb === "start" && opts.positionals.length === 1) {
     const id = assertValidBurnlistId(opts.positionals[0]);
-    return startLifecycle(resolveRepo(opts), id);
+    const repoRoot = resolveRepo(opts);
+    const result = startLifecycle(repoRoot, id);
+    const runtime = dashboardRuntime();
+    console.log(dashboardHandoff(repoRoot, dashboardUrl(repoRoot, { burnlistId: id, runtime }),
+      `burnlist show ${id} --repo ${JSON.stringify(repoRoot)}`, { runtime }));
+    return result;
   }
   if (verb === "close" && opts.positionals.length === 1) {
     const id = assertValidBurnlistId(opts.positionals[0]);
-    return closeLifecycle(resolveRepo(opts), id);
+    const repoRoot = resolveRepo(opts);
+    const result = closeLifecycle(repoRoot, id);
+    const runtime = dashboardRuntime();
+    console.log(dashboardHandoff(repoRoot, dashboardUrl(repoRoot, { burnlistId: id, runtime }),
+      `burnlist new --repo ${JSON.stringify(repoRoot)}`, { runtime }));
+    return result;
   }
   if (verb === "burn" && opts.positionals.length === 2) {
     const id = assertValidBurnlistId(opts.positionals[0]);

@@ -42,7 +42,10 @@ test("register lists a root and is idempotent", () => {
   mkdirSync(root);
   const canonicalRoot = realpathSync(root);
   try {
-    assert.match(run(home, "register", root), new RegExp(`Registered ${canonicalRoot}`));
+    const registered = run(home, "register", root);
+    assert.match(registered, new RegExp(`Registered ${canonicalRoot}`));
+    assert.match(registered, /Dashboard: http:\/\/127\.0\.0\.1:4510\//u);
+    assert.match(registered, /Next: burnlist --scan-root/u);
     assert.match(run(home, "roots"), new RegExp(`empty\\s+${canonicalRoot}`));
     assert.match(run(home, "register", root), new RegExp(`Already registered ${canonicalRoot}`));
   } finally {
@@ -92,6 +95,8 @@ test("init creates lifecycle folders, ignores them, and registers the repo", () 
     assert.match(exclude(repo), /^\/\.local\/$/mu);
     assert.match(run(home, "roots"), new RegExp(`empty\\s+${canonicalRepo}`));
     assert.match(first, /Ignored \/notes\/burnlists\/ and \/\.local\/ locally\./u);
+    assert.match(first, /Dashboard: http:\/\/127\.0\.0\.1:4510\//u);
+    assert.match(first, /Next: burnlist new --repo/u);
     run(home, "init", repo);
     assert.equal(exclude(repo).split("\n").filter((line) => line === "/notes/burnlists/").length, 1);
     assert.equal(exclude(repo).split("\n").filter((line) => line === "/.local/").length, 1);

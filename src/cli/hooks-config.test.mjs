@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { HOOK_MARKER, hookCapability, hookConfigStatus, managedHookEntry, updateHookConfigs } from "./hooks-config.mjs";
+import { HOOK_MARKER, hookCapability, hookConfigStatus, managedHookEntry,
+  managedObservationHookEntry, updateHookConfigs } from "./hooks-config.mjs";
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "burnlist-hooks-"));
@@ -25,7 +26,9 @@ test("hook install merges existing hooks, is idempotent, and uninstall is owners
     const installed = JSON.parse(readFileSync(configPath, "utf8"));
     assert.equal(installed.keep, true);
     assert.equal(installed.hooks.PreToolUse[0].hooks[0].command, "user-hook");
-    assert.equal(installed.hooks.PreToolUse.at(-1).matcher, "Edit|Write|MultiEdit|NotebookEdit");
+    assert.equal(installed.hooks.PreToolUse.find((entry) =>
+      entry.hooks[0].command.includes("streaming-diff")).matcher, "Edit|Write|MultiEdit|NotebookEdit");
+    assert.deepEqual(installed.hooks.SubagentStart, [managedObservationHookEntry("claude", "SubagentStart")]);
     assert.equal(JSON.stringify(installed).includes(HOOK_MARKER), false);
     updateHookConfigs({ repoRoot: context.root, agents: ["claude"], install: true });
     assert.equal(JSON.parse(readFileSync(configPath, "utf8")).hooks.PreToolUse.filter((entry) => entry.hooks[0].command === "burnlist streaming-diff hook --agent claude --event pre").length, 1);
@@ -34,6 +37,7 @@ test("hook install merges existing hooks, is idempotent, and uninstall is owners
     assert.equal(removed.keep, true);
     assert.deepEqual(removed.hooks.PreToolUse, [{ matcher: "Bash", hooks: [{ type: "command", command: "user-hook" }] }]);
     assert.doesNotMatch(JSON.stringify(removed), /streaming-diff hook/u);
+    assert.doesNotMatch(JSON.stringify(removed), /hooks observe/u);
   } finally { context.cleanup(); }
 });
 
@@ -55,7 +59,8 @@ test("Codex install contains only its supported hook events", () => {
   try {
     const path = join(context.root, ".codex", "hooks.json");
     updateHookConfigs({ repoRoot: context.root, agents: ["codex"], install: true });
-    assert.deepEqual(Object.keys(JSON.parse(readFileSync(path, "utf8")).hooks).sort(), ["PostToolUse", "PreToolUse", "SessionStart"]);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(path, "utf8")).hooks).sort(),
+      ["PostToolUse", "PreToolUse", "SessionEnd", "SessionStart", "Stop", "SubagentStart", "SubagentStop"]);
   } finally { context.cleanup(); }
 });
 
@@ -80,8 +85,10 @@ test("Codex reinstall removes stale owned unsupported events while preserving us
     updateHookConfigs({ repoRoot: context.root, agents: ["codex"], install: true });
     const reinstalled = JSON.parse(readFileSync(path, "utf8"));
     assert.deepEqual(reinstalled.hooks.PostToolUseFailure, [userHook]);
-    assert.deepEqual(Object.keys(reinstalled.hooks).sort(), ["PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionStart"]);
-    for (const event of ["SessionStart", "PreToolUse", "PostToolUse"]) {
+    assert.deepEqual(Object.keys(reinstalled.hooks).sort(),
+      ["PostToolUse", "PostToolUseFailure", "PreToolUse", "SessionEnd", "SessionStart",
+        "Stop", "SubagentStart", "SubagentStop"]);
+    for (const event of ["SessionStart", "PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop"]) {
       assert.equal(reinstalled.hooks[event].some((entry) => entry.hooks[0].command.includes("--agent codex")), true);
     }
   } finally { context.cleanup(); }

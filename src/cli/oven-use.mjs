@@ -28,6 +28,17 @@ function adoptedOutput(saved, path) {
   return `Adopted Oven ${saved.id}@${saved.version} at ${path}`;
 }
 
+function noExampleAdoptionOutput(saved, targetPath, repoRoot, catalogEntry) {
+  const adopted = `${adoptedOutput(saved, targetPath)}\nNo example/data.json is shipped; adopted without data.`;
+  // `routeKind` is catalog-owned semantics, not a presentation guess by id.
+  // Burnlist lenses are hydrated by core transport, so a hand-authored snapshot
+  // would be both unnecessary and misleading.
+  if (catalogEntry?.routeKind === "burnlist-lens") {
+    return `${adopted}\nData is supplied by Burnlist core transport; no local data action is needed.`;
+  }
+  return `${adopted}\nNext: burnlist oven set ${saved.id} <data> --repo ${JSON.stringify(repoRoot)}`;
+}
+
 function eventWarning(error) {
   const detail = String(error?.message ?? error ?? "unknown error")
     .replace(/[\u0000-\u001f\u007f]+/gu, " ")
@@ -86,7 +97,7 @@ export function useShippedOven({
     publishAdoptionEvent(repoRoot, saved, timestamp, observerWarnings, publishDefinitionEvent);
     return {
       warnings: observerWarnings,
-      output: `${adoptedOutput(saved, targetPath)}\nNo example/data.json is shipped; adopted without data.\nNext: burnlist oven set ${saved.id} <data> --repo ${JSON.stringify(repoRoot)}`,
+      output: noExampleAdoptionOutput(saved, targetPath, repoRoot, shipped.catalogEntry),
     };
   }
 

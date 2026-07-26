@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BURNLIST_DATA_CONTRACT, burnlistLensContext, burnlistOvenHref, fittingOvens } from "@lib";
+import { BURNLIST_DATA_CONTRACT, burnlistLensContext, burnlistOvenHref, ovenLensChoices } from "@lib";
 import type { OvenSummary } from "@lib";
 import "./LensSwitcher.css";
 
@@ -28,7 +28,7 @@ export function LensSwitcher() {
   }, [context?.repoKey, context?.burnlistId]);
 
   if (!context || !ovens || failed) return null;
-  const lenses = fittingOvens(ovens, BURNLIST_DATA_CONTRACT, { repoKey: context.repoKey });
+  const lenses = ovenLensChoices(ovens, BURNLIST_DATA_CONTRACT, { repoKey: context.repoKey });
   if (!lenses.length) return null;
 
   return (

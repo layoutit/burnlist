@@ -2,10 +2,10 @@
  * Builds the content of skill.md — a single, self-contained Burnlist skill
  * document served at the site root (https://burnlist.dev/skill.md) so an
  * agent pointed at that URL has everything it needs: what Burnlist is, how
- * to install it, the full CLI surface, the lifecycle, the six ovens, and a
+ * to install it, the full CLI surface, the lifecycle, the seven ovens, and a
  * listing of every doc page. Kept accurate to the real CLI help output and
  * the docs it is generated alongside; do not describe behavior the CLI does
- * not have (no loop feature, no componentization, no work execution).
+ * not have (no executable Oven content or Burnlist-owned provider execution).
  */
 
 // Fallback used only if the sibling CLI can't be spawned at build time (see
@@ -24,13 +24,30 @@ Usage:
   burnlist differential-testing sdk
   burnlist streaming-diff <ensure-feed|capture|url|hook> ...
   burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked] (bare defaults to status)
-  burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|event|create|update|fork> ...
+  burnlist oven <list|view|use|set|bind|unbind|bindings|event|create|update|adopt|upgrade|fork> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
+  burnlist recommend <id>#<item> [--json] [--repo <path>]
   burnlist ready <id> [--repo <path>]
   burnlist start <id> [--repo <path>]
   burnlist close <id> [--repo <path>]
   burnlist burn <id> <item> [--check] [--repo <path>]
+  burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
+  burnlist loop unassign <ItemRef> [--repo <path>]
+  burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
+  burnlist loop create <ItemRef> [--repo <path>]
+  burnlist loop next <RunRef> [--repo <path>]
+  burnlist loop submit <RunRef> (--outcome <complete|approve|reject|escalate> | --result <file>) [--repo <path>]
+  burnlist loop claim <RunRef> [--repo <path>] (recovery/diagnostics)
+  burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
+  burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
+  burnlist loop list [--repo <path>]
+  burnlist loop status|inspect <RunRef> [--repo <path>]
+  burnlist loop pause|stop <RunRef> [--repo <path>] (idle Run only)
+  burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
+  burnlist loop complete <RunRef> [--repo <path>]
+  burnlist loop capability <inspect|trust> <id> ...
+  burnlist loop setup status [--repo <path>]
   burnlist register [path]
   burnlist unregister [path]
   burnlist roots [--prune]
@@ -59,7 +76,7 @@ export function buildSkillMarkdown({ documents, siteUrl, cliHelp = FALLBACK_CLI_
 
   return `# Burnlist skill
 
-> Point an agent at ${siteUrl}/skill.md for a complete, self-contained Burnlist skill: what it is, how to install it, its full CLI surface, its lifecycle, and its six ovens.
+> Point an agent at ${siteUrl}/skill.md for a complete, self-contained Burnlist skill: what it is, how to install it, its full CLI surface, its lifecycle, and its seven ovens.
 
 ## What Burnlist is
 
@@ -72,6 +89,23 @@ Burnlist owns task state — not implementation, testing, or delivery. **It does
 - **Burnlist** — your list of work. Items complete atomically on evidence and leave the active list only once truly done; the list burns down to zero. It answers "what do I do next, and is it really done?"
 - **Oven** — a read-only dashboard view that renders honest signals over your own data (progress, metrics, diffs) so you see truth, not vibes. It answers "how are we actually doing?"
 - **Lane** — a split of one large Burnlist into parallel sub-lists so independent tracks burn down side by side. Reach for it when a plan has genuinely independent work streams.
+
+## Operational contract
+
+Burnlist is soft orchestration: it coordinates task state, optional Loop control, proof, and observation while the repository owns architecture, implementation, tests, deployment, and proof authority. Unless the repository or user chose another order, establish the thinnest real end-to-end path, prove it, then refine internals and edges.
+
+\`\`\`sh
+burnlist recommend <id>#<item>
+burnlist recommend <id>#<item> --json
+\`\`\`
+
+\`recommend\` deterministically suggests the lightest fitting direct/gate/review/branch control, provider-neutral model class and effort, P0–P4 handling, task-fit metric, work sequence, next command, and canonical dashboard URL. It is advisory: the user may accept, change, or ignore it. Burnlist never installs, authenticates, selects, or launches a provider.
+
+For an assigned item, ordinary host execution is \`loop next\` → execute the returned prompt → \`loop submit\` by RunRef. \`claim\`, \`report\`, \`abandon\`, and \`reconcile\` are lower-level recovery and diagnostics, not the normal flow.
+
+Checklist and Loop Progress derive exactly five labels from canonical state: \`PENDING\` has no Run or claim and queue position does not imply execution; \`ACTIVE\` has a deterministic node or live claim; \`WAITING\` awaits a host task, resume, or atomic completion; \`BLOCKED\` needs human action or cannot project safely; \`COMPLETED\` is in the canonical ledger. Hooks may refine an already ACTIVE item to **progressing**, but never create state, select an outcome, satisfy a gate, or complete work.
+
+Review policy is closed: P0 stops and escalates; P1 rejects; material P2 rejects; P3 is a bounded non-blocking follow-up; P4 is an optional note. Approval cannot leave P0, P1, or material P2 findings open.
 
 ## Install
 
@@ -93,7 +127,7 @@ burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-r
 
 Without \`--global\`, this registers the skill for the current repository only (an untracked local link by default, or a portable copy for git with \`--commit\`). With \`--global\`, it (re)registers the skill in the user's home directory, same as the npm postinstall step. \`--agent codex,claude\` restricts which agent(s) get the skill; \`--dry-run\` prints the plan without writing.
 
-### 3. Install Streaming Diff hooks (optional, separate feature)
+### 3. Install observability hooks (optional, separate feature)
 
 \`\`\`sh
 burnlist hooks install --agent codex,claude
@@ -101,7 +135,7 @@ burnlist hooks status
 burnlist hooks uninstall --agent codex,claude
 \`\`\`
 
-Merges local Streaming Diff commands into \`.codex/hooks.json\` and/or \`.claude/settings.json\`, preserving existing entries. This is unrelated to the skill install above; installing the skill does not install hooks, and installing hooks does not install the skill.
+Merges local Streaming Diff capture and bounded native observation commands into \`.codex/hooks.json\` and/or \`.claude/settings.json\`, preserving unrelated entries. Hook facts are observational only. This is unrelated to the skill install above; installing the skill does not install hooks, and installing hooks does not install the skill.
 
 ### Uninstall
 
@@ -122,6 +156,10 @@ An Oven makes progress objective so an agent cannot fool itself — the antidote
 | "should work" | "1,240/1,500 rows migrated and validated" |
 
 The built-in ovens embody this: Differential Testing measures byte-identical goldens, Visual Parity measures pixel diffs, Streaming Diff captures real pre-to-post diffs, and Performance Tracing measures real timings against a budget — never self-assessment. Map your signals onto the view vocabulary — headline numbers to a kpi-strip, the event stream to a log-table, the burn-down to a progress-donut — and compute the real values in a project-owned data adapter that emits one read-only JSON document the Oven binds to. If a number can be typed by hand without doing the work, it is not evidence.
+
+Choose a task-fit metric: Visual Parity for UI/rendering, Differential Testing for reference/candidate or migration work, Performance Tracing for measured budgets, Model Lab for model/geometry contracts, and the trusted repository check alone when no Oven adds value. Do not add an Oven merely to create a number.
+
+After creating, adopting, or changing an Oven used as proof, publish real or explicit fixture data, open its canonical dashboard URL, inspect desktop and narrow layouts in a browser, exercise relevant empty/waiting/blocked/stale/error/completed states, and record the user-approved signal in the item's proof contract. Compilation or DOM tests alone are not visual proof.
 
 ### The adapter: compute honest numbers
 
@@ -186,18 +224,19 @@ A Burnlist's state is its location. The whole folder moves through four lifecycl
 
 Folders: \`notes/burnlists/{draft,ready,inprogress,completed}/<YYMMDD-NNN>/\`. \`goal.md\` is the stable contract (Goal, Guardrails, Proof Authority, Ordering Intent, Stop Conditions, Handoff); \`burnlist.md\` is the hot, shrinking task state (an ordered Active Checklist and a terse Completed ledger); \`completed.md\` is optional durable per-burn history for humans. Run \`burnlist --plan <burnlist.md> --check\` to validate and \`burnlist --stamp\` to generate the mechanical timestamp used in a completion ledger line.
 
-## The six ovens
+## The seven ovens
 
-An Oven is a named, declarative, non-executable recipe for a Burn — data, never code. Six built-in, read-only ovens ship with Burnlist:
+An Oven is a named, declarative, non-executable recipe for a Burn — data, never code. Seven built-in, read-only ovens ship with Burnlist:
 
 - **Checklist** tracks the active work queue and progress.
 - **Differential Testing** provides aligned reference-versus-candidate series, optional aggregate telemetry, and exact-first evidence.
+- **Loop Progress** answers what is happening to one item now with truthful progressive disclosure.
 - **Model Lab** inspects one prepared model and its topology, publication, and provenance evidence.
 - **Streaming Diff** surfaces recently published, session-scoped pre-to-post diff cards read from a local feed.
 - **Performance Tracing** renders retained browser-output timing evidence — frame pacing, budget checks, and slow steps — from a project-owned trace run.
 - **Visual Parity** compares trusted reference and candidate frames as isolated render passes, gating each render domain on calibrated channel, mean-delta, and changed-pixel bounds.
 
-Author and inspect ovens with \`burnlist oven <list|view|use|set|bind|unbind|bindings|adopt|upgrade|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
+Author and inspect ovens with \`burnlist oven <list|view|use|set|bind|unbind|bindings|event|adopt|upgrade|create|update|fork>\`. Custom ovens live in ignored, repo-scoped \`.local/burnlist/ovens/\` state.
 
 \`burnlist oven use <id>\` adopts a shipped Oven and installs data only when an exact shipped \`example/data.json\` already exists and passes validation. Otherwise it adopts only, creates no data or binding, and prints the exact \`oven set\` next step; it never generates a payload from a schema, fixture, or instructions. \`burnlist oven set <id> <path|-|json>\` validates before mutation and atomically publishes \`.local/burnlist/data/<id>.json\` plus its binding. Built-ins use the same runtime validator as their render handler. Custom Ovens without one check declared pointers and print a \`shape-only\` warning: shape is not truth. A rejected fresh set writes nothing; a rejected replacement preserves the exact prior data and binding. JSON Schemas are informational references only and never enter the Oven package, revision, or pin.
 

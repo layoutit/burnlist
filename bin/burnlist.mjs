@@ -16,10 +16,14 @@ const knownSubcommands = new Set([
   "oven",
   "new",
   "show",
+  "recommend",
   "ready",
   "start",
   "close",
   "burn",
+  "loop",
+  "agent",
+  "route",
   "register",
   "unregister",
   "roots",
@@ -31,6 +35,19 @@ function printSkillUsage(command) {
     ? "Usage: burnlist install [--global] [--commit] [--force] [--agent codex,claude] [--dry-run]"
     : "Usage: burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]";
   console.log(`${usage}\n\nInstall and remove Burnlist-managed agent skills for Codex and Claude.`);
+}
+
+function printLifecycleUsage(command) {
+  const usages = {
+    new: "Usage: burnlist new [--repo <path>]",
+    show: "Usage: burnlist show <id>[#<item>] [--repo <path>]",
+    recommend: "Usage: burnlist recommend <id>#<item> [--json] [--repo <path>]",
+    ready: "Usage: burnlist ready <id> [--repo <path>]",
+    start: "Usage: burnlist start <id> [--repo <path>]",
+    close: "Usage: burnlist close <id> [--repo <path>]",
+    burn: "Usage: burnlist burn <id> <item> [--check] [--repo <path>]",
+  };
+  console.log(usages[command]);
 }
 
 async function main() {
@@ -46,6 +63,12 @@ if (args[0] === "install" || args[0] === "uninstall") {
     return;
   }
   process.exitCode = runSkillsInstallCli({ args, packageRoot });
+  return;
+}
+
+if (["new", "show", "recommend", "ready", "start", "close", "burn"].includes(args[0])
+  && (args.includes("--help") || args.includes("-h"))) {
+  printLifecycleUsage(args[0]);
   return;
 }
 
@@ -89,7 +112,7 @@ if (args[0] && !args[0].startsWith("--") && !["-h", "-v"].includes(args[0]) && !
   process.exit(2);
 }
 
-if (!["oven", "hooks"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
+if (!["oven", "hooks", "loop", "agent", "route"].includes(args[0]) && (args.includes("--help") || args.includes("-h"))) {
   console.log(`Burnlist
 
 Usage:
@@ -108,10 +131,28 @@ Usage:
   burnlist oven <list|view|use|set|bind|unbind|bindings|event|create|update|adopt|upgrade|fork> ...
   burnlist new [--repo <path>]
   burnlist show <id>[#<item>] [--repo <path>]
+  burnlist recommend <id>#<item> [--json] [--repo <path>]
   burnlist ready <id> [--repo <path>]
   burnlist start <id> [--repo <path>]
   burnlist close <id> [--repo <path>]
   burnlist burn <id> <item> [--check] [--repo <path>]
+  burnlist loop assign <ItemRef> <LoopRef> [--repo <path>]
+  burnlist loop unassign <ItemRef> [--repo <path>]
+  burnlist loop view <LoopRef|ItemRef|review> [--repo <path>]
+  burnlist loop create <ItemRef> [--repo <path>]
+  burnlist loop next <RunRef> [--repo <path>]
+  burnlist loop submit <RunRef> (--outcome <complete|approve|reject|escalate> | --result <file>) [--repo <path>]
+  burnlist loop claim <RunRef> [--repo <path>] (recovery/diagnostics)
+  burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
+  burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
+  burnlist loop list [--repo <path>]
+  burnlist loop prune [--retain <count>] [--repo <path>]
+  burnlist loop status|inspect <RunRef> [--repo <path>]
+  burnlist loop pause|stop <RunRef> [--repo <path>] (idle Run only)
+  burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]
+  burnlist loop complete <RunRef> [--repo <path>]
+  burnlist loop capability <inspect|trust> <id> ...
+  burnlist loop setup status [--repo <path>]
   burnlist register [path]
   burnlist unregister [path]
   burnlist roots [--prune]
@@ -150,8 +191,11 @@ if (args[0] === "oven") {
   await import("../src/cli/streaming-diff-cli.mjs");
 } else if (args[0] === "hooks") {
   await import("../src/cli/hooks-cli.mjs");
-} else if (["new", "show", "ready", "start", "close", "burn"].includes(args[0])) {
+} else if (["new", "show", "recommend", "ready", "start", "close", "burn"].includes(args[0])) {
   await import("../src/cli/lifecycle-cli.mjs");
+} else if (args[0] === "loop") {
+  const { runLoopCliEntry } = await import("../src/cli/loop-cli.mjs");
+  await runLoopCliEntry(args.slice(1));
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");
 } else {

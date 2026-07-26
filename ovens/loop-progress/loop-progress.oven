@@ -1,0 +1,7 @@
+<oven id="loop-progress" version="0.1.0" contract="checklist-progress@1" theme="checklist">
+  <box element="div" class="shell detail-view-shell loop-progress-shell">
+    <box element="main" class="detail-view loop-progress-view">
+      <loop-progress source="/raw"/>
+    </box>
+  </box>
+</oven>
