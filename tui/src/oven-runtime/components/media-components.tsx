@@ -101,7 +101,10 @@ function Frame({ frame, width, height, selected }: { frame: MediaModel["frames"]
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
     <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`${selected ? "▎" : " "} Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
     <box height={1} flexDirection="row">{frame.images.map((image) => <text key={image.label} width={imageWidth}>{fitText(image.label, imageWidth)}</text>)}</box>
-    <box height={imageHeight} flexDirection="row">{frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)}</box>
+    <box height={imageHeight} flexDirection="row">{selected
+      ? frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)
+      : <text fg={palette.dim}>{fitText("  Select this frame to render its images", width)}</text>}
+    </box>
   </box>;
 }
 
