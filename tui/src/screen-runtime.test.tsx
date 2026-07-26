@@ -100,7 +100,7 @@ async function renderFrame(width: number, height: number, runtimeProps: ScreenRu
   const root = createRoot(setup.renderer);
   flushSync(() => root.render(<ScreenRuntime {...runtimeProps} />));
   await setup.renderOnce();
-  return { frame: setup.captureCharFrame(), root };
+  return { frame: setup.captureCharFrame(), root, setup };
 }
 
 describe("dashboard-shaped .glyph runtime", () => {
@@ -225,6 +225,11 @@ describe("dashboard-shaped .glyph runtime", () => {
     const busy = await renderFrame(72, 28, props({ ...base, loading: true }));
     expect(busy.frame).toContain("Loading Oven payload");
     expect(busy.frame).not.toContain("no admitted Oven payload");
+    await Bun.sleep(240);
+    await busy.setup.renderOnce();
+    const advanced = busy.setup.captureCharFrame();
+    expect(advanced).not.toBe(busy.frame);
+    expect(advanced).toContain("Loading Oven payload");
     busy.root.unmount();
     const empty = await renderFrame(72, 28, props({ ...base, loading: false }));
     expect(empty.frame).toContain("no admitted Oven payload");

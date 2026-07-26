@@ -13,6 +13,7 @@ import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navi
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { fitText } from "./theme";
 import { LoadingStar } from "./loading-star";
+import { useTerminalLoadingGlyph } from "./loading-cadence";
 import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
 import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
@@ -65,12 +66,13 @@ const DETAIL_LOOP_NODE: TerminalNode = {
   source: { offset: 0, line: 1, column: 1 },
 };
 
-function DetailSplit({ node, props, width, height, chrome }: {
+function DetailSplit({ node, props, width, height, chrome, loadingGlyph }: {
   node: GlyphNode;
   props: ScreenRuntimeProps;
   width: number;
   height: number;
   chrome: TerminalChrome;
+  loadingGlyph: string;
 }) {
   const palette = useTerminalPalette();
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
@@ -156,7 +158,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
         width={collapsed ? width : width - sidebarWidth}
         height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
       /> : runtime ? <TerminalOvenViewport result={runtime} footer="" /> : props.loading
-        ? <box paddingTop={1} overflow="hidden"><LoadingStar label="Loading Oven payload…" /></box>
+        ? <box paddingTop={1} overflow="hidden"><LoadingStar label="Loading Oven payload…" glyph={loadingGlyph} /></box>
         : <box paddingTop={1} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", ovenContentWidth).trimEnd()}</text></box>}
     </box>
   </box>;
@@ -168,7 +170,7 @@ function StreamingSession({ props, width, height }: { props: ScreenRuntimeProps;
   return <box height={height} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden" flexDirection="column">{error ? <box height={1} overflow="hidden"><text fg={palette.amber}>{fitText(error, Math.max(1, width - 6))}</text></box> : null}{runtime ? <TerminalOvenViewport result={runtime} footer="←/→:card · ↑/↓:file · enter:expand · r:refresh · q:feeds" streaming={{ selectedCard: navigation.selectedCard, selectedFile: navigation.selectedFile, expandedKey: navigation.expandedFile }} /> : <text>Loading session…</text>}</box>;
 }
 
-function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, height: number, chrome: TerminalChrome, palette: TerminalPalette): React.ReactNode {
+function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, height: number, chrome: TerminalChrome, palette: TerminalPalette, loadingGlyph: string): React.ReactNode {
   const key = `${node.kind}:${node.source.offset}`;
   const rows = listRows(height);
   const catalog = genericOvens(props.landing.ovens);
@@ -181,7 +183,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       const subtitle = props.screen.id === "home"
         ? `${props.landing.burnlists.length} Burnlists · ${props.landing.projects.length} ${props.landing.projects.length === 1 ? "project" : "projects"} · ${props.streamStatus === "live" ? "LIVE" : "SYNC"}`
         : String(node.attributes.subtitle);
-      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} activity={props.notice} landingFilter={compact ? props.landingFilter : undefined} />;
+      return <BrandHeader key={key} center={center} subtitle={subtitle} compact={compact} activity={props.notice} activityGlyph={loadingGlyph} landingFilter={compact ? props.landingFilter : undefined} />;
     }
     case "section-heading":
       return <LandingSectionHeading
@@ -211,7 +213,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
         empty={String(node.attributes.empty ?? "No Ovens")}
       />;
     case "detail-split":
-      return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
+      return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} loadingGlyph={loadingGlyph} />;
     case "oven-detail":
       if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 4} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 5} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 4} />;
       if (props.ovenRuntime) return <CatalogOvenRuntime key={key} summary={props.activeOven} detail={props.ovenDetail} result={props.ovenRuntime} height={height - 4} width={width} footer={officialOvenFixture(props.activeOven?.id)?.footer ?? "q:back"} />;
@@ -237,8 +239,9 @@ function ScreenSurface(props: ScreenRuntimeProps) {
   const { width, height } = useCoalescedTerminalDimensions();
   const chrome = useTerminalChrome();
   const palette = useTerminalPalette();
+  const loadingGlyph = useTerminalLoadingGlyph(props.loading === true);
   return <box width="100%" height="100%" flexDirection="column" overflow="hidden" backgroundColor={chrome.background}>
-    {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome, palette))}
+    {props.screen.root.children.map((node) => renderNode(node, props, width, height, chrome, palette, loadingGlyph))}
   </box>;
 }
 

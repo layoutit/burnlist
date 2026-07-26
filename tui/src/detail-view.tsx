@@ -1,25 +1,24 @@
 import { createTextAttributes } from "@opentui/core";
 import { BrandMark } from "./brand-mark";
 import { compactTime, fitText, progressLabel } from "./theme";
-import { useTerminalLoadingGlyph } from "./loading-cadence";
 import { useTerminalPalette } from "./terminal-accessibility";
 import { useTerminalChrome } from "./terminal-chrome";
 import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
 import type { BurnlistSummary, ProgressSnapshot } from "./types";
 import { LANDING_FILTERS, type LandingFilter } from "./landing-filter";
 
-export function BrandHeader({ center, subtitle, compact = false, activity, landingFilter }: {
+export function BrandHeader({ center, subtitle, compact = false, activity, activityGlyph = "✦", landingFilter }: {
   center?: string | null;
   subtitle: string;
   compact?: boolean;
   activity?: { message: string; tone: "error" | "info" } | null;
+  activityGlyph?: string;
   landingFilter?: LandingFilter;
 }) {
   const palette = useTerminalPalette();
   const chrome = useTerminalChrome();
   const { width } = useCoalescedTerminalDimensions();
-  const loadingGlyph = useTerminalLoadingGlyph(activity?.tone === "info");
-  const activityText = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? "";
+  const activityText = activity?.tone === "info" ? `${activityGlyph} Refreshing` : activity?.message ?? "";
   const right = landingFilter ? "landing filters" : activityText;
   const innerWidth = Math.max(0, width - 4);
   const leftWidth = Math.min(12, innerWidth);

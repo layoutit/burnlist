@@ -39,8 +39,8 @@ test("catalog preview stays bounded in narrow mode and reserves its footer", asy
   const setup = await createTestRenderer({ width: 48, height: 18, useThread: false }); renderers.push(setup.renderer);
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); await press(setup, "RETURN"); await press(setup, "v");
-  await setup.waitForFrame((frame) => frame.includes("narrow") && frame.includes("q:back"));
   const frame = setup.captureCharFrame(); assertFrameFits(frame, 48); expect(frame.split("\n").at(-2)).toContain("q:back"); root.unmount();
+  expect(frame).toContain("narrow");
 });
 
 test("General Components uses vertical text-native summaries in real 36–42 column frames", async () => {
