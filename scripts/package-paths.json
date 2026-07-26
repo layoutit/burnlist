@@ -2,8 +2,8 @@
   "LICENSE",
   "README.md",
   "bin/burnlist.mjs",
-  "dashboard/dist/assets/index-Ddxxl-p0.js",
-  "dashboard/dist/assets/index-EAuoc8Ho.css",
+  "dashboard/dist/assets/index-BBWRZuVO.js",
+  "dashboard/dist/assets/index-CqydhFUA.css",
   "dashboard/dist/favicon.svg",
   "dashboard/dist/index.html",
   "loops/branch/branch.loop",
@@ -62,6 +62,7 @@
   "ovens/visual-parity/visual-parity.oven",
   "package.json",
   "scripts/register-skills.mjs",
+  "scripts/unregister-service.mjs",
   "scripts/unregister-skills.mjs",
   "skills/burnlist/SKILL.md",
   "skills/burnlist/agents/openai.yaml",
@@ -107,6 +108,7 @@
   "src/cli/oven-storage.mjs",
   "src/cli/oven-use.mjs",
   "src/cli/registry-cli.mjs",
+  "src/cli/service-cli.mjs",
   "src/cli/skills-exclude.mjs",
   "src/cli/skills-install-cli.mjs",
   "src/cli/skills-install-git.mjs",
@@ -229,6 +231,6 @@
   "src/server/repo-map-worker.mjs",
   "src/server/repo-map.mjs",
   "src/server/repo-state.mjs",
-  "tui/dist/burnlist-tui",
-  "tui/dist/burnlist-tui-catalog"
+  "src/service/runtime.mjs",
+  "src/service/supervisor.mjs"
 ]

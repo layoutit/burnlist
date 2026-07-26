@@ -238,14 +238,13 @@ try {
   invokeCli(cli, ["--stamp"], { capture: true });
   invokeCli(cli, ["oven", "list"], { capture: true });
   const installedTarget = `${process.platform}-${process.arch}`;
+  const output = runFailure(testNode, [cli, "-i"]);
   if (installedTarget === tuiTarget) {
-    runPty(cli, "Burnlist", "interactive CLI", true);
-    runPty(join(packageRoot, "tui", "dist", "burnlist-tui-catalog"), "Terminal catalog", "catalog binary");
-  } else {
-    const output = runFailure(testNode, [cli, "-i"]);
-    if (!output.includes(tuiTarget) || !output.includes(installedTarget)) {
-      throw new Error(`unsupported host interactive CLI message is not actionable: ${output}`);
+    if (!output.includes("not built") || !output.includes("npm run build:tui")) {
+      throw new Error(`source-only interactive CLI message is not actionable: ${output}`);
     }
+  } else if (!output.includes(tuiTarget) || !output.includes(installedTarget)) {
+    throw new Error(`unsupported host interactive CLI message is not actionable: ${output}`);
   }
   const sdkPath = invokeCli(cli, ["differential-testing", "sdk"], { capture: true });
   const expectedSdkPath = resolve(packageRoot, "ovens", "differential-testing", "engine", "adapter-sdk.mjs");

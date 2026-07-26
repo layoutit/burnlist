@@ -28,7 +28,6 @@
     "skills/",
     "ovens/",
     "dashboard/dist/",
-    "tui/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
     "scripts/unregister-service.mjs",
@@ -64,7 +63,7 @@
     "verify:clean": "node scripts/verify-clean.mjs",
     "verify:package": "node scripts/verify-package.mjs",
     "test:global-install": "node scripts/smoke-global-install.mjs",
-    "prepack": "npm run build:dashboard && npm run build:tui && npm run build:catalog:tui && npm run verify",
+    "prepack": "npm run build:dashboard && npm run verify",
     "postinstall": "node scripts/register-skills.mjs",
     "preuninstall": "node scripts/unregister-service.mjs"
   },

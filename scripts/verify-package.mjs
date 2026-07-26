@@ -6,12 +6,6 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packageJson = JSON.parse(readFileSync(resolve(repoRoot, "package.json"), "utf8"));
-const tuiTargets = packageJson.burnlistTui?.targets;
-if (!Array.isArray(tuiTargets) || tuiTargets.length !== 1 || tuiTargets[0] !== "darwin-arm64") {
-  console.error("npm package must declare only the current visual-review TUI target: darwin-arm64.");
-  process.exit(1);
-}
 const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -109,8 +103,6 @@ const required = [
   "ovens/visual-parity/contract.mjs",
   "ovens/visual-parity/handler.mjs",
   "dashboard/dist/index.html",
-  "tui/dist/burnlist-tui",
-  "tui/dist/burnlist-tui-catalog",
 ];
 
 for (const path of required) {
@@ -174,7 +166,7 @@ for (const path of packedPaths) {
   }
 }
 
-for (const path of packedPaths.filter((entry) => !entry.startsWith("dashboard/dist/assets/") && !entry.startsWith("tui/dist/"))) {
+for (const path of packedPaths.filter((entry) => !entry.startsWith("dashboard/dist/assets/"))) {
   const text = readFileSync(resolve(repoRoot, path), "utf8");
   if (/\/Users\//u.test(text)) {
     console.error(`npm package contains a personal path: ${path}`);
@@ -187,15 +179,7 @@ if ((bin.mode & 0o111) === 0) {
   console.error("npm package CLI is not executable.");
   process.exit(1);
 }
-for (const path of ["tui/dist/burnlist-tui", "tui/dist/burnlist-tui-catalog"]) {
-  const tui = files.get(path);
-  if ((tui.mode & 0o111) === 0) {
-    console.error(`npm package terminal UI is not executable: ${path}`);
-    process.exit(1);
-  }
-}
-
-if (report.entryCount > 240 || report.unpackedSize > 180_000_000) {
+if (report.entryCount > 240 || report.unpackedSize > 40_000_000) {
   console.error(`npm package exceeds its bounded payload budget: ${report.entryCount} files, ${report.unpackedSize} bytes.`);
   process.exit(1);
 }
@@ -217,8 +201,7 @@ try {
   for (const path of actual) {
     const bytes = readFileSync(join(packDirectory, "package", path));
     const text = bytes.toString("utf8");
-    const textPayload = !path.startsWith("tui/dist/");
-    if (forbiddenPayloadBytes.some((marker) => bytes.includes(Buffer.from(marker))) || textPayload && forbiddenPayloadText.some((pattern) => pattern.test(text))) {
+    if (forbiddenPayloadBytes.some((marker) => bytes.includes(Buffer.from(marker))) || forbiddenPayloadText.some((pattern) => pattern.test(text))) {
       throw new Error(`packed tarball contains a forbidden personal path or prototype command: ${path}`);
     }
   }

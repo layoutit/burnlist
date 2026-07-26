@@ -241,6 +241,8 @@ jobs:
       - name: Gate exact release commit
         run: |
           npm run build:dashboard
+          npm run build:tui
+          npm run build:catalog:tui
           npm run verify
           npm run verify:package
 

@@ -118,3 +118,5 @@ export function createDataClient(input: string) {
     },
   });
 }
+
+export type DataClient = ReturnType<typeof createDataClient>;

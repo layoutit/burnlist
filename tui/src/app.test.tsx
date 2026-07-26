@@ -121,6 +121,36 @@ function waitForRenderedFrame(
 }
 
 describe("TUI navigation stack", () => {
+  test("landing refresh generation ignores an older response that settles last", async () => {
+    const pending = new Map<string, (response: Response) => void>();
+    const calls = new Map<string, number>();
+    globalThis.fetch = ((input) => {
+      const path = new URL(String(input)).pathname;
+      const count = (calls.get(path) ?? 0) + 1;
+      calls.set(path, count);
+      if (count === 1) return new Promise<Response>((resolve) => pending.set(path, resolve));
+      if (path === "/api/projects") return Promise.resolve(Response.json({ generatedAt: "fresh", projects: [{ repoKey: "fresh", displayName: "fresh-project", canonicalRoot: "/fresh", health: "healthy", counts: { total: 1, active: 1 } }] }));
+      if (path === "/api/burnlists") return Promise.resolve(Response.json({ generatedAt: "fresh", burnlists: [{ ...burnlist, repoKey: "fresh", repo: "fresh-project", title: "Fresh Burnlist" }] }));
+      if (path === "/api/ovens") return Promise.resolve(Response.json({ ovens: [oven] }));
+      return Promise.resolve(Response.json({ error: "unexpected" }, { status: 404 }));
+    }) as typeof fetch;
+    const setup = await createTestRenderer({ width: 110, height: 34 });
+    renderers.push(setup.renderer);
+    const root = createRoot(setup.renderer);
+    flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
+    await setup.renderOnce();
+    await key(setup, "r");
+    await waitForRenderedFrame(setup, (frame) => frame.includes("Fresh Burnlist") && !frame.includes("Refreshing"), "fresh landing generation");
+    pending.get("/api/projects")?.(Response.json({ generatedAt: "stale", projects: [] }));
+    pending.get("/api/burnlists")?.(Response.json({ generatedAt: "stale", burnlists: [{ ...burnlist, title: "Stale Burnlist" }] }));
+    pending.get("/api/ovens")?.(Response.json({ ovens: [] }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await setup.flush();
+    expect(setup.captureCharFrame()).toContain("Fresh Burnlist");
+    expect(setup.captureCharFrame()).not.toContain("Stale Burnlist");
+    root.unmount();
+  });
+
   test("turns a render-time required binding failure into an explicit generic-runtime diagnostic", async () => {
     installGenericRuntimeApi(true);
     const setup = await createTestRenderer({ width: 110, height: 34 });

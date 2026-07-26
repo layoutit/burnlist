@@ -216,24 +216,14 @@ and WezTerm, with the 2×2 RGBA glyph renderer retained underneath as a portable
 fallback. In VS Code, enable `terminal.integrated.enableImages`. Backgrounds
 remain transparent and dividers adapt to the host terminal palette, including
 VS Code themes.
-With a global installation, run the TUI directly:
-
-```sh
-burnlist -i
-```
-
-The CLI validates the shared observer recorded in `~/.burnlist/server.json` and
-restores it when needed. A local installation instead starts an ephemeral
-observer and stops it when the TUI exits; `burnlist -i --local` forces that
-behavior. Pass an explicit URL with `burnlist -i --server
-http://127.0.0.1:4510`. For source development, use `npm --prefix tui install`
-and `npm run tui` after starting `burnlist serve`. Screen layouts are
-declarative `.glyph` documents under `tui/screens/`. A standalone executable
-with the OpenTUI native renderer and glyphcss source embedded is produced by
-`npm run build:tui`. This visual-review package currently contains only the
-`darwin-arm64` TUI binary; other hosts retain the Node CLI and dashboard and
-receive an explicit `burnlist -i` explanation. Once built, open it through the regular CLI with
-`burnlist -i`; pass an explicit dashboard with
+The visual-review TUI is currently built from a source checkout rather than
+embedded in the universal npm package. This avoids sending large Darwin-only
+binaries to every host. Use `npm --prefix tui install && npm run build:tui`,
+then open it through the regular CLI with `burnlist -i`. The CLI validates the
+shared observer recorded in `~/.burnlist/server.json` and restores it when
+needed; `burnlist -i --local` instead owns one ephemeral observer for the TUI
+session. Screen layouts are declarative `.glyph` documents under
+`tui/screens/`. Pass an explicit dashboard with
 `burnlist -i --server http://127.0.0.1:4510`.
 
 Use up/down to navigate Burnlists and inspect their items. `o` opens the

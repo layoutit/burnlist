@@ -1,18 +1,10 @@
 import { useKeyboard, useTerminalDimensions } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { compileGlyph, type GlyphScreen } from "../../src/glyph/glyph-compile.mjs";
-import burnlistSource from "../screens/burnlist.glyph" with { type: "text" };
-import homeSource from "../screens/home.glyph" with { type: "text" };
-import itemSource from "../screens/item.glyph" with { type: "text" };
-import ovenSource from "../screens/oven.glyph" with { type: "text" };
-import ovensSource from "../screens/ovens.glyph" with { type: "text" };
 import { createDataClient, DataClientError } from "./data-client";
-import { adaptChecklist } from "../../dashboard/src/lib/checklist-adapter";
 import { detailItems, visualParityPayload } from "./detail-items";
 import { officialOvenFixture } from "./catalog/official-oven-fixtures";
 import { applyVerifiedModelLabFrame, createModelLabClient } from "./catalog/model-lab-controller";
-import { eventInvalidatesScope, observeDashboardEvents, type OvenEvent, type StreamStatus } from "./event-stream";
-import { definitionChangeInvalidates } from "./oven-runtime/definition-adapter";
+import type { StreamStatus } from "./event-stream";
 import { terminalKeyboardAction, terminalSearchControl } from "./oven-runtime/keyboard-runtime";
 import { initialLiveSnapshot, isMissingSnapshotStatus, reduceLiveSnapshot, terminalServerQuery, type LiveSnapshot } from "./oven-runtime/live-snapshot";
 import { initTerminalRuntime, reduceTerminalRuntime, type TerminalRuntimeAction, type TerminalRuntimeState } from "./oven-runtime/state-runtime";
@@ -29,33 +21,11 @@ import { loadStreamingFeeds, streamingRepositories } from "./streaming-diff-feed
 import { TERMINAL_IMPLEMENTED_CAPABILITIES } from "./oven-runtime/components";
 import type { BurnlistSummary, LandingSnapshot, OvenDataSnapshot, OvenPackageDetail, OvenSummary, ProgressSnapshot } from "./types";
 import { terminalKeyAction } from "./terminal-navigation";
+import { useLandingRefresh } from "./use-landing-refresh";
+import { isManagedChecklist, screens, terminalChecklistPayload, type View } from "./app-screens";
+import { useDashboardRefresh } from "./use-dashboard-refresh";
+import { useListNavigation } from "./use-list-navigation";
 const emptyLanding: LandingSnapshot = { projects: [], burnlists: [], ovens: [], generatedAt: "" };
-function screen(source: string, file: string): GlyphScreen {
-  const compiled = compileGlyph(source, { file });
-  if (!compiled.ok) throw new Error(compiled.diagnostics.map((entry) => `${entry.code}: ${entry.message}`).join("\n"));
-  return compiled.ir;
-}
-const screens = {
-  home: screen(homeSource, "home.glyph"),
-  ovens: screen(ovensSource, "ovens.glyph"),
-  oven: screen(ovenSource, "oven.glyph"),
-  burnlist: screen(burnlistSource, "burnlist.glyph"),
-  item: screen(itemSource, "item.glyph"),
-};
-type View = keyof typeof screens;
-function terminalChecklistPayload(progress: ProgressSnapshot, selectedItemId?: string | null, loopRun?: ProgressSnapshot["loopRun"]): JsonValue {
-  const payload = adaptChecklist({
-    ...progress,
-    selectedItemId: selectedItemId ?? progress.selectedItemId,
-    loopRun: loopRun === undefined ? progress.loopRun : loopRun,
-    history: progress.history ?? [],
-    active: progress.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
-    completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
-  });
-  return JSON.parse(JSON.stringify(payload)) as JsonValue;
-}
-const isManagedChecklist = (oven: OvenSummary | null | undefined, burnlist: BurnlistSummary | null | undefined) =>
-  oven?.contract === "checklist-progress@1" && typeof burnlist?.planPath === "string" && burnlist.planPath.length > 0;
 export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): void }) {
   const dimensions = useTerminalDimensions();
   const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
@@ -153,17 +123,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     setNavigation((current) => current.at(-1) === next ? current : [...current, next]);
   }, []);
   const back = useCallback(() => { setSearchControlId(null); setNavigation((current) => current.length > 1 ? current.slice(0, -1) : current); }, []);
-  const loadLanding = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setLanding(await client.landing());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
+  const loadLanding = useLandingRefresh({ client, setLanding, setLoading, setError });
   const loadBurnlist = useCallback(async (burnlist: BurnlistSummary, oven: OvenSummary | null, resetItem: boolean) => {
     const request = beginOvenRequest();
     const sameSelection = selectedBurnlist?.id === burnlist.id && selectedBurnlist.repoKey === burnlist.repoKey
@@ -275,37 +235,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     if (view === "oven" && activeOven) void loadCatalogOven(activeOven);
   }, [activeOven, loadBurnlist, loadCatalogOven, selectedBurnlist, view]);
   const refresh = useCallback(() => { void loadLanding(); refreshActive(); }, [loadLanding, refreshActive]);
-  const refreshActiveRef = useRef(refreshActive);
-  useEffect(() => { refreshActiveRef.current = refreshActive; }, [refreshActive]);
-  const activeDefinitionRef = useRef<{ ovenId: string; repoKey: string | null; definitionRepoKey: string | null; subjectId: string | null } | null>(null);
-  useEffect(() => {
-    activeDefinitionRef.current = activeOven ? {
-      ovenId: activeOven.id,
-      repoKey: selectedBurnlist?.repoKey ?? activeOven.repoKey,
-      definitionRepoKey: ovenDetail?.repoKey ?? activeOven.repoKey,
-      subjectId: selectedBurnlist?.id ?? null,
-    } : null;
-  }, [activeOven, ovenDetail?.repoKey, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
-  useEffect(() => observeDashboardEvents(client.base, {
-    onInvalidate: (event?: OvenEvent) => {
-      void loadLanding();
-      let activeMatches = eventInvalidatesScope(event, activeDefinitionRef.current);
-      if (event?.kind === "definition-changed") {
-        const active = activeDefinitionRef.current;
-        activeMatches = !!active && definitionChangeInvalidates(active, event);
-      }
-      if (activeMatches) refreshActiveRef.current();
-    },
-    onStatus: (status) => {
-      setStreamStatus(status);
-      if (status === "live") refreshActiveRef.current();
-    },
-  }), [client.base, loadLanding]);
-  useEffect(() => {
-    const timer = setInterval(() => void loadLanding(), 30_000);
-    timer.unref?.();
-    return () => clearInterval(timer);
-  }, [loadLanding]);
+  useDashboardRefresh({ base: client.base, loadLanding, refreshActive, setStreamStatus, activeOven, selectedBurnlist, ovenDetail });
   const openBurnlist = useCallback((burnlist: BurnlistSummary) => {
     const oven = associatedOven(burnlist, landing.ovens);
     setSelectedBurnlist(burnlist);
@@ -317,17 +247,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     setStreamingNavigation(null);
     void loadCatalogOven(oven);
   }, [loadCatalogOven, pushView]);
-  const moveList = useCallback((id: "burnlists" | "ovens", length: number, direction: -1 | 1) => {
-    if (!length) return;
-    setSelections((current) => {
-      const selected = Math.max(0, Math.min(current[id] ?? 0, length - 1));
-      return { ...current, [id]: (selected + direction + length) % length };
-    });
-  }, []);
-  const moveItem = useCallback((direction: -1 | 1) => {
-    if (!items.length) return;
-    setItemIndex((current) => (Math.max(0, Math.min(current, items.length - 1)) + direction + items.length) % items.length);
-  }, [items.length]);
+  const { moveList, moveItem } = useListNavigation({ setSelections, setItemIndex, itemCount: items.length });
   const cycleLens = useCallback((direction: -1 | 1) => {
     if (!selectedBurnlist || lenses.length < 2) return;
     const current = Math.max(0, lenses.findIndex((oven) => oven.id === activeOven?.id));
@@ -464,29 +384,16 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       if (key.name === "down") return setItemDetailScroll((offset) => Math.min(itemDetailMaxOffset(selectedItem, dimensions.width, Math.max(1, dimensions.height - 4)), offset + 1));
     }
   });
-  const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const }
-    : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : null;
+  const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const } : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : null;
   return <ScreenRuntime
-    screen={screens[view]}
-    landing={view === "home" ? visibleLanding : landing}
-    progress={renderProgress}
-    selectedBurnlist={selectedBurnlist}
-    activeOven={activeOven}
-    ovenDetail={ovenDetail}
-    ovenLenses={lenses}
-    ovenData={ovenData}
-    items={items}
-    selectedItem={selectedItem}
-    itemIndex={safeItemIndex}
-    itemDetailScroll={itemDetailScroll}
-    domainIndex={domainIndex}
+    screen={screens[view]} landing={view === "home" ? visibleLanding : landing}
+    progress={renderProgress} selectedBurnlist={selectedBurnlist} activeOven={activeOven}
+    ovenDetail={ovenDetail} ovenLenses={lenses} ovenData={ovenData}
+    items={items} selectedItem={selectedItem} itemIndex={safeItemIndex}
+    itemDetailScroll={itemDetailScroll} domainIndex={domainIndex}
     focusId={view === "ovens" ? "ovens" : view === "home" ? "burnlists" : "items"}
-    selections={selections}
-    streamStatus={streamStatus}
-    notice={notice}
-    ovenRuntime={ovenRuntime}
-    streamingNavigation={streamingNavigation}
-    landingFilter={landingFilter}
-    loading={loading}
+    selections={selections} streamStatus={streamStatus} notice={notice}
+    ovenRuntime={ovenRuntime} streamingNavigation={streamingNavigation}
+    landingFilter={landingFilter} loading={loading}
   />;
 }
