@@ -10,18 +10,21 @@ import { TerminalOvenViewport } from "./terminal-oven-viewport";
 import { compactTopology } from "./loop-components";
 
 const graph = {
-  entry: "make",
+  entry: "implement",
   nodes: [
-    { id: "make", kind: "agent", role: "maker" },
-    { id: "verify", kind: "check" },
+    { id: "implement", kind: "agent", role: "maker" },
+    { id: "validate", kind: "check" },
     { id: "review", kind: "agent", role: "reviewer" },
-    { id: "done", kind: "terminal", terminalState: "converged" },
+    { id: "converged", kind: "gate" },
+    { id: "completed", kind: "terminal", terminalState: "converged" },
   ],
   edges: [
-    { from: "make", on: "complete", to: "verify" },
-    { from: "verify", on: "pass", to: "review" },
-    { from: "verify", on: "fail", to: "make" },
-    { from: "review", on: "approve", to: "done" },
+    { from: "implement", on: "complete", to: "validate" },
+    { from: "validate", on: "pass", to: "review" },
+    { from: "validate", on: "fail", to: "implement" },
+    { from: "review", on: "approve", to: "converged" },
+    { from: "review", on: "reject", to: "implement" },
+    { from: "converged", on: "pass", to: "completed" },
   ],
 } as const;
 
@@ -53,10 +56,19 @@ test("Loop Progress renders the same compact item topology as the web Loop progr
       "ACTIVE",
       "Current step: review",
       "ASSIGNED LOOP Review Loop",
-      "S ─begin──▶ M ─complete──▶ V ─pass──▶ R ─approve──▶ B",
+      "S ─── begin ───▶ I ─ complete ──▶ V ─── pass ────▶ R",
       "fail",
       "q:back",
     ]) expect(frame).toContain(token);
+    for (const row of [
+      "S ─── begin ───▶ I ─ complete ──▶ V ─── pass ────▶ R",
+      "                 ▲                │                │ approve",
+      "                 ├──── fail ──────┘                │",
+      "                 └──────────── reject ─────────────┤",
+      "                                                   │",
+      "                                                   ▼",
+      "                                  B ◀── pass ───── G",
+    ]) expect(frame).toContain(`\n  ${row}`);
     expect(frame).not.toContain("First item");
   } finally {
     root.unmount();

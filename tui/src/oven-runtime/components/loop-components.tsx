@@ -1,4 +1,6 @@
+import { StyledText, fg } from "@opentui/core";
 import { fitText } from "../../theme";
+import { fitTerminalText } from "../../terminal-text";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
 import { resolveOvenPointer } from "../value-runtime";
@@ -73,6 +75,13 @@ export function compactTopology(run: Record<string, JsonValue>, item: Record<str
   return { ...layout, currentNode: topology.currentNode };
 }
 
+const SPACE_CELL = "\ue000";
+
+function fitDiagramText(value: string, width: number) {
+  const encoded = value.replaceAll(SPACE_CELL, "�").replaceAll(" ", SPACE_CELL);
+  return fitTerminalText(encoded, width, true).replaceAll(SPACE_CELL, " ");
+}
+
 function selectedItem(data: Record<string, JsonValue>) {
   const active = rows(data.active).map(record), completed = rows(data.completed).map(record), selected = text(data.selectedItemId);
   return [...active, ...completed].find((item) => text(item.id) === selected) ?? active[0] ?? completed[0] ?? {};
@@ -103,16 +112,16 @@ export function TerminalLoopProgress({ node, payload, width, height = 18 }: { no
     <text fg={palette.muted}>{fitText(text(record(run.latestResult).summary || (active.id ? `Current step: ${text(run.currentNode || "ready")}` : "Burnlist complete")), width)}</text>
     <text fg={palette.foreground}>{fitText(`ASSIGNED LOOP  ${assigned}`, width)}</text>
     {layout ? layout.lines.slice(0, Math.max(1, height - 3)).map((line: string, row: number) => {
-      const fitted = fitText(line, width);
+      const fitted = fitDiagramText(line, width);
       const current = layout.positions.get(layout.currentNode);
       if (!current || current.y !== row || current.x >= fitted.length) {
-        return <text key={row} fg={palette.muted}>{fitted}</text>;
+        return <text key={row} fg={palette.muted} content={fitted} />;
       }
-      return <text key={row} fg={palette.muted}>
-        {fitted.slice(0, current.x)}
-        <span fg={palette.blue}>{fitted[current.x]}</span>
-        {fitted.slice(current.x + 1)}
-      </text>;
+      return <text key={row} content={new StyledText([
+        fg(palette.muted)(fitted.slice(0, current.x)),
+        fg(palette.blue)(fitted[current.x]),
+        fg(palette.muted)(fitted.slice(current.x + 1)),
+      ])} />;
     })
       : <text fg={palette.muted}>This item uses direct work; no Loop is assigned.</text>}
   </box>;
