@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 12765,
-    "domSha256": "52a8346c5b99313fbbf1a7211e8d378407d1c1e51dd4da4e79746a08b9632c10"
+    "domBytes": 12824,
+    "domSha256": "c94d4a170f798abe4bd7feff8dfd3a1adb424189d915628271be43e61a144d25"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 12763,
-    "domSha256": "de17b8bfc23e83f3fd18af3a51f311b612439c75e26dabbf34f3ee7a70be9922"
+    "domBytes": 12822,
+    "domSha256": "e2332a8999dea308396c614b9f49125e5db5eaff66265a3c1137cdc549ba58d8"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 12764,
-    "domSha256": "53a4db3404794154957ebf41270dbdba8ada2db01561f3c1cc92b85679f4374c"
+    "domBytes": 12823,
+    "domSha256": "93e67292f385abe9cf78bf0180431716d24588adad9bbdaaa2e128b456f9ae3c"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 12768,
-    "domSha256": "3488be2fb4b37fc615f25f5ffce1a7bced2da5d2ca5ccd3d6ffdc44d764ee141"
+    "domBytes": 12827,
+    "domSha256": "c0454a94ca1a618b1038583228226b210bc002a98bea08e5780a754c0378b507"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 12773,
-    "domSha256": "5d4486f99292d52261d2480b8ff1d81c05df9ca0f8661409c93c1bd9c5083737"
+    "domBytes": 12832,
+    "domSha256": "da2d57da5ae43bfca3fb6592c87f84daccd8c5483d58d692c4ca474a9f67ed22"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 12780,
-    "domSha256": "878561f84a2d71066e7b8ac51716e327ed2f512e7ab71c143326c4d62168da7d"
+    "domBytes": 12839,
+    "domSha256": "243d08a119b2289b70eab10089af3ed10338b8d76f51824211d8cf0b1025280d"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 12782,
-    "domSha256": "0b2c1c94b0d681810cf2ea2489b8935a4a0f2567e7fef26413a1f3acf7f1266d"
+    "domBytes": 12841,
+    "domSha256": "d5211968c837f9d5a77b80f4feea61a3b6cb97406e26d8498f64a6815df427bc"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 12811,
-    "domSha256": "dcb947b09084a9c3795179d3d44068e61d5ff50e5d404a6c7ef6adf6d9208eba"
+    "domBytes": 12870,
+    "domSha256": "eda960914495686fa5c2906651aeb01bb9f270d33ae9be34cf2064b0598aaa9c"
   }
 ]
