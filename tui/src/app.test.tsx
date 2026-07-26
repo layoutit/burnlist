@@ -179,9 +179,13 @@ describe("TUI navigation stack", () => {
     renderers.push(setup.renderer);
     const root = createRoot(setup.renderer);
     flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
-    await setup.waitForFrame((frame) => frame.includes("Demo Burnlist"));
+    await waitForRenderedFrame(setup, (frame) => frame.includes("Demo Burnlist"), "the generic-runtime landing data");
     await setup.mockInput.pressKeys(["RETURN"]);
-    await setup.waitForFrame((frame) => frame.includes("Executable KPI surface") && frame.includes("1 · 2 (50%)") && frame.includes("› Current"));
+    await waitForRenderedFrame(
+      setup,
+      (frame) => frame.includes("Executable KPI surface") && frame.includes("1 · 2 (50%)") && frame.includes("› Current"),
+      "the active generic Oven viewport",
+    );
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     root.unmount();
   });

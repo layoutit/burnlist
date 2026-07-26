@@ -88,7 +88,7 @@ test("catalog dispatches a real Differential field drill-down and q returns only
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   for (let index = 0; index < 9; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
   await setup.waitForFrame((frame) => frame.includes("Differential Testing") && frame.includes("←/→:state"));
-  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("Tail 0"));
+  await press(setup, "RETURN"); await setup.waitForFrame((frame) => frame.includes("↳ telemetry absent"));
   await press(setup, "ARROW_RIGHT"); await setup.waitForFrame((frame) => frame.includes("empty"));
   await press(setup, "q"); await setup.waitForFrame((frame) => frame.includes("Terminal catalog")); root.unmount();
 });
