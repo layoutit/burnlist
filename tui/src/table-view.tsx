@@ -27,7 +27,7 @@ export function TableLine({ children, selected = false, header = false }: {
     height={1}
     flexDirection="row"
     paddingLeft={1}
-    backgroundColor={header ? chrome.header : selected ? chrome.surface : chrome.background}
+    backgroundColor={header ? chrome.header : selected ? chrome.selected : chrome.background}
   >
     <box width={1}><text fg={selected ? palette.blue : "transparent"}>{selected ? "▎" : " "}</text></box>
     {children}
@@ -38,8 +38,12 @@ export function TableGroup({ name, count, noun, width }: { name: string; count: 
   const chrome = useTerminalChrome();
   const palette = useTerminalPalette();
   const suffix = `  ·  ${count} ${noun}${count === 1 ? "" : "s"}`;
+  const contentWidth = Math.max(1, width - 3);
+  const label = fitText(sanitizeTerminalText(name), Math.max(1, contentWidth - suffix.length - 3)).trimEnd();
+  const rule = `  ${"─".repeat(Math.max(1, contentWidth - label.length - suffix.length - 2))}`;
   return <box height={1} paddingLeft={3} backgroundColor={chrome.background} flexDirection="row">
-    <text fg={palette.blue}>{fitText(sanitizeTerminalText(name), Math.max(1, width - 3 - suffix.length)).trimEnd()}</text>
+    <text fg={palette.blue}>{label}</text>
     <text fg={palette.dim}>{suffix}</text>
+    <text fg={chrome.line}>{rule}</text>
   </box>;
 }

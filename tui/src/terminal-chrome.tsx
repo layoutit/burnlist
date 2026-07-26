@@ -7,6 +7,7 @@ export interface TerminalChrome {
   background: string;
   header: string;
   surface: string;
+  selected: string;
   line: string;
   faintLine: string;
 }
@@ -15,6 +16,7 @@ const fallback: TerminalChrome = {
   background: "transparent",
   header: "transparent",
   surface: "#202024",
+  selected: "#303036",
   line: "#3a3a40",
   faintLine: "#29292e",
 };
@@ -30,7 +32,7 @@ function mix(background: [number, number, number], foreground: [number, number, 
 
 export function terminalChrome(colors: TerminalColors | null | undefined, accessibility: TerminalAccessibility = { color: "truecolor", light: false, reducedMotion: false }): TerminalChrome {
   const palette = paletteFor(accessibility);
-  if (accessibility.color === "none") return { ...fallback, surface: "transparent", line: palette.dim, faintLine: palette.dim };
+  if (accessibility.color === "none") return { ...fallback, surface: "transparent", selected: "transparent", line: palette.dim, faintLine: palette.dim };
   if (!colors?.defaultBackground) return accessibility.color === "truecolor"
     ? fallback
     : { ...fallback, line: palette.dim, faintLine: palette.dim };
@@ -40,6 +42,7 @@ export function terminalChrome(colors: TerminalColors | null | undefined, access
     background: "transparent",
     header: "transparent",
     surface: mix(background, foreground, 0.07),
+    selected: mix(background, foreground, 0.15),
     line: mix(background, foreground, 0.18),
     faintLine: mix(background, foreground, 0.10),
   };
