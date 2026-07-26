@@ -41,6 +41,22 @@ test("checklist ledger typography stays 14px at every responsive breakpoint", as
   assert.deepEqual(rules.map((match) => match[1]), ["14", "14"]);
 });
 
+test("checklist KPIs become a compact text-first rail on phones", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+  const mobileBlock = stylesheet.slice(stylesheet.indexOf("@media (max-width: 760px)"), stylesheet.indexOf("@media (max-width: 640px)"));
+  assert.match(mobileBlock, /height: 68px;\s+min-height: 68px;/u);
+  assert.match(mobileBlock, /grid-template-columns: minmax\(116px, 1\.25fr\) minmax\(112px, 1\.2fr\) repeat\(3, minmax\(80px, 1fr\)\);/u);
+  assert.match(mobileBlock, /overflow-x: auto;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-gauge \{\s+display: none;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-heading \{[\s\S]*?font-size: 12px;/u);
+  assert.match(mobileBlock, /\.driving-parity-kpi-ratio \{[\s\S]*?font-size: 14px;/u);
+});
+
+test("event summaries clamp rich outcomes to two lines", async () => {
+  const stylesheet = await readFile(stylesheetPath, "utf8");
+  assert.match(stylesheet, /\.event-card-field-outcome \.event-card-field-value > p:first-child \{[\s\S]*?-webkit-line-clamp: 2;/u);
+});
+
 test("routine retained-data refreshes do not insert layout-shifting banners", async () => {
   const source = await readFile(appPath, "utf8");
   assert.doesNotMatch(source, /Showing the last canonical Burnlist (?:snapshot|index) while fresh data loads\./u);
@@ -95,6 +111,30 @@ test("checklist detail renders the split progress surface and event card list", 
       { label: "Outcome", values: ["Second proof."] },
       { label: "Follow-up", values: ["None."] },
     ]);
+    assert.deepEqual(checklistEventDetailFields("- First result wraps\n  onto one logical bullet.\n- Second result."), [
+      { label: "Detail", values: ["First result wraps onto one logical bullet.", "Second result."] },
+    ]);
+    const emptyMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: {
+      ...data,
+      completed: [{ ...data.completed[0], detail: "" }],
+      done: 1,
+      total: 2,
+      remaining: 1,
+      percent: 50,
+    } }));
+    assert.match(emptyMarkup, /data-event-card="true"/u);
+    assert.doesNotMatch(emptyMarkup, /class="event-card-description"|Completed\./u);
+    const richMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data: {
+      ...data,
+      completed: [{ ...data.completed[0], detail: "- First result wraps\n  onto one logical bullet.\n- Second result." }],
+      done: 1,
+      total: 2,
+      remaining: 1,
+      percent: 50,
+    } }));
+    assert.match(richMarkup, /<p>First result wraps onto one logical bullet\.<\/p>/u);
+    assert.match(richMarkup, /class="event-card-field event-card-field-collapsible event-card-field-details"><summary><span>Details<\/span><span class="event-card-field-count">1<\/span>/u);
+    assert.match(richMarkup, /<li>Second result\.<\/li>/u);
     assert.doesNotMatch(markup, /Completed: 2026/u);
     assert.doesNotMatch(markup, />DONE</u);
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);

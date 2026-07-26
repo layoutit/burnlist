@@ -444,15 +444,40 @@ body.checklist-detail-view .dashboard-oven-title {
   .oven-fields-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip,
   .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip.has-burns {
-    height: auto;
-    min-height: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: 68px;
+    min-height: 68px;
+    grid-template-columns: minmax(116px, 1.25fr) minmax(112px, 1.2fr) repeat(3, minmax(80px, 1fr));
+    grid-template-rows: minmax(0, 1fr);
     gap: 0;
-    padding: 6px 8px;
+    padding: 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip::-webkit-scrollbar {
+    display: none;
   }
   .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-section {
-    min-height: 52px;
-    padding: 0 8px;
+    min-width: 0;
+    min-height: 68px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    padding: 8px 6px;
+  }
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-gauge {
+    display: none;
+  }
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-heading {
+    color: rgba(168, 168, 168, .76);
+    font-size: 12px;
+  }
+  .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-ratio {
+    margin-top: 4px;
+    overflow: hidden;
+    color: rgba(232, 232, 232, .82);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .checklist-detail-shell #burnlist-detail .checklist-progress-workspace,
   .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip:not([hidden]) + .checklist-progress-workspace {

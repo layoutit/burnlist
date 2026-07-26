@@ -180,6 +180,12 @@ body.checklist-detail-view .dashboard-oven-title {
 
 .event-card-field:last-child { border-bottom: 0; }
 .event-card-field-outcome { grid-template-columns: minmax(0, 1fr); }
+.event-card-field-outcome .event-card-field-value > p:first-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .event-card-field-label,
 .event-card-field-collapsible summary { color: rgba(168, 168, 168, .58); }
 .event-card-field-value { min-width: 0; color: rgba(210, 216, 224, .68); overflow-wrap: anywhere; }
@@ -263,6 +269,51 @@ body.checklist-detail-view .dashboard-oven-title {
     min-height: 236px;
     grid-column: 1;
     grid-row: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip,
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip.has-burns {
+    height: 68px;
+    min-height: 68px;
+    grid-template-columns: minmax(116px, 1.25fr) minmax(112px, 1.2fr) repeat(3, minmax(80px, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+    padding: 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-section {
+    min-width: 0;
+    min-height: 68px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    padding: 8px 6px;
+  }
+
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-gauge {
+    display: none;
+  }
+
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-heading {
+    color: rgba(168, 168, 168, .76);
+    font-size: 12px;
+  }
+
+  body.checklist-detail-view .shell.checklist-detail-shell #burnlist-detail .checklist-kpi-strip .driving-parity-kpi-ratio {
+    margin-top: 4px;
+    overflow: hidden;
+    color: rgba(232, 232, 232, .82);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
