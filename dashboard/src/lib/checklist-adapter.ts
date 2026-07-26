@@ -151,21 +151,37 @@ export function timing(data: ChecklistProgressData) {
 export function checklistEventDetailFields(detail: string): EventDetailField[] {
   const fields: EventDetailField[] = [];
   let current: EventDetailField | null = null;
+  let activeListItem = -1;
   for (const rawLine of detail.split(/\r?\n/u)) {
     const line = rawLine.trim();
-    if (!line) continue;
+    if (!line) {
+      activeListItem = -1;
+      continue;
+    }
     const heading = line.match(/^([^:]+):(?:\s*(.*))?$/u);
     if (heading && EVENT_DETAIL_LABELS.has(heading[1])) {
       current = { label: heading[1], values: [] };
       fields.push(current);
       if (heading[2]) current.values.push(heading[2]);
+      activeListItem = -1;
       continue;
     }
     if (!current) {
       current = { label: "Detail", values: [] };
       fields.push(current);
     }
-    current.values.push(line.replace(/^-\s+/u, ""));
+    const listItem = line.match(/^(?:[-*+]|\d+[.)])\s+(.+)$/u);
+    if (listItem) {
+      current.values.push(listItem[1]);
+      activeListItem = current.values.length - 1;
+      continue;
+    }
+    if (activeListItem >= 0 && /^\s+/u.test(rawLine)) {
+      current.values[activeListItem] = `${current.values[activeListItem]} ${line}`;
+      continue;
+    }
+    current.values.push(line);
+    activeListItem = -1;
   }
   return fields;
 }

@@ -162,7 +162,9 @@ export function documentPayloadForPlan(planPath, filename, label, maxBytes = 104
 export function completedDetailMap(sections) {
   const details = new Map();
   for (const section of sections) {
-    const match = String(section.title || "").match(/^([^|]+?)\s*\|\s*(.+)$/u);
+    const title = String(section.title || "");
+    const match = title.match(/^([^|\s]+)\s*\|\s*(.+)$/u)
+      ?? title.match(/^(\S+)\s+(?:—|–|-)\s+(.+)$/u);
     if (!match) continue;
     details.set(match[1].trim(), { title: match[2].trim(), detail: section.body });
   }
