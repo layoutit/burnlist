@@ -415,7 +415,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     }
     if (view === "item") {
       if (key.name === "up") return setItemDetailScroll((offset) => Math.max(0, offset - 1));
-      if (key.name === "down") return setItemDetailScroll((offset) => Math.min(itemDetailMaxOffset(selectedItem, dimensions.width, Math.max(1, dimensions.height - 3)), offset + 1));
+      if (key.name === "down") return setItemDetailScroll((offset) => Math.min(itemDetailMaxOffset(selectedItem, dimensions.width, Math.max(1, dimensions.height - 4)), offset + 1));
     }
   });
   const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const }

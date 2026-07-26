@@ -119,7 +119,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(row.indexOf("Terminal UI")).toBe(3);
     expect(row.indexOf("Checklist")).toBe(columns.indexOf("OVEN"));
     expect(lines[0].indexOf("⟁")).toBe(3);
-    expect(lines[0]).toContain("⟁ Burnlist 2 Burnlists · 1 project · LIVE");
+    expect(lines[0]).toContain("⟁ Burnlist  2 Burnlists · 1 project · LIVE");
     expect(columns).not.toContain("BURNLIST");
     const footer = lines.find((line) => line.includes("↑/↓:navigate"))!;
     expect(footer.indexOf("↑")).toBe(3);
@@ -256,7 +256,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     const detail = Array.from({ length: 12 }, (_, index) => `Completion line ${index + 1}: ${"long field body ".repeat(8)}${index === 11 ? "TAIL-SENTINEL" : ""}`).join("\n");
     const item = { key: "tail-01", id: "tail-01", title: "A long item title that also wraps across narrow screens", kind: "completed" as const, status: "Completed", latest: false, completedAt: "2026-07-23T09:00:00Z", fields: { rationale: "A canonical field body that must remain reachable when wrapped into multiple viewport rows. ".repeat(8) }, detail };
     for (const [width, height] of [[42, 18], [110, 34]] as const) {
-      const max = itemDetailMaxOffset(item, width, height - 3);
+      const max = itemDetailMaxOffset(item, width, height - 4);
       const middle = Math.min(max, itemDetailLines(item, width - 4).findIndex((line) => line.text.includes("Completion line 6")));
       for (const offset of [0, middle, max]) {
         const { frame, root } = await renderFrame(width, height, props({ screen: parsed(itemSource), selectedItem: item, itemDetailScroll: offset }));

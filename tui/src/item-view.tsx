@@ -30,9 +30,7 @@ function wrap(value: unknown, width: number): string[] {
 /** Canonical item text is expanded into a viewport window, never clipped or elided. */
 export function itemDetailLines(item: DetailItem, width: number): DetailLine[] {
   const lines: DetailLine[] = [
-    ...wrap(item.status, width).map((text) => ({ text, tone: "status" as const })),
-    ...wrap(item.id, width).map((text) => ({ text, tone: "normal" as const })),
-    ...(item.latest ? [{ text: "LATEST", tone: "status" as const }] : []),
+    ...wrap(`${item.status}  ·  ${item.id || "—"}${item.latest ? "  ·  LATEST" : ""}`, width).map((text) => ({ text, tone: "status" as const })),
     ...wrap(item.title, width).map((text) => ({ text, tone: "normal" as const })),
     ...(item.completedAt ? wrap(`Completed ${compactTime(item.completedAt)} · ${item.completedAt}`, width).map((text) => ({ text, tone: "dim" as const })) : []),
   ];

@@ -16,17 +16,20 @@ export function BrandHeader({ center, subtitle, compact = false, activity }: {
   const chrome = useTerminalChrome();
   const { width } = useCoalescedTerminalDimensions();
   const loadingGlyph = useTerminalLoadingGlyph(activity?.tone === "info");
-  const right = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? (center ? subtitle : "");
+  const right = activity?.tone === "info" ? `${loadingGlyph} Refreshing` : activity?.message ?? (center ? subtitle.toUpperCase() : "");
   const innerWidth = Math.max(0, width - 4);
   const leftWidth = Math.min(12, innerWidth);
-  const rightWidth = right && width >= 42 ? Math.min(24, Math.max(10, Math.floor(width * 0.22))) : 0;
+  const rightWidth = right && width >= 64 ? Math.min(24, Math.max(10, Math.floor(width * 0.22))) : 0;
   const centerWidth = Math.max(0, innerWidth - leftWidth - rightWidth);
-  return <box height={1} flexShrink={0} flexDirection="row" alignItems="center" backgroundColor={chrome.header} paddingLeft={2} paddingRight={2}>
-    <box width={leftWidth} flexShrink={0} flexDirection="row"><BrandMark /><text fg={palette.soft}>{fitText("Burnlist", Math.max(0, leftWidth - 3))}</text></box>
-    {centerWidth ? <box width={centerWidth} flexShrink={0}><text fg={palette.muted}>{fitText(center ?? subtitle, centerWidth)}</text></box> : null}
-    {rightWidth ? <box width={rightWidth} flexShrink={0} justifyContent="flex-end">
-      <text fg={activity?.tone === "error" ? palette.red : palette.dim}>{fitText(right, rightWidth).trimStart()}</text>
-    </box> : null}
+  return <box height={2} flexShrink={0} flexDirection="column" backgroundColor={chrome.header}>
+    <box height={1} flexDirection="row" alignItems="center" paddingLeft={2} paddingRight={2}>
+      <box width={leftWidth} flexShrink={0} flexDirection="row"><BrandMark /><text fg={palette.soft}>{fitText("Burnlist", Math.max(0, leftWidth - 3))}</text></box>
+      {centerWidth ? <box width={centerWidth} flexShrink={0} paddingLeft={1} paddingRight={1}><text fg={center ? palette.foreground : palette.muted}>{fitText(center ?? subtitle, Math.max(0, centerWidth - 2))}</text></box> : null}
+      {rightWidth ? <box width={rightWidth} flexShrink={0} justifyContent="flex-end">
+        <text fg={activity?.tone === "error" ? palette.red : palette.dim}>{fitText(right, rightWidth).trimStart()}</text>
+      </box> : null}
+    </box>
+    <box height={1} paddingLeft={2} paddingRight={2}><text fg={chrome.line}>{"─".repeat(Math.max(1, width - 4))}</text></box>
   </box>;
 }
 

@@ -61,7 +61,7 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const palette = useTerminalPalette();
   const collapsed = width < Number(node.attributes.collapseAt ?? 96);
   const summaryWidth = Number(node.attributes.summaryWidth ?? 52);
-  const contentHeight = Math.max(1, height - 3);
+  const contentHeight = Math.max(1, height - 4);
   const sidebarHeight = collapsed ? Math.max(12, Math.floor(contentHeight * 0.58)) : contentHeight;
   const runtime = props.ovenRuntime ? prepareTerminalComponentResult({ ...props.ovenRuntime, state: { ...props.ovenRuntime.state, viewport: { width: collapsed ? width : summaryWidth, height: Math.max(1, sidebarHeight - 5) } } }) : null;
   const checklist = props.activeOven?.id === "checklist";
@@ -139,7 +139,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
         landing={props.landing}
         selected={props.selections.burnlists ?? 0}
         focused={props.focusId === "burnlists"}
-        maxRows={Math.max(2, height - 4)}
+        maxRows={Math.max(2, height - 5)}
         terminalWidth={width}
         empty={String(node.attributes.empty ?? "No Burnlists")}
       />;
@@ -156,11 +156,11 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
     case "detail-split":
       return <DetailSplit key={key} node={node} props={props} width={width} height={height} chrome={chrome} />;
     case "oven-detail":
-      if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 3} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 4} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 3} />;
-      if (props.ovenRuntime) return <CatalogOvenRuntime key={key} summary={props.activeOven} detail={props.ovenDetail} result={props.ovenRuntime} height={height - 3} width={width} footer={officialOvenFixture(props.activeOven?.id)?.footer ?? "q:back"} />;
-      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 3} width={width} />;
+      if (props.streamingNavigation) return props.streamingNavigation.page === "feeds" ? <box key={key} height={height - 4} paddingLeft={3} paddingRight={3} paddingTop={1} overflow="hidden"><TerminalStreamingFeedList payload={{ feeds: props.streamingNavigation.feeds, ...(props.streamingNavigation.feedStatus === "loading" ? { loading: true } : props.streamingNavigation.feedStatus === "error" ? { error: props.streamingNavigation.sessionError } : {}) }} selectedFeed={props.streamingNavigation.selectedFeed} width={Math.max(1, width - 6)} height={height - 5} /></box> : <StreamingSession key={key} props={props} width={width} height={height - 4} />;
+      if (props.ovenRuntime) return <CatalogOvenRuntime key={key} summary={props.activeOven} detail={props.ovenDetail} result={props.ovenRuntime} height={height - 4} width={width} footer={officialOvenFixture(props.activeOven?.id)?.footer ?? "q:back"} />;
+      return <CatalogOvenDetail key={key} summary={props.activeOven} detail={props.ovenDetail} height={height - 4} width={width} />;
     case "item-detail":
-      return <ItemDetail key={key} item={props.selectedItem} width={width} height={Math.max(1, height - 3)} scrollOffset={props.itemDetailScroll} />;
+      return <ItemDetail key={key} item={props.selectedItem} width={width} height={Math.max(1, height - 4)} scrollOffset={props.itemDetailScroll} />;
     case "footer":
       return <box key={key} height={2} flexShrink={0} zIndex={10} flexDirection="row" justifyContent="flex-start" border={["top"]} borderColor={chrome.line} paddingLeft={3} alignItems="center">
         <text fg={palette.dim}>{fitText(String(node.attributes.hints), Math.max(1, width - 6)).trimEnd()}</text>
