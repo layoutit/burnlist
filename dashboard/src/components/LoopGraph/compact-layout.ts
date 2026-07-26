@@ -1,4 +1,4 @@
-import type { LoopGraphProjection } from "./LoopGraph";
+import type { LoopRunProjection as LoopGraphProjection } from "../../lib/types";
 import { loopPrimaryPath, loopSymbols } from "./loop-symbols";
 import { layoutSerialCompact } from "./serial-compact-layout";
 

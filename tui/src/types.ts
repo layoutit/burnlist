@@ -1,3 +1,5 @@
+import type { LoopRunProjection } from "../../dashboard/src/lib/types";
+
 export interface ProjectSummary {
   repoKey: string | null;
   displayName: string;
@@ -76,6 +78,8 @@ export interface ProgressSnapshot {
     sections: Array<{ title: string; body: string }>;
     error?: string;
   };
+  selectedItemId?: string | null;
+  loopRun?: LoopRunProjection | null;
   active: Array<{ id: string; title: string; fields?: Record<string, string> }>;
   completed: Array<{ id: string; title: string; completedAt: string; detail?: string }>;
   history?: Array<{ time: string; done: number; remaining: number; total: number; percent: number }>;

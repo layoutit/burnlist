@@ -42,9 +42,11 @@ const screens = {
   item: screen(itemSource, "item.glyph"),
 };
 type View = keyof typeof screens;
-function terminalChecklistPayload(progress: ProgressSnapshot): JsonValue {
+function terminalChecklistPayload(progress: ProgressSnapshot, selectedItemId?: string | null, loopRun?: ProgressSnapshot["loopRun"]): JsonValue {
   const payload = adaptChecklist({
     ...progress,
+    selectedItemId: selectedItemId ?? progress.selectedItemId,
+    loopRun: loopRun === undefined ? progress.loopRun : loopRun,
     history: progress.history ?? [],
     active: progress.active.map((item) => ({ ...item, fields: item.fields ?? {} })),
     completed: progress.completed.map((item) => ({ ...item, detail: item.detail ?? "" })),
@@ -68,12 +70,14 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const [searchFlush, setSearchFlush] = useState(0);
   const [streamingNavigation, setStreamingNavigation] = useState<StreamingDiffNavigation | null>(null);
   const [streamingRefresh, setStreamingRefresh] = useState(0);
+  const [loopProjection, setLoopProjection] = useState<{ scope: string; run: ProgressSnapshot["loopRun"] } | null>(null);
   const terminalRuntimeRef = useRef<{ scope: string; state: TerminalRuntimeState } | null>(null);
   const terminalQueryRef = useRef("");
   const deferredQueryRef = useRef("");
   const searchBeforeFocusRef = useRef<string>("");
   const domainIdRef = useRef<string | null>(null);
   const ovenRequest = useRef<{ generation: number; controller: AbortController | null }>({ generation: 0, controller: null });
+  const loopRequest = useRef<{ generation: number; controller: AbortController | null }>({ generation: 0, controller: null });
   const beginOvenRequest = useCallback(() => {
     ovenRequest.current.controller?.abort();
     const controller = new AbortController(), generation = ovenRequest.current.generation + 1;
@@ -92,12 +96,41 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   const items = useMemo(() => detailItems(activeOven, progress, displayData), [activeOven, displayData, progress]);
   const safeItemIndex = Math.max(0, Math.min(itemIndex, Math.max(0, items.length - 1)));
   const selectedItem = items[safeItemIndex] ?? null;
+  const loopScope = selectedBurnlist?.repoKey && selectedItem
+    ? JSON.stringify([selectedBurnlist.repoKey, selectedBurnlist.id, selectedItem.id])
+    : "";
+  const selectedLoopRun = loopProjection?.scope === loopScope ? loopProjection.run : null;
+  const renderProgress = useMemo(() => progress ? {
+    ...progress,
+    selectedItemId: selectedItem?.id ?? progress.selectedItemId,
+    loopRun: selectedLoopRun,
+  } : null, [progress, selectedItem?.id, selectedLoopRun]);
   const ovenRuntime = useMemo(() => {
     if (!ovenDetail) return null;
-    const payload = isManagedChecklist(activeOven, selectedBurnlist) && progress ? terminalChecklistPayload(progress) : displayData?.payload;
+    const payload = isManagedChecklist(activeOven, selectedBurnlist) && renderProgress ? terminalChecklistPayload(renderProgress, selectedItem?.id, selectedLoopRun) : displayData?.payload;
     if (payload === undefined) return null;
     return admitTerminalOven(ovenDetail.ir as unknown as TerminalOvenIR, { status: "ready", payload: payload as JsonValue }, terminalState ?? undefined, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
-  }, [activeOven?.contract, displayData?.payload, ovenDetail, progress, terminalState]);
+  }, [activeOven?.contract, displayData?.payload, ovenDetail, renderProgress, selectedItem?.id, selectedLoopRun, terminalState]);
+  useEffect(() => {
+    loopRequest.current.controller?.abort();
+    if (view !== "burnlist" || !isManagedChecklist(activeOven, selectedBurnlist) || !selectedBurnlist?.repoKey || !selectedItem) {
+      setLoopProjection(null);
+      return;
+    }
+    const controller = new AbortController(), generation = loopRequest.current.generation + 1, scope = loopScope;
+    loopRequest.current = { generation, controller };
+    setLoopProjection((current) => current?.scope === scope ? current : null);
+    void client.loopProjection(selectedBurnlist.repoKey, selectedBurnlist.id, selectedItem.id, controller.signal)
+      .then(({ loopRun }) => {
+        if (loopRequest.current.generation === generation && !controller.signal.aborted) setLoopProjection({ scope, run: loopRun });
+      })
+      .catch((cause) => {
+        if (controller.signal.aborted || loopRequest.current.generation !== generation) return;
+        setLoopProjection({ scope, run: null });
+        setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => controller.abort();
+  }, [activeOven, client, loopScope, selectedBurnlist, selectedItem, view]);
   const acceptTerminalPayload = useCallback((detail: OvenPackageDetail, payload: JsonValue, scope: string) => {
     const ir = detail.ir as unknown as TerminalOvenIR;
     const prior = terminalRuntimeRef.current;
@@ -428,7 +461,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   return <ScreenRuntime
     screen={screens[view]}
     landing={landing}
-    progress={progress}
+    progress={renderProgress}
     selectedBurnlist={selectedBurnlist}
     activeOven={activeOven}
     ovenDetail={ovenDetail}

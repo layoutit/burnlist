@@ -47,6 +47,14 @@ function installApi() {
     if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [burnlist] });
     if (path === "/api/ovens") return Response.json({ ovens: [oven, { ...oven, id: "installed", name: "Installed", builtIn: false, repoKey: "repo1" }] });
     if (path === "/api/progress") return Response.json(progress);
+    if (path === "/api/loop-projection") return Response.json({ loopRun: {
+      itemRef: "item:demo-01#demo-02", loopId: "loop:builtin:review", state: "ACTIVE", currentNode: "review",
+      graph: {
+        entry: "make",
+        nodes: [{ id: "make", kind: "agent" }, { id: "verify", kind: "check" }, { id: "review", kind: "agent" }, { id: "done", kind: "terminal" }],
+        edges: [{ from: "make", on: "complete", to: "verify" }, { from: "verify", on: "pass", to: "review" }, { from: "review", on: "approve", to: "done" }],
+      },
+    } });
     if (path === "/api/ovens/checklist") return Response.json({ oven: {
       ...oven, instructions: "# Checklist\n\nInspect the ordered checklist.", oven: definition.source, ovenRevision: `o1-sha256:${"a".repeat(64)}`,
       ir: definition.ir,
@@ -171,7 +179,7 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("STATE") && frame.includes("1 / 2"));
+    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("STATE") && frame.includes("1 / 2") && frame.includes("M make"));
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     await key(setup, "RETURN");
     await setup.waitForFrame((frame) => frame.includes("Finish navigation.") && frame.includes("scroll detail"));

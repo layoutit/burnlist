@@ -43,6 +43,18 @@ describe("Burnlist TUI data client", () => {
       .toBe("/api/progress?repoKey=aaaaaaaaaaaa&id=260722-001");
   });
 
+  test("loads the selected item Loop projection through the dashboard route", async () => {
+    let requested = "";
+    globalThis.fetch = mock(async (request: string | URL | Request) => {
+      requested = String(request);
+      return Response.json({ loopRun: { itemRef: "item:260725-001#B4", graph: { nodes: [], edges: [] } } });
+    }) as unknown as typeof fetch;
+    const result = await createDataClient("http://127.0.0.1:4815").loopProjection("83d1e2189407", "260725-001", "B4");
+    expect(new URL(requested).pathname + new URL(requested).search)
+      .toBe("/api/loop-projection?repoKey=83d1e2189407&id=260725-001&item=B4");
+    expect(result.loopRun).toBeTruthy();
+  });
+
   test("loads a repository-scoped Oven payload", async () => {
     let requested = "";
     globalThis.fetch = mock(async (request: string | URL | Request) => {

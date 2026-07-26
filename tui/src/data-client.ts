@@ -82,6 +82,10 @@ export function createDataClient(input: string) {
       const query = new URLSearchParams({ repoKey, id });
       return getJsonResult(base, `/api/progress?${query}`, cache, signal);
     },
+    loopProjection(repoKey: string, id: string, item: string, signal?: AbortSignal): Promise<{ loopRun: ProgressSnapshot["loopRun"] }> {
+      const query = new URLSearchParams({ repoKey, id, item });
+      return getJson(base, `/api/loop-projection?${query}`, cache, signal);
+    },
     ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<OvenDataSnapshot> {
       return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
     },

@@ -1,4 +1,7 @@
-import type { LoopGraphNode, LoopGraphProjection } from "./LoopGraph";
+import type { LoopRunProjection } from "../../lib/types";
+
+type LoopGraphNode = LoopRunProjection["graph"]["nodes"][number];
+type LoopGraphProjection = LoopRunProjection;
 
 const preferredOutcomes = ["complete", "measured", "pass", "target-met", "approve", "success"];
 
