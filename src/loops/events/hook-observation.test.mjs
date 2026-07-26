@@ -23,8 +23,11 @@ function fixture(t) {
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const { repo } = createProductionRunAuthority(join(directory, "repo"));
   const runId = JSON.parse(command(repo, ["create", fixtureItemRef])).runId;
-  command(repo, ["next", runId]);
-  return { repo, runId };
+  const execution = JSON.parse(command(repo, ["claim", runId])).execution;
+  return {
+    repo, runId,
+    correlation: { claimId: execution.claimId, invocationId: execution.invocationId },
+  };
 }
 function codexPayload(repo, event, patch = {}) {
   return {
@@ -34,10 +37,12 @@ function codexPayload(repo, event, patch = {}) {
 }
 
 test("native lifecycle and tool hooks publish correlated observational events", (t) => {
-  const { repo, runId } = fixture(t);
+  const { repo, runId, correlation } = fixture(t);
   const start = publishNativeLoopObservation({
     repoRoot: repo, provider: "codex",
-    payload: codexPayload(repo, "SessionStart", { source: "startup" }),
+    payload: codexPayload(repo, "SessionStart", {
+      source: "startup", burnlist_correlation: correlation,
+    }),
   });
   assert.equal(start.authority, "observational");
   const tool = publishNativeLoopObservation({
@@ -62,12 +67,13 @@ test("native lifecycle and tool hooks publish correlated observational events", 
 });
 
 test("Claude facts retain exposed effort and usage while missing fields stay null", (t) => {
-  const { repo, runId } = fixture(t);
+  const { repo, runId, correlation } = fixture(t);
   publishNativeLoopObservation({
     repoRoot: repo, provider: "claude",
     payload: {
       session_id: "claude-session", cwd: repo, hook_event_name: "SessionStart",
       source: "startup", model: "claude-opus-4-6",
+      burnlist_correlation: correlation,
     },
   });
   const event = publishNativeLoopObservation({
@@ -100,9 +106,10 @@ test("Claude facts retain exposed effort and usage while missing fields stay nul
 });
 
 test("hook replay cannot report outcomes or advance canonical Run state", (t) => {
-  const { repo, runId } = fixture(t);
+  const { repo, runId, correlation } = fixture(t);
   const payload = codexPayload(repo, "SubagentStop", {
     agent_id: "agent-1", agent_type: "worker", outcome: "complete",
+    burnlist_correlation: correlation,
   });
   const first = publishNativeLoopObservation({ repoRoot: repo, provider: "codex", payload });
   const second = publishNativeLoopObservation({ repoRoot: repo, provider: "codex", payload });
@@ -114,6 +121,36 @@ test("hook replay cannot report outcomes or advance canonical Run state", (t) =>
     repoRoot: repo, provider: "codex",
     payload: codexPayload(repo, "PostToolUse", {
       tool_name: "Bash", tool_use_id: "late-tool", tool_input: {},
+    }),
+  }), null);
+});
+
+test("an unmatched singleton session cannot claim the only live Loop context", (t) => {
+  const { repo, runId, correlation } = fixture(t);
+  assert.equal(publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "SessionStart", {
+      session_id: "unmatched-session", source: "startup",
+    }),
+  }), null);
+  assert.equal(readOvenEvents(repo, { ovenIds: ["checklist"], limit: 100 })
+    .filter((entry) => entry.payload?.runId === runId).length, 0);
+  const matched = publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "SessionStart", {
+      session_id: "explicit-session", source: "startup",
+      burnlist_correlation: correlation,
+    }),
+  });
+  assert.equal(matched.payload.runId, runId);
+  assert.equal(publishNativeLoopObservation({
+    repoRoot: repo, provider: "codex",
+    payload: codexPayload(repo, "PostToolUse", {
+      session_id: "explicit-session", tool_name: "Bash", tool_use_id: "wrong-correlation",
+      burnlist_correlation: {
+        claimId: `cl1-sha256:${"c".repeat(64)}`,
+        invocationId: `iv1-sha256:${"d".repeat(64)}`,
+      },
     }),
   }), null);
 });

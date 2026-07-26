@@ -92,17 +92,29 @@ function observedIdentity(payload, provider) {
   const agent = safe(rawAgent) ? digest("agent", `${provider}\0${rawAgent}`) : null;
   return { session, agent };
 }
+function explicitCorrelation(payload) {
+  const value = payload?.burnlist_correlation;
+  if (!exact(value, ["claimId", "invocationId"])
+    || !/^cl1-sha256:[a-f0-9]{64}$/u.test(value.claimId)
+    || !/^iv1-sha256:[a-f0-9]{64}$/u.test(value.invocationId)) return null;
+  return value;
+}
 
 /** Resolve and bind native identities without exposing their raw values. */
 export function resolveLoopHookContext(repoRoot, { provider, payload, now = Date.now() }) {
-  const identity = observedIdentity(payload, provider);
+  const identity = observedIdentity(payload, provider), correlation = explicitCorrelation(payload);
   if (!identity.session) return null;
   return withRepoStateLock(repoRoot, () => {
     const stored = readContext(repoRoot);
     const contexts = stored.contexts.filter((entry) => live(repoRoot, entry, now));
     let match = contexts.filter((entry) => entry.sessions.includes(identity.session)
       || identity.agent && entry.agents.includes(identity.agent));
-    if (!match.length && contexts.length === 1) match = contexts;
+    if (correlation) {
+      const explicit = contexts.filter((entry) => entry.claimId === correlation.claimId
+        && entry.invocationId === correlation.invocationId);
+      if (explicit.length !== 1 || match.length && !match.includes(explicit[0])) match = [];
+      else match = explicit;
+    }
     if (match.length !== 1) {
       if (contexts.length !== stored.contexts.length)
         writeContext(repoRoot, { schema: SCHEMA, contexts });

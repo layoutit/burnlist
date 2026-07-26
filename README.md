@@ -150,9 +150,11 @@ hooks; Claude also receives `PostToolUseFailure`. Edit events remain limited to
 each agent's edit/write tools and invoke `burnlist streaming-diff hook`.
 Advisory `burnlist hooks observe` entries publish bounded, correlated Loop
 activity through ignored local event state without reporting outcomes or
-changing canonical Run state. Codex needs CLI version 0.124.0 or newer to run
-these hooks. The host needs `burnlist` on `PATH`, and the agent remains
-responsible for any hook trust or consent prompt.
+changing canonical Run state. An unmatched native session stays unbound;
+Burnlist never assigns the only live claim by process-of-elimination. Codex
+needs CLI version 0.124.0 or newer to run these hooks. The host needs
+`burnlist` on `PATH`, and the agent remains responsible for any hook trust or
+consent prompt.
 
 ```sh
 # Hooks only, for both agents by default

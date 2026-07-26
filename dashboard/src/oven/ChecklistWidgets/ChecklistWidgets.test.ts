@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
-import { ProgressLedger, ProgressPanel } from "@/components/ChecklistDashboard/ChecklistDashboard";
+import { EventCardList, ProgressLedger, ProgressPanel } from "@/components/ChecklistDashboard/ChecklistDashboard";
 import { checklistFixture } from "@/components/ChecklistDashboard/ChecklistDashboard.fixture.mjs";
 import { ChecklistWorkspace } from "../ChecklistWorkspace";
 import { assertDomEquivalent } from "../test-support/dom-normalize";
@@ -20,7 +20,7 @@ function renderWidget(kind: string) {
 test("checklist widget adapters preserve the exported dashboard subregions", () => {
   assertDomEquivalent(renderWidget("checklist-burn-panel"), renderToStaticMarkup(createElement(ProgressPanel, { data: checklistFixture })));
   assertDomEquivalent(renderWidget("checklist-ledger"), renderToStaticMarkup(createElement(ProgressLedger, { data: checklistFixture })));
-  assertDomEquivalent(renderWidget("checklist-event-cards"), renderToStaticMarkup(createElement(ChecklistWorkspace, { data: checklistFixture })));
+  assertDomEquivalent(renderWidget("checklist-event-cards"), renderToStaticMarkup(createElement(EventCardList, { data: checklistFixture })));
 });
 
 test("workspace exposes live execution identity, evidence, and observed paths", () => {

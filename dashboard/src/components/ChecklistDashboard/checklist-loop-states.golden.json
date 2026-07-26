@@ -1,42 +1,42 @@
 [
   {
     "checkpoint": "paused",
-    "domBytes": 11539,
-    "domSha256": "5502efe29562ac55d549bd22d512e5e56c312043dc9a47f15b008fd719678229"
+    "domBytes": 12765,
+    "domSha256": "52a8346c5b99313fbbf1a7211e8d378407d1c1e51dd4da4e79746a08b9632c10"
   },
   {
     "checkpoint": "failed",
-    "domBytes": 11537,
-    "domSha256": "7aba7741fe80cb71352348a4573c95dae072cffb9480d095d5e1ad48d9c8f1ef"
+    "domBytes": 12763,
+    "domSha256": "de17b8bfc23e83f3fd18af3a51f311b612439c75e26dabbf34f3ee7a70be9922"
   },
   {
     "checkpoint": "stopped",
-    "domBytes": 11538,
-    "domSha256": "e2c7aa9b6c919a3a29244f794167542ee61cb38b6424852d0eabb39a78e4d374"
+    "domBytes": 12764,
+    "domSha256": "53a4db3404794154957ebf41270dbdba8ada2db01561f3c1cc92b85679f4374c"
   },
   {
     "checkpoint": "needs-human",
-    "domBytes": 11542,
-    "domSha256": "13af55dbf157da9638de11bb7a0aeebd38d71fa97036f38bb9b43409e086b9fa"
+    "domBytes": 12768,
+    "domSha256": "3488be2fb4b37fc615f25f5ffce1a7bced2da5d2ca5ccd3d6ffdc44d764ee141"
   },
   {
     "checkpoint": "exhausted",
-    "domBytes": 11547,
-    "domSha256": "7054d53708e82fd50d69719336f937f1a5de36103452aae9b9335aabb16e60be"
+    "domBytes": 12773,
+    "domSha256": "5d4486f99292d52261d2480b8ff1d81c05df9ca0f8661409c93c1bd9c5083737"
   },
   {
     "checkpoint": "stale",
-    "domBytes": 11554,
-    "domSha256": "7c4b0ff382daaf28f0853c4ebe11f7b52be665f081b14d098b8ca5cb629b8c65"
+    "domBytes": 12780,
+    "domSha256": "878561f84a2d71066e7b8ac51716e327ed2f512e7ab71c143326c4d62168da7d"
   },
   {
     "checkpoint": "corrupt",
-    "domBytes": 11556,
-    "domSha256": "226ac90b4ef4f3b8c9c1db6e19605bcd24c8c768f650e0930b789ebd7b7b8255"
+    "domBytes": 12782,
+    "domSha256": "0b2c1c94b0d681810cf2ea2489b8935a4a0f2567e7fef26413a1f3acf7f1266d"
   },
   {
     "checkpoint": "completed",
-    "domBytes": 11585,
-    "domSha256": "c980b879a49b77827f22699a6c69c8e230c97af49c5cded2ed633e276c592fec"
+    "domBytes": 12811,
+    "domSha256": "dcb947b09084a9c3795179d3d44068e61d5ff50e5d404a6c7ef6adf6d9208eba"
   }
 ]

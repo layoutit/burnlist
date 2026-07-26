@@ -51,6 +51,8 @@ advisory observation entries retain only bounded lifecycle, hashed
 session/agent identity, tool name, contained file paths, timing, model, effort,
 and token usage when the native payload exposes them. They publish to ignored
 local Oven event state and cannot report a semantic outcome or advance a Loop.
+Only an explicitly propagated invocation correlation may establish the first
+session binding; an unmatched session is ignored even when one claim is live.
 Codex hook support requires Codex CLI 0.124.0 or newer; `status` reports whether
 the installed CLI can run the configured hooks. The commands require
 `burnlist` on the host `PATH`; each agent may still ask for hook trust or

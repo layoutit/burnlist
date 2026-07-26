@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,7 +9,11 @@ import { testGraph, testRunId } from "./m2-test-fixtures.mjs";
 import { withDirectoryLock } from "../../server/dir-lock.mjs";
 import { readOvenEvents } from "../../events/oven-event-store.mjs";
 import { publishLoopProjectionInvalidation } from "../events/projection-events.mjs";
-import { presentRun } from "./read-projection.mjs";
+import { presentRun, readLatestRunForItem } from "./read-projection.mjs";
+import { newRunId } from "./run-codec.mjs";
+import { createProductionRunAuthority, fixtureItemRef, fixtureRunId } from "./run-test-fixtures.mjs";
+import { createProductionRun, createStoredSystemRunRunner } from "./binder.mjs";
+import { createLoopController } from "./controller.mjs";
 
 function fixture(t) { const root = mkdtempSync(join(os.tmpdir(), "m2-store-")); t.after(() => rmSync(root, { recursive: true, force: true })); let at = 0; const store = runStore(root, { clock: () => at++ }); store.createRun({ runId: testRunId, itemRef: "item:260722-001#M2", graph: testGraph }); return store; }
 test("Run creation stages private authority and journal until one directory rename", (t) => {
@@ -114,4 +118,45 @@ test("a projection publisher failure cannot roll back a committed run mutation",
   const created = store.createRun({ runId: testRunId, itemRef: "item:260722-001#M7", graph: testGraph });
   assert.equal(store.replay(testRunId).revision, created.revision);
   assert.equal(store.list().length, 1);
+});
+
+test("a retained 129th Run cannot brick indexed host submission", { timeout: 30_000 }, async (t) => {
+  const root = mkdtempSync(join(os.tmpdir(), "m12-retained-runs-")); t.after(() => rmSync(root, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(root, "repo"));
+  const store = runStore(repo, { publishProjection() {} });
+  await createProductionRun({ repoRoot: repo, store, itemRef: fixtureItemRef, runId: fixtureRunId });
+  const controller = createLoopController({
+    repoRoot: repo,
+    store,
+    runnerFor: (runId) => createStoredSystemRunRunner({ repoRoot: repo, store, runId }),
+  });
+  controller.next(fixtureRunId);
+  const claimId = store.readExternalClaim(fixtureRunId).claim.claimId;
+  const claimPath = join(store.paths.base, "claims", `${claimId.slice("cl1-sha256:".length)}.json`);
+  assert.equal(statSync(claimPath).mode & 0o777, 0o600);
+  for (let index = 0; index < 128; index += 1) {
+    const runId = newRunId({ now: () => index + 1, random: () => Buffer.alloc(10, index) });
+    store.createRun({ runId, itemRef: `item:260722-001#R${index}`, graph: testGraph });
+  }
+  const result = await controller.submit(fixtureRunId, Buffer.from(`${JSON.stringify({
+    schema: "burnlist-loop-host-result@1", outcome: "complete",
+    findings: [], resolvedFindingIds: [], telemetry: null,
+  })}\n`));
+  assert.equal(result.currentNode, "review");
+  assert.equal(result.hostTask, "awaiting-claim");
+  assert.equal(existsSync(claimPath), true, "accepted claim indices remain available for exact retries");
+  assert.equal(store.resolveClaimRef(claimId), fixtureRunId, "accepted report retries retain O(1) claim resolution");
+});
+
+test("item projection ignores a corrupt tail in an unrelated retained Run", (t) => {
+  const root = mkdtempSync(join(os.tmpdir(), "m12-item-projection-")); t.after(() => rmSync(root, { recursive: true, force: true }));
+  const store = runStore(root, { publishProjection() {} });
+  const targetRun = newRunId({ now: () => 1_000, random: () => Buffer.alloc(10, 1) });
+  const unrelatedRun = newRunId({ now: () => 1_001, random: () => Buffer.alloc(10, 2) });
+  const targetItem = "item:260722-001#TARGET";
+  store.createRun({ runId: targetRun, itemRef: targetItem, graph: testGraph });
+  store.createRun({ runId: unrelatedRun, itemRef: "item:260722-001#OTHER", graph: testGraph });
+  writeFileSync(join(store.paths.journalFor(unrelatedRun), "0000000000000002.json"), "{broken\n");
+  assert.throws(() => store.read(unrelatedRun), /journal/u);
+  assert.equal(readLatestRunForItem({ repoRoot: root, itemRef: targetItem }).runId, targetRun);
 });

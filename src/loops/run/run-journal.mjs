@@ -31,6 +31,16 @@ export function parseJournalRecord(bytes) {
   if (!exact(value, ["schema", "sequence", "prevDigest", "at", "type", "payload"]) || value.schema !== "burnlist-loop-m2-journal@1") fail("record is not closed");
   const record = createJournalRecord(value); if (!record.bytes.equals(bytes)) fail("record is not canonical"); return record;
 }
+/** Read only the immutable item descriptor before deciding whether a full fold is relevant. */
+export function readInitialJournal(directory) {
+  const path = join(directory, fileName(1)), stat = lstatSync(path);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 2 || stat.size > MAX_RECORD)
+    fail("initial journal record is invalid");
+  const record = parseJournalRecord(readFileSync(path));
+  if (record.value.sequence !== 1 || record.value.prevDigest !== null || record.value.type !== "run-created")
+    fail("initial journal record is invalid");
+  return record;
+}
 export function readJournal(directory) {
   const entries = readdirSync(directory, { withFileTypes: true }); if (entries.length > MAX_RECORDS + 1) fail("too many journal entries");
   const records = []; let temporary = 0, aggregate = 0;

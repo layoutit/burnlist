@@ -1,7 +1,6 @@
 import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { readJournal } from "./run-journal.mjs";
-import { foldRun } from "./run-fold.mjs";
+import { readInitialJournal } from "./run-journal.mjs";
 import { isRunRef } from "./run-ref.mjs";
 import { locateItemSpan, validateAssignedItem } from "../assignment/item-metadata.mjs";
 import { assignmentStore } from "../assignment/store.mjs";
@@ -132,33 +131,41 @@ export function readLatestRunForItem({ repoRoot, itemRef, markdown = null, itemI
   const current = currentRunAuthority({ root: repoRoot, base, random: () => Buffer.alloc(8) }).read()
     .find((entry) => entry.itemRef === itemRef) ?? null;
   if (current && artifact && current.assignmentId !== artifact.assignmentId) return null;
-  let entries;
-  try { entries = readdirSync(runs, { withFileTypes: true }); } catch { fail("Run projection is corrupt", "ECORRUPT"); }
-  const staging = entries.filter((entry) => /^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
-  const visible = entries.filter((entry) => !/^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
-  if (staging.length > MAX_RUNS || visible.length > MAX_RUNS
-    || entries.some((entry) => !entry.isDirectory() || !/^(?:[a-f0-9]+|\.create-[a-f0-9]{16}\.tmp)$/u.test(entry.name))) fail("run directory exceeds bounds");
+  const store = runStore(repoRoot);
+  const load = (runId) => {
+    try { return store.read(runId); } catch { fail("Run projection is corrupt", "ECORRUPT"); }
+  };
+  const initialItem = (runId) => {
+    try { return readInitialJournal(store.paths.journalFor(runId)).value.payload.itemRef; }
+    catch { fail("Run projection is corrupt", "ECORRUPT"); }
+  };
   let selected = null;
-  for (const entry of visible) {
-    if (!entry.isDirectory() || !/^[a-f0-9]+$/u.test(entry.name)) fail("Run projection is corrupt", "ECORRUPT");
-    let runId;
-    try { runId = Buffer.from(entry.name, "hex").toString("utf8"); } catch { fail("Run projection is corrupt", "ECORRUPT"); }
-    if (!isRunRef(runId) || Buffer.from(runId).toString("hex") !== entry.name) fail("Run projection is corrupt", "ECORRUPT");
-    let journal, folded;
-    try {
-      journal = readJournal(join(runs, entry.name, "journal"));
-      folded = foldRun(journal);
-    } catch { fail("Run projection is corrupt", "ECORRUPT"); }
-    if (folded.projection.itemRef !== itemRef || current && runId !== current.runId) continue;
-    if (artifact && JSON.stringify(folded.graph) !== JSON.stringify(artifact.frozen.ir)) continue;
-    if (selected) fail("Run projection is ambiguous", "EAMBIGUOUS");
-    selected = { ...folded, journal };
+  if (current) {
+    if (initialItem(current.runId) !== itemRef) fail("current Run is unavailable", "ECURRENT");
+    selected = load(current.runId);
+    if (selected.projection.itemRef !== itemRef
+      || artifact && JSON.stringify(selected.graph) !== JSON.stringify(artifact.frozen.ir))
+      fail("current Run is unavailable", "ECURRENT");
+  } else {
+    let entries;
+    try { entries = readdirSync(runs, { withFileTypes: true }); } catch { fail("Run projection is corrupt", "ECORRUPT"); }
+    const staging = entries.filter((entry) => /^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
+    const visible = entries.filter((entry) => !/^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name));
+    if (staging.length > MAX_RUNS || visible.length > MAX_RUNS
+      || entries.some((entry) => !entry.isDirectory() || !/^(?:[a-f0-9]+|\.create-[a-f0-9]{16}\.tmp)$/u.test(entry.name))) fail("run directory exceeds bounds");
+    for (const entry of visible) {
+      const runId = Buffer.from(entry.name, "hex").toString("utf8");
+      if (!isRunRef(runId) || Buffer.from(runId).toString("hex") !== entry.name)
+        fail("Run projection is corrupt", "ECORRUPT");
+      if (initialItem(runId) !== itemRef) continue;
+      const candidate = load(runId);
+      if (artifact && JSON.stringify(candidate.graph) !== JSON.stringify(artifact.frozen.ir)) continue;
+      if (selected) fail("Run projection is ambiguous", "EAMBIGUOUS");
+      selected = candidate;
+    }
   }
   if (current && !selected) fail("current Run is unavailable", "ECURRENT");
   if (!selected) return null;
-  const stored = runStore(repoRoot).read(selected.projection.runId);
-  selected.loopIdentity = stored.loopIdentity;
-  selected.agentRoutes = stored.agentRoutes;
   const optionalRecords = readLoopObservationRecords(root, selected.projection.runId);
   return presentRun(selected, {
     optionalRecords,

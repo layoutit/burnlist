@@ -13,6 +13,7 @@ import { loadFrozenRecipe } from "../dsl/frozen.mjs";
 import { loadBoundPolicy } from "./run-artifacts.mjs";
 import { createHostClaimAbandonment, hostClaimExpired, validateHostClaim } from "./run-claim.mjs";
 import { validateHostExecutionEnvelope, validateHostExecutionReport } from "../contracts/host-execution.mjs";
+import { createClaimIndex } from "./claim-index.mjs";
 
 const fail = (message, code = "ERUN_STORE") => { throw Object.assign(new Error(`Run store: ${message}`), { code }); };
 const runName = (id) => Buffer.from(id).toString("hex");
@@ -26,6 +27,7 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
     if (!/^sha256:[a-f0-9]{64}$/u.test(digest)) fail("external report digest is invalid", "EREPORT");
     return join(reportRoot(id), `${digest.slice(7)}.json`);
   }, currentLock = join(base, ".current-runs.lock"), initialize = () => mkdirSync(runs, { recursive: true, mode: 0o700 }), currentAuthority = () => currentRunAuthority({ root, base, random });
+  const claimIndex = createClaimIndex({ base, random });
   const assertId = (id) => { if (!isRunRef(id)) fail("invalid RunRef"); return id; };
   const locked = (id, fn) => { assertId(id); initialize(); return withDirectoryLock({ lockPath: lockFor(id), reclaimLiveAfterAge: false, errorFactory: () => fail("run is locked", "ELOCKED"), fn }); };
   const replay = (id) => {
@@ -163,7 +165,11 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
   const terminalize = (id, lease, kind, summary) => locked(id, () => { const current = replay(id); assertLease(current, lease); return terminalizeCurrent(id, current, { kind, summary }); });
   const bindExternalClaim = (id, lease, { claim, envelope }) => locked(id, () => {
     const current = replay(id); assertLease(current, lease);
-    if (current.execution.externalClaim) return readExternalClaim(id, current);
+    if (current.execution.externalClaim) {
+      const active = readExternalClaim(id, current);
+      claimIndex.write(id, active.claim.claimId);
+      return active;
+    }
     if (current.execution.terminal || current.execution.started || current.execution.invocation || current.execution.node?.kind !== "agent") fail("current node is not an unstarted agent", "ECLAIM");
     const checkedClaim = validateHostClaim(claim), checkedEnvelope = validateHostExecutionEnvelope(envelope), authority = readAuthority(id), issued = now();
     const frozen = loadFrozenRecipe(Buffer.from(authority.frozenRecipe, "base64")), policy = loadBoundPolicy(Buffer.from(authority.policy, "base64"));
@@ -175,6 +181,9 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
       || checkedEnvelope.value.recipeRevision !== frozen.revisions.executable || checkedEnvelope.value.policyRevision !== policy.revision) fail("external claim does not bind the current Run", "ECLAIM");
     if (current.execution.node.mode === "review" && checkedClaim.inputCandidate !== current.execution.candidate?.id)
       fail("review claim is not bound to the current candidate", "ECLAIM");
+    // Retain the immutable ClaimRef lookup for exact report retries. It is a
+    // bounded O(1) hint only: resolution still verifies the Run journal.
+    claimIndex.write(id, checkedClaim.claimId);
     writeExecution(id, checkedEnvelope);
     // One journal record makes the host-visible claim indivisible: replay never
     // observes a started agent invocation that lacks its sealed host envelope.
@@ -316,19 +325,30 @@ export function runStore(repoRoot, { clock = () => Date.now(), random = randomBy
   function resolveClaimRef(claimId) {
     if (!/^cl1-sha256:[a-f0-9]{64}$/u.test(claimId)) fail("invalid ClaimRef", "ECLAIM");
     if (!existsSync(runs)) fail("ClaimRef is missing", "ECLAIM");
+    const matchesClaim = (runId) => {
+      const current = replay(runId), bound = current.journal.some((record) => record.value.type === "external-claim-bound"
+        && record.value.payload.claim.claimId === claimId);
+      if (!bound) return false;
+      const accepted = current.journal.some((record) => record.value.type === "external-report-accepted"
+        && record.value.payload.claimId === claimId);
+      if (!accepted && current.execution.externalClaim?.claim.claimId !== claimId) fail("ClaimRef is stale", "ECLAIM");
+      return true;
+    };
+    const indexed = claimIndex.read(claimId);
+    if (indexed && matchesClaim(indexed.runId)) return indexed.runId;
+    const currentMatches = currentAuthority().read()
+      .map((entry) => entry.runId)
+      .filter((runId, index, values) => values.indexOf(runId) === index)
+      .filter(matchesClaim);
+    if (currentMatches.length > 1) fail("ClaimRef is ambiguous", "ECLAIM");
+    if (currentMatches.length === 1) return currentMatches[0];
     const entries = readdirSync(runs, { withFileTypes: true }).filter((entry) => !entry.name.startsWith("."));
     if (entries.length > 128 || entries.some((entry) => !entry.isDirectory() || !/^[a-f0-9]+$/u.test(entry.name))) fail("run directory exceeds bounds", "EBOUNDS");
     const matches = [];
     for (const entry of entries) {
       const runId = Buffer.from(entry.name, "hex").toString("utf8");
       if (!isRunRef(runId) || Buffer.from(runId).toString("hex") !== entry.name) fail("run directory is corrupt", "EBOUNDS");
-      const current = replay(runId), bound = current.journal.some((record) => record.value.type === "external-claim-bound"
-        && record.value.payload.claim.claimId === claimId);
-      if (!bound) continue;
-      const accepted = current.journal.some((record) => record.value.type === "external-report-accepted"
-        && record.value.payload.claimId === claimId);
-      if (!accepted && current.execution.externalClaim?.claim.claimId !== claimId) fail("ClaimRef is stale", "ECLAIM");
-      matches.push(runId);
+      if (matchesClaim(runId)) matches.push(runId);
     }
     if (!matches.length) fail("ClaimRef is missing", "ECLAIM");
     if (matches.length !== 1) fail("ClaimRef is ambiguous", "ECLAIM");

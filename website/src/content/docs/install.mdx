@@ -65,6 +65,8 @@ native payload provides them. They may refine an already ACTIVE item to
 **progressing**, but cannot create canonical state, report a semantic outcome,
 advance a Loop, satisfy a gate, or complete work. See
 [Observation is not canonical state](/dashboard#observation-is-not-canonical-state).
+Only an explicitly propagated invocation correlation may establish the first
+session binding; unmatched sessions remain unbound even when one claim is live.
 
 The agent remains responsible for any first-run hook trust or consent prompt;
 Burnlist only writes configuration. `burnlist hooks status` reports each

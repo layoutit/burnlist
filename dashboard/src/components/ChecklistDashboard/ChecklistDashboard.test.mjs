@@ -74,7 +74,7 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.equal(markup.indexOf("Second event") < markup.indexOf("First event"), true);
     assert.match(markup, /First proof\./u);
     assert.match(markup, /Second proof\./u);
-    assert.doesNotMatch(markup, /class="event-card-field-label">Outcome|>Outcome</u);
+    assert.doesNotMatch(markup, /class="event-card-field-label">Outcome/u);
     assert.equal((markup.match(/class="event-card-field event-card-field-outcome"/gu) ?? []).length, 2);
     assert.equal((markup.match(/class="event-card-summary"/gu) ?? []).length, 2);
     assert.equal((markup.match(/class="event-card-description"/gu) ?? []).length, 2);

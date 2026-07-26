@@ -18,6 +18,7 @@
         <checklist-burn-panel source="/raw"/>
       </box>
       <checklist-workspace source="/raw"/>
+      <checklist-event-cards source="/raw"/>
     </box>
   </box>
 </oven>

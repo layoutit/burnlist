@@ -1,6 +1,6 @@
 import type { ChecklistProgressData } from "@lib";
-import { ChecklistWorkspace } from "../ChecklistWorkspace";
+import { EventCardList } from "@/components/ChecklistDashboard/ChecklistDashboard";
 
 export function ChecklistEventCards({ data }: { data: ChecklistProgressData }) {
-  return <ChecklistWorkspace data={data} />;
+  return <EventCardList data={data} />;
 }
