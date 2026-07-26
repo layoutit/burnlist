@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { createProductionRunAuthority, fixtureItemRef } from "../loops/run/run-test-fixtures.mjs";
+import { runStore } from "../loops/run/run-store.mjs";
+import { testGraph } from "../loops/run/m2-test-fixtures.mjs";
+import { newRunId } from "../loops/run/run-codec.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const cli = join(root, "bin", "burnlist.mjs");
@@ -48,6 +51,47 @@ test("host-only CLI exposes stable reads and no managed run command", (t) => {
     assert.equal(result.status, 2);
     assert.doesNotMatch(result.stderr, /codex|adapter|profile/u);
   }
+});
+
+test("production list and prune remain operational beyond 128 retained Runs", { timeout: 30_000 }, (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "retained-loop-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const store = runStore(repo, { publishProjection() {} }), runIds = [];
+  for (let index = 0; index < 130; index += 1) {
+    const runId = newRunId({ now: () => index + 1,
+      random: () => Buffer.alloc(10, (index % 250) + 1) });
+    runIds.push(runId);
+    store.createRun({ runId, itemRef: `item:260722-001#H${index}`, graph: testGraph });
+  }
+  store.terminalize(runIds[0], store.acquireLease(runIds[0]).lease, "cancelled", "retention");
+  store.terminalize(runIds[2], store.acquireLease(runIds[2]).lease, "error", "retention");
+  const listed = JSON.parse(command(repo, ["list"]));
+  assert.equal(listed.length, 128);
+  assert.equal(listed.some((entry) => entry.runId === runIds[0]), false);
+  assert.equal(listed.some((entry) => entry.runId === runIds.at(-1)), true);
+  const pruned = JSON.parse(command(repo, ["prune", "--retain", "128"]));
+  assert.deepEqual(pruned, {
+    schema: "burnlist-loop-retention@1", retain: 128, before: 130,
+    archived: 2, retained: 128, protected: 128,
+  });
+  assert.equal(existsSync(join(store.paths.archiveRuns, Buffer.from(runIds[0]).toString("hex"))), true);
+  assert.equal(existsSync(join(store.paths.archiveRuns, Buffer.from(runIds[2]).toString("hex"))), true);
+  assert.equal(existsSync(store.paths.pathFor(runIds[1])), true, "nonterminal history stays protected");
+  assert.equal(JSON.parse(command(repo, ["prune", "--retain", "128"])).archived, 0);
+});
+
+test("prune protects a safely terminal Run while it remains current authority", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "current-retention-loop-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = created(repo);
+  assert.equal(JSON.parse(command(repo, ["stop", runId])).state, "stopped");
+  assert.deepEqual(JSON.parse(command(repo, ["prune", "--retain", "0"])), {
+    schema: "burnlist-loop-retention@1", retain: 0, before: 1,
+    archived: 0, retained: 1, protected: 1,
+  });
+  assert.equal(existsSync(runStore(repo).paths.pathFor(runId)), true);
 });
 
 test("claim and report advance checks and gates without launching a provider", (t) => {

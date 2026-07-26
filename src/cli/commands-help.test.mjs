@@ -54,6 +54,7 @@ test("top-level and Oven help expose the validated use and set flow", () => {
     assert.match(top.stdout, /burnlist loop report <ClaimRef> \(--outcome <complete\|approve> \| --result <file>\) \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop abandon <ClaimRef> --reason <host-cancelled\|host-lost\|expired> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop list \[--repo <path>\]/u);
+    assert.match(top.stdout, /burnlist loop prune \[--retain <count>\] \[--repo <path>\]/u);
     assert.doesNotMatch(top.stdout, /burnlist loop run\|resume/u);
     assert.match(top.stdout, /burnlist loop status\|inspect <RunRef> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop pause\|stop <RunRef> \[--repo <path>\] \(idle Run only\)/u);

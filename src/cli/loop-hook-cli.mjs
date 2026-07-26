@@ -1,5 +1,6 @@
 import { resolveUmbrella } from "./umbrella.mjs";
 import { publishNativeLoopObservation } from "../loops/events/hook-observation.mjs";
+import { bindPreparedLoopHookContext, prepareLoopHookBinding } from "../loops/events/hook-context.mjs";
 
 const MAX_BYTES = 256 * 1024;
 const READ_TIMEOUT_MS = 750;
@@ -40,6 +41,10 @@ export async function runLoopObservationHook({ provider, input = process.stdin }
     const payload = parseLoopHookPayload(await readStdinCapped(input));
     if (!payload) return null;
     const repoRoot = resolveUmbrella(payload.cwd ?? process.cwd());
+    if (payload.hook_event_name === "PreToolUse")
+      prepareLoopHookBinding(repoRoot, { provider, payload });
+    if (payload.hook_event_name === "PostToolUse")
+      bindPreparedLoopHookContext(repoRoot, { provider, payload });
     return publishNativeLoopObservation({ repoRoot, provider, payload });
   } catch { return null; }
 }

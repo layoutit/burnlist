@@ -139,6 +139,7 @@ Usage:
   burnlist loop report <ClaimRef> (--outcome <complete|approve> | --result <file>) [--repo <path>]
   burnlist loop abandon <ClaimRef> --reason <host-cancelled|host-lost|expired> [--repo <path>]
   burnlist loop list [--repo <path>]
+  burnlist loop prune [--retain <count>] [--repo <path>]
   burnlist loop status|inspect <RunRef> [--repo <path>]
   burnlist loop pause|stop <RunRef> [--repo <path>] (idle Run only)
   burnlist loop reconcile <RunRef> --recovery-proof <hex> [--repo <path>]

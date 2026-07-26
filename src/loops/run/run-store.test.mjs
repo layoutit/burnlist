@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -159,4 +159,21 @@ test("item projection ignores a corrupt tail in an unrelated retained Run", (t) 
   writeFileSync(join(store.paths.journalFor(unrelatedRun), "0000000000000002.json"), "{broken\n");
   assert.throws(() => store.read(unrelatedRun), /journal/u);
   assert.equal(readLatestRunForItem({ repoRoot: root, itemRef: targetItem }).runId, targetRun);
+});
+
+test("retention preflights every candidate before moving any Run", (t) => {
+  const root = mkdtempSync(join(os.tmpdir(), "m12-retention-preflight-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const store = runStore(root, { publishProjection() {} }), runIds = [];
+  for (let index = 0; index < 3; index += 1) {
+    const runId = newRunId({ now: () => index + 1, random: () => Buffer.alloc(10, index + 1) });
+    runIds.push(runId);
+    store.createRun({ runId, itemRef: `item:260722-001#P${index}`, graph: testGraph });
+    store.terminalize(runId, store.acquireLease(runId).lease, "cancelled", "retention");
+  }
+  writeFileSync(join(store.paths.journalFor(runIds[1]), "0000000000000005.json"), "{broken\n");
+  assert.throws(() => store.prune(1), /journal/u);
+  assert.equal(runIds.every((runId) => existsSync(store.paths.pathFor(runId))), true);
+  assert.equal(existsSync(store.paths.archiveRuns)
+    ? readdirSync(store.paths.archiveRuns).length : 0, 0);
 });

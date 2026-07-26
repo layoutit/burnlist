@@ -19,7 +19,7 @@ import {
 function usageText() { return loopConfigUsage(); }
 function usageError(message = usageText()) { return Object.assign(new Error(message), { exitCode: 2 }); }
 function options(tokens) {
-  const positionals = []; let repo = null, recoveryProof = null, resultFile = null, reason = null, outcome = null;
+  const positionals = []; let repo = null, recoveryProof = null, resultFile = null, reason = null, outcome = null, retain = null;
   for (let index = 0; index < tokens.length; index += 1) {
     if (tokens[index] === "--repo") {
       if (repo !== null) throw usageError("--repo must be specified at most once.");
@@ -44,10 +44,18 @@ function options(tokens) {
       if (!["complete", "approve", "reject", "escalate"].includes(outcome ?? ""))
         throw usageError("--outcome requires complete, approve, reject, or escalate.");
     }
+    else if (tokens[index] === "--retain") {
+      if (retain !== null) throw usageError("--retain must be specified at most once.");
+      const value = tokens[++index];
+      if (!/^(?:0|[1-9][0-9]{0,6})$/u.test(value ?? "") || Number(value) > 1_000_000)
+        throw usageError("--retain requires an integer from 0 through 1000000.");
+      retain = Number(value);
+    }
     else if (tokens[index].startsWith("--")) throw usageError(`Unknown option: ${tokens[index]}`);
     else positionals.push(tokens[index]);
   }
-  return { positionals, recoveryProof, resultFile, reason, outcome, repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
+  return { positionals, recoveryProof, resultFile, reason, outcome, retain,
+    repo: repo ? resolve(process.cwd(), repo) : resolveUmbrella(process.cwd()) };
 }
 function validateVerbOptions(verb, opts) {
   if (opts.recoveryProof && verb !== "reconcile") throw usageError();
@@ -55,6 +63,7 @@ function validateVerbOptions(verb, opts) {
     || ["report", "submit"].includes(verb) && Boolean(opts.resultFile) === Boolean(opts.outcome)
     || verb === "report" && opts.outcome && !["complete", "approve"].includes(opts.outcome)) throw usageError();
   if (opts.reason && verb !== "abandon" || verb === "abandon" && !opts.reason) throw usageError();
+  if (opts.retain !== null && verb !== "prune") throw usageError();
 }
 function simpleReport(envelopeBytes, outcome) {
   const execution = validateHostExecutionEnvelope(envelopeBytes).value;
@@ -111,8 +120,8 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     const result = completeLoopRun({ repoRoot: opts.repo, runId: opts.positionals[0] });
     stdout.write(`${JSON.stringify({ schema: "burnlist-loop-completion@1", ...result })}\n`); return result;
   }
-  if (["list", "status", "inspect", "next", "claim", "submit", "report", "abandon", "pause", "stop", "reconcile"].includes(verb)) {
-    const allowed = verb === "list" ? 0 : 1;
+  if (["list", "prune", "status", "inspect", "next", "claim", "submit", "report", "abandon", "pause", "stop", "reconcile"].includes(verb)) {
+    const allowed = ["list", "prune"].includes(verb) ? 0 : 1;
     if (opts.positionals.length !== allowed) throw usageError();
     const store = runStore(opts.repo);
     const suppliedRunnerFor = runnerFor ?? ((runId) => createStoredSystemRunRunner({ repoRoot: opts.repo, store, runId }));
@@ -122,6 +131,7 @@ export async function runLoopCli(tokens, { runReader, runnerFor, stdout = proces
     };
     const controller = createLoopController({ store, runnerFor: runtimeRunnerFor, repoRoot: opts.repo });
     const result = verb === "list" ? controller.list()
+      : verb === "prune" ? store.prune(opts.retain ?? 128)
       : verb === "status" ? controller.status(opts.positionals[0])
       : verb === "inspect" ? controller.inspect(opts.positionals[0])
       : verb === "next" ? controller.next(opts.positionals[0])

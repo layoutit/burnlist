@@ -150,8 +150,11 @@ hooks; Claude also receives `PostToolUseFailure`. Edit events remain limited to
 each agent's edit/write tools and invoke `burnlist streaming-diff hook`.
 Advisory `burnlist hooks observe` entries publish bounded, correlated Loop
 activity through ignored local event state without reporting outcomes or
-changing canonical Run state. An unmatched native session stays unbound;
-Burnlist never assigns the only live claim by process-of-elimination. Codex
+changing canonical Run state. A native `PreToolUse` for an exact
+`burnlist loop next|claim` command prepares a short-lived session/tool/Run
+tuple; the matching `PostToolUse` binds it only after that Run's claim is
+durable. An unmatched native session stays unbound, and Burnlist never assigns
+the only live claim by process-of-elimination. Codex
 needs CLI version 0.124.0 or newer to run these hooks. The host needs
 `burnlist` on `PATH`, and the agent remains responsible for any hook trust or
 consent prompt.
@@ -211,7 +214,11 @@ external provider CLI from the host with its small task, and use `loop submit`
 for the semantic result. Burnlist automatically
 advances its trusted checks and gates to the next agent or terminal node.
 Inspect with `loop status|inspect`; `pause` and `stop` are idle-Run controls,
-and proof-gated `reconcile` handles a demonstrably lost claim. Only a
+proof-gated `reconcile` handles a demonstrably lost claim, and `loop prune
+--retain <count>` archives only non-current failed/stopped/exhausted/needs-human
+histories.
+`loop list` keeps a bounded newest-history public window even when more history
+is retained. Only a
 converged Run can be applied by `loop complete`; the
 command is idempotent and performs the normal shrinking-list completion.
 

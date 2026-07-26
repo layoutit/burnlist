@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { closeSync, constants, fstatSync, fsyncSync, lstatSync, openSync, readFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fstatSync, fsyncSync, lstatSync, mkdirSync, opendirSync, openSync, readFileSync, renameSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { rawSha256 } from "../dsl/hash.mjs";
 import { RUN_REF } from "./run-ref.mjs";
@@ -62,6 +62,152 @@ export function newRunId({ now = Date.now, random = randomBytes } = {}) {
   let encoded = "";
   for (let index = 0; index < 26; index += 1) { encoded = BASE32[Number(value & 31n)] + encoded; value >>= 5n; }
   return `run:${encoded}`;
+}
+
+function insertRunId(selected, runId) {
+  const index = selected.findIndex((value) => value > runId);
+  selected.splice(index < 0 ? selected.length : index, 0, runId);
+}
+
+/** Stream every published Run directory without imposing a repository-wide count cap. */
+export function visitRunDirectories(runs, visitor = () => {}) {
+  if (!existsSync(runs)) return 0;
+  const directory = opendirSync(runs);
+  let visible = 0;
+  let staging = 0;
+  try {
+    for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+      if (/^\.create-[a-f0-9]{16}\.tmp$/u.test(entry.name)) {
+        if (!entry.isDirectory() || ++staging > MAX_RUNS) fail("run staging exceeds bounds", "EBOUNDS");
+        continue;
+      }
+      if (!entry.isDirectory() || !/^[a-f0-9]+$/u.test(entry.name))
+        fail("run directory is corrupt");
+      const runId = Buffer.from(entry.name, "hex").toString("utf8");
+      if (!RUN_ID.test(runId) || Buffer.from(runId).toString("hex") !== entry.name)
+        fail("run directory is corrupt");
+      visible += 1;
+      visitor(runId);
+    }
+  } finally {
+    try { directory.closeSync(); } catch (error) {
+      if (error?.code !== "ERR_DIR_CLOSED") throw error;
+    }
+  }
+  return visible;
+}
+
+/** Keep only the newest bounded public window while validating the full directory stream. */
+export function newestRunIds(runs, limit = MAX_RUNS) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RUNS)
+    fail("invalid Run listing limit");
+  const selected = [];
+  visitRunDirectories(runs, (runId) => {
+    if (selected.length < limit || runId > selected[0]) {
+      insertRunId(selected, runId);
+      if (selected.length > limit) selected.shift();
+    }
+  });
+  return selected;
+}
+
+/** Build a bounded item window while validating every relevant retained Run. */
+export function boundedItemRunProjections({
+  runs, itemRef, currentRunId = null, initialItem, project, limit = MAX_RUNS,
+} = {}) {
+  if (typeof itemRef !== "string" || !itemRef
+    || currentRunId !== null && !RUN_ID.test(currentRunId)
+    || typeof initialItem !== "function" || typeof project !== "function"
+    || !Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RUNS)
+    fail("invalid item Run projection", "EBOUNDS");
+  const safelyTerminal = new Set(["failed", "stopped", "budget-exhausted", "needs-human"]);
+  const insertNewest = (values, projection) => {
+    const index = values.findIndex((value) => value.runId > projection.runId);
+    values.splice(index < 0 ? values.length : index, 0, projection);
+    if (values.length > limit) values.shift();
+  };
+  let current = null;
+  const operational = [], safe = [];
+  visitRunDirectories(runs, (runId) => {
+    if (initialItem(runId) !== itemRef) return;
+    const projection = project(runId);
+    if (runId === currentRunId) current = projection;
+    else insertNewest(safelyTerminal.has(projection.state) ? safe : operational, projection);
+  });
+  if (currentRunId && !current) fail("current Run is unavailable", "ECURRENT");
+  const selected = current ? [current] : [];
+  selected.push(...operational.slice(Math.max(0, operational.length - (limit - selected.length))));
+  selected.push(...safe.slice(Math.max(0, safe.length - (limit - selected.length))));
+  return selected.sort((left, right) => left.runId.localeCompare(right.runId));
+}
+
+/** Select the next oldest bounded batch after a cursor for scalable retention passes. */
+export function nextRunIds(runs, { after = null, limit = MAX_RUNS } = {}) {
+  if (after !== null && !RUN_ID.test(after)) fail("invalid Run retention cursor");
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_RUNS)
+    fail("invalid Run retention batch");
+  const selected = [];
+  visitRunDirectories(runs, (runId) => {
+    if (after === null || runId > after) {
+      if (selected.length < limit || runId < selected.at(-1)) {
+        insertRunId(selected, runId);
+        if (selected.length > limit) selected.pop();
+      }
+    }
+  });
+  return selected;
+}
+
+function privateDirectory(path) {
+  try { mkdirSync(path, { mode: 0o700 }); }
+  catch (error) { if (error?.code !== "EEXIST") throw error; }
+  const entry = lstatSync(path);
+  if (!entry.isDirectory() || entry.isSymbolicLink() || (entry.mode & 0o077) !== 0)
+    fail("retention archive is unsafe");
+}
+
+/** Archive oldest safely-terminal Runs in bounded batches, preserving protected history. */
+export function pruneRunDirectories({
+  runs, archiveRuns, retain = MAX_RUNS, replay, currentRunIds = [],
+} = {}) {
+  if (!Number.isSafeInteger(retain) || retain < 0 || retain > 1_000_000
+    || typeof replay !== "function") fail("invalid retention request");
+  const before = visitRunDirectories(runs);
+  const required = Math.max(0, before - retain);
+  if (!required) return Object.freeze({ schema: "burnlist-loop-retention@1",
+    retain, before, archived: 0, retained: before, protected: 0 });
+  privateDirectory(dirname(archiveRuns));
+  privateDirectory(archiveRuns);
+  const current = new Set(currentRunIds);
+  const safe = new Set(["failed", "stopped", "budget-exhausted", "needs-human"]);
+  let eligible = 0, protectedCount = 0;
+  visitRunDirectories(runs, (runId) => {
+    const state = replay(runId).projection.state;
+    if (current.has(runId) || !safe.has(state)) protectedCount += 1;
+    else {
+      eligible += 1;
+      if (existsSync(join(archiveRuns, Buffer.from(runId).toString("hex"))))
+        fail("retention archive collides with an existing Run");
+    }
+  });
+  const targetCount = Math.min(required, eligible);
+  let archived = 0, cursor = null;
+  while (archived < targetCount) {
+    const batch = nextRunIds(runs, { after: cursor });
+    if (!batch.length) break;
+    for (const runId of batch) {
+      cursor = runId;
+      const state = replay(runId).projection.state;
+      if (current.has(runId) || !safe.has(state)) continue;
+      const target = join(archiveRuns, Buffer.from(runId).toString("hex"));
+      renameSync(join(runs, Buffer.from(runId).toString("hex")), target);
+      archived += 1;
+      if (archived >= targetCount) break;
+    }
+  }
+  if (archived) { fsyncDirectory(runs); fsyncDirectory(archiveRuns); }
+  return Object.freeze({ schema: "burnlist-loop-retention@1",
+    retain, before, archived, retained: before - archived, protected: protectedCount });
 }
 
 function canonicalValue(value, depth = 0) {

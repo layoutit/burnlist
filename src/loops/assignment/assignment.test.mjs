@@ -13,6 +13,7 @@ import { parseItemRef, parseLoopRef, parseRunRef, selectorKind } from "./selecto
 import { assignmentStore } from "./store.mjs";
 import { runStore } from "../run/run-store.mjs";
 import { testGraph } from "../run/m2-test-fixtures.mjs";
+import { newRunId } from "../run/run-codec.mjs";
 
 const project = resolve(new URL("../../..", import.meta.url).pathname);
 function fixture() {
@@ -177,6 +178,33 @@ test("repository hazard authority reads production Runs and permits only safe te
       assert.deepEqual(repositoryHazardAuthority(converged.repo)({ itemRef: ref() }), [`completion-pending Run ${runId}`]);
       assert.throws(() => unassignLoopItem({ repoRoot: converged.repo, itemRef: ref() }), /completion-pending Run/u);
     } finally { converged.cleanup(); }
+  } finally { context.cleanup(); }
+});
+
+test("129 retained Runs cannot brick production unassign or direct Burn hazards", { timeout: 30_000 }, async () => {
+  const context = fixture();
+  try {
+    await assignLoopItem({ repoRoot: context.repo, itemRef: ref(), loopRef: "loop:builtin:review" });
+    const store = runStore(context.repo, { publishProjection() {} });
+    const target = newRunId({ now: () => 1, random: () => Buffer.alloc(10, 1) });
+    store.createRun({ runId: target, itemRef: ref(), graph: testGraph });
+    for (let index = 0; index < 128; index += 1) {
+      const runId = newRunId({ now: () => index + 2,
+        random: () => Buffer.alloc(10, (index % 250) + 2) });
+      store.createRun({ runId, itemRef: ref(), graph: testGraph });
+      store.terminalize(runId, store.acquireLease(runId).lease, "cancelled", "safe history");
+    }
+    assert.equal(store.listForItem(ref()).length, 128,
+      "the item projection is a bounded window beyond 128 histories");
+    assert.deepEqual(repositoryHazardAuthority(context.repo)({ itemRef: ref() }),
+      [`nonterminal Run ${target}`], "the oldest relevant unsafe Run remains fail-closed");
+    store.terminalize(target, store.acquireLease(target).lease, "cancelled", "safe history");
+    assert.deepEqual(repositoryHazardAuthority(context.repo)({ itemRef: ref() }), []);
+    const bin = join(project, "bin", "burnlist.mjs");
+    assert.match(execFileSync(process.execPath,
+      [bin, "loop", "unassign", ref(), "--repo", context.repo],
+      { cwd: context.repo, encoding: "utf8" }), /^as1-sha256:/u);
+    assert.doesNotThrow(() => burnItem(context.repo, "260710-001", "BUG-07"));
   } finally { context.cleanup(); }
 });
 
