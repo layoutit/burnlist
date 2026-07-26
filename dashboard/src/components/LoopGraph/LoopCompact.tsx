@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { LoopGraphProjection } from "./LoopGraph";
 import { layoutCompactLoop } from "./compact-layout";
+import { itemTopologyProjection } from "./item-topology";
 import "./LoopGraph.css";
 
 export type LoopCompactProps = {
@@ -11,31 +12,7 @@ export type LoopCompactProps = {
   variant?: "topology" | "burn-cycle";
 };
 
-function semanticTopology(run: LoopGraphProjection) {
-  const exceptional = new Set(run.graph.nodes
-    .filter((node) => node.kind === "terminal" && node.terminalState !== "converged")
-    .map((node) => node.id));
-  const nodes = run.graph.nodes.filter((node) => !exceptional.has(node.id));
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const edges = run.graph.edges.filter((edge) =>
-    nodeIds.has(edge.from) && nodeIds.has(edge.to));
-  return { graph: { ...run.graph, nodes, edges }, currentNode: run.currentNode };
-}
-
-export function itemTopologyProjection(run: LoopGraphProjection): LoopGraphProjection {
-  const semantic = semanticTopology(run);
-  const hasStart = semantic.graph.nodes.some((node) => node.id === "start");
-  return {
-    ...run,
-    currentNode: semantic.currentNode,
-    graph: {
-      ...semantic.graph,
-      entry: hasStart ? semantic.graph.entry ?? "start" : "start",
-      nodes: hasStart ? semantic.graph.nodes : [{ id: "start", kind: "terminal" }, ...semantic.graph.nodes],
-      edges: hasStart ? semantic.graph.edges : [{ from: "start", on: "begin", to: semantic.graph.entry ?? semantic.graph.nodes[0]?.id ?? "burn" }, ...semantic.graph.edges],
-    },
-  };
-}
+export { itemTopologyProjection } from "./item-topology";
 
 export function LoopCompact({
   run, title = "Compact Loop topology", labels = "hidden", symbols, variant = "topology",

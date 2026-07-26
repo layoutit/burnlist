@@ -163,7 +163,7 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("50%");
     expect(frame).toContain("STATE");
     expect(frame).toContain("2 / 3");
-    expect(frame).toContain("MODE: unavailable");
+    expect(frame).toContain("ASSIGNED LOOP Direct work");
     expect(frame).toContain("DONE · ui-02 · LATEST");
     const selectedLine = frame.split("\n").find((line) => line.includes(">DONE") && line.includes("Render the fire"));
     expect(selectedLine).toBeDefined();

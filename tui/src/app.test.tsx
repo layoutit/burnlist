@@ -179,7 +179,7 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("STATE") && frame.includes("1 / 2") && frame.includes("ACTIVE: REVIEW"));
+    await setup.waitForFrame((frame) => frame.includes("Current item") && frame.includes("STATE") && frame.includes("1 / 2") && frame.includes("ASSIGNED LOOP Review Loop"));
     expect(setup.captureCharFrame()).not.toContain("LEGACY FALLBACK");
     await key(setup, "RETURN");
     await setup.waitForFrame((frame) => frame.includes("Finish navigation.") && frame.includes("scroll detail"));
