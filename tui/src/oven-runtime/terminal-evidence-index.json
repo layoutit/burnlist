@@ -864,9 +864,9 @@
       "recordId": "visual-parity:42x24:desktop",
       "fixture": "visual-parity",
       "frameId": "visual-parity:42x24:desktop",
-      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.42x24.desktop.cecab5554cef22c6.json",
-      "artifactSha256": "cecab5554cef22c6a889bf260389264e2d1722dfe5caec24f26b6b8ad99a6262",
-      "sourceSha256": "2dfe5249cf583fa4fd8f0833ef6276989713d52442fdb17e3725e8ce9b9ff0ec",
+      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.42x24.desktop.03f346ecc0414aa7.json",
+      "artifactSha256": "03f346ecc0414aa7e208339415e797bb64193e860fb58b8cae6c9b34d21eb242",
+      "sourceSha256": "152a8bce33b5beba96413faf15d553b540317508922c28edb00b1d2b41f0adbe",
       "viewport": {
         "width": 42,
         "height": 24
@@ -877,9 +877,9 @@
       "recordId": "visual-parity:42x24:mobile",
       "fixture": "visual-parity",
       "frameId": "visual-parity:42x24:mobile",
-      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.42x24.mobile.2b9f3d8ae589f240.json",
-      "artifactSha256": "2b9f3d8ae589f24020d2211851e9c8f590091e869e3bd7a101310efc9aa6e51f",
-      "sourceSha256": "2dfe5249cf583fa4fd8f0833ef6276989713d52442fdb17e3725e8ce9b9ff0ec",
+      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.42x24.mobile.c8b6be4f796ad299.json",
+      "artifactSha256": "c8b6be4f796ad299294e4766740d63ff7f5ed53af715ee5b2b822da60d0043db",
+      "sourceSha256": "152a8bce33b5beba96413faf15d553b540317508922c28edb00b1d2b41f0adbe",
       "viewport": {
         "width": 42,
         "height": 24
@@ -890,9 +890,9 @@
       "recordId": "visual-parity:90x24:desktop",
       "fixture": "visual-parity",
       "frameId": "visual-parity:90x24:desktop",
-      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.90x24.desktop.2d30608ef3836fb8.json",
-      "artifactSha256": "2d30608ef3836fb87090b38f12d2bb59c80c0a933ba8acab4c2e8cb95c07d1ec",
-      "sourceSha256": "2dfe5249cf583fa4fd8f0833ef6276989713d52442fdb17e3725e8ce9b9ff0ec",
+      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.90x24.desktop.6f29ae93553a0842.json",
+      "artifactSha256": "6f29ae93553a084234b3e686069073a78e6521a21c0a0deedf5c9c48c3384f4b",
+      "sourceSha256": "152a8bce33b5beba96413faf15d553b540317508922c28edb00b1d2b41f0adbe",
       "viewport": {
         "width": 90,
         "height": 24
@@ -903,9 +903,9 @@
       "recordId": "visual-parity:90x24:mobile",
       "fixture": "visual-parity",
       "frameId": "visual-parity:90x24:mobile",
-      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.90x24.mobile.4930139a95a816fc.json",
-      "artifactSha256": "4930139a95a816fc03084e938635499e737649a14adfa047314eb8da7937939d",
-      "sourceSha256": "2dfe5249cf583fa4fd8f0833ef6276989713d52442fdb17e3725e8ce9b9ff0ec",
+      "artifactPath": "dashboard/src/generated/terminal-frames/visual-parity.90x24.mobile.44ba1e33d60c918c.json",
+      "artifactSha256": "44ba1e33d60c918cb4db9fecfcc9cb56cf67874fde5b3d69f74ce60175ee73ef",
+      "sourceSha256": "152a8bce33b5beba96413faf15d553b540317508922c28edb00b1d2b41f0adbe",
       "viewport": {
         "width": 90,
         "height": 24

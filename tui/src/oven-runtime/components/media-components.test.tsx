@@ -79,10 +79,10 @@ test("custom Visual Parity frame cards retain every declared image", () => {
   expect(labels?.slice(-2)).toEqual(["Mask", "Output"]);
 });
 
-test("frame keyboard state windows around a selected hostile tail in the real viewport", async () => {
+test("the vertical frame feed scrolls a selected hostile tail into the real viewport", async () => {
   const long = JSON.parse(JSON.stringify(payload)); long.byDomain.desktop.frames = Array.from({ length: 14 }, (_, index) => ({ ...JSON.parse(JSON.stringify(payload.byDomain.desktop.frames[0])), frame: `FRAME-${index}` }));
   const ir = compiled(), initial = initTerminalRuntime(ir, long), state = reduceTerminalRuntime(initial, { type: "mediaFrameMoved", direction: -1 }, ir);
   const selected = { ...state, selections: { ...state.selections, "frame-card": "13" } }, result = admitTerminalOven(ir, { status: "ready", payload: long }, { viewport: { width: 72, height: 22 }, controls: selected.controls, selections: selected.selections }, [], TERMINAL_IMPLEMENTED_CAPABILITIES);
   const setup = await createTestRenderer({ width: 72, height: 22, useThread: false }), root = createRoot(setup.renderer);
-  try { flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("Frame 14/14"); } finally { root.unmount(); setup.renderer.destroy(); }
+  try { flushSync(() => root.render(<TerminalOvenViewport result={result} footer="q:back" />)); await Bun.sleep(1); await setup.renderOnce(); expect(setup.captureCharFrame()).toContain("Frame FRAME-13"); } finally { root.unmount(); setup.renderer.destroy(); }
 });

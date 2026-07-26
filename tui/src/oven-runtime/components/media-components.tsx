@@ -1,6 +1,8 @@
+import { useEffect, useRef } from "react";
+import type { ScrollBoxRenderable } from "@opentui/core";
 import { GlyphImage } from "../../glyph-image";
 import { decodePngDataUri } from "../../png-glyph";
-import { fitText, visibleWindow } from "../../theme";
+import { fitText } from "../../theme";
 import { useTerminalPalette } from "../../terminal-accessibility";
 import "../../glyph-surface";
 import type { JsonValue, TerminalNode } from "../terminal-contract";
@@ -87,26 +89,36 @@ export function TerminalMetricTiles({ model, width }: { model: MediaModel; width
   return <glyphSurface frame={frame} width={frame.cols} height={frame.rows} />;
 }
 
-function Frame({ frame, width, height }: { frame: MediaModel["frames"][number]; width: number; height: number }) {
+function Frame({ frame, width, height, selected }: { frame: MediaModel["frames"][number]; width: number; height: number; selected: boolean }) {
   const palette = useTerminalPalette();
   if (width < 48) return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame F${frame.frame} · ${frame.status}`, width)}</text>
+    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`${selected ? "▎" : " "} Frame F${frame.frame} · ${frame.status}`, width)}</text>
     <text fg={palette.muted}>{fitText(frame.summary, width)}</text>
     <text>{fitText(frame.images.map((image) => image.label.split(/\s+/u)[0] ?? image.label).join(" · "), width)}</text>
   </box>;
   const imageWidth = Math.max(4, Math.floor((width - Math.max(0, frame.images.length - 1)) / Math.max(1, frame.images.length)));
   const imageHeight = Math.max(1, Math.min(7, height - 3));
   return <box width={width} height={height} flexDirection="column" overflow="hidden">
-    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
+    <text fg={frame.status === "pass" ? palette.green : palette.amber}>{fitText(`${selected ? "▎" : " "} Frame ${frame.frame} · ${frame.status} · ${frame.summary}`, width)}</text>
     <box height={1} flexDirection="row">{frame.images.map((image) => <text key={image.label} width={imageWidth}>{fitText(image.label, imageWidth)}</text>)}</box>
     <box height={imageHeight} flexDirection="row">{frame.images.map((image) => <GlyphImage key={image.label} source={image.src} width={imageWidth} height={imageHeight} />)}</box>
   </box>;
 }
 
 export function TerminalFrameCards({ model, width, height, selectedIndex = 0 }: { model: MediaModel; width: number; height: number; selectedIndex?: number }) {
-  const window = visibleWindow([...model.frames], selectedIndex, 1);
-  const frameHeight = Math.max(3, height - 1);
-  return <box width={width} height={height} flexDirection="column" overflow="hidden"><text>{fitText(`Frame ${Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1))) + 1}/${model.frames.length}`, width)}</text>{window.items.map((item, index) => <Frame key={`${item.frame}-${item.label}`} frame={{ ...item, label: window.start + index === selectedIndex ? `${item.label} · selected` : item.label }} width={width} height={frameHeight} />)}</box>;
+  const scroll = useRef<ScrollBoxRenderable | null>(null);
+  const selected = Math.max(0, Math.min(selectedIndex, Math.max(0, model.frames.length - 1)));
+  const frameHeight = width < 48 ? 4 : 6;
+  useEffect(() => {
+    const timer = setTimeout(() => scroll.current?.scrollTo({ x: 0, y: selected * frameHeight }), 0);
+    return () => clearTimeout(timer);
+  }, [frameHeight, selected]);
+  return <box width={width} height={height} flexDirection="column" overflow="hidden">
+    <text>{fitText(`${model.frames.length} frames · ↑/↓ scroll`, width)}</text>
+    <scrollbox ref={scroll} width={width} height={Math.max(1, height - 1)} scrollY viewportCulling>
+      {model.frames.map((item, index) => <Frame key={`${item.frame}-${item.label}-${index}`} frame={item} selected={index === selected} width={Math.max(1, width - 1)} height={frameHeight} />)}
+    </scrollbox>
+  </box>;
 }
 
 export function TerminalMediaSurface({ nodes, payload, controls, width, height }: { nodes: readonly TerminalNode[]; payload?: JsonValue; controls: Readonly<Record<string, string | boolean>>; width: number; height: number }) {
