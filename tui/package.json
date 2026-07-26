@@ -28,6 +28,7 @@
     "typescript": "5.9.3"
   },
   "optionalDependencies": {
-    "@opentui/core-darwin-arm64": "https://github.com/apresmoi/opentui/releases/download/image-renderable-v1/opentui-core-darwin-arm64-0.4.5.tgz"
+    "@opentui/core-darwin-arm64": "https://github.com/apresmoi/opentui/releases/download/image-renderable-v1/opentui-core-darwin-arm64-0.4.5.tgz",
+    "@opentui/core-linux-x64": "https://github.com/apresmoi/opentui/releases/download/image-renderable-v1/opentui-core-linux-x64-0.4.5.tgz"
   }
 }
