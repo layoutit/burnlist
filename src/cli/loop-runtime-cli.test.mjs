@@ -94,6 +94,27 @@ test("prune protects a safely terminal Run while it remains current authority", 
   assert.equal(existsSync(runStore(repo).paths.pathFor(runId)), true);
 });
 
+test("prune preserves ClaimRef-backed accepted-report retries", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "claimed-retention-loop-cli-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const { repo } = createProductionRunAuthority(join(directory, "repo"));
+  const runId = created(repo), reportPath = join(directory, "report.json");
+  const execution = JSON.parse(command(repo, ["claim", runId])).execution;
+  writeFileSync(reportPath, `${JSON.stringify(hostReport(execution, "complete"))}\n`);
+  command(repo, ["report", execution.claimId, "--result", reportPath]);
+  command(repo, ["stop", runId]);
+  const replacement = created(repo);
+  assert.notEqual(replacement, runId);
+
+  const pruned = JSON.parse(command(repo, ["prune", "--retain", "1"]));
+  assert.equal(pruned.archived, 0);
+  assert.equal(pruned.protected, 2);
+  assert.equal(existsSync(runStore(repo).paths.pathFor(runId)), true);
+  assert.equal(JSON.parse(command(repo, [
+    "report", execution.claimId, "--result", reportPath,
+  ])).state, "stopped");
+});
+
 test("claim and report advance checks and gates without launching a provider", (t) => {
   const directory = mkdtempSync(join(tmpdir(), "host-report-loop-cli-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));

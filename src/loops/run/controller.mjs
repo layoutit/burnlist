@@ -86,6 +86,7 @@ export function createLoopController({ store, runnerFor, repoRoot = null }) {
         optionalRecords: observations(runId),
       });
     } catch {}
+    if (accepted.execution.terminal) return presented(runId);
     if (typeof runnerFor !== "function") fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");
     const runner = runnerFor(runId);
     if (!runner?.runToHostBoundary) fail("system runner is unavailable", "ERUNNER_UNAVAILABLE");

@@ -180,10 +180,13 @@ export function pruneRunDirectories({
   privateDirectory(archiveRuns);
   const current = new Set(currentRunIds);
   const safe = new Set(["failed", "stopped", "budget-exhausted", "needs-human"]);
+  const protectedRun = (runId, replayed) => current.has(runId)
+    || !safe.has(replayed.projection.state)
+    || replayed.journal?.some((record) => record.value.type === "external-claim-bound");
   let eligible = 0, protectedCount = 0;
   visitRunDirectories(runs, (runId) => {
-    const state = replay(runId).projection.state;
-    if (current.has(runId) || !safe.has(state)) protectedCount += 1;
+    const replayed = replay(runId);
+    if (protectedRun(runId, replayed)) protectedCount += 1;
     else {
       eligible += 1;
       if (existsSync(join(archiveRuns, Buffer.from(runId).toString("hex"))))
@@ -197,8 +200,8 @@ export function pruneRunDirectories({
     if (!batch.length) break;
     for (const runId of batch) {
       cursor = runId;
-      const state = replay(runId).projection.state;
-      if (current.has(runId) || !safe.has(state)) continue;
+      const replayed = replay(runId);
+      if (protectedRun(runId, replayed)) continue;
       const target = join(archiveRuns, Buffer.from(runId).toString("hex"));
       renameSync(join(runs, Buffer.from(runId).toString("hex")), target);
       archived += 1;
