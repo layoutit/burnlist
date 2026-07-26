@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { TextAttributes } from "@opentui/core";
 import { createTestRenderer } from "@opentui/core/testing";
 import { createRoot, flushSync } from "@opentui/react";
 import { orderedSemanticText, paletteFor, TerminalAccessibilityProvider, terminalAccessibility, type TerminalAccessibility } from "../terminal-accessibility";
@@ -98,6 +99,7 @@ describe("terminal capability accessibility", () => {
     expect(colors[0]).not.toEqual(colors[1]);
     expect(colors[1]).not.toEqual(colors[2]);
     expect(colors[3]!.size).toBeLessThanOrEqual(3);
+    expect(tiers[3]!.frame.lines.flatMap((line) => line.spans).some((span) => (span.attributes & TextAttributes.INVERSE) !== 0)).toBe(true);
   });
   test("NO_COLOR reaches the production item detail instead of leaking legacy status RGB", async () => {
     const truecolor = await capturedItem({ color: "truecolor", light: false, reducedMotion: false });
