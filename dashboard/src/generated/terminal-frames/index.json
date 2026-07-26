@@ -1211,9 +1211,9 @@
     {
       "id": "visual-parity:42x24:desktop",
       "fixture": "visual-parity",
-      "path": "visual-parity.42x24.desktop.556e3bac7a63619d.json",
-      "sha256": "556e3bac7a63619dece004e7b899aebaa74d28a2a0455c91070c6720c2dee538",
-      "fixtureSha256": "4b9d7b492599a80ee499f27367c5f2ecefb19c8be17715fa0abb98445244324d",
+      "path": "visual-parity.42x24.desktop.6465ca775fc30f37.json",
+      "sha256": "6465ca775fc30f37ac00c789abe95a7e7a4a8078bb8a401563458a2889953b1d",
+      "fixtureSha256": "5c43cab6b16a2a6734a741c5078b68fec19a1ca42ee92cd20fdad5f1259f216f",
       "checkpoint": "desktop",
       "viewport": {
         "width": 42,
@@ -1223,9 +1223,9 @@
     {
       "id": "visual-parity:42x24:mobile",
       "fixture": "visual-parity",
-      "path": "visual-parity.42x24.mobile.b787490d458964fb.json",
-      "sha256": "b787490d458964fb295117019cd7de9197b5e377dc7fcd354ec1563586021615",
-      "fixtureSha256": "4b9d7b492599a80ee499f27367c5f2ecefb19c8be17715fa0abb98445244324d",
+      "path": "visual-parity.42x24.mobile.3b98cfaaf4fc329b.json",
+      "sha256": "3b98cfaaf4fc329b1667192b4250ff02998d1cf89d663f50c3bc79fe861fd459",
+      "fixtureSha256": "5c43cab6b16a2a6734a741c5078b68fec19a1ca42ee92cd20fdad5f1259f216f",
       "checkpoint": "mobile",
       "viewport": {
         "width": 42,
@@ -1235,9 +1235,9 @@
     {
       "id": "visual-parity:90x24:desktop",
       "fixture": "visual-parity",
-      "path": "visual-parity.90x24.desktop.0aa80c14ba9c9423.json",
-      "sha256": "0aa80c14ba9c9423a66b1657cb861821ba4a1c1c1722beb360235f216687d8a7",
-      "fixtureSha256": "4b9d7b492599a80ee499f27367c5f2ecefb19c8be17715fa0abb98445244324d",
+      "path": "visual-parity.90x24.desktop.ffe58e8c6ab41b84.json",
+      "sha256": "ffe58e8c6ab41b84dfe41ccbe3be433098014c3555d405a775c7108196f31115",
+      "fixtureSha256": "5c43cab6b16a2a6734a741c5078b68fec19a1ca42ee92cd20fdad5f1259f216f",
       "checkpoint": "desktop",
       "viewport": {
         "width": 90,
@@ -1247,9 +1247,9 @@
     {
       "id": "visual-parity:90x24:mobile",
       "fixture": "visual-parity",
-      "path": "visual-parity.90x24.mobile.7aa1df567b220bcf.json",
-      "sha256": "7aa1df567b220bcf413bf9cdb6db9321f91f2be8416571bad75bdcee42a7b3b1",
-      "fixtureSha256": "4b9d7b492599a80ee499f27367c5f2ecefb19c8be17715fa0abb98445244324d",
+      "path": "visual-parity.90x24.mobile.038faefb6fd5035a.json",
+      "sha256": "038faefb6fd5035a9bc98b53502c07a80bc4bf17473e3cf6fb69ec5923f020e5",
+      "fixtureSha256": "5c43cab6b16a2a6734a741c5078b68fec19a1ca42ee92cd20fdad5f1259f216f",
       "checkpoint": "mobile",
       "viewport": {
         "width": 90,

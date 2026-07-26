@@ -12,6 +12,7 @@ import { TerminalLoopProgress, terminalLoopProgressRows } from "./oven-runtime/c
 import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { fitText } from "./theme";
+import { LoadingStar } from "./loading-star";
 import { useTerminalPalette, type TerminalPalette } from "./terminal-accessibility";
 import { TerminalChromeProvider, type TerminalChrome, useTerminalChrome } from "./terminal-chrome";
 import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
@@ -49,6 +50,7 @@ export interface ScreenRuntimeProps {
   ovenRuntime?: TerminalRenderResult | null;
   streamingNavigation?: StreamingDiffNavigation | null;
   landingFilter?: LandingFilter;
+  loading?: boolean;
 }
 
 function listRows(height: number): number {
@@ -153,7 +155,9 @@ function DetailSplit({ node, props, width, height, chrome }: {
         item={props.selectedItem}
         width={collapsed ? width : width - sidebarWidth}
         height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}
-      /> : runtime ? <TerminalOvenViewport result={runtime} footer="" /> : <box paddingTop={1} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", ovenContentWidth).trimEnd()}</text></box>}
+      /> : runtime ? <TerminalOvenViewport result={runtime} footer="" /> : props.loading
+        ? <box paddingTop={1} overflow="hidden"><LoadingStar label="Loading Oven payload…" /></box>
+        : <box paddingTop={1} overflow="hidden"><text fg={palette.dim}>{fitText("This Burnlist has no admitted Oven payload.", ovenContentWidth).trimEnd()}</text></box>}
     </box>
   </box>;
 }

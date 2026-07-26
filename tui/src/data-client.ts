@@ -87,10 +87,14 @@ export function createDataClient(input: string) {
       return getJson(base, `/api/loop-projection?${query}`, cache, signal);
     },
     ovenData(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<OvenDataSnapshot> {
-      return getJson(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
+      const path = ovenDataPath({ ovenId, repoKey }, query);
+      const terminalPath = contract === "burnlist-visual-parity-data@1" ? `${path}${path.includes("?") ? "&" : "?"}terminal=1` : path;
+      return getJson(base, terminalPath, cache, signal, ovenDataBytes(contract));
     },
     ovenDataResult(ovenId: string, repoKey: string | null, signal?: AbortSignal, query?: OvenQuery, contract?: string): Promise<SnapshotFetch<OvenDataSnapshot>> {
-      return getJsonResult(base, ovenDataPath({ ovenId, repoKey }, query), cache, signal, ovenDataBytes(contract));
+      const path = ovenDataPath({ ovenId, repoKey }, query);
+      const terminalPath = contract === "burnlist-visual-parity-data@1" ? `${path}${path.includes("?") ? "&" : "?"}terminal=1` : path;
+      return getJsonResult(base, terminalPath, cache, signal, ovenDataBytes(contract));
     },
     async streamingFeeds(repoKey: string, signal?: AbortSignal) {
       const raw = await getJson<unknown>(base, `/api/oven-data/streaming-diff?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);

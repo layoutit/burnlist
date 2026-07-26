@@ -67,3 +67,30 @@ test("a custom Oven rejects canonical data above the configured source limit", {
     assert.match(JSON.parse(response.body).error, /over the 64 byte limit/u);
   });
 });
+
+test("a custom Visual Parity Oven serves a compact terminal projection", { timeout: 20_000 }, async () => {
+  const visualSource = `<oven id="visual-custom" version="0.1.0" contract="burnlist-visual-parity-data@1" theme="visual-parity">
+    <frame-card source="/byDomain"/>
+  </oven>`;
+  const payload = {
+    schema: "burnlist-visual-parity-data@1",
+    initialDomainId: "desktop",
+    domains: ["desktop"],
+    verdict: { targetPass: true, framesCount: 1, error: "" },
+    byDomain: { desktop: { frames: [{ frame: 1, tiles: [{ unused: true }], images: [{ label: "current", src: "data:image/png;base64,AA==" }] }] } },
+    comparisons: [{ duplicate: "x".repeat(10_000) }],
+  };
+  await withServer({
+    ovens: [{ id: "visual-custom", oven: visualSource }],
+    ovenData: [{ id: "visual-custom", payload }],
+  }, async ({ baseUrl }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const repoKey = catalog.ovens.find((oven) => oven.id === "visual-custom")?.repoKey;
+    const full = JSON.parse((await httpGet(baseUrl, `/api/oven-data/visual-custom?repoKey=${repoKey}`)).body).payload;
+    const terminal = JSON.parse((await httpGet(baseUrl, `/api/oven-data/visual-custom?repoKey=${repoKey}&terminal=1`)).body).payload;
+    assert.ok(full.comparisons);
+    assert.equal(terminal.comparisons, undefined);
+    assert.equal(terminal.byDomain.desktop.frames[0].tiles, undefined);
+    assert.equal(terminal.byDomain.desktop.frames[0].images.length, 1);
+  });
+});

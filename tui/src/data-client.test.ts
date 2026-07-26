@@ -68,11 +68,16 @@ describe("Burnlist TUI data client", () => {
 
   test("admits image-bearing Visual Parity transport without widening generic Oven responses", async () => {
     const padding = "x".repeat(2 * 1024 * 1024);
-    globalThis.fetch = mock(async () => Response.json({ ovenId: "fixture", payload: { padding } })) as unknown as typeof fetch;
+    const requested: string[] = [];
+    globalThis.fetch = mock(async (request: string | URL | Request) => {
+      requested.push(String(request));
+      return Response.json({ ovenId: "fixture", payload: { padding } });
+    }) as unknown as typeof fetch;
     const client = createDataClient("http://127.0.0.1:4815");
     await expect(client.ovenData("checklist", "abc123")).rejects.toThrow("RESOURCE_HTTP_BYTES");
     await expect(client.ovenData("visual-parity", "abc123", undefined, undefined, "burnlist-visual-parity-data@1")).resolves.toMatchObject({ payload: { padding } });
     await expect(client.ovenData("glyph-scene-inputs", "abc123", undefined, undefined, "burnlist-visual-parity-data@1")).resolves.toMatchObject({ payload: { padding } });
+    expect(requested.filter((url) => url.includes("terminal=1"))).toHaveLength(2);
   });
 
   test("loads a generic Oven package without a repository binding", async () => {

@@ -28,7 +28,7 @@ test("disabled native images paint only the glyph fallback", async () => {
   expect(await registeredImages("0")).toBe(0);
 });
 
-test("enabled native images register one bounded overlay above the glyph fallback", async () => {
+test("enabled native images register one bounded thumbnail", async () => {
   expect(await registeredImages("1")).toBe(1);
 });
 

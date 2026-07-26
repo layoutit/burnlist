@@ -17,6 +17,7 @@ test("Visual Parity terminal payload drops unbound scene tiles but retains every
   const frame = (adapted as any).byDomain.scene.frames[0];
   expect(frame.tiles).toBeUndefined();
   expect(frame.images).toHaveLength(5);
+  expect((adapted as any).comparisons).toBeUndefined();
 });
 
 test("non-media contracts retain payload identity", () => {

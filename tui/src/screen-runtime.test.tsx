@@ -215,6 +215,22 @@ describe("dashboard-shaped .glyph runtime", () => {
     }
   });
 
+  test("keeps the missing Oven payload empty state behind the completed loading state", async () => {
+    const base = {
+      screen: parsed(burnlistSource),
+      selectedBurnlist: visualBurnlist,
+      activeOven: ovens[1]!,
+      ovenLenses: [ovens[1]!],
+    };
+    const busy = await renderFrame(72, 28, props({ ...base, loading: true }));
+    expect(busy.frame).toContain("Loading Oven payload");
+    expect(busy.frame).not.toContain("no admitted Oven payload");
+    busy.root.unmount();
+    const empty = await renderFrame(72, 28, props({ ...base, loading: false }));
+    expect(empty.frame).toContain("no admitted Oven payload");
+    empty.root.unmount();
+  });
+
   test("shows refresh activity without moving screen content", async () => {
     const idle = await renderFrame(120, 36, props());
     const busy = await renderFrame(120, 36, props({ notice: { message: "Refreshing Burnlist data…", tone: "info" } }));

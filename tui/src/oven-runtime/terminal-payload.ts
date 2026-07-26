@@ -29,5 +29,11 @@ export function terminalPayload(contract: string, payload: JsonValue): JsonValue
     });
     return [id, { ...domain, frames }];
   }));
-  return { ...root, byDomain };
+  return {
+    ...(root.schema !== undefined ? { schema: root.schema } : {}),
+    ...(root.initialDomainId !== undefined ? { initialDomainId: root.initialDomainId } : {}),
+    ...(root.domains !== undefined ? { domains: root.domains } : {}),
+    ...(root.verdict !== undefined ? { verdict: root.verdict } : {}),
+    byDomain,
+  };
 }

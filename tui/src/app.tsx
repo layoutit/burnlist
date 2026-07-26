@@ -487,5 +487,6 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     ovenRuntime={ovenRuntime}
     streamingNavigation={streamingNavigation}
     landingFilter={landingFilter}
+    loading={loading}
   />;
 }
