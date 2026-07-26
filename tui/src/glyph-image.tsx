@@ -16,5 +16,12 @@ export function GlyphImage({ source, width, height }: { source: string | null; w
     }
   }, [height, source, width]);
   if (!result.frame) return <box width={width} height={height} alignItems="center" justifyContent="center"><text fg={palette.dim}>{fitText(result.error, width).trimEnd()}</text></box>;
-  return <glyphSurface frame={result.frame} width={result.frame.cols} height={result.frame.rows} />;
+  const native = source && (
+    process.env.BURNLIST_NATIVE_IMAGES === "1"
+    || (process.env.BURNLIST_NATIVE_IMAGES !== "0" && ["vscode", "iTerm.app", "WezTerm"].includes(process.env.TERM_PROGRAM ?? ""))
+  );
+  return <box width={width} height={height}>
+    <glyphSurface frame={result.frame} width={result.frame.cols} height={result.frame.rows} />
+    {native ? <image source={source} protocol="iterm" position="absolute" left={0} top={0} width={width} height={height} /> : null}
+  </box>;
 }

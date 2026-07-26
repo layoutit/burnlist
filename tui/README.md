@@ -15,8 +15,9 @@ The terminal app has four explicit boundaries:
    `/api/oven-data` endpoints without mutating canonical state.
 3. OpenTUI React owns layout, focus, keyboard input, and terminal painting.
 4. glyphcss owns mesh rasterization and spatial effects. Visual Parity PNGs use
-   a custom OpenTUI renderable backed by its native 2×2 RGBA supersampler, which
-   preserves four color samples in every terminal cell with quadrant blocks.
+   the renderer-owned iTerm image layer in the Burnlist OpenTUI fork on VS Code,
+   iTerm, and WezTerm. The 2×2 RGBA glyph renderer remains underneath as the
+   fallback when native images are unavailable or disabled.
 
 The TypeScript aliases in `tsconfig.json` prefer the glyphcss packages from
 `../../../glyphcss`, which is the same checkout as `../../glyphcss` from the
@@ -39,12 +40,16 @@ Burnlist list whose columns adapt to terminal width. Up/down selects a row and
 Ovens; `enter` there inspects an Oven's contract, declared components,
 instructions, and revision rather than resolving a repository installation.
 
+VS Code users must enable `terminal.integrated.enableImages` for native PNGs.
+Set `BURNLIST_NATIVE_IMAGES=1` to force the native layer or
+`BURNLIST_NATIVE_IMAGES=0` to keep only the GlyphCSS fallback.
+
 Burnlist detail places its summary and animated glyphcss fire beside the active
 Oven on wide terminals and stacks them on narrow ones. Its active and completed
 items are keyboard-navigable, the newest completion is marked `LATEST`, and
 `enter` opens the selected item's fields or completion detail. Visual Parity
-frame items render reference, candidate, and diff PNGs at 2× horizontal and 2×
-vertical sample density; left and right change render domains. `[` and `]`
+frame items render the reference, candidate, and diff as actual terminal PNGs
+when supported; left and right change render domains. `[` and `]`
 cycle contract-compatible Oven lenses.
 
 `q` always goes back. `escape` also goes back from nested views and is the only

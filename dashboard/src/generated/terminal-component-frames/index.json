@@ -2,7 +2,7 @@
   "schema": "burnlist-terminal-frame-index@1",
   "generator": "burnlist-terminal-component-pairs@1",
   "provenance": {
-    "sourceSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+    "sourceSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
     "bun": {
       "runtimeVersion": "1.3.14",
       "packageVersion": "1.3.14",
@@ -11,11 +11,11 @@
     "packages": {
       "@opentui/core": {
         "version": "0.4.5",
-        "integrity": "sha512-JsgRTPkA6e+Vxmumxai6SElOSlRQkbzNKHlCfemlArRiLhfC1IZ9RXJo2QH4xSu+uBOWAM90uss73/pPlkdEig=="
+        "integrity": "sha512-LS3/6Hwx26w7OKw+3Ny18dbzGgd1AoDFWO+fgpKFwQiVtDL0OXG8UmHPWf7s11zABYIpo35crxFdk2644e4lJg=="
       },
       "@opentui/react": {
         "version": "0.4.5",
-        "integrity": "sha512-n88Vx0cMmAu++/S14WscjvdcT46IDcxve02jMtcfHQ9j6cySRHfILfGEpOB7xxc8RpCwQceEyOjkKkfzPzm6Jg=="
+        "integrity": "sha512-ilV/f1yZ2WitD/pkWLVXcqw0PrmCclKAIBX8BFRGGx48POw4EStJ9fBWdICMaAqsiN1D2Qe5q2iGnMh2ln25rA=="
       },
       "glyphcss": {
         "version": "0.1.2",
@@ -35,9 +35,9 @@
     {
       "id": "component-alert:72x10:default",
       "fixture": "component-alert",
-      "path": "component-alert.72x10.default.76b7a4eac3474793.json",
-      "sha256": "76b7a4eac347479369611b9af2a01738fb28a0560693b21e42dcadc342724a06",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-alert.72x10.default.a5ae6ff2a057199d.json",
+      "sha256": "a5ae6ff2a057199decf3e2c09b5815e76ae1fae161fb79fdd144889ff299f914",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -47,9 +47,9 @@
     {
       "id": "component-badge:72x10:default",
       "fixture": "component-badge",
-      "path": "component-badge.72x10.default.18c9de1862117c32.json",
-      "sha256": "18c9de1862117c32084b0ab08d2118c323b98b6b1a94bf3d4c1592ba57ad145e",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-badge.72x10.default.7d356e68fe5e6b3a.json",
+      "sha256": "7d356e68fe5e6b3a5c79308814b87135827c2b463deff35169a86e2c1d18d98e",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -59,9 +59,9 @@
     {
       "id": "component-burn-donut:72x10:default",
       "fixture": "component-burn-donut",
-      "path": "component-burn-donut.72x10.default.d59e4318166f9d08.json",
-      "sha256": "d59e4318166f9d08efe6a06cf8daa6eee03f24ce729d69bc44265b5e1378cf8b",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-burn-donut.72x10.default.d9df04e0c53c48dd.json",
+      "sha256": "d9df04e0c53c48dd5d8b4272bb1fdc307ef2c6099fe9e4a28f31615a9337f0b1",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -71,9 +71,9 @@
     {
       "id": "component-button:72x10:default",
       "fixture": "component-button",
-      "path": "component-button.72x10.default.1ff7f53668e36e98.json",
-      "sha256": "1ff7f53668e36e9865b0e8038bb8c207f1622a289612b81401e92583e341a9ab",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-button.72x10.default.9e0e112aa54a3c4f.json",
+      "sha256": "9e0e112aa54a3c4f54eccaec1ba2618a553fd0df948dee3f76c6b0bcb232da34",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -83,9 +83,9 @@
     {
       "id": "component-card:72x10:default",
       "fixture": "component-card",
-      "path": "component-card.72x10.default.3e9731049ea12515.json",
-      "sha256": "3e9731049ea12515935b147932f5cd2a794f755cdd5dbcd96d7678cc99f2fe75",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-card.72x10.default.d1a8c614723dfda6.json",
+      "sha256": "d1a8c614723dfda6bfeb6f61ee086ffa3509a8631e5f5c2a5e17908dfe06df6d",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -95,9 +95,9 @@
     {
       "id": "component-checkbox:72x10:default",
       "fixture": "component-checkbox",
-      "path": "component-checkbox.72x10.default.00fa7c55605b7689.json",
-      "sha256": "00fa7c55605b7689608682bdaaa6b1b43238030f393650f1aa2fe9c8a378c2d4",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-checkbox.72x10.default.7d4f8bdfa72d2d06.json",
+      "sha256": "7d4f8bdfa72d2d06def2beed5aeb1bf73d30363a410b55480cc37ba431915085",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -107,9 +107,9 @@
     {
       "id": "component-copy-button:72x10:default",
       "fixture": "component-copy-button",
-      "path": "component-copy-button.72x10.default.fe97f8405594c95f.json",
-      "sha256": "fe97f8405594c95fabf65774dfb35ce566073da7b9a7303b314e1ca5c71dc439",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-copy-button.72x10.default.fc346cdaf8498c4e.json",
+      "sha256": "fc346cdaf8498c4eed37e4e05810bc58825c18a922bfdb691ce5f06d930092dd",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -119,9 +119,9 @@
     {
       "id": "component-dashboard-error:72x10:default",
       "fixture": "component-dashboard-error",
-      "path": "component-dashboard-error.72x10.default.5cbb6a596329ec38.json",
-      "sha256": "5cbb6a596329ec38b28e8674ba0fba532c07f2209b70c5bd7cca92b9ca8ca761",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-dashboard-error.72x10.default.a550b2d6247009ce.json",
+      "sha256": "a550b2d6247009ce2ef36fcb2e46914b579b9eb3e2ccb43ffbb28785ed5267ad",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -131,9 +131,9 @@
     {
       "id": "component-empty-state:72x10:default",
       "fixture": "component-empty-state",
-      "path": "component-empty-state.72x10.default.d7ff98f7344bcc24.json",
-      "sha256": "d7ff98f7344bcc24a3a793ec7717e953c2b061d255a3d4dc8888576ac7f6c555",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-empty-state.72x10.default.14ea0c6a37d8a980.json",
+      "sha256": "14ea0c6a37d8a9807122b2dd047fc27e68c847d65da661a6c9045d2abd6d9b36",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -143,9 +143,9 @@
     {
       "id": "component-field-list-cards:72x10:default",
       "fixture": "component-field-list-cards",
-      "path": "component-field-list-cards.72x10.default.e3b1f9907cd53efe.json",
-      "sha256": "e3b1f9907cd53efe66fc4ed51930a51d6c2c0b01a126d9669de20ecd60f3c8d2",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-field-list-cards.72x10.default.c9a693e23194335d.json",
+      "sha256": "c9a693e23194335d3224cc3c0b95c13dff0a8047d520cbc886e2280d70fe5eb9",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -155,9 +155,9 @@
     {
       "id": "component-field:72x10:default",
       "fixture": "component-field",
-      "path": "component-field.72x10.default.2b57d8f25c754020.json",
-      "sha256": "2b57d8f25c754020f477d9012dce611a8c0f7293eb6c417d0b889678150a81f3",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-field.72x10.default.0cfc93a3ff42d2d1.json",
+      "sha256": "0cfc93a3ff42d2d1b26f36db5fa16dab242024401afc35dddbfd7f79b35b8ade",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -167,9 +167,9 @@
     {
       "id": "component-filters:72x10:default",
       "fixture": "component-filters",
-      "path": "component-filters.72x10.default.af39c1b447020839.json",
-      "sha256": "af39c1b447020839f3d1500668237c398733aa27d1eefcf3e8678d6ae7f4ad68",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-filters.72x10.default.b9bde6e97e7f868a.json",
+      "sha256": "b9bde6e97e7f868a3152d44d2de0b537f096cc95b1f74c5a070c60b2470d1255",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -179,9 +179,9 @@
     {
       "id": "component-input:72x10:default",
       "fixture": "component-input",
-      "path": "component-input.72x10.default.8f634c81c09a6fb1.json",
-      "sha256": "8f634c81c09a6fb1b7c3683e028b18cf143c6aad13efd1570ff636629c3667e0",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-input.72x10.default.7be1e6a4999b2f7c.json",
+      "sha256": "7be1e6a4999b2f7cb9e0cac174ac075bb78bed479c3fb3a1b9036734ed4343ba",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -191,9 +191,9 @@
     {
       "id": "component-kpi-item:72x10:default",
       "fixture": "component-kpi-item",
-      "path": "component-kpi-item.72x10.default.274af74275af2bb3.json",
-      "sha256": "274af74275af2bb3c3b4c23f033eef2305dea3e603d15cd229ac13997078256f",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-kpi-item.72x10.default.83929c5f0fb90ab9.json",
+      "sha256": "83929c5f0fb90ab980c016e73eb30af4c7e03d372441fec0406150e21893bb87",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -203,9 +203,9 @@
     {
       "id": "component-kpi-strip:72x10:default",
       "fixture": "component-kpi-strip",
-      "path": "component-kpi-strip.72x10.default.7c426a2d8f1f6fa4.json",
-      "sha256": "7c426a2d8f1f6fa4f46e3682123eb7951e8b89aa4a5669616f9b1ae39cab6d7a",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-kpi-strip.72x10.default.4e82163154ac9939.json",
+      "sha256": "4e82163154ac9939be9cdba7062e986fbdfdbaf8d5329e76b3dd8350b0e05af0",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -215,9 +215,9 @@
     {
       "id": "component-line-chart:72x8:default",
       "fixture": "component-line-chart",
-      "path": "component-line-chart.72x8.default.fb178cf1b9e97e09.json",
-      "sha256": "fb178cf1b9e97e09859e69a6659ad89e4eb02eaa559401d3364ab869dd8147ec",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-line-chart.72x8.default.2e4a21dd80441fd2.json",
+      "sha256": "2e4a21dd80441fd289156d0c0495d363a2031c364c0594e70199abea1fd4755f",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -227,9 +227,9 @@
     {
       "id": "component-metric-tiles:72x10:default",
       "fixture": "component-metric-tiles",
-      "path": "component-metric-tiles.72x10.default.23f29a32a4f94796.json",
-      "sha256": "23f29a32a4f947968d319ea0915cf6a6ed9b7df7e9d106d92a8b208ba0ea389b",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-metric-tiles.72x10.default.d1d160bf9b7705df.json",
+      "sha256": "d1d160bf9b7705dfd362cc203e8447f5a01725a36a9b86f2b6ff1f2465351676",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -239,9 +239,9 @@
     {
       "id": "component-progress-donut:72x10:default",
       "fixture": "component-progress-donut",
-      "path": "component-progress-donut.72x10.default.74b70931ce36b30f.json",
-      "sha256": "74b70931ce36b30f6f173c182acaf19179f49a892b79aa505675857e7523c00b",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-progress-donut.72x10.default.6bb5caaf6110e946.json",
+      "sha256": "6bb5caaf6110e946bdd6c28aab141b6f4bf5fc8b34b422da0404a351822bedd4",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -251,9 +251,9 @@
     {
       "id": "component-progress:72x10:default",
       "fixture": "component-progress",
-      "path": "component-progress.72x10.default.75770e145076edfc.json",
-      "sha256": "75770e145076edfc8d2daf6e1076832ab044ecc71869a3b91f12ad2b3e0e654a",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-progress.72x10.default.4e3c5d717c2cd1d9.json",
+      "sha256": "4e3c5d717c2cd1d9567157c59e6d34e04d58a800a9ff145430b4f33ce649d448",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -263,9 +263,9 @@
     {
       "id": "component-select:72x10:default",
       "fixture": "component-select",
-      "path": "component-select.72x10.default.fe3ce28049c53b15.json",
-      "sha256": "fe3ce28049c53b153cacc8c85789aafc3a99c2d86d21b8e9caa7f71da10b83b2",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-select.72x10.default.eaa8e51cd4d4a925.json",
+      "sha256": "eaa8e51cd4d4a925789c685e933aec28d91c504860ce3a134025fd0670f89c5a",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -275,9 +275,9 @@
     {
       "id": "component-separator:72x10:default",
       "fixture": "component-separator",
-      "path": "component-separator.72x10.default.3b47e00ef94aba3e.json",
-      "sha256": "3b47e00ef94aba3e5229e9b65b2370e7236175d53e497b42dbed42645b49d91a",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-separator.72x10.default.7eb54a145a2d2df4.json",
+      "sha256": "7eb54a145a2d2df43a5bf03079299de350ff9348051aeeb00e8fb34d327c1526",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -287,9 +287,9 @@
     {
       "id": "component-skeleton:72x10:default",
       "fixture": "component-skeleton",
-      "path": "component-skeleton.72x10.default.3ca400f4ac84016e.json",
-      "sha256": "3ca400f4ac84016ee9fdc75a15e8c36809d82819beefb260120238f754d02c5f",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-skeleton.72x10.default.06e2b781ff209502.json",
+      "sha256": "06e2b781ff209502fe459636645cbf8c93b4e23c716e4abeef4ad16f189df235",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -299,9 +299,9 @@
     {
       "id": "component-spinner:72x10:spark",
       "fixture": "component-spinner",
-      "path": "component-spinner.72x10.spark.bba7fc6e89b65bd3.json",
-      "sha256": "bba7fc6e89b65bd3d90690b795349a3e7755863b52a8d020d16803dad9573431",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-spinner.72x10.spark.ee7e56965c8bcc54.json",
+      "sha256": "ee7e56965c8bcc547fae6d0fd2ff59b637fe9de17e5089ed6f00902d8c51b7c8",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "spark",
       "viewport": {
         "width": 72,
@@ -311,9 +311,9 @@
     {
       "id": "component-table:72x10:default",
       "fixture": "component-table",
-      "path": "component-table.72x10.default.ff3b015ca2067c1f.json",
-      "sha256": "ff3b015ca2067c1f2148c92e5dcc0b0e7f657d3fb482525486a08c2350ed5f67",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-table.72x10.default.9687f48384b47816.json",
+      "sha256": "9687f48384b47816088c3abc3f9770bc1219c7a3fc8369471e50a0ca78f50711",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -323,9 +323,9 @@
     {
       "id": "component-tabs:72x10:default",
       "fixture": "component-tabs",
-      "path": "component-tabs.72x10.default.391dfdbcc2ad5825.json",
-      "sha256": "391dfdbcc2ad58253132d0a87ed9f2edb0bc572efc480e62ce7fa7c99f4b70c7",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-tabs.72x10.default.4f01d80a50d10525.json",
+      "sha256": "4f01d80a50d105258179a339b3de5bf8486faa455e0fbb97ddab74ec62600fb9",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -335,9 +335,9 @@
     {
       "id": "component-textarea:72x10:default",
       "fixture": "component-textarea",
-      "path": "component-textarea.72x10.default.d10213bc9bbddd21.json",
-      "sha256": "d10213bc9bbddd210a9c2c412796397b06ed9e4f6ef5cf92a7902b44411141ab",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-textarea.72x10.default.81de88742f92fda6.json",
+      "sha256": "81de88742f92fda6a155383f58c8a099e79a283e352c14e6c288e0c9d52fe7bb",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -347,9 +347,9 @@
     {
       "id": "component-toggle-group:72x10:default",
       "fixture": "component-toggle-group",
-      "path": "component-toggle-group.72x10.default.a3847286121b1b85.json",
-      "sha256": "a3847286121b1b85bf0326a94b9bd1f4d131dded713d6b031f9b9fb665ba7ead",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-toggle-group.72x10.default.80316aec6494ca16.json",
+      "sha256": "80316aec6494ca160d260769d55aa68efa69967e82408e9f6d2f5364859a7f7e",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -359,9 +359,9 @@
     {
       "id": "component-tooltip:72x10:default",
       "fixture": "component-tooltip",
-      "path": "component-tooltip.72x10.default.5d8346604161c561.json",
-      "sha256": "5d8346604161c56106c4e195deaccd4d86fffa4f4214f24b17230ed34dfc2db1",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-tooltip.72x10.default.812f9b5a7d8679c5.json",
+      "sha256": "812f9b5a7d8679c50a5775362db180c328820a45fcad26b764f9059d05fa650b",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -371,9 +371,9 @@
     {
       "id": "component-top-card:72x12:default",
       "fixture": "component-top-card",
-      "path": "component-top-card.72x12.default.48a6e6c0deb5c54d.json",
-      "sha256": "48a6e6c0deb5c54dbf61c738463de34be2618838df40700be1c6e3e1ce99f815",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-top-card.72x12.default.6024b6e0206b5c2f.json",
+      "sha256": "6024b6e0206b5c2f48caad979479ac250c4043f1e0ec3fb81c8e77ff388f6b47",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,
@@ -383,9 +383,9 @@
     {
       "id": "component-visual-parity-media:96x26:default",
       "fixture": "component-visual-parity-media",
-      "path": "component-visual-parity-media.96x26.default.7928bc2ca77a6058.json",
-      "sha256": "7928bc2ca77a605816da22b582d35f6be0af8ec57ed2e84d18ec92d0371b113d",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-visual-parity-media.96x26.default.390d8ea6ce358479.json",
+      "sha256": "390d8ea6ce358479e02680e6d5d0a59e282d1b863844ca011770ea199b5f589a",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 96,
@@ -395,9 +395,9 @@
     {
       "id": "component-waffle-metric:72x10:default",
       "fixture": "component-waffle-metric",
-      "path": "component-waffle-metric.72x10.default.188a39b4657e8e10.json",
-      "sha256": "188a39b4657e8e10cfdac5050f8c8e0efbe480b511e0bd9870b9d570fd9b30b5",
-      "fixtureSha256": "75221608b120f48b24f11de466812ea7ef22252fcc697ac759c4bbe6d4fa230f",
+      "path": "component-waffle-metric.72x10.default.ab809364caaa54de.json",
+      "sha256": "ab809364caaa54dec9789d14cd08afcc512b84196a06c8a280f43173b61cd031",
+      "fixtureSha256": "cc12e3231dbd57ffd3fc1d67b2757c5181e57be4103c4624703e5743b26b1f14",
       "checkpoint": "default",
       "viewport": {
         "width": 72,

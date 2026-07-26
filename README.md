@@ -155,8 +155,9 @@ responsive full-width Burnlist list. Burnlist detail exposes navigable active
 and completed items, marks the latest completion, and opens item-specific Oven
 views. OpenTUI React owns layout and input; glyphcss from the adjacent
 `../../glyphcss` checkout renders the animated fire and effects. Visual Parity
-PNGs use OpenTUI's native 2×2 RGBA supersampler, producing four independently
-sampled pixels per terminal cell with Unicode quadrant blocks. Backgrounds
+PNGs use the native image layer in the Burnlist OpenTUI fork on VS Code, iTerm,
+and WezTerm, with the 2×2 RGBA glyph renderer retained underneath as a portable
+fallback. In VS Code, enable `terminal.integrated.enableImages`. Backgrounds
 remain transparent and dividers adapt to the host terminal palette, including
 VS Code themes.
 Start the dashboard first, then run:
