@@ -163,7 +163,9 @@ describe("dashboard-shaped .glyph runtime", () => {
     expect(frame).toContain("50%");
     expect(frame).toContain("STATE");
     expect(frame).toContain("2 / 3");
-    const selectedLine = frame.split("\n").find((line) => line.includes("▎DONE") && line.includes("Render the fire"));
+    expect(frame).toContain("ASSIGNED LOOP");
+    expect(frame).toContain("ui-02 · Render the fire");
+    const selectedLine = frame.split("\n").find((line) => line.includes(">DONE") && line.includes("Render the fire"));
     expect(selectedLine).toBeDefined();
     expect(selectedLine!.indexOf("Render the fire")).toBeLessThan(selectedLine!.indexOf("│"));
     root.unmount();
@@ -230,7 +232,7 @@ describe("dashboard-shaped .glyph runtime", () => {
         ovenRuntime: checklistRuntime(longProgress),
       }));
       const lines = frame.split("\n");
-      const selectedRow = lines.findIndex((line) => line.includes("▎ACTIVE") && line.includes("task-19") && line.indexOf("task-19") < line.indexOf("│"));
+      const selectedRow = lines.findIndex((line) => line.includes(">ACTIVE") && line.includes("task-19") && line.indexOf("task-19") < line.indexOf("│"));
       const footerRow = lines.findIndex((line) => line.includes("↑/↓:inspect"));
       expect(selectedRow).toBeGreaterThan(-1);
       expect(selectedRow).toBeLessThan(footerRow);

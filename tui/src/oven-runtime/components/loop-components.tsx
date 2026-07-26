@@ -25,8 +25,8 @@ function graphLines(run: Record<string, JsonValue>, item: Record<string, JsonVal
 }
 
 function selectedItem(data: Record<string, JsonValue>) {
-  const active = rows(data.active).map(record), selected = text(data.selectedItemId);
-  return active.find((item) => text(item.id) === selected) ?? active[0] ?? {};
+  const active = rows(data.active).map(record), completed = rows(data.completed).map(record), selected = text(data.selectedItemId);
+  return [...active, ...completed].find((item) => text(item.id) === selected) ?? active[0] ?? completed[0] ?? {};
 }
 
 function loopLabel(item: Record<string, JsonValue>, run: Record<string, JsonValue>) {

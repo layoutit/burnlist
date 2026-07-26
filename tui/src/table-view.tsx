@@ -18,7 +18,7 @@ export function TableCell({ children, width, grow = 0, color }: {
   return <box width={width} flexGrow={grow} flexShrink={width ? 0 : 1} paddingLeft={1}>
     <text
       fg={color ?? palette.muted}
-      attributes={selected ? createTextAttributes({ bold: true, inverse: true }) : undefined}
+      attributes={selected ? createTextAttributes({ bold: true, underline: true }) : undefined}
     >{fitText(children, width ? width - 1 : Math.max(1, children.length))}</text>
   </box>;
 }

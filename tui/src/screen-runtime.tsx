@@ -8,6 +8,7 @@ import { genericOvens } from "./oven-fit";
 import { officialOvenFixture } from "./catalog/official-oven-fixtures";
 import { prepareTerminalComponentResult, TerminalOvenViewport } from "./oven-runtime/components";
 import { TerminalStreamingFeedList } from "./oven-runtime/components/streaming-diff-components";
+import { TerminalLoopProgress } from "./oven-runtime/components/loop-components";
 import type { StreamingDiffNavigation } from "./oven-runtime/streaming-diff-navigation";
 import type { TerminalRenderResult } from "./oven-runtime/terminal-contract";
 import { fitText } from "./theme";
@@ -23,6 +24,7 @@ import type {
   OvenSummary,
   ProgressSnapshot,
 } from "./types";
+import type { JsonValue, TerminalNode } from "./oven-runtime/terminal-contract";
 import type { StreamStatus } from "./event-stream";
 
 export interface ScreenRuntimeProps {
@@ -51,6 +53,14 @@ function listRows(height: number): number {
   return Math.max(2, Math.floor((height - 11) / 2));
 }
 
+const DETAIL_LOOP_NODE: TerminalNode = {
+  kind: "loop-progress",
+  attributes: { source: "/raw" },
+  bindings: {},
+  children: [],
+  source: { offset: 0, line: 1, column: 1 },
+};
+
 function DetailSplit({ node, props, width, height, chrome }: {
   node: GlyphNode;
   props: ScreenRuntimeProps;
@@ -68,11 +78,24 @@ function DetailSplit({ node, props, width, height, chrome }: {
   const ovenWidth = collapsed ? width : Math.max(1, width - sidebarWidth);
   const ovenContentWidth = Math.max(1, ovenWidth - 4);
   const ovenHeight = collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight;
+  const runtimePayload = props.ovenRuntime?.payload;
+  const runtimeRecord = runtimePayload && typeof runtimePayload === "object" && !Array.isArray(runtimePayload)
+    ? runtimePayload as Record<string, JsonValue>
+    : {};
+  const runtimeRaw = runtimeRecord.raw && typeof runtimeRecord.raw === "object" && !Array.isArray(runtimeRecord.raw)
+    ? runtimeRecord.raw as Record<string, JsonValue>
+    : props.progress as unknown as Record<string, JsonValue> | null;
+  const selectedPayload = checklist && props.selectedItem && runtimeRaw
+    ? { ...runtimeRecord, raw: { ...runtimeRaw, selectedItemId: props.selectedItem.id } } as JsonValue
+    : runtimePayload;
   const runtime = props.ovenRuntime ? prepareTerminalComponentResult({
     ...props.ovenRuntime,
+    ...(selectedPayload !== undefined ? { payload: selectedPayload } : {}),
     state: { ...props.ovenRuntime.state, viewport: { width: ovenContentWidth, height: ovenHeight } },
   }) : null;
   const listHeight = Math.max(3, sidebarHeight - 6);
+  const inspectorWidth = Math.max(1, ovenWidth - 4);
+  const loopHeight = Math.max(5, Math.min(14, Math.floor(contentHeight * 0.45)));
   return <box height={contentHeight} maxHeight={contentHeight} flexGrow={0} flexShrink={1} minHeight={0} overflow="hidden" flexDirection={collapsed ? "column" : "row"}>
     <box
       width={collapsed ? "100%" : sidebarWidth}
@@ -100,7 +123,11 @@ function DetailSplit({ node, props, width, height, chrome }: {
       /> : null}
     </box>
     <box flexGrow={1} minWidth={0} minHeight={0} overflow="hidden" paddingLeft={checklist ? 0 : 2} paddingRight={checklist ? 0 : 2}>
-      {checklist ? <ItemDetail
+      {checklist && selectedPayload ? <box height={ovenHeight} paddingLeft={2} paddingRight={2} flexDirection="column" overflow="hidden">
+        <TerminalLoopProgress node={DETAIL_LOOP_NODE} payload={selectedPayload} width={inspectorWidth} height={loopHeight} />
+        <box height={1} border={["top"]} borderColor={chrome.faintLine} />
+        <ItemDetail item={props.selectedItem} width={inspectorWidth} height={Math.max(1, ovenHeight - loopHeight - 1)} />
+      </box> : checklist ? <ItemDetail
         item={props.selectedItem}
         width={collapsed ? width : width - sidebarWidth}
         height={collapsed ? Math.max(1, contentHeight - sidebarHeight) : contentHeight}

@@ -1,3 +1,4 @@
+import { createTextAttributes } from "@opentui/core";
 import { BrandMark } from "./brand-mark";
 import { compactTime, fitText, progressLabel } from "./theme";
 import { useTerminalLoadingGlyph } from "./loading-cadence";
@@ -50,16 +51,17 @@ export function DetailSummary({ burnlist, progress, compact, width }: {
   const percent = progress?.percent ?? burnlist.percent;
   const done = progress?.done ?? burnlist.done;
   const total = progress?.total ?? burnlist.total;
+  const remaining = Math.max(0, total - (done ?? 0));
   const goal = progress?.goal?.sections.find((section) => section.title.toLowerCase() === "goal")?.body
     ?? progress?.goal?.sections[0]?.body
     ?? "";
   const textWidth = Math.max(8, width - 4);
   return <box flexDirection="column" paddingLeft={2} paddingRight={2} overflow="hidden">
     <box width={compact ? textWidth : undefined} flexGrow={compact ? 0 : 1} flexShrink={0} minWidth={0} flexDirection="column" overflow="hidden">
-      <text fg={palette.dim}>{fitText(`${burnlist.repo}  /  ${burnlist.id}`, textWidth).trimEnd()}</text>
-      <text fg={palette.foreground}>{fitText(burnlist.title, textWidth).trimEnd()}</text>
-      <text fg={burnlist.statusLabel === "Blocked" ? palette.red : burnlist.status === "active" ? palette.green : palette.muted}>{fitText(`${burnlist.statusLabel}  ${burnlist.ovenName}`, textWidth).trimEnd()}</text>
-      <text fg={palette.muted}>{fitText(progressLabel(done, total, percent, burnlist.progressLabel), textWidth).trimEnd()}</text>
+      <text fg={palette.dim}>{fitText(`${burnlist.repo} · ${burnlist.id}`, textWidth).trimEnd()}</text>
+      <text fg={palette.foreground} attributes={createTextAttributes({ bold: true })}>{fitText(burnlist.title, textWidth).trimEnd()}</text>
+      <text fg={burnlist.statusLabel === "Blocked" ? palette.red : burnlist.status === "active" ? palette.green : palette.muted}>{fitText(`${burnlist.statusLabel.toUpperCase()} · ${burnlist.ovenName}`, textWidth).trimEnd()}</text>
+      <text fg={palette.muted}>{fitText(`${progressLabel(done, total, percent, burnlist.progressLabel)} · ${remaining} remaining`, textWidth).trimEnd()}</text>
       <text fg={percent === null ? palette.dim : palette.green}>{progressBar(percent, Math.max(1, Math.min(textWidth, compact ? 18 : 28)))}</text>
       {!compact && goal ? <text fg={palette.muted}>{fitText(goal, 34).trimEnd()}</text> : null}
       {!compact ? <text fg={palette.dim}>{`Updated ${compactTime(burnlist.updatedAt)}`}</text> : null}
