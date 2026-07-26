@@ -24,7 +24,7 @@ export function adaptVisualParity(payload: VisualParityPayload) {
       frames: payload.comparisons.flatMap((comparison) => {
         const entry = comparison.domains[domain.id];
         return entry.reference.src && entry.candidate.src && entry.diff.src
-          ? [{ status: entry.status, frame: comparison.frame, difference: entry.difference, images: [entry.reference, entry.candidate, entry.diff], label: entry.label }]
+          ? [{ status: entry.status, frame: comparison.frame, difference: entry.difference, tiles: entry.tiles ?? [entry.reference, entry.candidate, entry.diff], images: [entry.reference, entry.candidate, entry.diff], label: entry.label }]
           : [];
       }),
     }];

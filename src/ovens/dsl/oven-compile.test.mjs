@@ -59,3 +59,13 @@ test("loop-progress composes through the same standard containers as loop-graph"
     assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
   }
 });
+
+test("ascii-block is a closed, bind-only text component", () => {
+  const result = compileOven('<oven id="ascii-view" version="0.1.0" contract="checklist-progress@1" theme="checklist"><ascii-block><bind prop="text" source="/scene/text"/><bind prop="colors" source="/scene/colors"/></ascii-block></oven>');
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
+  assert.ok(result.ir.requirements.components.includes("ascii-block"));
+
+  const missingText = compileOven('<oven id="ascii-view" version="0.1.0" contract="checklist-progress@1" theme="checklist"><ascii-block><bind prop="colors" source="/scene/colors"/></ascii-block></oven>');
+  assert.equal(missingText.ok, false);
+  assert.ok(missingText.diagnostics.some((diagnostic) => diagnostic.code === "PROPS_REQUIRED"));
+});

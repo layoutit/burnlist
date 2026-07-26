@@ -20,6 +20,7 @@ export { VerdictHeader } from "./VerdictHeader";
 export { DomainTabs } from "./DomainTabs";
 export { MetricTiles } from "./MetricTiles";
 export { DomainNote } from "./DomainNote";
+export { AsciiBlock } from "./AsciiBlock";
 export { ImageTriptych } from "./ImageTriptych";
 export { FrameCard } from "./FrameCard";
 export { OvenView } from "./OvenView";
