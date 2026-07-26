@@ -28,6 +28,8 @@ const knownSubcommands = new Set([
   "unregister",
   "roots",
   "init",
+  "service",
+  "serve",
 ]);
 
 function printSkillUsage(command) {
@@ -53,7 +55,13 @@ function printLifecycleUsage(command) {
 async function main() {
 if (args.includes("-i") || args.includes("--interactive")) {
   const { runInteractiveCli } = await import("../src/cli/interactive-cli.mjs");
-  process.exitCode = runInteractiveCli({ args, packageRoot });
+  process.exitCode = await runInteractiveCli({ args, packageRoot });
+  return;
+}
+
+if (args[0] === "service") {
+  const { runServiceCli } = await import("../src/cli/service-cli.mjs");
+  process.exitCode = await runServiceCli({ args, packageRoot });
   return;
 }
 
@@ -63,6 +71,12 @@ if (args[0] === "install" || args[0] === "uninstall") {
     return;
   }
   process.exitCode = runSkillsInstallCli({ args, packageRoot });
+  if (process.exitCode === 0 && args[0] === "install" && args.includes("--global") && !args.includes("--dry-run")) {
+    const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+    const { ensureSharedService } = await import("../src/service/supervisor.mjs");
+    const runtime = await ensureSharedService({ packageRoot, version: packageJson.version });
+    console.log(`Burnlist service: ${runtime.url}`);
+  }
   return;
 }
 
@@ -118,6 +132,8 @@ if (!["oven", "hooks", "loop", "agent", "route"].includes(args[0]) && (args.incl
 Usage:
   burnlist [--port <port>] [--scan-root <repo[,repo...]>]
   burnlist -i [--server <url>]
+  burnlist service <start|stop|restart|status>
+  burnlist serve [dashboard options]
   burnlist --plan <burnlist.md> --check
   burnlist --plan <burnlist.md> --digest
   burnlist --close-completed [--scan-root <repo[,repo...]>]
@@ -162,6 +178,7 @@ Usage:
 
 Options:
   -i, --interactive     Open the interactive terminal UI.
+  --local               With -i, force an ephemeral local server.
   --auto-port           Try the next available loopback port.
   --host <host>         Bind host; loopback is required by default.
   --state-dir <path>    Override ignored dashboard observer state.
@@ -198,8 +215,19 @@ if (args[0] === "oven") {
   await runLoopCliEntry(args.slice(1));
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");
-} else {
+} else if (args[0] === "serve") {
+  process.argv.splice(2, 1);
   await import("../src/server/burnlist-dashboard-server.mjs");
+} else {
+  const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+  const { ownedGlobalInstall } = await import("../src/service/runtime.mjs");
+  if (args.length === 0 && ownedGlobalInstall(packageRoot, packageJson.version)) {
+    const { ensureSharedService } = await import("../src/service/supervisor.mjs");
+    const runtime = await ensureSharedService({ packageRoot, version: packageJson.version });
+    console.log(runtime.url);
+  } else {
+    await import("../src/server/burnlist-dashboard-server.mjs");
+  }
 }
 }
 

@@ -4,15 +4,17 @@ import { interactiveBinaryPath, interactiveTuiTargets, runInteractiveCli } from 
 
 const packageMetadata = () => JSON.stringify({ burnlistTui: { targets: ["darwin-arm64"] } });
 
-test("interactive mode launches the compiled TUI and forwards its options", () => {
+test("interactive mode resolves a server, launches the compiled TUI, and cleans up", async () => {
   const calls = [];
-  const status = runInteractiveCli({
+  let stopped = 0;
+  const status = await runInteractiveCli({
     args: ["-i", "--server", "http://127.0.0.1:4510"],
     packageRoot: "/package",
     platform: "darwin",
     arch: "arm64",
     exists: () => true,
     readFile: packageMetadata,
+    resolveService: async () => ({ url: "http://127.0.0.1:4599/", stop: async () => { stopped += 1; } }),
     spawn: (...args) => {
       calls.push(args);
       return { status: 0 };
@@ -21,14 +23,15 @@ test("interactive mode launches the compiled TUI and forwards its options", () =
   assert.equal(status, 0);
   assert.deepEqual(calls, [[
     interactiveBinaryPath("/package", "darwin"),
-    ["--server", "http://127.0.0.1:4510"],
+    ["--server", "http://127.0.0.1:4599/"],
     { stdio: "inherit", shell: false },
   ]]);
+  assert.equal(stopped, 1);
 });
 
-test("interactive mode explains how to build a missing executable", () => {
+test("interactive mode explains how to build a missing executable", async () => {
   const errors = [];
-  const status = runInteractiveCli({
+  const status = await runInteractiveCli({
     args: ["-i"],
     packageRoot: "/package",
     platform: "darwin",
@@ -42,9 +45,9 @@ test("interactive mode explains how to build a missing executable", () => {
   assert.match(errors[0], /burnlist -i/u);
 });
 
-test("interactive mode declines hosts without a packaged TUI target", () => {
+test("interactive mode declines hosts without a packaged TUI target", async () => {
   const errors = [];
-  const status = runInteractiveCli({
+  const status = await runInteractiveCli({
     args: ["-i"],
     packageRoot: "/package",
     platform: "linux",

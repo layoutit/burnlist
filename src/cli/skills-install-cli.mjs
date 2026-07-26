@@ -1,9 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 
 import { registerSkills, removeSnapshotManagedSkills, snapshotManagedSkills, unregisterSkills } from "./skills-register.mjs";
 import { withGlobalSkillsLock } from "./skills-install-lock.mjs";
+import { installMarker } from "../service/runtime.mjs";
 
 const VALID_AGENTS = Object.freeze(["codex", "claude"]);
 
@@ -86,6 +87,10 @@ export function runSkillsInstallCli({ args, packageRoot, cwd = process.cwd(), en
     const sourceRoot = resolve(packageRoot, "skills");
     if (options.command === "install") {
       registerSkills({ sourceRoot, cwd, env, ...options, log });
+      if (options.global && !options.dryRun) {
+        const version = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")).version;
+        installMarker(packageRoot, version, { env });
+      }
       return 0;
     }
     if (options.command !== "uninstall") throw new Error(`unknown skill command: ${options.command}`);

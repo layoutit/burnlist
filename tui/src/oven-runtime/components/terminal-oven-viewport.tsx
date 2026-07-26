@@ -11,11 +11,13 @@ import { differentialKpiModel, TerminalDifferentialChart, TerminalDifferentialKp
 import { TerminalChecklistBurnPanel, TerminalChecklistCurrent, TerminalChecklistEventCards, TerminalChecklistLedger, TerminalChecklistWorkspace } from "./checklist-components";
 import { TerminalLoopGraph, TerminalLoopProgress } from "./loop-components";
 import { TerminalModelLabView } from "./model-lab-components";
+import { TerminalAsciiBlock } from "./ascii-block";
 import { fitTerminalText } from "../../terminal-text";
 import { useTerminalPalette } from "../../terminal-accessibility";
 
 type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null; pageIndex?: number; pageSize?: number }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
+  "ascii-block": TerminalAsciiBlock,
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
   "log-table": TerminalLogTable,

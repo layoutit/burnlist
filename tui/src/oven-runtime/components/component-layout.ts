@@ -15,6 +15,7 @@ const kpiRows = (node: TerminalNode, width: number) => node.children.some((child
 
 function reserve(node: TerminalNode, width: number, viewportHeight?: number): TerminalNode {
   if (node.kind === "log-table") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(10, Math.floor(width / 8))) }, row), source: node.source };
+  if (node.kind === "ascii-block") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: Math.max(3, Math.min(16, viewportHeight ?? 8)) }, row), source: node.source };
   if (node.kind === "kpi-item") return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: kpiRows(node, width) }, row), source: node.source };
   if (["section-header", "refresh-status", "domain-note", "differential-empty-state"].includes(node.kind)) return { kind: "stack", attributes: {}, bindings: {}, children: Array.from({ length: node.kind === "refresh-status" ? 1 : 2 }, row), source: node.source };
   if (["metric-tiles", "frame-card", "domain-tabs", "verdict-header"].includes(node.kind)) {
@@ -61,7 +62,7 @@ export function projectComponentLayout(nodes: readonly TerminalNode[], width: nu
     if (node.kind === "case") return { ...node, children: [] };
     if (node.kind === "field-toolbar" || node.kind === "pagination" || node.kind === "mode-toggle") return { ...node, children: [] };
     if (node.kind === "collection") return { ...node, children: node.children.filter((child) => child.kind === "field-list").map((child, index) => visit(child, `${path}/${index}`)) };
-    if (["kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card", "checklist-current", "checklist-workspace", "checklist-ledger", "checklist-burn-panel", "checklist-event-cards", "loop-graph", "loop-progress", "model-lab-view"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width, viewportHeight); }
+    if (["ascii-block", "kpi-strip", "kpi-item", "log-table", "section-header", "refresh-status", "domain-note", "differential-empty-state", "differential-kpi-strip", "differential-log-table", "progress-chart", "frame-delta-chart", "field-list", "verdict-header", "metric-tiles", "frame-card", "domain-tabs", "streaming-diff-heading", "diff-card", "checklist-current", "checklist-workspace", "checklist-ledger", "checklist-burn-panel", "checklist-event-cards", "loop-graph", "loop-progress", "model-lab-view"].includes(node.kind)) { roots.push({ path, node }); return reserve(node, width, viewportHeight); }
     return { ...node, children: node.children.map((child, index) => visit(child, `${path}/${index}`)) };
   };
   return { nodes: nodes.map((node, index) => visit(node, `root/${index}`)), roots };

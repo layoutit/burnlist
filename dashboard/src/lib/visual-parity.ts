@@ -13,6 +13,17 @@ export type VisualParityImage = {
   height: number;
 };
 
+export type VisualParityAsciiTile = {
+  kind: "ascii";
+  text: string;
+  colors?: string[][] | null;
+  label?: string;
+  cols?: number;
+  rows?: number;
+};
+
+export type VisualParityTile = ({ kind?: "image" } & VisualParityImage) | VisualParityAsciiTile;
+
 export type VisualParityDomain = {
   id: string;
   label: string;
@@ -33,6 +44,7 @@ export type VisualParityDomainComparison = {
   candidate: VisualParityImage;
   diff: VisualParityImage;
   difference: VisualParityDifference;
+  tiles?: VisualParityTile[];
 };
 
 export type VisualParityPayload = {

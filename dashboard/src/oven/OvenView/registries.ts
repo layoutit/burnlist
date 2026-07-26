@@ -1,6 +1,5 @@
 import { createElement, type ComponentType, type ReactNode } from "react";
 import { ArrowLeft, ClipboardList, Clock3, Gauge, TimerReset } from "lucide-react";
-import { AsciiBlock } from "../AsciiBlock";
 import { DiffCard } from "../DiffCard";
 import { DiffCardList } from "../DiffCardList";
 import { DomainNote } from "../DomainNote";
@@ -31,7 +30,6 @@ import { WaffleMetric } from "../WaffleMetric/WaffleMetric";
 import { ovenFormatRegistry } from "../../../../src/ovens/oven-value-runtime.mjs";
 
 export const componentRegistry: Record<string, ComponentType<any>> = Object.freeze(Object.assign(Object.create(null), {
-  AsciiBlock,
   KpiStrip,
   KpiItem,
   ProgressDonut,

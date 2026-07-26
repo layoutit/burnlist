@@ -31,6 +31,7 @@
     "tui/dist/",
     "scripts/register-skills.mjs",
     "scripts/unregister-skills.mjs",
+    "scripts/unregister-service.mjs",
     "!**/*.test.mjs",
     "!**/*.test.js",
     "!**/__fixtures__/",
@@ -64,7 +65,8 @@
     "verify:package": "node scripts/verify-package.mjs",
     "test:global-install": "node scripts/smoke-global-install.mjs",
     "prepack": "npm run build:dashboard && npm run build:tui && npm run build:catalog:tui && npm run verify",
-    "postinstall": "node scripts/register-skills.mjs"
+    "postinstall": "node scripts/register-skills.mjs",
+    "preuninstall": "node scripts/unregister-service.mjs"
   },
   "engines": {
     "node": ">=18"

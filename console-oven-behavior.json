@@ -2,6 +2,8 @@
   "schema": "burnlist-console-oven-behavior@1",
   "authoritativeSources": {
     "oven": [
+      "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+      "dashboard/src/oven/AsciiBlock/index.ts",
       "dashboard/src/oven/Box/Box.tsx",
       "dashboard/src/oven/BurnDonut/BurnDonut.tsx",
       "dashboard/src/oven/BurnDonut/index.ts",
@@ -195,6 +197,14 @@
         "fingerprint": "bf54ca987774fa0c49ce5d4c64ce39f3191116db8a28c0d6770e8a72055faee7"
       },
       {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "fingerprint": "4147ab66c8d5b99ce10ca927ca1a6eda9a5fa01a884a57a9e1b14880c1af1006"
+      },
+      {
+        "path": "dashboard/src/oven/AsciiBlock/index.ts",
+        "fingerprint": "c22545eac967e1c9c396b0be48670bceb08f5e8a2c53e87115c82c930b4d0376"
+      },
+      {
         "path": "dashboard/src/oven/Box/Box.tsx",
         "fingerprint": "c99b1c981a166d6961029aec4f9b482bf08ab4db1c779d0c665080e94beb4a6a"
       },
@@ -380,7 +390,7 @@
       },
       {
         "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
-        "fingerprint": "8f099a8f1d5764e8a3143d7f06dcb82b83d88668f91ede76adc3fad80838d103"
+        "fingerprint": "c43e81526d9a1a57092b797f94cec802265c106ca48cfe90d9fe0ec0b9d7bc65"
       },
       {
         "path": "dashboard/src/oven/FrameCard/index.ts",
@@ -420,7 +430,7 @@
       },
       {
         "path": "dashboard/src/oven/index.ts",
-        "fingerprint": "e2d8b9fce97cdc9257ad905ad660c465c71cc05373d54d0b9191989432a2ed1d"
+        "fingerprint": "3b0846a134969c33265074ad4709c73422aa2f569c250188f69f2eada702b91d"
       },
       {
         "path": "dashboard/src/oven/KpiItem/index.ts",
@@ -560,7 +570,7 @@
       },
       {
         "path": "dashboard/src/oven/runtime/OvenNode.tsx",
-        "fingerprint": "29e059349880bef23b091ec1ab12bcf6156b16269d4b47ab6b56957a83f02338"
+        "fingerprint": "3adddbe7e8a4c99051852f8fe577c5673d1d9a37ef34e89ae607e84f9df698a9"
       },
       {
         "path": "dashboard/src/oven/runtime/OvenRuntime.tsx",
@@ -576,7 +586,7 @@
       },
       {
         "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
-        "fingerprint": "375351987e7b311b87b566c756891f997211a91c8e886e612c4d91713b01f81a"
+        "fingerprint": "39f369072444fad05e520c00910e3d7129c9c90628e7f66d7c1c247ec75bdeea"
       },
       {
         "path": "dashboard/src/oven/SectionHeader/index.ts",
@@ -732,6 +742,7 @@
       "domain-note",
       "frame-card",
       "image-triptych",
+      "ascii-block",
       "feed-list",
       "diff-card",
       "file-diff",
@@ -4311,6 +4322,186 @@
       "blocker": {
         "burnlistItem": "B17",
         "condition": "terminal runtime must implement dashboard/src/lib/route-model.mjs:repoOvenHref"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:ConditionalExpression:a3d1557b0a99751e",
+      "fingerprint": "a3d1557b0a99751ebd72f15f86d3926808af94e75b5b26c3fa6c2a0ed4294d22",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "ConditionalExpression",
+        "predicate": "colors === null",
+        "nodeKinds": [],
+        "fingerprint": "a3d1557b0a99751ebd72f15f86d3926808af94e75b5b26c3fa6c2a0ed4294d22"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:ConditionalExpression:d5b5da9841039593",
+      "fingerprint": "d5b5da9841039593268a0c0856809946803eccf539062cc71d7a01122f81f479",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "ConditionalExpression",
+        "predicate": "lineIndex < lines.length - 1",
+        "nodeKinds": [],
+        "fingerprint": "d5b5da9841039593268a0c0856809946803eccf539062cc71d7a01122f81f479"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:IfStatement:46bb556ca569fa40",
+      "fingerprint": "46bb556ca569fa40686b635592c373d43a5df3771832029ea6ea47576f6a90ba",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "IfStatement",
+        "predicate": "typeof ResizeObserver === \"undefined\"",
+        "nodeKinds": [],
+        "fingerprint": "46bb556ca569fa40686b635592c373d43a5df3771832029ea6ea47576f6a90ba"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:IfStatement:862684a75ef369c4",
+      "fingerprint": "862684a75ef369c45077685149fb8f8699144fabe77a9e5208cf4efeb33638a0",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "IfStatement",
+        "predicate": "!frame || !content",
+        "nodeKinds": [],
+        "fingerprint": "862684a75ef369c45077685149fb8f8699144fabe77a9e5208cf4efeb33638a0"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:LogicalExpression:292950405b6ade55",
+      "fingerprint": "292950405b6ade55444ded9d847e97c84a05899a073aa12e04405ed419db656a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "LogicalExpression",
+        "predicate": "rows ?? lines.length",
+        "nodeKinds": [],
+        "fingerprint": "292950405b6ade55444ded9d847e97c84a05899a073aa12e04405ed419db656a"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:LogicalExpression:b885c96b394b2fb6",
+      "fingerprint": "b885c96b394b2fb679362a356a35f53322826ae2309889de360b4e80487090b8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "LogicalExpression",
+        "predicate": "!frame || !content",
+        "nodeKinds": [],
+        "fingerprint": "b885c96b394b2fb679362a356a35f53322826ae2309889de360b4e80487090b8"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock:LogicalExpression:d4a76ade52855e20",
+      "fingerprint": "d4a76ade52855e2030da4cc868b0dd33321188a15693168329bf682f34450ca9",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:AsciiBlock",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "AsciiBlock",
+        "node": "LogicalExpression",
+        "predicate": "cols ?? Math.max(...lines.map((line) => line.length), 1)",
+        "nodeKinds": [],
+        "fingerprint": "d4a76ade52855e2030da4cc868b0dd33321188a15693168329bf682f34450ca9"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:module:IfStatement:e93b3c63bb6ebb84",
+      "fingerprint": "e93b3c63bb6ebb849df800025a84af0612829952ad4db7b982137b5cdb9a6666",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:module",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "previous?.color === color",
+        "nodeKinds": [],
+        "fingerprint": "e93b3c63bb6ebb849df800025a84af0612829952ad4db7b982137b5cdb9a6666"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:module:LogicalExpression:bd97288961ca7d00",
+      "fingerprint": "bd97288961ca7d00f3d96102f4ee78f13e37f7212b5baf42e41710abc514b13b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx:module",
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/AsciiBlock/AsciiBlock.tsx",
+        "export": "module",
+        "node": "LogicalExpression",
+        "predicate": "colors?.[index] ?? \"inherit\"",
+        "nodeKinds": [],
+        "fingerprint": "bd97288961ca7d00f3d96102f4ee78f13e37f7212b5baf42e41710abc514b13b"
       }
     },
     {
@@ -25314,6 +25505,126 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard:ConditionalExpression:1b85d2b2572193f0",
+      "fingerprint": "1b85d2b2572193f067664d322722b274c9c8ada2e12df0a5185e2b8cb063af06",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "node": "ConditionalExpression",
+        "predicate": "tiles?.length",
+        "nodeKinds": [],
+        "fingerprint": "1b85d2b2572193f067664d322722b274c9c8ada2e12df0a5185e2b8cb063af06"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard:ConditionalExpression:c91d78c09dafae46",
+      "fingerprint": "c91d78c09dafae4606aea13c48a55458a1e74420019c165bb6d5a714b3716f6a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "node": "ConditionalExpression",
+        "predicate": "\"label\" in tile",
+        "nodeKinds": [],
+        "fingerprint": "c91d78c09dafae4606aea13c48a55458a1e74420019c165bb6d5a714b3716f6a"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard:LogicalExpression:b9e49b73fec988fe",
+      "fingerprint": "b9e49b73fec988fec70fb2a5e63ad80b53df98f857df1ce2d3fe4287240b509a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:FrameCard",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "FrameCard",
+        "node": "LogicalExpression",
+        "predicate": "images ?? []",
+        "nodeKinds": [],
+        "fingerprint": "b9e49b73fec988fec70fb2a5e63ad80b53df98f857df1ce2d3fe4287240b509a"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:module:IfStatement:8632cde9003b0a3f",
+      "fingerprint": "8632cde9003b0a3f86c62c45e23a57ead49b9a95ac20d1b40abe808f27a01168",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:module",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "node": "IfStatement",
+        "predicate": "tile.kind === \"ascii\"",
+        "nodeKinds": [],
+        "fingerprint": "8632cde9003b0a3f86c62c45e23a57ead49b9a95ac20d1b40abe808f27a01168"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:module:LogicalExpression:28395a0107f10d73",
+      "fingerprint": "28395a0107f10d736f20772960f47546e6aa1ee1de7638949a77f229e4617091",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:module",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "node": "LogicalExpression",
+        "predicate": "image.src ?? undefined",
+        "nodeKinds": [],
+        "fingerprint": "28395a0107f10d736f20772960f47546e6aa1ee1de7638949a77f229e4617091"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/FrameCard/FrameCard.tsx:module:LogicalExpression:4e7f95d58f46df09",
+      "fingerprint": "4e7f95d58f46df09aa7d4ea6de881963fbc766b6386d8b29c086f1f5b01486af",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/FrameCard/FrameCard.tsx:module",
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/FrameCard/FrameCard.tsx",
+        "export": "module",
+        "node": "LogicalExpression",
+        "predicate": "tile.colors ?? null",
+        "nodeKinds": [],
+        "fingerprint": "4e7f95d58f46df09aa7d4ea6de881963fbc766b6386d8b29c086f1f5b01486af"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/HybridField/HybridField.tsx:HybridField:ConditionalExpression:6bc640821091a9f2",
       "fingerprint": "6bc640821091a9f2909b387921dfe564199bffa03c8b901383508d224c093e53",
       "classification": "closed-shared-adapter",
@@ -39699,8 +40010,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:f2b611589fe81b52",
-      "fingerprint": "f2b611589fe81b5225465b1cb3472de837c87704c279a4a1bedc6e5eb9d65674",
+      "id": "branch:dashboard/src/oven/runtime/OvenNode.tsx:OvenNode:IfStatement:bc77ef85f7930463",
+      "fingerprint": "bc77ef85f79304632aace3bd5b33ee3d7e1354a4755b38934804afae02bbef9d",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -39713,16 +40024,18 @@
         "path": "dashboard/src/oven/runtime/OvenNode.tsx",
         "export": "OvenNode",
         "node": "IfStatement",
-        "predicate": "[\"field-list\", \"refresh-status\", \"verdict-header\", \"metric-tiles\", \"domain-note\", \"frame-card\"].includes(node.kind)",
+        "predicate": "[\"ascii-block\", \"image-triptych\", \"field-list\", \"refresh-status\", \"verdict-header\", \"metric-tiles\", \"domain-note\", \"frame-card\"].includes(node.kind)",
         "nodeKinds": [
+          "ascii-block",
           "domain-note",
           "field-list",
           "frame-card",
+          "image-triptych",
           "metric-tiles",
           "refresh-status",
           "verdict-header"
         ],
-        "fingerprint": "f2b611589fe81b5225465b1cb3472de837c87704c279a4a1bedc6e5eb9d65674"
+        "fingerprint": "bc77ef85f79304632aace3bd5b33ee3d7e1354a4755b38934804afae02bbef9d"
       }
     },
     {
@@ -41108,6 +41421,26 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:module:LogicalExpression:0217fcbd88b18e00:1",
+      "fingerprint": "0217fcbd88b18e00353c321aa5c69500de6907ddf36126401994248372763fe4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:module",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "module",
+        "node": "LogicalExpression",
+        "predicate": "node.children ?? []",
+        "nodeKinds": [],
+        "fingerprint": "0217fcbd88b18e00353c321aa5c69500de6907ddf36126401994248372763fe4"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:module:LogicalExpression:10999840fbf16d19",
       "fingerprint": "10999840fbf16d193fb8b86fd0f1f910287bf5ce3e0fd1f2e3dc6db4e16bad76",
       "classification": "closed-shared-adapter",
@@ -41185,6 +41518,28 @@
         "predicate": "ir.root as Node[] ?? []",
         "nodeKinds": [],
         "fingerprint": "887627c10a149cfe93296ee491df7c27014d7bfd3c3bdda9bdd7850f8aa36241"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:module:LogicalExpression:937604f7417bb3b5",
+      "fingerprint": "937604f7417bb3b560dd3de8e6e7937e675ad5336b5dd55a80702480c24d65ee",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:module",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "module",
+        "node": "LogicalExpression",
+        "predicate": "child.kind === \"bind\" && typeof child.attributes?.prop === \"string\"",
+        "nodeKinds": [
+          "bind"
+        ],
+        "fingerprint": "937604f7417bb3b560dd3de8e6e7937e675ad5336b5dd55a80702480c24d65ee"
       }
     },
     {
@@ -41332,6 +41687,46 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:ConditionalExpression:eaff339f8114adab",
+      "fingerprint": "eaff339f8114adab0e6666e5a862fdecd6dc6042bc64c5321c2871f2c0ed2d34",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "ConditionalExpression",
+        "predicate": "selected && bySelection",
+        "nodeKinds": [],
+        "fingerprint": "eaff339f8114adab0e6666e5a862fdecd6dc6042bc64c5321c2871f2c0ed2d34"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:ConditionalExpression:eaff339f8114adab:1",
+      "fingerprint": "eaff339f8114adab0e6666e5a862fdecd6dc6042bc64c5321c2871f2c0ed2d34",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "ConditionalExpression",
+        "predicate": "selected && bySelection",
+        "nodeKinds": [],
+        "fingerprint": "eaff339f8114adab0e6666e5a862fdecd6dc6042bc64c5321c2871f2c0ed2d34"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:2920c73878f82867",
       "fingerprint": "2920c73878f828676a31601ec98204a1a8d36c4c022a699f3601d0a286a9f11a",
       "classification": "closed-shared-adapter",
@@ -41376,6 +41771,50 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:6db244b94e6f4b74",
+      "fingerprint": "6db244b94e6f4b74a9dcd764ddd97345063453d3fe03ec7657168958af487ff6",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"image-triptych\"",
+        "nodeKinds": [
+          "image-triptych"
+        ],
+        "fingerprint": "6db244b94e6f4b74a9dcd764ddd97345063453d3fe03ec7657168958af487ff6"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:bc02debff456e6b1",
+      "fingerprint": "bc02debff456e6b10998ae69b3ed437cc9a09641df9d8180119b56551a581369",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"frame-card\"",
+        "nodeKinds": [
+          "frame-card"
+        ],
+        "fingerprint": "bc02debff456e6b10998ae69b3ed437cc9a09641df9d8180119b56551a581369"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:cac7b23452c65d5b",
       "fingerprint": "cac7b23452c65d5ba88676e65b21ccb714304d0d538e50fb5aed65692ca5d619",
       "classification": "closed-shared-adapter",
@@ -41395,6 +41834,28 @@
           "domain-note"
         ],
         "fingerprint": "cac7b23452c65d5ba88676e65b21ccb714304d0d538e50fb5aed65692ca5d619"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:d5655ff5becb4c74",
+      "fingerprint": "d5655ff5becb4c741dc3eff7a9f05f1e3b8212247754203b28873acc0c775696",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "IfStatement",
+        "predicate": "node.kind === \"ascii-block\"",
+        "nodeKinds": [
+          "ascii-block"
+        ],
+        "fingerprint": "d5655ff5becb4c741dc3eff7a9f05f1e3b8212247754203b28873acc0c775696"
       }
     },
     {
@@ -41439,28 +41900,6 @@
           "metric-tiles"
         ],
         "fingerprint": "efb18cdb47287e3fa54536d58a1b85ffe9b68f8b1709938404581659383ee545"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:IfStatement:ff7de2d9ca0f026f",
-      "fingerprint": "ff7de2d9ca0f026fe9fd99f9ddad26f746bbd766fea42141f3860ed4bf7abb9c",
-      "classification": "closed-shared-adapter",
-      "semanticOwner": {
-        "ownerType": "named-adapter",
-        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
-        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
-        "export": "WidgetAdapter",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "source": {
-        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
-        "export": "WidgetAdapter",
-        "node": "IfStatement",
-        "predicate": "node.kind === \"frame-card\"",
-        "nodeKinds": [
-          "frame-card"
-        ],
-        "fingerprint": "ff7de2d9ca0f026fe9fd99f9ddad26f746bbd766fea42141f3860ed4bf7abb9c"
       }
     },
     {
@@ -41545,6 +41984,46 @@
     },
     {
       "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:LogicalExpression:7d5dd069a5394d96",
+      "fingerprint": "7d5dd069a5394d96a225756c2d8e6f1c0f10c1e82df298caacf81322793ceb5b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "LogicalExpression",
+        "predicate": "selected && bySelection",
+        "nodeKinds": [],
+        "fingerprint": "7d5dd069a5394d96a225756c2d8e6f1c0f10c1e82df298caacf81322793ceb5b"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:LogicalExpression:7d5dd069a5394d96:1",
+      "fingerprint": "7d5dd069a5394d96a225756c2d8e6f1c0f10c1e82df298caacf81322793ceb5b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter",
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "source": {
+        "path": "dashboard/src/oven/runtime/widget-adapters.tsx",
+        "export": "WidgetAdapter",
+        "node": "LogicalExpression",
+        "predicate": "selected && bySelection",
+        "nodeKinds": [],
+        "fingerprint": "7d5dd069a5394d96a225756c2d8e6f1c0f10c1e82df298caacf81322793ceb5b"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/runtime/widget-adapters.tsx:WidgetAdapter:LogicalExpression:7d5dd069a5394d96:2",
       "fingerprint": "7d5dd069a5394d96a225756c2d8e6f1c0f10c1e82df298caacf81322793ceb5b",
       "classification": "closed-shared-adapter",
       "semanticOwner": {

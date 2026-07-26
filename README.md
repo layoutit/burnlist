@@ -14,13 +14,25 @@ The global package installs the `burnlist` command and registers the bundled Bur
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow; the CLI provides the dashboard and protocol helpers.
 
+From any repository, the intended first interaction is simply:
+
+```text
+Set up Burnlist in this repo.
+```
+
+The globally installed skill initializes and registers the repository, briefly
+explains the workflow, and asks what you want to burn.
+
 Run the dashboard from any project:
 
 ```sh
 burnlist
 ```
 
-The server binds to loopback by default and prints its local URL.
+The server binds to loopback by default and prints its local URL. A global
+installation starts one persistent shared observer and `burnlist` prints its
+discovered URL; `burnlist service start|stop|restart|status` exposes its
+lifecycle. Use `burnlist serve` for an explicitly foreground server.
 
 ## How It Works
 
@@ -204,15 +216,18 @@ and WezTerm, with the 2×2 RGBA glyph renderer retained underneath as a portable
 fallback. In VS Code, enable `terminal.integrated.enableImages`. Backgrounds
 remain transparent and dividers adapt to the host terminal palette, including
 VS Code themes.
-Start the dashboard first, then run:
+With a global installation, run the TUI directly:
 
 ```sh
-npm --prefix tui install
-npm run tui
+burnlist -i
 ```
 
-The TUI reads the dashboard URL from `~/.burnlist/server.json`; pass an explicit
-URL with `npm run tui -- --server http://127.0.0.1:4510`. Screen layouts are
+The CLI validates the shared observer recorded in `~/.burnlist/server.json` and
+restores it when needed. A local installation instead starts an ephemeral
+observer and stops it when the TUI exits; `burnlist -i --local` forces that
+behavior. Pass an explicit URL with `burnlist -i --server
+http://127.0.0.1:4510`. For source development, use `npm --prefix tui install`
+and `npm run tui` after starting `burnlist serve`. Screen layouts are
 declarative `.glyph` documents under `tui/screens/`. A standalone executable
 with the OpenTUI native renderer and glyphcss source embedded is produced by
 `npm run build:tui`. This visual-review package currently contains only the

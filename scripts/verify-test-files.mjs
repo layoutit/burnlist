@@ -73,6 +73,8 @@ export const verificationTestFiles = [
   "src/cli/actionable-output.test.mjs",
   "src/cli/lifecycle-cli.test.mjs",
   "src/cli/interactive-cli.test.mjs",
+  "src/service/runtime.test.mjs",
+  "src/service/supervisor.test.mjs",
   "src/cli/lifecycle-moves.test.mjs",
   "src/cli/registry-cli.test.mjs",
   "src/cli/git-ignore.test.mjs",

@@ -1,6 +1,7 @@
 {
   "schema": "burnlist-oven-component-inventory@1",
   "entries": [
+    { "kind": "ascii-block", "classification": "primitive", "componentBearing": true, "official": false, "coveredBy": "visual-parity-media", "rationale": "Text-native scene media pairs with the visual parity image surface." },
     { "kind": "bind", "classification": "structural", "componentBearing": false, "official": true, "coveredBy": "field", "rationale": "Data-only slot binding; its visible value is reviewed through the owning component." },
     { "kind": "box", "classification": "structural", "componentBearing": true, "official": true, "coveredBy": "card", "rationale": "Layout-only container; Card exercises the same bounded terminal container surface." },
     { "kind": "burn-donut", "classification": "primitive", "componentBearing": true, "official": false, "coveredBy": "burn-donut", "rationale": "Result-distribution metric primitive." },

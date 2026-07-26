@@ -136,8 +136,13 @@ const ovenJsonSnapshots = createOvenJsonSnapshotStore({
 });
 const stateDir = resolve(launchCwd, args.get("state-dir") ?? ".local/burnlist/checklist-progress");
 const runtimePath = resolve(stateDir, "index.server.json");
-const globalRuntimePath = join(os.homedir(), ".burnlist", "server.json");
+const globalRuntimePath = resolve(process.env.BURNLIST_HOME || join(os.homedir(), ".burnlist"), "server.json");
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const packageVersion = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8")).version;
+const serviceScope = process.env.BURNLIST_SERVICE_SCOPE ?? "standalone";
+const serviceInstanceId = process.env.BURNLIST_SERVICE_INSTANCE ?? randomBytes(18).toString("hex");
+const serviceToken = process.env.BURNLIST_SERVICE_TOKEN ?? randomBytes(18).toString("hex");
+const publishGlobalRuntime = serviceScope !== "ephemeral";
 const dashboardDistDir = resolve(packageRoot, "dashboard", "dist");
 const dashboardIndexPath = resolve(dashboardDistDir, "index.html");
 const builtInOvensDir = resolve(packageRoot, "ovens");
@@ -182,7 +187,7 @@ function cachedRepoMap(repo) {
 
 function positiveInteger(value, name) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (!Number.isInteger(parsed) || parsed < (name === "port" ? 0 : 1)) {
     console.error(`Invalid --${name}: ${value}`);
     process.exit(2);
   }
@@ -1119,10 +1124,10 @@ function appendCompletionDigestIfMissing(plan) {
   return true;
 }
 
-function atomicWrite(path, contents) {
+function atomicWrite(path, contents, options) {
   const temporary = join(dirname(path), `.${basename(path)}.${randomBytes(8).toString("hex")}.tmp`);
   try {
-    writeFileSync(temporary, contents);
+    writeFileSync(temporary, contents, options);
     renameSync(temporary, path);
   } catch (error) {
     rmSync(temporary, { force: true });
@@ -1300,6 +1305,22 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${host}`);
     const method = req.method ?? "GET";
+    if (url.pathname === "/api/health") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      return json(res, 200, {
+        schema: "burnlist-service@1",
+        instanceId: serviceInstanceId,
+        version: packageVersion,
+        scope: serviceScope,
+      });
+    }
+    if (url.pathname === "/api/service/shutdown") {
+      if (method !== "POST") return json(res, 405, { error: "method not allowed" });
+      if (req.headers["x-burnlist-service-token"] !== serviceToken) return json(res, 403, { error: "forbidden" });
+      json(res, 202, { stopping: true, instanceId: serviceInstanceId });
+      setImmediate(() => server.close());
+      return;
+    }
     const modelLabProtocolResponse = await serveModelLabTerminalProtocol({
       req, res, url, protocol: modelLabTerminalProtocol, readJson: readJsonRequest, json,
       assertControllerWrite: assertWriteRequest,
@@ -1475,7 +1496,19 @@ const server = createServer(async (req, res) => {
 server.once("close", () => {
   ovenProjectionCoordinator?.stop();
   ovenEventObserver.close();
+  removeRuntimeRecord(runtimePath);
+  if (publishGlobalRuntime) removeRuntimeRecord(globalRuntimePath);
 });
+
+function removeRuntimeRecord(path) {
+  try {
+    if (JSON.parse(readFileSync(path, "utf8"))?.instanceId === serviceInstanceId) rmSync(path, { force: true });
+  } catch {}
+}
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.once(signal, () => server.close());
+}
 
 function listen(port) {
   server.once("error", (err) => {
@@ -1494,9 +1527,23 @@ function listen(port) {
     const actualPort = typeof address === "object" && address ? address.port : port;
     const url = `http://${host}:${actualPort}/`;
     const startedAt = new Date().toISOString();
-    writeFileSync(runtimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt }, null, 2)}\n`);
-    mkdirSync(dirname(globalRuntimePath), { recursive: true });
-    atomicWrite(globalRuntimePath, `${JSON.stringify({ pid: process.pid, url, host, port: actualPort, startedAt }, null, 2)}\n`);
+    const runtime = {
+      schema: "burnlist-service@1",
+      pid: process.pid,
+      url,
+      host,
+      port: actualPort,
+      startedAt,
+      instanceId: serviceInstanceId,
+      version: packageVersion,
+      scope: serviceScope,
+      token: serviceToken,
+    };
+    atomicWrite(runtimePath, `${JSON.stringify(runtime, null, 2)}\n`, { mode: 0o600 });
+    if (publishGlobalRuntime) {
+      mkdirSync(dirname(globalRuntimePath), { recursive: true });
+      atomicWrite(globalRuntimePath, `${JSON.stringify(runtime, null, 2)}\n`, { mode: 0o600 });
+    }
     console.log(url);
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);

@@ -1,11 +1,6 @@
-import type { VisualParityDifference, VisualParityImage } from "@lib";
+import type { VisualParityDifference, VisualParityImage, VisualParityTile } from "@lib";
 import { delta, percent } from "../utils/visual-parity-format";
 import { AsciiBlock } from "../AsciiBlock";
-
-/** One cell of a frame row. Add a kind here to compose a new renderer into parity. */
-export type VisualParityTile =
-  | ({ kind?: "image" } & VisualParityImage)
-  | { kind: "ascii"; text: string; colors?: string[][] | null; label?: string; cols?: number; rows?: number };
 
 type FrameCardProps = {
   status: string;

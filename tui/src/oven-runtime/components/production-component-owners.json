@@ -1,6 +1,7 @@
 {
   "schema": "burnlist-terminal-production-owners@1",
   "owners": {
+    "ascii-block": "tui/src/oven-runtime/components/ascii-block.tsx#TerminalAsciiBlock",
     "box": "tui/src/oven-runtime/layout/structural-viewport.tsx#StructuralOvenViewport",
     "burn-donut": "tui/src/oven-runtime/components/progress-glyph.ts#progressGlyphFrame",
     "checklist-burn-panel": "tui/src/oven-runtime/components/checklist-components.tsx#TerminalChecklistBurnPanel",
