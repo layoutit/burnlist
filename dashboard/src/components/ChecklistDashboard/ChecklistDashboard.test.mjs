@@ -27,11 +27,12 @@ test("checklist progress stacks into one full-width column at narrow widths", as
   assert.match(responsiveBlock, /flex: none;/u);
   assert.match(responsiveBlock, /grid-template-columns: minmax\(0, 1fr\);/u);
   assert.match(responsiveBlock, /grid-template-rows: 236px auto;/u);
-  assert.match(responsiveBlock, /\.checklist-progress-workspace::before \{\s+inset: 0;/u);
-  assert.match(responsiveBlock, /\.checklist-progress-mobile-title \{[\s\S]*?padding: 8px 12px;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-workspace::before \{\s+inset: 36px 0 0;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-chart-column \{[\s\S]*?height: 236px;[\s\S]*?grid-column: 1;\s+grid-row: 1;/u);
+  assert.match(responsiveBlock, /\.checklist-progress-mobile-title \{[\s\S]*?padding: 8px 12px 8px 0;/u);
   assert.match(responsiveBlock, /\.event-ledger-panel > \.work-panel-head \{\s+display: none;/u);
   assert.match(responsiveBlock, /\.event-ledger-panel \{\s+grid-column: 1;\s+grid-row: 2;/u);
-  assert.match(responsiveBlock, /\.progress-panel \{\s+height: 236px;\s+min-height: 236px;\s+grid-column: 1;\s+grid-row: 1;/u);
+  assert.match(responsiveBlock, /\.progress-panel \{\s+height: 200px;\s+min-height: 200px;\s+flex: 1 1 auto;/u);
   assert.doesNotMatch(stylesheet, /min-height: 612px;/u);
 });
 
@@ -85,7 +86,8 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.match(markup, /class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"/u);
     assert.match(markup, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="100\.000 0\.000"/u);
     assert.match(markup, /aria-label="Remaining work over time"/u);
-    assert.match(markup, /class="checklist-progress-mobile-title">Progress<\/div>/u);
+    assert.match(markup, /class="checklist-progress-chart-column"><div class="checklist-progress-mobile-title">Progress<\/div><section class="panel progress-panel">/u);
+    assert.doesNotMatch(markup, /class="panel progress-panel"><div class="checklist-progress-mobile-title"/u);
     assert.doesNotMatch(markup, /burn-chart-label|>Completion<\/span>/u);
     assert.doesNotMatch(markup, /aria-label="Burnlist progress chart view"/u);
     assert.match(markup, /<span>Age<\/span><span>Event<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
