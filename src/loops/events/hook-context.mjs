@@ -241,4 +241,30 @@ export function resolveLoopHookContext(repoRoot, { provider, payload, now = Date
   });
 }
 
+/** Read the active Loop attribution for one provider session without exposing claim authority. */
+export function readLoopSessionContext(repoRoot, { provider, session, now = Date.now() }) {
+  if (!safe(provider, 32) || !safe(session)) return null;
+  const sessionKey = digest("session", `${provider}\0${session}`);
+  const contexts = readContext(repoRoot).contexts.filter((entry) => live(repoRoot, entry, now)
+    && entry.sessions.includes(sessionKey));
+  if (contexts.length !== 1) return null;
+  const selected = contexts[0];
+  let node = null;
+  try {
+    const replay = runStore(repoRoot).read(selected.runId);
+    node = replay.graph.nodes.find((entry) => entry.id === selected.nodeId) ?? null;
+  } catch {}
+  return Object.freeze({
+    runId: selected.runId,
+    itemRef: selected.itemRef,
+    nodeId: selected.nodeId,
+    attempt: selected.attempt,
+    role: safe(node?.role, 32) ? node.role : null,
+    mode: safe(node?.mode, 32) ? node.mode : null,
+    authority: safe(node?.authority, 32) ? node.authority : null,
+    model: selected.model,
+    effort: selected.effort,
+  });
+}
+
 export const loopHookIdentity = digest;

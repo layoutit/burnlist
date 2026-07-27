@@ -63,6 +63,7 @@ import { createOfficialOvenDiscovery } from "./official-oven-discovery.mjs";
 import { createModelLabTerminalProtocol, serveModelLabTerminalProtocol } from "./model-lab-terminal-protocol.mjs";
 import { readJsonRequest } from "./read-json-request.mjs";
 import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
+import { createAgentMonitorLeaseManager } from "../service/agent-monitor-leases.mjs";
 import {
   LIFECYCLES,
   burnlistIdForPlan,
@@ -1300,6 +1301,7 @@ const ovenProjectionCoordinator = reportMode ? null : createOvenProjectionCoordi
     ovenDataBindings,
   }),
 });
+const agentMonitorLeases = reportMode ? null : createAgentMonitorLeaseManager();
 
 const server = createServer(async (req, res) => {
   try {
@@ -1320,6 +1322,17 @@ const server = createServer(async (req, res) => {
       json(res, 202, { stopping: true, instanceId: serviceInstanceId });
       setImmediate(() => server.close());
       return;
+    }
+    if (url.pathname === "/api/service/agent-monitor/activate") {
+      if (method !== "POST") return json(res, 405, { error: "method not allowed" });
+      assertWriteRequest(req);
+      if (!agentMonitorLeases) return json(res, 409, { error: "Agent Monitor is unavailable in report mode." });
+      const requested = selectedRepoKey(url);
+      if (!requested) return json(res, 400, { error: "repoKey is required" });
+      const repo = ovenScopeRepos().find((entry) => entry.repoKey === requested);
+      if (!repo) return json(res, 404, { error: "repository not found" });
+      const { active, expiresAt } = agentMonitorLeases.activate(repo.root);
+      return json(res, 202, { active, expiresAt });
     }
     const modelLabProtocolResponse = await serveModelLabTerminalProtocol({
       req, res, url, protocol: modelLabTerminalProtocol, readJson: readJsonRequest, json,
@@ -1493,6 +1506,7 @@ const server = createServer(async (req, res) => {
     json(res, Number.isInteger(error.status) ? error.status : 400, { error: error.message || "request failed" });
   }
 });
+server.once("close", () => agentMonitorLeases?.stop());
 server.once("close", () => {
   ovenProjectionCoordinator?.stop();
   ovenEventObserver.close();

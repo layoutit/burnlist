@@ -24,11 +24,10 @@ import { terminalKeyAction } from "./terminal-navigation";
 import { useLandingRefresh } from "./use-landing-refresh";
 import { isManagedChecklist, screens, terminalChecklistPayload, type View } from "./app-screens";
 import { useDashboardRefresh } from "./use-dashboard-refresh";
-import { useListNavigation } from "./use-list-navigation";
+import { useListNavigation } from "./use-list-navigation"; import { useAgentMonitorLease } from "./use-agent-monitor-lease";
 const emptyLanding: LandingSnapshot = { projects: [], burnlists: [], ovens: [], generatedAt: "" };
 export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): void }) {
-  const dimensions = useTerminalDimensions();
-  const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
+  const dimensions = useTerminalDimensions(); const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
   const [landing, setLanding] = useState(emptyLanding); const [progress, setProgress] = useState<ProgressSnapshot | null>(null);
   const [ovenData, setOvenData] = useState<OvenDataSnapshot | null>(null); const [ovenDetail, setOvenDetail] = useState<OvenPackageDetail | null>(null);
   const [navigation, setNavigation] = useState<View[]>(["home"]); const [selectedBurnlist, setSelectedBurnlist] = useState<BurnlistSummary | null>(null); const [activeOven, setActiveOven] = useState<OvenSummary | null>(null);
@@ -150,6 +149,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
         if (!sameSelection) setDomainIndex(0);
         setActiveLive((current) => reduceLiveSnapshot(current, progressResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       } else if (oven) {
+        if (oven.id === "agent-monitor" && burnlist.repoKey && landing.writeToken) await client.activateAgentMonitor(burnlist.repoKey, landing.writeToken, request.signal);
         const currentDefinition = ovenDetail?.id === oven.id ? ovenDetail : null;
         const query = currentDefinition ? terminalServerQuery(currentDefinition.ir as unknown as TerminalOvenIR, terminalRuntimeRef.current?.state ?? null) : undefined;
         terminalQueryRef.current = JSON.stringify([burnlist.repoKey, oven.id, currentDefinition?.repoKey ?? null, query ?? {}]);
@@ -180,7 +180,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     } finally {
       if (request.owns()) setLoading(false);
     }
-  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client, ovenDetail, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
+  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client, landing.writeToken, ovenDetail, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
   const loadCatalogOven = useCallback(async (oven: OvenSummary) => {
     const request = beginOvenRequest();
     const sameSelection = activeOven?.id === oven.id && activeOven?.repoKey === oven.repoKey;
@@ -219,6 +219,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client]);
   useEffect(() => { void loadLanding(); }, [loadLanding]);
   useEffect(() => () => ovenRequest.current.controller?.abort(), []);
+  useAgentMonitorLease({ active: activeOven?.id === "agent-monitor" && ["burnlist", "item"].includes(view), client, repoKey: selectedBurnlist?.repoKey, token: landing.writeToken });
   useEffect(() => {
     if (!selectedBurnlist || !activeOven || isManagedChecklist(activeOven, selectedBurnlist) || !ovenDetail || !terminalState) return;
     const query = terminalServerQuery(ovenDetail.ir as unknown as TerminalOvenIR, terminalState);

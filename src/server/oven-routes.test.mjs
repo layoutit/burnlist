@@ -9,6 +9,27 @@ import { starterOvenSource } from "../ovens/oven-starter.mjs";
 import { repoKey } from "./registry.mjs";
 import { httpGet, httpRequest, withServer } from "./dashboard-routes-fixtures.mjs";
 
+test("opening Agent Monitor acquires a token-protected service lease", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
+    const repoKey = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body).burnlists[0].repoKey;
+    const inventory = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const path = `/api/service/agent-monitor/activate?repoKey=${repoKey}`;
+    assert.equal((await httpRequest(baseUrl, path, {
+      method: "POST", headers: {}, body: "",
+    })).status, 403);
+    const activated = await httpRequest(baseUrl, path, {
+      method: "POST",
+      headers: { "x-burnlist-token": inventory.writeToken },
+      body: "",
+    });
+    assert.equal(activated.status, 202);
+    assert.equal(JSON.parse(activated.body).active, true);
+    const feeds = await httpGet(baseUrl, `/api/oven-data/agent-monitor?list=&repoKey=${repoKey}`);
+    assert.equal(feeds.status, 200);
+    assert.deepEqual(JSON.parse(feeds.body).feeds, []);
+  });
+});
+
 test("POST /api/ovens refuses an unignored Git repository without writing an Oven", { timeout: 20_000 }, async () => {
   await withServer({
     setup: async ({ fixtureRoot }) => {

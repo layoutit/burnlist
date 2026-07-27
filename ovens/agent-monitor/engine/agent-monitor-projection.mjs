@@ -4,7 +4,7 @@ import {
   assertAgentMonitorSnapshot,
 } from "./agent-monitor-data-contract.mjs";
 
-export const AGENT_MONITOR_PROJECTION_VERSION = 12;
+export const AGENT_MONITOR_PROJECTION_VERSION = 13;
 const visibleCategories = new Set(["command", "diff", "lifecycle", "message", "result", "tool"]);
 const actionableCategories = new Set(["command", "diff", "tool"]);
 
@@ -191,6 +191,7 @@ export function buildAgentMonitorSnapshot({
   generatedAt,
   identity,
   line,
+  loop = null,
   maxEvents = AGENT_MONITOR_LIMITS.maxEvents,
   newEvents = [],
   priorCounts = {},
@@ -217,7 +218,7 @@ export function buildAgentMonitorSnapshot({
     generatedAt,
     session: { id: identity.session, file },
     current: {
-      title: latest?.title ?? "Waiting for session activity",
+      title: `${loop ? `${loop.nodeId} · ` : ""}${latest?.title ?? "Waiting for session activity"}`,
       value: latest ? `L${latest.line} · ${latest.result}` : "Waiting",
     },
     progress: {
@@ -247,6 +248,7 @@ export function buildAgentMonitorSnapshot({
     },
     monitor: {
       projectionVersion: AGENT_MONITOR_PROJECTION_VERSION,
+      loop,
       summary: {
         state: live ? "Live" : "Idle",
         category: latest?.category ?? "other",

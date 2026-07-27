@@ -4,8 +4,68 @@ import type { AgentMonitorFeed, AgentMonitorPayload } from "@lib";
 import { useOvenLiveData } from "@oven";
 
 type FeedState = { feeds: AgentMonitorFeed[]; error: string; loading: boolean };
+type ActivationState = { error: string; loading: boolean };
 type Selection = { repoKey: string; worktreeKey: string; session: string } | null;
 type Repository = { repoKey: string; label: string };
+
+export function useAgentMonitorActivation(repositories: Repository[]): ActivationState {
+  const keys = repositories.map((repository) => repository.repoKey).join(",");
+  const [state, setState] = useState<ActivationState>({ error: "", loading: Boolean(keys) });
+
+  useEffect(() => {
+    if (!keys) {
+      setState({ error: "", loading: false });
+      return;
+    }
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const repoKeys = keys.split(",");
+    void (async () => {
+      const inventory = await fetch("/api/ovens", {
+        cache: "no-store",
+        headers: { accept: "application/json" },
+        signal: controller.signal,
+      });
+      const payload = await inventory.json();
+      const token = typeof payload?.writeToken === "string" ? payload.writeToken : "";
+      if (!inventory.ok || !token) throw new Error(payload?.error ?? "Agent Monitor activation is unavailable.");
+      const activate = async () => {
+        const responses = await Promise.all(repoKeys.map((repoKey) => fetch(
+          `/api/service/agent-monitor/activate?${new URLSearchParams({ repoKey })}`,
+          { method: "POST", headers: { "x-burnlist-token": token }, signal: controller.signal },
+        )));
+        const rejected = responses.find((response) => !response.ok);
+        if (rejected) {
+          const failure = await rejected.json().catch(() => null);
+          throw new Error(failure?.error ?? "Could not activate Agent Monitor.");
+        }
+      };
+      await activate();
+      if (!controller.signal.aborted) {
+        setState({ error: "", loading: false });
+        const renew = () => {
+          timer = setTimeout(() => {
+            void activate().catch(() => {}).finally(() => {
+              if (!controller.signal.aborted) renew();
+            });
+          }, 15_000);
+        };
+        renew();
+      }
+    })().catch((cause) => {
+      if (!controller.signal.aborted) setState({
+        error: cause instanceof Error ? cause.message : "Could not activate Agent Monitor.",
+        loading: false,
+      });
+    });
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [keys]);
+
+  return state;
+}
 
 export function useAgentMonitorFeeds(
   repositories: Repository[],

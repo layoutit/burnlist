@@ -52,6 +52,19 @@ async function getJson<T>(base: string, path: string, cache: Map<string, CachedJ
   return (await getJsonResult<T>(base, path, cache, signal, maximumBytes)).data;
 }
 
+async function activateAgentMonitor(base: string, repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
+  const query = new URLSearchParams({ repoKey });
+  const response = await fetch(`${base}/api/service/agent-monitor/activate?${query}`, {
+    method: "POST",
+    headers: { accept: "application/json", "x-burnlist-token": token },
+    signal,
+  });
+  if (response.ok) return;
+  const body = await readBoundedJson(response, TERMINAL_RESOURCE_LIMITS.httpJsonBytes)
+    .catch(() => null) as { error?: string } | null;
+  throw new DataClientError(body?.error ?? `Burnlist server returned ${response.status}.`, response.status);
+}
+
 export function createDataClient(input: string) {
   const base = baseUrl(input);
   const cache = new Map<string, CachedJson>();
@@ -73,6 +86,9 @@ export function createDataClient(input: string) {
         generatedAt: burnlistPayload.generatedAt ?? projectPayload.generatedAt,
         ...(typeof ovenPayload.writeToken === "string" ? { writeToken: ovenPayload.writeToken } : {}),
       };
+    },
+    activateAgentMonitor(repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
+      return activateAgentMonitor(base, repoKey, token, signal);
     },
     progress(repoKey: string, id: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
       const query = new URLSearchParams({ repoKey, id });

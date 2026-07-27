@@ -43,6 +43,20 @@ describe("Burnlist TUI data client", () => {
       .toBe("/api/progress?repoKey=aaaaaaaaaaaa&id=260722-001");
   });
 
+  test("renews Agent Monitor through the protected service controller", async () => {
+    let requested: Request | null = null;
+    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+      requested = new Request(input, init);
+      return Response.json({ active: true }, { status: 202 });
+    }) as unknown as typeof fetch;
+    await createDataClient("http://127.0.0.1:4815")
+      .activateAgentMonitor("aaaaaaaaaaaa", "write-token");
+    expect(new URL(requested!.url).pathname + new URL(requested!.url).search)
+      .toBe("/api/service/agent-monitor/activate?repoKey=aaaaaaaaaaaa");
+    expect(requested!.method).toBe("POST");
+    expect(requested!.headers.get("x-burnlist-token")).toBe("write-token");
+  });
+
   test("loads the selected item Loop projection through the dashboard route", async () => {
     let requested = "";
     globalThis.fetch = mock(async (request: string | URL | Request) => {

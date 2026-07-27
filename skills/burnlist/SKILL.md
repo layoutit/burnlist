@@ -38,6 +38,7 @@ Read references only when their trigger applies:
 - `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet. Its two top-level keys are inputs to *different* commands — `catalog` is the flat body of `.burnlist/loop-capabilities.json`, `grants` is the `--grants` file for `loop capability trust`. Copying the file verbatim to either location fails; see `references/host-execution.md`.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
+- `references/agent-monitor.md`: automatic Agent Monitor lifecycle, worker-skill simplification, and Loop session attribution boundaries.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 

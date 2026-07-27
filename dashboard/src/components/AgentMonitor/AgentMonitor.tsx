@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useAgentMonitorFeeds, useAgentMonitorSnapshot, type ResolvedOvenIr } from "@hooks";
+import { useAgentMonitorActivation, useAgentMonitorFeeds, useAgentMonitorSnapshot, type ResolvedOvenIr } from "@hooks";
 import { FeedList } from "@oven";
 import {
   agentMonitorAutoOpenHref,
@@ -27,9 +27,12 @@ export function AgentMonitor({
     () => repoKey ? [{ repoKey, label: repoKey }] : agentMonitorRepositories(projects),
     [projects, repoKey],
   );
-  const feeds = useAgentMonitorFeeds(repositories, projectsLoading, Boolean(selection));
+  const activation = useAgentMonitorActivation(repositories);
+  const feeds = useAgentMonitorFeeds(repositories, projectsLoading || activation.loading, Boolean(selection));
   const snapshot = useAgentMonitorSnapshot(selection);
-  const notice = agentMonitorSnapshotNotice(snapshot);
+  const notice = activation.error
+    ? { kind: "error", text: activation.error }
+    : agentMonitorSnapshotNotice(snapshot);
   const autoOpenHref = agentMonitorAutoOpenHref(feeds.feeds);
 
   useEffect(() => {

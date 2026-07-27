@@ -33,6 +33,7 @@ import {
   reprojectRecentAgentMonitorEvents,
 } from "./agent-monitor-reproject.mjs";
 import { discoverAgentSessionSources } from "./agent-monitor-sources.mjs";
+import { readLoopSessionContext } from "../../../src/loops/events/hook-context.mjs";
 
 export const AGENT_MONITOR_PRODUCER_CONTRACT = "burnlist-agent-monitor-producer@1";
 export const AGENT_MONITOR_PRODUCER_LIMITS = Object.freeze({
@@ -64,7 +65,7 @@ export function discoverAgentMonitorSessions({
         resolved = resolveAgentMonitorIdentity({ cwd: file.cwd, session });
         identityCache.set(cacheKey, resolved);
       }
-      return resolved.logicalRepoRoot === root ? [{ ...file, session, resolved }] : [];
+      return resolved.logicalRepoRoot === root ? [{ ...file, rawSession: file.session, session, resolved }] : [];
     } catch {
       return [];
     }
@@ -125,6 +126,21 @@ function manifestSummaryNeedsRefresh(prior) {
   return prior?.manifest?.summary?.updatedAt !== prior?.snapshot?.monitor?.summary?.updatedAt;
 }
 
+function loopContext(candidate) {
+  try {
+    return readLoopSessionContext(candidate.resolved.logicalRepoRoot, {
+      provider: candidate.provider,
+      session: candidate.rawSession,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function sameLoop(left, right) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
 function readCompleteChunk(path, offset, limit, maxFileBytes) {
   let fd;
   try {
@@ -164,6 +180,7 @@ export function updateAgentMonitorSession(candidate, {
   const position = sourcePosition(prior, stored, candidate, stat);
   const generatedAt = now();
   const nowMs = Date.parse(generatedAt);
+  const loop = loopContext(candidate);
   if (position.continuing && prior
       && prior.snapshot.monitor?.projectionVersion !== AGENT_MONITOR_PROJECTION_VERSION) {
     const replayed = reprojectRecentAgentMonitorEvents({
@@ -183,6 +200,7 @@ export function updateAgentMonitorSession(candidate, {
       generatedAt,
       identity: candidate.resolved.identity,
       line: position.cursor.line,
+      loop,
       newEvents: [],
       priorCounts: prior.snapshot.monitor.counts,
       nowMs,
@@ -199,7 +217,9 @@ export function updateAgentMonitorSession(candidate, {
   );
   if (!chunk.source.length) {
     if (!position.continuing || !prior
-        || (!agentMonitorSnapshotNeedsRefresh(prior.snapshot, nowMs) && !manifestSummaryNeedsRefresh(prior))) {
+        || (!agentMonitorSnapshotNeedsRefresh(prior.snapshot, nowMs)
+          && !manifestSummaryNeedsRefresh(prior)
+          && sameLoop(prior.snapshot.monitor?.loop, loop))) {
       return {
         changed: false,
         identity: candidate.resolved.identity,
@@ -214,6 +234,7 @@ export function updateAgentMonitorSession(candidate, {
       generatedAt,
       identity: candidate.resolved.identity,
       line: position.cursor.line,
+      loop,
       newEvents: [],
       priorCounts: prior.snapshot.monitor.counts,
       nowMs,
@@ -248,6 +269,7 @@ export function updateAgentMonitorSession(candidate, {
     generatedAt,
     identity: candidate.resolved.identity,
     line: nextCursor.line,
+    loop,
     newEvents: parsedEvents,
     priorCounts: position.continuing ? prior.snapshot.monitor.counts : {},
     nowMs,

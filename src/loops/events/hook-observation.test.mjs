@@ -9,6 +9,7 @@ import { createProductionRunAuthority, fixtureItemRef } from "../run/run-test-fi
 import { readOvenEvents } from "../../events/oven-event-store.mjs";
 import { readLatestRunForItem } from "../run/read-projection.mjs";
 import { publishNativeLoopObservation } from "./hook-observation.mjs";
+import { readLoopSessionContext } from "./hook-context.mjs";
 import { updateHookConfigs } from "../../cli/hooks-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -88,6 +89,24 @@ test("native lifecycle and tool hooks publish correlated observational events", 
   assert.equal(projection.activity.hooks, "available");
   assert.ok(projection.activity.records.some((entry) =>
     entry.kind === "tool-finished" && entry.observedPaths[0] === "src/example.mjs"));
+  assert.deepEqual(readLoopSessionContext(repo, {
+    provider: "codex",
+    session: "codex-session",
+  }), {
+    runId,
+    itemRef: fixtureItemRef,
+    nodeId: "implement",
+    attempt: 1,
+    role: "maker",
+    mode: "task",
+    authority: "write",
+    model: "gpt-5.6-sol",
+    effort: null,
+  });
+  assert.equal(readLoopSessionContext(repo, {
+    provider: "codex",
+    session: "another-session",
+  }), null);
 });
 
 test("Claude facts retain exposed effort and usage while missing fields stay null", (t) => {

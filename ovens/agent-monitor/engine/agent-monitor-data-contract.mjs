@@ -103,6 +103,18 @@ function assertCompletedItem(value, index) {
   if (!digestPattern.test(value.signature ?? "")) throw new Error(`Agent Monitor completed[${index}].signature is invalid`);
 }
 
+function assertLoopContext(value) {
+  if (value === null || value === undefined) return;
+  exact(value, ["runId", "itemRef", "nodeId", "attempt", "role", "mode", "authority", "model", "effort"], "Agent Monitor Loop context");
+  string(value.runId, "Agent Monitor Loop runId", 100);
+  string(value.itemRef, "Agent Monitor Loop itemRef", 200);
+  string(value.nodeId, "Agent Monitor Loop nodeId", 64);
+  integer(value.attempt, "Agent Monitor Loop attempt", 1);
+  for (const name of ["role", "mode", "authority", "model", "effort"]) {
+    optionalString(value[name], `Agent Monitor Loop ${name}`, 128);
+  }
+}
+
 export function assertAgentMonitorSnapshot(value) {
   exact(value, [
     "schemaVersion", "contract", "identity", "generatedAt", "session",
@@ -135,6 +147,7 @@ export function assertAgentMonitorSnapshot(value) {
     throw new Error("Agent Monitor retained totals must equal the completed closure");
   }
   const monitor = object(value.monitor, "Agent Monitor monitor");
+  assertLoopContext(monitor.loop);
   if (monitor.projectionVersion !== undefined) integer(monitor.projectionVersion, "Agent Monitor projectionVersion", 1);
   const summary = object(monitor.summary, "Agent Monitor summary");
   if (!["Live", "Idle"].includes(summary.state)) throw new Error("Agent Monitor summary.state is invalid");

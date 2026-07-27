@@ -53,6 +53,33 @@ test("command projection exposes a safe family while withholding raw arguments",
   assert.match(event.actionKey, /^[a-f0-9]{24}$/u);
 });
 
+test("a correlated Loop node labels the monitored agent's current work", () => {
+  const loop = {
+    runId: "run:example",
+    itemRef: "item:260727-001#B1",
+    nodeId: "implement",
+    attempt: 1,
+    role: "maker",
+    mode: "task",
+    authority: "write",
+    model: "gpt-5.6-sol",
+    effort: "high",
+  };
+  const value = buildAgentMonitorSnapshot({
+    activityAt: NOW,
+    events: [call("exec_command", { cmd: "npm test" })],
+    file: "session.jsonl",
+    generatedAt: NOW,
+    identity,
+    line: 1,
+    loop,
+    newEvents: [],
+    nowMs: Date.parse(NOW),
+  });
+  assert.equal(value.current.title, "implement · COMMAND · line 1");
+  assert.deepEqual(value.monitor.loop, loop);
+});
+
 test("source inspection commands explain their target instead of naming sed or rg", () => {
   const inspect = call("exec_command", {
     cmd: [

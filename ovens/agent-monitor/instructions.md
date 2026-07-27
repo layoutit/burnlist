@@ -1,7 +1,7 @@
 # Agent Monitor
 
-Agent Monitor is the declarative, read-only statistics view for Codex threads
-associated with a repository.
+Agent Monitor is the declarative, read-only statistics view for supported agent
+sessions associated with a repository.
 
 ## Data Shape
 
@@ -14,8 +14,11 @@ The input contract is `burnlist-agent-monitor-data@1`; the render contract is
 
 ## Producer boundary
 
-- Producer: `burnlist agent-monitor start` discovers Codex, Claude, Antigravity,
-  and Grok sessions. Limit it with `--providers codex,claude,agy,grok`.
+- Opening the repository-scoped Oven in the web or terminal UI acquires a
+  renewable service lease. The service discovers Codex, Claude, Antigravity,
+  and Grok sessions while the view remains open.
+- `burnlist agent-monitor start` remains available for manual diagnostics and
+  standalone producer use. Limit it with `--providers codex,claude,agy,grok`.
 
 The repository-scoped producer discovers recent Codex JSONL files from their
 recorded `session_meta.payload.cwd`. It never selects a thread by "newest file"
@@ -41,6 +44,11 @@ asks the dashboard to infer which Codex window is adjacent.
 
 The view reuses existing KPI, alert, collection, and pagination components. It
 shows a bounded latest-first event page plus explicit Live/Idle and drift state.
+When a Codex or Claude native session claimed a Loop node through installed
+Burnlist hooks, the current card is attributed to that Run, item, node, attempt,
+role, and authority. Grok and Antigravity remain repository-scoped until their
+host supplies a verifiable session-to-claim binding. Observation never chooses
+a Loop edge or reports a semantic outcome.
 It has no custom renderer, executable Oven code, write controls, or legacy
 single-file data binding.
 
