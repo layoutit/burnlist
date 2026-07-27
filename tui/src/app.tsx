@@ -24,7 +24,7 @@ import { terminalKeyAction } from "./terminal-navigation";
 import { useLandingRefresh } from "./use-landing-refresh";
 import { isManagedChecklist, screens, terminalChecklistPayload, type View } from "./app-screens";
 import { useDashboardRefresh } from "./use-dashboard-refresh";
-import { useListNavigation } from "./use-list-navigation"; import { useAgentMonitorLease } from "./use-agent-monitor-lease";
+import { useListNavigation } from "./use-list-navigation"; import { useAgentMonitorLease } from "./use-agent-monitor-lease"; import { useAgentMonitorNavigation } from "./use-agent-monitor-navigation";
 const emptyLanding: LandingSnapshot = { projects: [], burnlists: [], ovens: [], generatedAt: "" };
 export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): void }) {
   const dimensions = useTerminalDimensions(); const client = useMemo(() => createDataClient(serverUrl), [serverUrl]);
@@ -54,7 +54,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     const controller = new AbortController(), generation = ovenRequest.current.generation + 1;
     ovenRequest.current = { generation, controller };
     return { signal: controller.signal, owns: () => ovenRequest.current.generation === generation && !controller.signal.aborted };
-  }, []);
+  }, []); const agentMonitor = useAgentMonitorNavigation(client);
   const view = navigation.at(-1) ?? "home";
   const catalog = useMemo(() => genericOvens(landing.ovens), [landing.ovens]);
   const modelLabClient = useMemo(() => {
@@ -136,7 +136,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       setProgress(null);
       setOvenData(null);
     }
-    if (resetItem) setItemIndex(0);
+    if (oven?.id !== "agent-monitor") agentMonitor.clear(); if (resetItem) setItemIndex(0);
     try {
       if (oven && isManagedChecklist(oven, burnlist)) {
         if (!burnlist.planPath) throw new Error("This Checklist Burnlist has no readable plan path.");
@@ -149,9 +149,9 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
         if (!sameSelection) setDomainIndex(0);
         setActiveLive((current) => reduceLiveSnapshot(current, progressResponse.outcome === "unchanged" && definitionResponse.outcome === "unchanged" ? "unchanged" : "accepted", true));
       } else if (oven) {
-        if (oven.id === "agent-monitor" && burnlist.repoKey && landing.writeToken) await client.activateAgentMonitor(burnlist.repoKey, landing.writeToken, request.signal);
         const currentDefinition = ovenDetail?.id === oven.id ? ovenDetail : null;
-        const query = currentDefinition ? terminalServerQuery(currentDefinition.ir as unknown as TerminalOvenIR, terminalRuntimeRef.current?.state ?? null) : undefined;
+        let query = currentDefinition ? terminalServerQuery(currentDefinition.ir as unknown as TerminalOvenIR, terminalRuntimeRef.current?.state ?? null) : undefined;
+        if (oven.id === "agent-monitor") query = await agentMonitor.load(burnlist.repoKey, landing.writeToken, request.signal);
         terminalQueryRef.current = JSON.stringify([burnlist.repoKey, oven.id, currentDefinition?.repoKey ?? null, query ?? {}]);
         const [snapshotResponse, definitionResponse] = await Promise.all([client.ovenDataResult(oven.id, burnlist.repoKey, request.signal, query, oven.contract), client.ovenResult(oven.id, burnlist.repoKey, request.signal)]);
         if (!request.owns()) return;
@@ -180,7 +180,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
     } finally {
       if (request.owns()) setLoading(false);
     }
-  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, beginOvenRequest, client, landing.writeToken, ovenDetail, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
+  }, [acceptTerminalPayload, activeOven?.id, activeOven?.repoKey, agentMonitor.clear, agentMonitor.load, beginOvenRequest, client, landing.writeToken, ovenDetail, selectedBurnlist?.id, selectedBurnlist?.repoKey]);
   const loadCatalogOven = useCallback(async (oven: OvenSummary) => {
     const request = beginOvenRequest();
     const sameSelection = activeOven?.id === oven.id && activeOven?.repoKey === oven.repoKey;
@@ -221,7 +221,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
   useEffect(() => () => ovenRequest.current.controller?.abort(), []);
   useAgentMonitorLease({ active: activeOven?.id === "agent-monitor" && ["burnlist", "item"].includes(view), client, repoKey: selectedBurnlist?.repoKey, token: landing.writeToken });
   useEffect(() => {
-    if (!selectedBurnlist || !activeOven || isManagedChecklist(activeOven, selectedBurnlist) || !ovenDetail || !terminalState) return;
+    if (!selectedBurnlist || !activeOven || activeOven.id === "agent-monitor" || isManagedChecklist(activeOven, selectedBurnlist) || !ovenDetail || !terminalState) return;
     const query = terminalServerQuery(ovenDetail.ir as unknown as TerminalOvenIR, terminalState);
     const key = JSON.stringify([selectedBurnlist.repoKey, activeOven.id, ovenDetail.repoKey, query]);
     if (terminalQueryRef.current === key) return;
@@ -366,6 +366,7 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "burnlist") {
+      if ((key.name === "up" || key.name === "down") && selectedBurnlist && activeOven?.id === "agent-monitor" && agentMonitor.move(key.name === "up" ? -1 : 1, () => void loadBurnlist(selectedBurnlist, activeOven, false))) return;
       if (key.name === "up" && items.length) return moveItem(-1);
       if (key.name === "down" && items.length) return moveItem(1);
       if ((key.name === "return" || key.name === "enter") && selectedItem) { setItemDetailScroll(0); return pushView("item"); }
@@ -385,12 +386,10 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       if (key.name === "down") return setItemDetailScroll((offset) => Math.min(itemDetailMaxOffset(selectedItem, dimensions.width, Math.max(1, dimensions.height - 4)), offset + 1));
     }
   });
-  const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const } : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : null;
+  const notice = error ? { message: `${activeLive.stale ? "Showing the last canonical snapshot. " : ""}Cannot read ${client.base}: ${error}`, tone: "error" as const } : loading ? { message: activeLive.stale ? "Showing the last canonical snapshot while data refreshes…" : "Refreshing Burnlist data…", tone: "info" as const } : agentMonitor.label && activeOven?.id === "agent-monitor" ? { message: agentMonitor.label, tone: "info" as const } : null;
   return <ScreenRuntime
-    screen={screens[view]} landing={view === "home" ? visibleLanding : landing}
-    progress={renderProgress} selectedBurnlist={selectedBurnlist} activeOven={activeOven}
-    ovenDetail={ovenDetail} ovenLenses={lenses} ovenData={ovenData}
-    items={items} selectedItem={selectedItem} itemIndex={safeItemIndex}
+    screen={screens[view]} landing={view === "home" ? visibleLanding : landing} progress={renderProgress} selectedBurnlist={selectedBurnlist} activeOven={activeOven}
+    ovenDetail={ovenDetail} ovenLenses={lenses} ovenData={ovenData} items={items} selectedItem={selectedItem} itemIndex={safeItemIndex}
     itemDetailScroll={itemDetailScroll} domainIndex={domainIndex}
     focusId={view === "ovens" ? "ovens" : view === "home" ? "burnlists" : "items"}
     selections={selections} streamStatus={streamStatus} notice={notice}

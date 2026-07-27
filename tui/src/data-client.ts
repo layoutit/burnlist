@@ -5,6 +5,9 @@ import { ResourceBudgetError, readBoundedJson } from "./oven-runtime/resource-bu
 import { TERMINAL_RESOURCE_LIMITS } from "./oven-runtime/resource-limits";
 // @ts-expect-error Console feed mapper is the canonical route/filter boundary.
 import { mapStreamingDiffFeeds } from "../../dashboard/src/lib/streaming-diff.mjs";
+// @ts-expect-error Console feed mapper is the canonical route/filter boundary.
+import { mapAgentMonitorFeeds } from "../../dashboard/src/lib/agent-monitor.mjs";
+import type { AgentMonitorFeed } from "./agent-monitor-navigation";
 
 function baseUrl(input: string): string {
   const url = new URL(input);
@@ -89,6 +92,10 @@ export function createDataClient(input: string) {
     },
     activateAgentMonitor(repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
       return activateAgentMonitor(base, repoKey, token, signal);
+    },
+    async agentMonitorFeeds(repoKey: string, signal?: AbortSignal): Promise<AgentMonitorFeed[]> {
+      const raw = await getJson<unknown>(base, `/api/oven-data/agent-monitor?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);
+      return mapAgentMonitorFeeds(raw).filter((feed: AgentMonitorFeed) => feed.identity.logicalRepoKey === repoKey);
     },
     progress(repoKey: string, id: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
       const query = new URLSearchParams({ repoKey, id });

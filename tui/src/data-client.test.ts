@@ -57,6 +57,23 @@ describe("Burnlist TUI data client", () => {
     expect(requested!.headers.get("x-burnlist-token")).toBe("write-token");
   });
 
+  test("lists repository Agent Monitor sessions through the canonical mapper", async () => {
+    let requested = "";
+    globalThis.fetch = mock(async (request: string | URL | Request) => {
+      requested = String(request);
+      return Response.json({ feeds: [{
+        identity: { logicalRepoKey: "aaaaaaaaaaaa", worktreeKey: "bbbbbbbbbbbb", session: "codex:session-1" },
+        updatedAt: "2026-07-27T12:00:00.000Z",
+        summary: { state: "Live", current: "Editing", lines: 4, failures: 0 },
+      }] });
+    }) as unknown as typeof fetch;
+    const feeds = await createDataClient("http://127.0.0.1:4815").agentMonitorFeeds("aaaaaaaaaaaa");
+    expect(new URL(requested).pathname + new URL(requested).search)
+      .toBe("/api/oven-data/agent-monitor?list=&repoKey=aaaaaaaaaaaa");
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0]?.identity.session).toBe("codex:session-1");
+  });
+
   test("loads the selected item Loop projection through the dashboard route", async () => {
     let requested = "";
     globalThis.fetch = mock(async (request: string | URL | Request) => {

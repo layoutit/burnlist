@@ -22,7 +22,7 @@ const burnlist = {
 };
 const oven = {
   id: "checklist", name: "Checklist", description: "Burnlist progress and events.", version: "0.1.0",
-  builtIn: true, repoKey: null, contract: "checklist-progress@1", dataInput: "producer-managed",
+  builtIn: true, repoKey: null, contract: "checklist-progress@1", dataInput: "json-payload",
 };
 const progress = {
   generatedAt: "now", repoKey: "repo1", title: "Demo Burnlist", repo: "demo", planPath: "/demo/burnlist.md", planLabel: "burnlist.md",
