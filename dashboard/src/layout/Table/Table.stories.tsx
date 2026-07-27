@@ -1,46 +1,42 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Badge } from "../Badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./Table";
 
-const rows = [
-  { project: "dashboard", title: "Observer layout", status: "Active", progress: "27 / 31" },
-  { project: "adapter-kit", title: "Contract acceptance", status: "Ready", progress: "8 / 8" },
-  { project: "render-lab", title: "Release readiness", status: "Draft", progress: "3 / 9" },
-];
+const fixture = componentPairFixture.table;
 
 const meta = {
   title: "UI/Table",
   component: Table,
+  args: { caption: fixture.caption, headers: fixture.headers, rows: fixture.rows },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Table>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Burnlists = {
-  render: () => (
-    <div className="storybook-table-demo">
-      <Table>
-        <TableCaption>Local Burnlists discovered across configured repositories.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Project</TableHead>
-            <TableHead scope="col">Burnlist</TableHead>
-            <TableHead scope="col">Status</TableHead>
-            <TableHead scope="col">Progress</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.title}>
-              <TableCell>{row.project}</TableCell>
-              <TableCell>{row.title}</TableCell>
-              <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
-              <TableCell>{row.progress}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  ),
+  render: (args) => {
+    const headers = Array.isArray(args.headers) ? args.headers.map(String) : [...fixture.headers];
+    const rows = Array.isArray(args.rows) ? args.rows as unknown as string[][] : fixture.rows.map((row) => [...row]);
+    return <PairPreview component="table" terminalArgs={{ ...args, headers, rows }}>
+      <div className="storybook-table-demo">
+        <Table>
+          <TableCaption>{String(args.caption)}</TableCaption>
+          <TableHeader><TableRow>{headers.map((header) => <TableHead key={header} scope="col">{header}</TableHead>)}</TableRow></TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row[1]}>
+                <TableCell>{row[0]}</TableCell>
+                <TableCell>{row[1]}</TableCell>
+                <TableCell><Badge variant="outline">{row[2]}</Badge></TableCell>
+                <TableCell>{row[3]}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </PairPreview>;
+  },
 } satisfies Story;

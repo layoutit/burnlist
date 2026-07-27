@@ -32,6 +32,11 @@ test("a repo vendored Oven is served ahead of the shipped built-in", { timeout: 
     assert.equal(served.instructions, instructions);
     assert.equal(served.oven, oven);
     assert.equal(served.ir.version, "7.8.9");
+    assert.equal(served.version, "7.8.9");
+    assert.equal(served.contract, "checklist-progress@1");
+    assert.equal(served.dataInput, "json-payload");
+    assert.equal(served.repoKey, vendored.repoKey);
+    assert.equal(served.origin, "vendored");
 
     const created = await httpRequest(baseUrl, "/api/runs", {
       method: "POST",

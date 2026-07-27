@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Badge, Button } from "@layout";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import {
   Card,
   CardContent,
@@ -9,30 +11,34 @@ import {
   CardTitle,
 } from "./Card";
 
+const fixture = componentPairFixture.card;
 const meta = {
   title: "UI/Card",
   component: Card,
+  args: { title: fixture.title, detail: fixture.detail, meta: fixture.meta, status: "ready", action: "Open Oven" },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Card>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const OvenSummary = {
-  render: () => (
-    <Card className="storybook-card-demo">
-      <CardHeader>
-        <CardTitle>Differential Testing</CardTitle>
-        <CardDescription>Exact-first comparison against the bound native source.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="storybook-card-copy">12 scenarios retained · latest run completed 4 minutes ago.</p>
-      </CardContent>
-      <CardFooter className="storybook-card-footer">
-        <Badge>ready</Badge>
-        <Button size="sm" variant="outline">Open Oven</Button>
-      </CardFooter>
-    </Card>
+  render: (args) => (
+    <PairPreview component="card" terminalArgs={args}>
+      <Card className="storybook-card-demo">
+        <CardHeader>
+          <CardTitle>{String(args.title)}</CardTitle>
+          <CardDescription>{String(args.detail)}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="storybook-card-copy">{String(args.meta)}</p>
+        </CardContent>
+        <CardFooter className="storybook-card-footer">
+          <Badge>{String(args.status)}</Badge>
+          <Button aria-label="Card action" size="sm" variant="outline">{String(args.action)}</Button>
+        </CardFooter>
+      </Card>
+    </PairPreview>
   ),
 } satisfies Story;
 

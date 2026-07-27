@@ -1,10 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Separator } from "./Separator";
 
+const fixture = componentPairFixture.separator;
 const meta = {
   title: "UI/Separator",
   component: Separator,
   args: {
+    before: fixture.before,
+    after: fixture.after,
     decorative: true,
     orientation: "horizontal",
   },
@@ -17,12 +22,14 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Horizontal = {
-  render: () => (
-    <div className="storybook-separator-demo" data-orientation="horizontal">
-      <span>Current run</span>
-      <Separator />
-      <span>Retained history</span>
-    </div>
+  render: (args) => (
+    <PairPreview component="separator" terminalArgs={args}>
+      <div className="storybook-separator-demo" data-orientation={args.orientation}>
+        <span>{String(args.before)}</span>
+        <Separator decorative={args.decorative} orientation={args.orientation} />
+        <span>{String(args.after)}</span>
+      </div>
+    </PairPreview>
   ),
 } satisfies Story;
 

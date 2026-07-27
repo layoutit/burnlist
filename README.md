@@ -14,13 +14,25 @@ The global package installs the `burnlist` command and registers the bundled Bur
 
 Ask your agent to create a Burnlist for a goal or continue an existing one. The skill owns that workflow; the CLI provides the dashboard and protocol helpers.
 
+From any repository, the intended first interaction is simply:
+
+```text
+Set up Burnlist in this repo.
+```
+
+The globally installed skill initializes and registers the repository, briefly
+explains the workflow, and asks what you want to burn.
+
 Run the dashboard from any project:
 
 ```sh
 burnlist
 ```
 
-The server binds to loopback by default and prints its local URL.
+The server binds to loopback by default and prints its local URL. A global
+installation starts one persistent shared observer and `burnlist` prints its
+discovered URL; `burnlist service start|stop|restart|status` exposes its
+lifecycle. Use `burnlist serve` for an explicitly foreground server.
 
 ## How It Works
 
@@ -192,6 +204,34 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 
+## Terminal UI
+
+The experimental terminal observer lives in `tui/`. Its landing page is a
+responsive full-width Burnlist list. Burnlist detail exposes navigable active
+and completed items, marks the latest completion, and opens item-specific Oven
+views. OpenTUI React owns layout and input; glyphcss from the adjacent
+`../../glyphcss` checkout renders the animated fire and effects. Visual Parity
+PNGs use the native image layer in the Burnlist OpenTUI fork on VS Code, iTerm,
+and WezTerm, with the 2×2 RGBA glyph renderer retained underneath as a portable
+fallback. In VS Code, enable `terminal.integrated.enableImages`. Backgrounds
+remain transparent and dividers adapt to the host terminal palette, including
+VS Code themes.
+The visual-review TUI is currently built from a source checkout rather than
+embedded in the universal npm package. This avoids sending large Darwin-only
+binaries to every host. Use `npm --prefix tui install && npm run build:tui`,
+then open it through the regular CLI with `burnlist -i`. The CLI validates the
+shared observer recorded in `~/.burnlist/server.json` and restores it when
+needed; `burnlist -i --local` instead owns one ephemeral observer for the TUI
+session. Screen layouts are declarative `.glyph` documents under
+`tui/screens/`. Pass an explicit dashboard with
+`burnlist -i --server http://127.0.0.1:4510`.
+
+Use up/down to navigate Burnlists and inspect their items. `o` opens the
+global generic Oven catalog; installed repository-specific Ovens remain scoped
+to their Burnlists. In a Burnlist, `[` and `]` move between compatible Oven
+lenses. `q` always goes back, and `escape` goes back from nested views or exits
+only from the main landing page. `r` refreshes the current data.
+
 ## Built-in Loops (Stage 1)
 
 Items may use direct execution or one of exactly three built-in Loops:
@@ -259,16 +299,19 @@ Burnlist's CLI, server, and dashboard support Node.js 18 or newer. The Storybook
 ```sh
 npm install
 npm run build:dashboard
+npm run build:tui
 npm run storybook
 npm run build:storybook
 npm run test:differential-testing
+npm run test:tui
+npm run verify:fast
 npm run verify
 npm run verify:clean
 npm run verify:package
 npm run test:global-install
 ```
 
-`verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
+`verify:fast` is the non-mutating inner loop for TUI types, tests, generated-frame freshness, and prototype coverage audits; it intentionally does not claim final 100% coverage. `verify` remains the required full gate (`verify:gate` is an alias). `verify:clean` checks the source, npm payload, and isolated global install from a temporary copy.
 
 ## Oven events
 

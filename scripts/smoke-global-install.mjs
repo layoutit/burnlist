@@ -32,6 +32,7 @@ const env = {
   USERPROFILE: home,
   npm_config_cache: npmCache,
 };
+const tuiTarget = "darwin-arm64";
 const testNode = resolve(process.env.BURNLIST_TEST_NODE || process.execPath);
 const npmCli = process.env.BURNLIST_TEST_NODE
   ? resolve(dirname(dirname(testNode)), "lib", "node_modules", "npm", "bin", "npm-cli.js")
@@ -58,6 +59,58 @@ function run(command, args, options = {}) {
     throw new Error(`${command} ${args.join(" ")} failed`);
   }
   return options.capture ? result.stdout.trim() : "";
+}
+
+function runFailure(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    cwd: options.cwd || repoRoot,
+    encoding: "utf8",
+    env,
+    maxBuffer: 8 * 1024 * 1024,
+    shell: false,
+    stdio: "pipe",
+  });
+  if (result.status === 0) throw new Error(`${command} ${args.join(" ")} unexpectedly succeeded`);
+  return `${result.stdout || ""}${result.stderr || ""}`;
+}
+
+function runPty(binary, marker, label, interactive = false) {
+  const observation = join(tmpRoot, `${label}.pty-observed.txt`);
+  const result = spawnSync("expect", ["-c", `
+set timeout 20
+log_user 1
+if {$env(BURNLIST_PTY_INTERACTIVE) eq "1"} {
+  spawn -noecho $env(BURNLIST_PTY_BINARY) -i
+} else {
+  spawn -noecho $env(BURNLIST_PTY_BINARY)
+}
+expect {
+  -re $env(BURNLIST_PTY_MARKER) {
+    set observation [open $env(BURNLIST_PTY_OBSERVATION) w]
+    puts $observation $env(BURNLIST_PTY_MARKER)
+    close $observation
+    send "\\033"
+  }
+  eof { puts stderr "${label} exited before rendering ${marker}"; exit 126 }
+  timeout { puts stderr "${label} did not render ${marker}"; exit 124 }
+}
+expect {
+  eof {}
+  timeout { puts stderr "${label} did not exit after root Escape"; exit 125 }
+}
+set outcome [wait]
+exit [lindex $outcome 3]
+`], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: { ...env, BURNLIST_PTY_BINARY: binary, BURNLIST_PTY_MARKER: marker, BURNLIST_PTY_OBSERVATION: observation, BURNLIST_PTY_INTERACTIVE: interactive ? "1" : "0" },
+    maxBuffer: 8 * 1024 * 1024,
+    shell: false,
+    stdio: "pipe",
+  });
+  const output = `${result.stdout || ""}${result.stderr || ""}`;
+  if (result.status !== 0) throw new Error(`${label} PTY smoke failed: ${output}`);
+  if (readFileSync(observation, "utf8") !== `${marker}\n`) throw new Error(`${label} PTY smoke did not observe recognizable content: ${marker}`);
 }
 
 function invokeCli(cli, args, options = {}) {
@@ -184,6 +237,15 @@ try {
   assertLoopFlow(cli);
   invokeCli(cli, ["--stamp"], { capture: true });
   invokeCli(cli, ["oven", "list"], { capture: true });
+  const installedTarget = `${process.platform}-${process.arch}`;
+  const output = runFailure(testNode, [cli, "-i"]);
+  if (installedTarget === tuiTarget) {
+    if (!output.includes("not built") || !output.includes("npm run build:tui")) {
+      throw new Error(`source-only interactive CLI message is not actionable: ${output}`);
+    }
+  } else if (!output.includes(tuiTarget) || !output.includes(installedTarget)) {
+    throw new Error(`unsupported host interactive CLI message is not actionable: ${output}`);
+  }
   const sdkPath = invokeCli(cli, ["differential-testing", "sdk"], { capture: true });
   const expectedSdkPath = resolve(packageRoot, "ovens", "differential-testing", "engine", "adapter-sdk.mjs");
   if (realpathSync(sdkPath) !== realpathSync(expectedSdkPath)) throw new Error(`installed CLI reported unexpected SDK path: ${sdkPath}`);
@@ -205,7 +267,43 @@ try {
     if (!expected.every((name) => typeof events[name] === "function")) process.exit(1);
   `], { cwd: packageRoot });
 
+  const serviceRuntimePath = join(home, ".burnlist", "server.json");
+  const serviceMarkerPath = join(home, ".burnlist", "install.json");
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("global npm install did not register its shared service");
+  }
+  const serviceRuntime = JSON.parse(readFileSync(serviceRuntimePath, "utf8"));
+  invokeCli(cli, ["uninstall", "--global", "--agent", "codex"]);
+  if (existsSync(join(home, ".agents", "skills", "burnlist"))) {
+    throw new Error("agent-scoped uninstall left the Codex skill registration behind");
+  }
+  assertManagedLink(".claude", "burnlist", packageRoot);
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("agent-scoped skill uninstall removed the package-owned service");
+  }
+  process.kill(serviceRuntime.pid, 0);
+  invokeCli(cli, ["install", "--global", "--agent", "codex"]);
+  assertManagedLink(".agents", "burnlist", packageRoot);
+  assertManagedLink(".claude", "burnlist", packageRoot);
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("agent-scoped skill reinstall changed the package-owned service");
+  }
+
   invokeCli(cli, ["uninstall", "--global", "--purge"]);
+  if (existsSync(serviceRuntimePath) || existsSync(serviceMarkerPath)) {
+    throw new Error("global package purge left its service registration behind");
+  }
+  let serviceAlive = true;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try { process.kill(serviceRuntime.pid, 0); }
+    catch (error) {
+      if (error.code !== "ESRCH") throw error;
+      serviceAlive = false;
+      break;
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+  }
+  if (serviceAlive) throw new Error("global package purge left its service process running");
   for (const agentDirectory of [".claude", ".agents"]) {
     for (const name of ["burnlist"]) {
       try {

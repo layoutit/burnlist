@@ -29,10 +29,19 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tui/package-lock.json
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix tui
 
       - name: Build dashboard
         run: npm run build:dashboard
@@ -44,5 +53,42 @@ jobs:
       - name: Verify
         run: npm run verify
 
-      - name: Verify package payload
-        run: npm run verify:package
+  terminal-package:
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tui/package-lock.json
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix tui
+
+      - name: Build packaged terminal binaries
+        run: |
+          npm run build:dashboard
+          npm run build:tui
+          npm run build:catalog:tui
+
+      - name: Fast terminal verification
+        run: npm run verify:fast
+
+      - name: Verify installed current-host package
+        run: |
+          npm run verify:package
+          npm run test:global-install

@@ -45,6 +45,8 @@ test("top-level and Oven help expose the validated use and set flow", () => {
   try {
     const top = run(context.directory, ["--help"]);
     assert.equal(top.status, 0, top.stderr);
+    assert.match(top.stdout, /burnlist -i \[--server <url>\]/u);
+    assert.match(top.stdout, /-i, --interactive\s+Open the interactive terminal UI/u);
     assert.match(top.stdout, /burnlist oven <[^\n]*use[^\n]*set[^\n]*>/u);
     assert.match(top.stdout, /burnlist loop view <LoopRef\|ItemRef\|review> \[--repo <path>\]/u);
     assert.match(top.stdout, /burnlist loop create <ItemRef> \[--repo <path>\]/u);

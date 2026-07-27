@@ -5,8 +5,8 @@
  * Keep those bespoke, or model a value as nested cells.
  */
 import { createElement, Fragment, type ReactElement } from "react";
-import { resolvePointer } from "../utils/json-pointer";
-import { componentRegistry, formatRegistry, iconRegistry } from "./registries";
+import { evaluateOvenBinding } from "../../../../src/ovens/oven-value-runtime.mjs";
+import { componentRegistry, iconRegistry } from "./registries";
 import type { CellDef, JsonValue, OvenViewDef, SlotDef } from "./types";
 
 export type OvenViewProps = {
@@ -30,9 +30,7 @@ function resolveCell(cell: CellDef, payload: JsonValue): ReactElement {
 
   const props: Record<string, unknown> = { ...cell.props };
   for (const [name, binding] of Object.entries(cell.bind ?? {})) {
-    const format = formatRegistry[binding.format ?? "identity"];
-    if (!format) throw new Error(`Unknown oven format: ${binding.format}`);
-    props[name] = format(resolvePointer(payload, binding.source));
+    props[name] = evaluateOvenBinding(binding, payload);
   }
   for (const [name, slotDef] of Object.entries(cell.slots ?? {})) {
     props[name] = resolveSlot(slotDef, payload);

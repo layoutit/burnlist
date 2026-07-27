@@ -91,17 +91,23 @@
 }
 
 .visual-parity-frame > header span { color: var(--muted); }
-.visual-parity-shots { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
-.visual-parity-shots figure { margin: 0; padding: 12px; border-right: 1px solid var(--line); }
+/* Every frame is one comparison row. Zero-minimum implicit tracks keep intrinsically
+   wide content (including ASCII) from widening a tile or creating another row. */
+.visual-parity-shots {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  min-width: 0;
+  border-top: 1px solid var(--line);
+}
+.visual-parity-shots figure { min-width: 0; margin: 0; padding: 12px; overflow: hidden; border-right: 1px solid var(--line); }
 .visual-parity-shots figure:last-child { border-right: 0; }
-.visual-parity-shots figcaption { margin-bottom: 8px; color: var(--muted); }
-.visual-parity-shots img { width: 100%; height: auto; background: #87ceeb; image-rendering: pixelated; }
+.visual-parity-shots figcaption { min-height: 26px; margin-bottom: 8px; color: var(--muted); font-size: 11px; }
+.visual-parity-shots img { display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: contain; background: #87ceeb; image-rendering: pixelated; }
 
 @media (max-width: 760px) {
   .visual-parity-heading { grid-template-columns: 1fr; gap: 10px; }
   .visual-parity-metrics { grid-template-columns: repeat(2, 1fr); }
   .visual-parity-metrics article:nth-child(2) { border-right: 0; }
-  .visual-parity-shots { grid-template-columns: 1fr; }
-  .visual-parity-shots figure { border-right: 0; border-bottom: 1px solid var(--line); }
   .visual-parity-frame > header, .visual-parity-domain-note { align-items: flex-start; flex-direction: column; }
 }

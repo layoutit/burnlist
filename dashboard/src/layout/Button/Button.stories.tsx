@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Button } from "./Button";
 
+const fixture = componentPairFixture.button;
 const variants = ["default", "secondary", "outline", "ghost", "link", "destructive"] as const;
 const sizes = ["xs", "sm", "default", "lg"] as const;
 
@@ -9,7 +12,7 @@ const meta = {
   title: "UI/Button",
   component: Button,
   args: {
-    children: "Run burn",
+    children: fixture.label,
     size: "default",
     variant: "default",
   },
@@ -25,7 +28,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Playground = {} satisfies Story;
+export const Playground = {
+  render: (args) => <PairPreview component="button" terminalArgs={{ ...args, label: args.children }}><Button {...args} /></PairPreview>,
+} satisfies Story;
 
 export const Variants = {
   render: () => (

@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { LoopGraph, type LoopGraphProjection } from "./LoopGraph";
 import { LoopCompact } from "./LoopCompact";
 import { LoopLegend } from "./LoopLegend";
-import { OvenRuntime } from "../../oven/runtime/OvenRuntime";
 
 const base: LoopGraphProjection = {
   itemRef: "item:260724-001#D1",
@@ -175,20 +174,6 @@ export const NeedsHuman: Story = {
 };
 export const CorruptProjection: Story = {
   args: { run: null, diagnostic: "corrupt", message: "The journal could not be verified. The last trusted projection is retained." },
-};
-
-export const OvenComposition: Story = {
-  args: { run: base },
-  render: () => <OvenRuntime
-    ir={{
-      id: "custom-loop-dashboard",
-      contract: "custom-loop-dashboard@1",
-      controls: [],
-      collections: [],
-      root: [{ kind: "loop-graph", attributes: { source: "/loopRun", title: "Composed by a custom Oven" } }],
-    } as never}
-    payload={{ loopRun: base }}
-  />,
 };
 
 export const NarrowResponsive: Story = {

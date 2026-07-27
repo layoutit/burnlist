@@ -39,7 +39,14 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tui/package-lock.json
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
 
       - name: Refuse to publish from a non-main ref
         run: |
@@ -204,7 +211,9 @@ jobs:
 
       # Install from the RELEASE commit's lockfile so gate + publish match the released tree.
       - name: Install dependencies for the release commit
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix tui
 
       - name: Verify any existing remote tag
         env:
@@ -232,6 +241,8 @@ jobs:
       - name: Gate exact release commit
         run: |
           npm run build:dashboard
+          npm run build:tui
+          npm run build:catalog:tui
           npm run verify
           npm run verify:package
 

@@ -1,10 +1,10 @@
 const metricDefinitions = [
-  { id: "startup.ready", label: "startup.ready", metric: "startupReadyMs", budget: "startupReadyMs" },
-  { id: "frame.p95", label: "frame.p95", metric: "p95FrameMs", budget: "p95FrameMs" },
-  { id: "frame.p99", label: "frame.p99", metric: "p99FrameMs", budget: "p99FrameMs" },
-  { id: "frame.max", label: "frame.max", metric: "maxFrameMs", budget: "maxFrameMs" },
-  { id: "frame.over33", label: "frame.over33", metric: "over33msRatio", budget: "over33msRatio" },
-  { id: "step.p95", label: "step.p95", metric: "p95StepCallMs", budget: "p95StepCallMs" },
+  { id: "startup.ready", label: "startup.ready", metric: "startupReadyMs", budget: "startupReadyMs", unit: "ms" },
+  { id: "frame.p95", label: "frame.p95", metric: "p95FrameMs", budget: "p95FrameMs", unit: "ms" },
+  { id: "frame.p99", label: "frame.p99", metric: "p99FrameMs", budget: "p99FrameMs", unit: "ms" },
+  { id: "frame.max", label: "frame.max", metric: "maxFrameMs", budget: "maxFrameMs", unit: "ms" },
+  { id: "frame.over33", label: "frame.over33", metric: "over33msRatio", budget: "over33msRatio", unit: "ratio" },
+  { id: "step.p95", label: "step.p95", metric: "p95StepCallMs", budget: "p95StepCallMs", unit: "ms" },
 ];
 
 function finite(value) {
@@ -61,6 +61,7 @@ export function adaptPerformanceTracingReport(report) {
       trustStatus: missingSampleCount ? "blocked" : "pass",
       maxDelta: deltas.length ? Math.max(...deltas) : null,
       sourceOwner: `performance trace / ${definition.metric}`,
+      unit: definition.unit,
       semantics: { kind: "number", meaning: `${definition.metric} measured against ${definition.budget}` },
     };
   });
@@ -98,6 +99,7 @@ export function adaptPerformanceTracingReport(report) {
   });
 
   return {
+    title: "Performance Tracing",
     subtitle: report.runId ?? "retained performance trace",
     publishedAt: report.generatedAt,
     scenarioCatalog: {

@@ -1,7 +1,7 @@
 import type { Binding, CellDef, JsonValue, OvenViewDef, SectionDef, SlotDef } from "../OvenView/types";
 import { getOvenTheme, type OvenTheme } from "./theme-registry";
 
-type IrBinding = Binding & { optional?: boolean; fallback?: string };
+type IrBinding = Binding;
 type IrNode = {
   kind: string;
   attributes: Record<string, unknown>;
@@ -41,7 +41,17 @@ const unsupported = new Set([
 function fail(node: IrNode): never { throw new Error(`Unsupported in static lowering: ${node.kind}`); }
 function key(node: IrNode, path: string): string { return typeof node.attributes.id === "string" ? node.attributes.id : `${path}-${node.kind}`; }
 function jsonProps(values: Record<string, unknown>): Record<string, JsonValue> { return values as Record<string, JsonValue>; }
-function binding(source: unknown, format: unknown): Binding | undefined { return typeof source === "string" ? { source, ...(typeof format === "string" ? { format } : {}) } : undefined; }
+function binding(source: unknown, format: unknown, optional?: unknown, fallback?: unknown): Binding | undefined {
+  return typeof source === "string" ? {
+    source,
+    ...(typeof format === "string" ? { format } : {}),
+    ...(optional === true ? { optional: true } : {}),
+    ...(fallback !== undefined ? { fallback: fallback as JsonValue } : {}),
+  } : undefined;
+}
+function sourceBinding(attributes: Record<string, unknown>): Binding | undefined {
+  return binding(attributes.source, attributes.format, attributes.optional, attributes.fallback);
+}
 function pointerBinding(value: unknown): Binding | undefined { return typeof value === "string" && value.startsWith("/") ? { source: value } : undefined; }
 
 function gridStyle(attributes: Record<string, unknown>): Record<string, string | number> {
@@ -95,49 +105,49 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
     assignLiteralOrPointer(props, bind, "heading", attrs.heading);
     assignLiteralOrPointer(props, bind, "title", attrs.title);
     assignLiteralOrPointer(props, bind, "value", attrs.value);
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.value = source;
   }
   if (node.kind === "progress-donut") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.percent = source;
   }
   if (node.kind === "burn-donut") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.entries = source;
   }
   if (node.kind === "waffle-metric") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.metric = source;
   }
   if (node.kind === "differential-kpi-strip") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.payload = source;
   }
   if (node.kind === "differential-log-table") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.entries = source;
   }
   if (node.kind === "differential-empty-state") {
     assignLiteralOrPointer(props, bind, "title", attrs.title);
   }
   if (node.kind === "progress-chart") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.history = source;
   }
   if (node.kind === "frame-delta-chart") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.metrics = source;
   }
   if (node.kind === "progress-value") {
     for (const name of ["done", "total", "percent"]) assignLiteralOrPointer(props, bind, name, attrs[name]);
   }
   if (["checklist-burn-panel", "checklist-ledger", "checklist-event-cards"].includes(node.kind)) {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.data = source;
   }
   if (node.kind === "diff-card") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.cards = source;
   }
   if (node.kind === "streaming-diff-heading") {
@@ -151,12 +161,12 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
     }
   }
   if (node.kind === "file-diff") {
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.file = source;
   }
   if (node.kind === "section-header") {
     if (typeof attrs.title === "string") props.title = attrs.title;
-    const source = binding(attrs.source, attrs.format);
+    const source = sourceBinding(attrs);
     if (source) bind.count = source;
   }
   const slots: Record<string, SlotDef> = {};
@@ -166,7 +176,7 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
     if (child.kind === "bind") continue;
     const slot = child.attributes.slot;
     if (child.kind === "text" && typeof slot === "string" && typeof child.attributes.source === "string") {
-      bind[slot] = { source: child.attributes.source, ...(typeof child.attributes.format === "string" ? { format: child.attributes.format } : {}) };
+      bind[slot] = sourceBinding(child.attributes)!;
     } else if (typeof slot === "string") slots[slot] = lowerSlot(child, `${path}-${index}`, theme);
     else if (node.kind === "kpi-item" && child.kind === "icon") slots.visual = lowerSlot(child, `${path}-${index}`, theme);
     else if (node.kind === "kpi-item" && child.kind === "progress-donut") slots.visual = lowerSlot(child, `${path}-${index}`, theme);
