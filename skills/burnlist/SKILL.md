@@ -204,12 +204,17 @@ trusted-check capability provably cannot exist yet (e.g. the repo has nothing
 for `repo-verify` to run), or the item's scope changed enough to need a
 different Loop. Record which one applied.
 
-The host—not Burnlist—chooses and supervises each native agent or provider CLI.
-If provider availability is unknown, read `references/loop-provider-setup.md`,
-show the safe inventory, and ask what the user wants enabled. Then read only
-the selected provider recipe. Give workers the prepared task, not this skill:
-workers need no Burnlist commands, claim identities, graph knowledge, or
-lifecycle authority.
+The orchestrating host—not Burnlist and never the worker—owns provider setup
+and supervision. It inventories providers without reading credentials, asks
+the user what to enable, hands interactive login or trust consent to the user,
+runs authorized Burnlist-supported hook setup, allocates launch-only session
+metadata, supplies the exact repository/permissions/model flags, keeps the
+process supervised, validates its result, and submits the Loop outcome. If
+provider availability is unknown, read `references/loop-provider-setup.md`;
+then read only the selected provider recipe. Give workers only the prepared
+task prompt: workers do not configure providers or hooks, manage trust, receive
+skills, run Burnlist lifecycle commands, hold claim identities, or know graph
+mechanics.
 
 Make semantic decisions only from evidence:
 

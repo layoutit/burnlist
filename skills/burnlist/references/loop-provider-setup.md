@@ -4,6 +4,19 @@ Use this before the first host-executed Loop when the user's available agent
 subscriptions are unknown. Burnlist does not install, authenticate, configure,
 or launch an agent provider.
 
+## Ownership
+
+The agent currently orchestrating the Loop owns setup, even when it is itself
+Claude or Codex. It performs safe inventory, requests the user's provider
+choice, runs authorized non-interactive repository setup, allocates per-launch
+session metadata, launches and supervises the selected worker, and submits the
+result. The user performs provider login and interactive trust consent.
+
+Never delegate setup to the worker. A Codex, Claude, Grok, AGY, or custom
+worker receives only the prepared task and its bounded working context. It does
+not install Burnlist or hooks, select providers, approve trust, mint session
+identities, claim nodes, or submit Loop transitions.
+
 ## Inventory first
 
 Check native subagents exposed by the current host, then perform only
@@ -45,6 +58,9 @@ subscriptions, tokens, or provider profiles into `.burnlist/`.
 
 Authentication is not project-hook trust. Before observed Loop execution:
 
+- when the user authorized repository observation, the orchestrator runs the
+  supported `burnlist hooks install|status` operations; it does not tell the
+  worker to configure hooks;
 - ask the user to inspect and approve Codex project hooks through Codex if it
   reports them untrusted; never use the dangerous trust bypass for real work;
 - ask the user to open AGY interactively for the exact repository and approve
