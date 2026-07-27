@@ -273,9 +273,25 @@ try {
     throw new Error("global npm install did not register its shared service");
   }
   const serviceRuntime = JSON.parse(readFileSync(serviceRuntimePath, "utf8"));
-  invokeCli(cli, ["uninstall", "--global"]);
+  invokeCli(cli, ["uninstall", "--global", "--agent", "codex"]);
+  if (existsSync(join(home, ".agents", "skills", "burnlist"))) {
+    throw new Error("agent-scoped uninstall left the Codex skill registration behind");
+  }
+  assertManagedLink(".claude", "burnlist", packageRoot);
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("agent-scoped skill uninstall removed the package-owned service");
+  }
+  process.kill(serviceRuntime.pid, 0);
+  invokeCli(cli, ["install", "--global", "--agent", "codex"]);
+  assertManagedLink(".agents", "burnlist", packageRoot);
+  assertManagedLink(".claude", "burnlist", packageRoot);
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("agent-scoped skill reinstall changed the package-owned service");
+  }
+
+  invokeCli(cli, ["uninstall", "--global", "--purge"]);
   if (existsSync(serviceRuntimePath) || existsSync(serviceMarkerPath)) {
-    throw new Error("global skill uninstall left its service registration behind");
+    throw new Error("global package purge left its service registration behind");
   }
   let serviceAlive = true;
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -287,9 +303,7 @@ try {
     }
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
   }
-  if (serviceAlive) throw new Error("global skill uninstall left its service process running");
-
-  invokeCli(cli, ["uninstall", "--global", "--purge"]);
+  if (serviceAlive) throw new Error("global package purge left its service process running");
   for (const agentDirectory of [".claude", ".agents"]) {
     for (const name of ["burnlist"]) {
       try {

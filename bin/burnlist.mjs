@@ -70,21 +70,30 @@ if (args[0] === "install" || args[0] === "uninstall") {
     printSkillUsage(args[0]);
     return;
   }
-  process.exitCode = runSkillsInstallCli({ args, packageRoot });
-  if (process.exitCode === 0 && args[0] === "uninstall" && args.includes("--global")
-    && !args.includes("--dry-run") && !args.includes("--purge")) {
+  let cleanupPurgedService;
+  if (args[0] === "uninstall" && args.includes("--global") && args.includes("--purge")
+    && !args.includes("--dry-run")) {
     const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     const { ownedGlobalInstall, removeInstallMarker } = await import("../src/service/runtime.mjs");
+    const { serviceStatus, stopRuntime } = await import("../src/service/supervisor.mjs");
     if (ownedGlobalInstall(packageRoot, packageJson.version)) {
-      const { serviceStatus, stopRuntime } = await import("../src/service/supervisor.mjs");
-      const status = await serviceStatus();
-      if (status.running && !await stopRuntime(status.runtime)) {
-        console.error("Burnlist: the owned global service did not stop.");
-        process.exitCode = 1;
-        return;
-      }
-      removeInstallMarker(packageRoot);
+      cleanupPurgedService = async () => {
+        const status = await serviceStatus();
+        if (status.running && !await stopRuntime(status.runtime)) {
+          throw new Error("the owned global service did not stop");
+        }
+        removeInstallMarker(packageRoot);
+      };
+    }
+  }
+  process.exitCode = runSkillsInstallCli({ args, packageRoot });
+  if (process.exitCode === 0 && cleanupPurgedService) {
+    try {
+      await cleanupPurgedService();
       console.log("Burnlist: stopped and removed the global service registration.");
+    } catch (error) {
+      console.error(`Burnlist: ${error.message}`);
+      process.exitCode = 1;
     }
   }
   return;
