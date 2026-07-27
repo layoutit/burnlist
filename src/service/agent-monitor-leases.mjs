@@ -1,8 +1,27 @@
-import { runAgentMonitorOnce } from "../../ovens/agent-monitor/engine/agent-monitor-producer.mjs";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
 import { ensureAgentMonitorFeedRoot } from "../../ovens/agent-monitor/engine/agent-monitor-feed.mjs";
 
 export const AGENT_MONITOR_LEASE_MS = 30_000;
 export const AGENT_MONITOR_REFRESH_MS = 2_000;
+const agentMonitorCli = fileURLToPath(new URL("../../bin/burnlist.mjs", import.meta.url));
+
+/** Keep transcript discovery off the dashboard event loop. */
+export function runAgentMonitorChild({ repoRoot, signal, spawnChild = spawn } = {}) {
+  return new Promise((resolve) => {
+    const child = spawnChild(process.execPath, [
+      agentMonitorCli, "agent-monitor", "run", "--repo", repoRoot,
+    ], {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
+    const finish = () => resolve();
+    child.once("error", finish);
+    child.once("exit", finish);
+    signal?.addEventListener("abort", () => child.kill("SIGTERM"), { once: true });
+  });
+}
 
 /** Service-owned, renewable observation leases. Opening a view starts work; closing it lets work expire. */
 export function createAgentMonitorLeaseManager({
@@ -11,7 +30,7 @@ export function createAgentMonitorLeaseManager({
   now = Date.now,
   prepare = ensureAgentMonitorFeedRoot,
   refreshMs = AGENT_MONITOR_REFRESH_MS,
-  run = runAgentMonitorOnce,
+  run = runAgentMonitorChild,
   setTimer = setTimeout,
 } = {}) {
   const leases = new Map();
@@ -19,6 +38,7 @@ export function createAgentMonitorLeaseManager({
   let stopped = false;
   let timer = null;
   let running = false;
+  let activeRun = null;
   let cursor = 0;
 
   function schedule(delay = refreshMs) {
@@ -43,15 +63,26 @@ export function createAgentMonitorLeaseManager({
     const roots = activeRoots();
     if (!roots.length) return;
     running = true;
-    try {
-      const repoRoot = roots[cursor % roots.length];
-      cursor += 1;
-      try { run({ repoRoot }); } catch { /* A later lease cycle retries without failing the observer. */ }
+    const controller = new AbortController();
+    activeRun = controller;
+    const complete = () => {
+      if (activeRun === controller) activeRun = null;
       observed.add(repoRoot);
-    } finally {
       running = false;
       if (activeRoots().length) schedule();
+    };
+    const repoRoot = roots[cursor % roots.length];
+    cursor += 1;
+    try {
+      const result = run({ repoRoot, signal: controller.signal });
+      if (result && typeof result.then === "function") {
+        result.catch(() => {}).finally(complete);
+        return;
+      }
+    } catch {
+      /* A later lease cycle retries without failing the observer. */
     }
+    complete();
   }
 
   return Object.freeze({
@@ -77,6 +108,8 @@ export function createAgentMonitorLeaseManager({
       stopped = true;
       leases.clear();
       observed.clear();
+      activeRun?.abort();
+      activeRun = null;
       if (timer !== null) clearTimer(timer);
       timer = null;
     },

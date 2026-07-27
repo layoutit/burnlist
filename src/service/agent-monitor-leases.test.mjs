@@ -55,3 +55,29 @@ test("stopping the service cancels pending Agent Monitor work", () => {
   assert.equal(value.timers.length, 0);
   assert.throws(() => value.manager.activate("/repo"), /stopped/u);
 });
+
+test("an asynchronous refresh never blocks activation and is cancelled on stop", async () => {
+  let resolveRun;
+  let aborted = false;
+  const timers = [];
+  const manager = createAgentMonitorLeaseManager({
+    prepare: (repoRoot) => ({ logicalRepoRoot: repoRoot }),
+    run: ({ signal }) => new Promise((resolve) => {
+      resolveRun = resolve;
+      signal.addEventListener("abort", () => { aborted = true; resolve(); }, { once: true });
+    }),
+    setTimer: (callback) => {
+      const timer = { callback, unref() {} };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimer: () => {},
+  });
+  assert.equal(manager.activate("/repo").active, true);
+  timers.shift().callback();
+  assert.equal(manager.status().running, true);
+  manager.stop();
+  await Promise.resolve();
+  assert.equal(aborted, true);
+  resolveRun?.();
+});
