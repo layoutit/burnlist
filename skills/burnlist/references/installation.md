@@ -39,6 +39,11 @@ burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked]
 
 Bare `burnlist hooks` defaults to `status`.
 
+The current installer supports Codex and Claude only. Grok and Antigravity
+launch requirements live in their `loop-providers/` recipes; do not hand-write
+their hook configs or claim exact external Loop attribution from the planned
+Agent Monitor design.
+
 `burnlist hooks install` is repository-only and must run inside a Git worktree; there is no `--global` flag. It adds managed Streaming Diff commands plus advisory `burnlist hooks observe` commands while preserving unrelated hook entries:
 
 | Agent that consumes the hook | Config written at the worktree root | Observed events |

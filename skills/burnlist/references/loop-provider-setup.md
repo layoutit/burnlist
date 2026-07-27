@@ -43,6 +43,16 @@ After the user completes setup, rerun the non-mutating live check. Provider
 selection is working-session context, not Burnlist canonical state: never write
 subscriptions, tokens, or provider profiles into `.burnlist/`.
 
+Authentication is not project-hook trust. Before observed Loop execution:
+
+- ask the user to inspect and approve Codex project hooks through Codex if it
+  reports them untrusted; never use the dangerous trust bypass for real work;
+- ask the user to open AGY interactively for the exact repository and approve
+  that folder, then include `--add-dir <absolute-repo-path>` on every headless
+  launch; never edit AGY trust files directly;
+- do not alter `.claude/settings.json` when Grok discovers compatible Claude
+  hooks; provider adapters, not config deletion, own neutral deduplication.
+
 ## Choose per node
 
 Use the Loop node's role, authority, and intelligence as selection guidance,
