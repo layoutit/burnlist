@@ -4,7 +4,7 @@ export const AGENT_MONITOR_OVEN_ID = "agent-monitor";
 export const AGENT_MONITOR_DATA_CONTRACT = "burnlist-agent-monitor-data@1";
 export const AGENT_MONITOR_FEED_CONTRACT = "burnlist-agent-monitor-feed@1";
 export const AGENT_MONITOR_LIMITS = Object.freeze({
-  maxEvents: 256,
+  maxEvents: 300,
   maxFeeds: 128,
   maxManifestBytes: 64 * 1024,
   maxSnapshotBytes: 8 * 1024 * 1024,

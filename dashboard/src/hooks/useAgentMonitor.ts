@@ -73,11 +73,14 @@ export function useAgentMonitorFeeds(
   selected: boolean,
 ): FeedState {
   const [state, setState] = useState<FeedState>({ feeds: [], error: "", loading: !selected });
+  const repositoryKey = repositories
+    .map((repository) => `${repository.repoKey}\0${repository.label}`)
+    .join("\0");
 
   useEffect(() => {
     if (selected) return;
     if (discoveryLoading) {
-      setState({ feeds: [], error: "", loading: true });
+      setState((current) => ({ ...current, error: "", loading: true }));
       return;
     }
     if (!repositories.length) {
@@ -85,7 +88,7 @@ export function useAgentMonitorFeeds(
       return;
     }
     let cancelled = false;
-    setState({ feeds: [], error: "", loading: true });
+    setState((current) => ({ ...current, error: "", loading: true }));
     void Promise.allSettled(repositories.map(async (repository) => {
       const query = new URLSearchParams({ list: "", repoKey: repository.repoKey });
       const response = await fetch(`/api/oven-data/agent-monitor?${query}`, { cache: "no-store" });
@@ -113,7 +116,7 @@ export function useAgentMonitorFeeds(
       });
     });
     return () => { cancelled = true; };
-  }, [discoveryLoading, repositories, selected]);
+  }, [discoveryLoading, repositoryKey, selected]);
 
   return state;
 }

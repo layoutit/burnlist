@@ -4,7 +4,7 @@ import {
   assertAgentMonitorSnapshot,
 } from "./agent-monitor-data-contract.mjs";
 
-export const AGENT_MONITOR_PROJECTION_VERSION = 13;
+export const AGENT_MONITOR_PROJECTION_VERSION = 14;
 const visibleCategories = new Set(["command", "diff", "lifecycle", "message", "result", "tool"]);
 const actionableCategories = new Set(["command", "diff", "tool"]);
 

@@ -21,6 +21,7 @@ import {
   resolveAgentMonitorIdentity,
 } from "./agent-monitor-feed.mjs";
 import { discoverAgentMonitorSessions, runAgentMonitorOnce } from "./agent-monitor-producer.mjs";
+import { AGENT_MONITOR_PROJECTION_VERSION } from "./agent-monitor-projection.mjs";
 
 const NOW = "2026-07-26T12:00:00.000Z";
 
@@ -159,7 +160,7 @@ test("a projection upgrade replays the recent source tail instead of preserving 
     assert.equal(upgraded.changed, 1);
     assert.equal(upgraded.feeds[0].reprojected, true);
     const current = loadAgentMonitorFeed(identity.feedDir);
-    assert.equal(current.snapshot.monitor.projectionVersion, 13);
+    assert.equal(current.snapshot.monitor.projectionVersion, AGENT_MONITOR_PROJECTION_VERSION);
     assert.equal(current.snapshot.raw.completed[0].detail, "Working on the exact feed.");
   } finally {
     context.cleanup();

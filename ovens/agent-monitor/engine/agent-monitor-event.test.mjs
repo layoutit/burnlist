@@ -291,20 +291,20 @@ test("version 2 snapshots migrate latest-first and normalize privacy placeholder
   assert.deepEqual(events.map((event) => event.detail), ["New user instruction", "Tool call failed"]);
 });
 
-test("projection retains only the latest 256 monitorable events", () => {
-  const events = Array.from({ length: 300 }, (_, index) => {
+test("projection retains only the latest 300 monitorable events", () => {
+  const events = Array.from({ length: 360 }, (_, index) => {
     const event = projected({
       type: "agent_message",
       message: `Visible update ${index + 1}`,
-    }, 300 - index);
+    }, 360 - index);
     return event;
   });
-  const hidden = projected({ type: "reasoning" }, 301);
+  const hidden = projected({ type: "reasoning" }, 361);
   assert.equal(isVisibleAgentMonitorEvent(hidden), false);
-  const result = snapshot([hidden, ...events], 301);
-  assert.equal(result.raw.completed.length, 256);
-  assert.equal(result.monitor.retained, 256);
+  const result = snapshot([hidden, ...events], 361);
+  assert.equal(result.raw.completed.length, 300);
+  assert.equal(result.monitor.retained, 300);
   assert.equal(result.monitor.truncated, true);
-  assert.equal(result.raw.completed[0].line, 300);
-  assert.equal(result.raw.completed.at(-1).line, 45);
+  assert.equal(result.raw.completed[0].line, 360);
+  assert.equal(result.raw.completed.at(-1).line, 61);
 });
