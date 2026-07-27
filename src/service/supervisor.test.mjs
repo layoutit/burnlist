@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { explicitServer, probeRuntime, stopRuntime } from "./supervisor.mjs";
+import { explicitServer, probeRuntime, serviceServerArgs, stopRuntime } from "./supervisor.mjs";
 
 const runtime = {
   url: "http://127.0.0.1:4510/",
@@ -14,6 +14,13 @@ test("explicit server parsing preserves the override", () => {
   assert.equal(explicitServer(["-i", "--server", "http://127.0.0.1:9999"]), "http://127.0.0.1:9999");
   assert.equal(explicitServer(["-i"]), null);
   assert.throws(() => explicitServer(["-i", "--server"]), /requires a URL/u);
+});
+
+test("the shared service owns stable port 4510 while ephemeral services auto-select", () => {
+  const shared = serviceServerArgs("/package", "/state", "shared");
+  const ephemeral = serviceServerArgs("/package", "/state", "ephemeral");
+  assert.deepEqual(shared.slice(-4), ["--port", "4510", "--state-dir", "/state"]);
+  assert.deepEqual(ephemeral.slice(-5), ["--port", "0", "--state-dir", "/state", "--auto-port"]);
 });
 
 test("runtime probing requires matching loopback identity and version", async () => {
