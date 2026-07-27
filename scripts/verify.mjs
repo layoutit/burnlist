@@ -69,6 +69,10 @@ const repoSpecificTerms = [
 
 function withoutCanonicalTemplateVocabulary(text) {
   return text
+    .replaceAll(/terminal-oven-parity/giu, "")
+    .replaceAll(/terminal-parity/giu, "")
+    .replaceAll(/terminalovenparity/giu, "")
+    .replaceAll(/terminalparity/giu, "")
     .replaceAll(/driving-parity/giu, "")
     .replaceAll(/driving parity/giu, "")
     .replaceAll(/visual-parity/giu, "")
@@ -439,6 +443,9 @@ for (const entry of officialOvenCatalog.entries) {
 assertDifferentialTestingContractAssets();
 assertPublishablePackage();
 
+run(process.execPath, ["scripts/audit-console-oven-behavior.mjs", "--check"]);
+run(process.execPath, ["scripts/audit-terminal-oven-parity.mjs", "--check"]);
+run("npm", ["run", "check:terminal-story-frames"]);
 run(process.execPath, ["--test", ...verificationTestFiles]);
 for (const file of verificationSerialTestFiles) run(process.execPath, ["--test", file]);
 run(process.execPath, ["dashboard/src/oven/test-support/run-oven-tests.mjs"]);

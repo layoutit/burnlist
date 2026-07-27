@@ -14,7 +14,8 @@ The input contract is `burnlist-agent-monitor-data@1`; the render contract is
 
 ## Producer boundary
 
-- Producer: `burnlist agent-monitor start`.
+- Producer: `burnlist agent-monitor start` discovers Codex, Claude, Antigravity,
+  and Grok sessions. Limit it with `--providers codex,claude,agy,grok`.
 
 The repository-scoped producer discovers recent Codex JSONL files from their
 recorded `session_meta.payload.cwd`. It never selects a thread by "newest file"

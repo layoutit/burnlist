@@ -1,7 +1,10 @@
+// @ts-expect-error Shared pure chart authority is JavaScript by design.
+import { normalizeSeriesChart, SERIES_CHART_COLORS } from "../../../../src/ovens/series-chart-model.mjs";
+
 export const FIELD_MINI_CHART_WIDTH = 900;
 export const FIELD_MINI_CHART_HEIGHT = 58;
-export const GREEN = "#61d394";
-export const RED = "#ef4444";
+export const GREEN = SERIES_CHART_COLORS.pass as string;
+export const RED = SERIES_CHART_COLORS.fail as string;
 
 export type FieldMiniChartSample = [number, unknown, unknown, number];
 
@@ -69,16 +72,13 @@ export type FieldMiniChartGeometry = {
 };
 
 type PlotPoint = [number, number] | null;
-type Row = { tick: number; reference: number | null; candidate: number | null; state: number };
 
-function plotValue(raw: unknown, categories: Map<string, number>): number | null {
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "boolean") return raw ? 1 : 0;
-  if (typeof raw === "string") {
-    if (!categories.has(raw)) categories.set(raw, categories.size);
-    return categories.get(raw) ?? null;
-  }
-  return null;
+/** Shared renderer-neutral input model used by both SVG and terminal cells. */
+export function fieldMiniChartModel(field: FieldMiniChartField, chartMode: string) {
+  return normalizeSeriesChart(field.samples, {
+    labels: field.sampleLabels,
+    mode: chartMode === "delta" ? "delta" : "value",
+  });
 }
 
 function pathStrings(points: PlotPoint[]): string[] {
@@ -118,15 +118,10 @@ function segment(start: [number, number], end: [number, number], trimStart = 0, 
 
 export function buildFieldMiniChart(field: FieldMiniChartField, showFrameLabels: boolean, chartMode: string): FieldMiniChartGeometry {
   const mode = chartMode === "delta" ? "delta" : "value";
-  const categories = new Map<string, number>();
-  const rows: Row[] = field.samples.map(([tick, reference, candidate, state]) => ({
-    tick,
-    reference: plotValue(reference, categories),
-    candidate: plotValue(candidate, categories),
-    state,
-  }));
+  const model = fieldMiniChartModel(field, mode);
+  const rows = model.points as Array<{ tick: number; reference: number | null; candidate: number | null; value: number | null; state: "pass" | "fail" }>;
   const x = (index: number) => rows.length <= 1 ? 0 : index / (rows.length - 1) * FIELD_MINI_CHART_WIDTH;
-  const exactFailure = (index: number) => rows[index] ? rows[index].state !== 0 : false;
+  const exactFailure = (index: number) => rows[index]?.state === "fail";
   const intervalFails = (index: number) => exactFailure(index) || exactFailure(index + 1);
   const frameStep = (() => {
     if (rows.length <= 1) return 0;
@@ -175,21 +170,21 @@ export function buildFieldMiniChart(field: FieldMiniChartField, showFrameLabels:
   };
 
   if (mode === "delta") {
-    const values = rows.map((row) => row.reference === null || row.candidate === null ? null : row.candidate - row.reference);
+    const values = rows.map((row) => row.value);
     const finite = values.filter((value): value is number => Number.isFinite(value));
     if (!finite.length) return { mode, empty: true, bands: [], lines: [], paths: [], ticks: [], tickLabels: [] };
-    const maxAbs = Math.max(0.000001, ...finite.map((entry) => Math.abs(entry)));
-    const limit = maxAbs + Math.max(maxAbs * 0.16, 0.000001);
+    const limit = Math.max(Math.abs(model.domain.min), Math.abs(model.domain.max));
     const y = (entry: number) => FIELD_MINI_CHART_HEIGHT - (entry + limit) / (limit * 2) * FIELD_MINI_CHART_HEIGHT;
     const points = values.map((entry, index): PlotPoint => entry === null ? null : [x(index), y(entry)]);
     const passed: string[] = [];
     const failed: string[] = [];
     for (let index = 0; index < rows.length - 1; index += 1) {
-      if (!points[index] || !points[index + 1]) continue;
+      const startPoint = points[index], endPoint = points[index + 1];
+      if (!startPoint || !endPoint) continue;
       const isFailed = intervalFails(index);
       const line = segment(
-        points[index],
-        points[index + 1],
+        startPoint,
+        endPoint,
         !isFailed && index > 0 && intervalFails(index - 1) ? 1.2 : 0,
         !isFailed && index + 1 < rows.length - 1 && intervalFails(index + 1) ? 1.2 : 0,
       ).path;
@@ -209,12 +204,8 @@ export function buildFieldMiniChart(field: FieldMiniChartField, showFrameLabels:
     };
   }
 
-  const finite = rows.flatMap((row) => [row.reference, row.candidate]).filter((value): value is number => Number.isFinite(value));
-  const min = Math.min(...finite, 0);
-  const max = Math.max(...finite, 0);
-  const pad = Math.max((max - min) * 0.16, Math.abs(max || min || 1) * 0.03, 0.000001);
-  const low = min - pad;
-  const high = max + pad;
+  const low = model.domain.min;
+  const high = model.domain.max;
   const span = Math.max(high - low, 0.000001);
   const y = (entry: number) => FIELD_MINI_CHART_HEIGHT - (entry - low) / span * FIELD_MINI_CHART_HEIGHT;
   const reference: PlotPoint[] = rows.map((row, index) => row.reference === null ? null : [x(index), y(row.reference)]);
@@ -239,12 +230,14 @@ export function buildFieldMiniChart(field: FieldMiniChartField, showFrameLabels:
   let referenceLength = 0;
   let previousReferenceFailingIndex = -2;
   for (let index = 0; index < rows.length - 1; index += 1) {
+    const candidateStart = candidate[index], candidateEnd = candidate[index + 1];
+    const referenceStart = reference[index], referenceEnd = reference[index + 1];
     const failed = intervalFails(index);
     const trimStart = !failed && index > 0 && intervalFails(index - 1) ? 1.2 : 0;
     const trimEnd = !failed && index + 1 < rows.length - 1 && intervalFails(index + 1) ? 1.2 : 0;
-    if (candidate[index] && candidate[index + 1]) (failed ? candidateFailing : candidatePassing).push(segment(candidate[index], candidate[index + 1], trimStart, trimEnd).path);
-    if (failed && reference[index] && reference[index + 1]) {
-      const line = segment(reference[index], reference[index + 1], trimStart, trimEnd);
+    if (candidateStart && candidateEnd) (failed ? candidateFailing : candidatePassing).push(segment(candidateStart, candidateEnd, trimStart, trimEnd).path);
+    if (failed && referenceStart && referenceEnd) {
+      const line = segment(referenceStart, referenceEnd, trimStart, trimEnd);
       if (previousReferenceFailingIndex === index - 1) {
         const previous = referenceFailing.at(-1);
         if (previous) previous.path += `L${line.x2.toFixed(1)},${line.y2.toFixed(1)}`;

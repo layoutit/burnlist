@@ -24,7 +24,21 @@ A lane splits one large Burnlist into parallel sub-lists. Independent work strea
 
 **When to reach for it:** Use lanes when one plan has genuinely independent tracks that can proceed in parallel. See [Burnlist Splitting and Lanes](burnlist-splitting-lanes.md) for the mechanics.
 
-## Set up in three steps
+## The normal setup conversation
+
+After the global installation, setup in any repository should be conversational:
+
+> User: “Set up Burnlist in this repo.”
+>
+> Agent: initializes and registers the current repository, explains Burnlist in
+> one sentence, then asks: “What do you want to burn?”
+
+The agent runs `burnlist init`; the user does not need to know the command,
+lifecycle folders, server address, Oven vocabulary, or Loop configuration
+before describing the work. Once the user answers, the agent creates and
+hardens the first Burnlist through the normal creation workflow.
+
+## Manual setup in three steps
 
 1. Install the CLI:
 
@@ -34,7 +48,8 @@ A lane splits one large Burnlist into parallel sub-lists. Independent work strea
 
    The npm postinstall automatically registers the Burnlist skill for both agents: Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. The skill is available immediately. Alternatively, point any agent at the hosted skill at <https://burnlist.dev/skill.md>. It is a complete, self-contained document and needs no installation.
 
-2. Initialize the repository:
+2. Initialize the repository (normally performed by the agent after “Set up
+   Burnlist in this repo”):
 
    ```sh
    burnlist init
@@ -42,7 +57,8 @@ A lane splits one large Burnlist into parallel sub-lists. Independent work strea
 
    This scaffolds `notes/burnlists/{draft,ready,inprogress,completed}/`, keeps that state locally ignored by Git, and registers the repository so the dashboard can observe it.
 
-3. Create your first Burnlist:
+3. Create your first Burnlist (normally prompted by “What do you want to
+   burn?”):
 
    ```sh
    burnlist new

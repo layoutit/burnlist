@@ -29,6 +29,8 @@ const knownSubcommands = new Set([
   "unregister",
   "roots",
   "init",
+  "service",
+  "serve",
 ]);
 
 function printSkillUsage(command) {
@@ -52,12 +54,49 @@ function printLifecycleUsage(command) {
 }
 
 async function main() {
+if (args.includes("-i") || args.includes("--interactive")) {
+  const { runInteractiveCli } = await import("../src/cli/interactive-cli.mjs");
+  process.exitCode = await runInteractiveCli({ args, packageRoot });
+  return;
+}
+
+if (args[0] === "service") {
+  const { runServiceCli } = await import("../src/cli/service-cli.mjs");
+  process.exitCode = await runServiceCli({ args, packageRoot });
+  return;
+}
+
 if (args[0] === "install" || args[0] === "uninstall") {
   if (args.includes("--help") || args.includes("-h")) {
     printSkillUsage(args[0]);
     return;
   }
+  let cleanupPurgedService;
+  if (args[0] === "uninstall" && args.includes("--global") && args.includes("--purge")
+    && !args.includes("--dry-run")) {
+    const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+    const { ownedGlobalInstall, removeInstallMarker } = await import("../src/service/runtime.mjs");
+    const { serviceStatus, stopRuntime } = await import("../src/service/supervisor.mjs");
+    if (ownedGlobalInstall(packageRoot, packageJson.version)) {
+      cleanupPurgedService = async () => {
+        const status = await serviceStatus();
+        if (status.running && !await stopRuntime(status.runtime)) {
+          throw new Error("the owned global service did not stop");
+        }
+        removeInstallMarker(packageRoot);
+      };
+    }
+  }
   process.exitCode = runSkillsInstallCli({ args, packageRoot });
+  if (process.exitCode === 0 && cleanupPurgedService) {
+    try {
+      await cleanupPurgedService();
+      console.log("Burnlist: stopped and removed the global service registration.");
+    } catch (error) {
+      console.error(`Burnlist: ${error.message}`);
+      process.exitCode = 1;
+    }
+  }
   return;
 }
 
@@ -112,6 +151,9 @@ if (!["oven", "hooks", "loop", "agent", "route"].includes(args[0]) && (args.incl
 
 Usage:
   burnlist [--port <port>] [--scan-root <repo[,repo...]>]
+  burnlist -i [--server <url>]
+  burnlist service <start|stop|restart|status>
+  burnlist serve [dashboard options]
   burnlist --plan <burnlist.md> --check
   burnlist --plan <burnlist.md> --digest
   burnlist --close-completed [--scan-root <repo[,repo...]>]
@@ -156,6 +198,8 @@ Usage:
   burnlist uninstall [--global] [--agent codex,claude] [--dry-run] [--purge]
 
 Options:
+  -i, --interactive     Open the interactive terminal UI.
+  --local               With -i, force an ephemeral local server.
   --auto-port           Try the next available loopback port.
   --host <host>         Bind host; loopback is required by default.
   --state-dir <path>    Override ignored dashboard observer state.
@@ -194,8 +238,19 @@ if (args[0] === "oven") {
   await runLoopCliEntry(args.slice(1));
 } else if (["register", "unregister", "roots", "init"].includes(args[0])) {
   await import("../src/cli/registry-cli.mjs");
-} else {
+} else if (args[0] === "serve") {
+  process.argv.splice(2, 1);
   await import("../src/server/burnlist-dashboard-server.mjs");
+} else {
+  const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+  const { ownedGlobalInstall } = await import("../src/service/runtime.mjs");
+  if (args.length === 0 && ownedGlobalInstall(packageRoot, packageJson.version)) {
+    const { ensureSharedService } = await import("../src/service/supervisor.mjs");
+    const runtime = await ensureSharedService({ packageRoot, version: packageJson.version });
+    console.log(runtime.url);
+  } else {
+    await import("../src/server/burnlist-dashboard-server.mjs");
+  }
 }
 }
 

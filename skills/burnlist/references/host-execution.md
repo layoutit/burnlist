@@ -4,6 +4,45 @@ Use this reference when a host executes a prepared agent node. It is the whole
 provider-neutral contract; choose the matching `loop-providers/` recipe before
 invocation. If subscriptions are unknown, read `loop-provider-setup.md` first.
 
+## Before the first Run: the trusted check capability
+
+Every built-in Loop routes through a `validate` node backed by
+`<check id="validate" capability="repo-verify"/>`. Until that capability exists
+and is trusted, `burnlist loop create` fails with
+`ENOENT ... .burnlist/loop-capabilities.json`. Two setup facts are easy to get
+wrong:
+
+**The on-disk file is FLAT — not the wrapper shown in
+`loop-capability-example.json`.** That example shows `catalog` and `grants` as
+two *inputs to different commands*; copying it verbatim yields
+`Loop capability: catalog has an invalid schema`. `.burnlist/loop-capabilities.json`
+must contain only the inner catalog:
+
+```json
+{ "schema": "burnlist-loop-capabilities@1", "capabilities": [ { "id": "repo-verify", "...": "..." } ] }
+```
+
+**`filesystem.read` / `filesystem.write` must be byte-sorted and unique**, or
+validation fails with `filesystem read must be sorted and unique`. `argv[0]`
+must be an absolute executable path. Then:
+
+```sh
+burnlist loop capability inspect repo-verify        # prints the cp1-sha256 revision
+burnlist loop capability trust repo-verify \
+  --revision cp1-sha256:<hex> --grants ./grants.json
+```
+
+`--grants` takes the flat grant object (every capability key except `id`) and
+the file must live **inside the repository** — a path under `/tmp` is rejected
+as `must name a bounded regular no-follow JSON file`. Grants may only narrow
+the policy, never widen it.
+
+**Candidate scan rejects large or binary untracked files.** If `loop next`
+fails with `Loop candidate: candidate file is unsafe or too large: <path>`, the
+repository is offering a generated artifact to the candidate set. Git-ignore
+the artifact (build output, dataset shards, model checkpoints); do not shrink
+real source to satisfy the scan.
+
 ## Next, execute, submit
 
 1. Create the Run, then ask Burnlist for its next prepared host task:

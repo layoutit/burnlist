@@ -4,6 +4,8 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 export type Binding = {
   source: string;
   format?: string;
+  optional?: boolean;
+  fallback?: JsonValue;
 };
 
 export type SlotDef = CellDef | { icon: string } | { text: string };

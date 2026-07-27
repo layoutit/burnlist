@@ -1,0 +1,6 @@
+<oven id="terminal-kpi-strip-evidence" version="1.0.0" contract="checklist-progress@1" theme="checklist">
+  <kpi-strip title="Isolated KPI strip" aria-label="KPI strip evidence">
+    <kpi-item heading="Strip Alpha" value="alpha-only"/>
+    <kpi-item heading="Strip Beta" value="beta-only"/>
+  </kpi-strip>
+</oven>

@@ -4,12 +4,10 @@ import {
   fstatSync,
   openSync,
   readSync,
-  readdirSync,
   realpathSync,
   statSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
-import { homedir } from "node:os";
+import { basename } from "node:path";
 
 import { AGENT_MONITOR_LIMITS } from "./agent-monitor-data-contract.mjs";
 import {
@@ -34,6 +32,7 @@ import {
   projectAgentMonitorLines,
   reprojectRecentAgentMonitorEvents,
 } from "./agent-monitor-reproject.mjs";
+import { discoverAgentSessionSources } from "./agent-monitor-sources.mjs";
 
 export const AGENT_MONITOR_PRODUCER_CONTRACT = "burnlist-agent-monitor-producer@1";
 export const AGENT_MONITOR_PRODUCER_LIMITS = Object.freeze({
@@ -46,103 +45,26 @@ export const AGENT_MONITOR_PRODUCER_LIMITS = Object.freeze({
   metadataBytes: 512 * 1024,
 });
 
-const metadataCache = new Map();
 const identityCache = new Map();
-
-function directories(path, pattern) {
-  try {
-    return readdirSync(path, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && pattern.test(entry.name))
-      .map((entry) => join(path, entry.name))
-      .sort().reverse();
-  } catch {
-    return [];
-  }
-}
-
-function sessionFiles(root, nowMs, limits) {
-  const candidates = [];
-  let directoryCount = 0;
-  const recentAfter = nowMs - limits.days * 86_400_000;
-  const days = directories(root, /^\d{4}$/u).flatMap((year) => directories(year, /^\d{2}$/u))
-    .flatMap((month) => directories(month, /^\d{2}$/u));
-  for (const directory of days) {
-    directoryCount += 1;
-    if (directoryCount > limits.maxDirectories || candidates.length >= limits.maxCandidateFiles) break;
-    let entries;
-    try { entries = readdirSync(directory, { withFileTypes: true }); } catch { continue; }
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
-      const path = join(directory, entry.name);
-      try {
-        const stat = statSync(path);
-        if (stat.isFile() && stat.size > 0 && stat.size <= limits.maxFileBytes && stat.mtimeMs >= recentAfter) {
-          candidates.push({ path, mtimeMs: stat.mtimeMs, size: stat.size });
-        }
-      } catch { /* A disappearing rollout is not a discoverable session. */ }
-      if (candidates.length >= limits.maxCandidateFiles) break;
-    }
-  }
-  return candidates
-    .sort((left, right) => right.mtimeMs - left.mtimeMs)
-    .slice(0, limits.maxSessions);
-}
-
-function readPrefix(path, limit) {
-  let fd;
-  try {
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const stat = fstatSync(fd);
-    const buffer = Buffer.alloc(Math.min(stat.size, limit));
-    const bytes = readSync(fd, buffer, 0, buffer.length, 0);
-    return buffer.subarray(0, bytes).toString("utf8");
-  } finally {
-    if (fd !== undefined) closeSync(fd);
-  }
-}
-
-function sessionMetadata(path, limits) {
-  let stat;
-  try { stat = statSync(path); } catch { return null; }
-  const cached = metadataCache.get(path);
-  if (cached?.dev === stat.dev && cached?.ino === stat.ino
-      && cached?.size === stat.size && cached?.mtimeMs === stat.mtimeMs) return cached.value;
-  let value = null;
-  try {
-    for (const line of readPrefix(path, limits.metadataBytes).split("\n")) {
-      if (!line.includes('"type":"session_meta"')) continue;
-      const record = JSON.parse(line);
-      const session = record?.payload?.session_id ?? record?.payload?.id;
-      const cwd = record?.payload?.cwd;
-      if (typeof session === "string" && typeof cwd === "string") {
-        value = { session, cwd: resolve(cwd) };
-        break;
-      }
-    }
-  } catch { /* Invalid or incomplete metadata does not identify a feed. */ }
-  metadataCache.set(path, { dev: stat.dev, ino: stat.ino, size: stat.size, mtimeMs: stat.mtimeMs, value });
-  return value;
-}
 
 export function discoverAgentMonitorSessions({
   repoRoot = process.cwd(),
   logicalRepoRoot,
-  sessionRoot = join(homedir(), ".codex", "sessions"),
   nowMs = Date.now(),
   limits = AGENT_MONITOR_PRODUCER_LIMITS,
+  ...sourceOptions
 } = {}) {
   const root = logicalRepoRoot ? realpathSync(logicalRepoRoot) : ensureAgentMonitorFeedRoot(repoRoot).logicalRepoRoot;
-  return sessionFiles(sessionRoot, nowMs, limits).flatMap((file) => {
-    const metadata = sessionMetadata(file.path, limits);
-    if (!metadata) return [];
+  return discoverAgentSessionSources({ ...sourceOptions, nowMs, limits }).flatMap((file) => {
     try {
-      const cacheKey = `${metadata.cwd}\0${metadata.session}`;
+      const session = file.provider === "codex" ? file.session : `${file.provider}:${file.session}`;
+      const cacheKey = `${file.cwd}\0${session}`;
       let resolved = identityCache.get(cacheKey);
       if (!resolved) {
-        resolved = resolveAgentMonitorIdentity({ cwd: metadata.cwd, session: metadata.session });
+        resolved = resolveAgentMonitorIdentity({ cwd: file.cwd, session });
         identityCache.set(cacheKey, resolved);
       }
-      return resolved.logicalRepoRoot === root ? [{ ...file, ...metadata, resolved }] : [];
+      return resolved.logicalRepoRoot === root ? [{ ...file, session, resolved }] : [];
     } catch {
       return [];
     }
@@ -209,7 +131,7 @@ function readCompleteChunk(path, offset, limit, maxFileBytes) {
     fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const before = fstatSync(fd);
     if (!before.isFile() || before.size > maxFileBytes) {
-      throw new Error("Codex session is not a bounded regular file");
+      throw new Error("Agent session is not a bounded regular file");
     }
     const available = Math.min(Math.max(0, before.size - offset), limit);
     const buffer = Buffer.alloc(available);
@@ -221,7 +143,7 @@ function readCompleteChunk(path, offset, limit, maxFileBytes) {
     }
     const after = fstatSync(fd);
     if (before.dev !== after.dev || before.ino !== after.ino || after.size < before.size) {
-      throw new Error("Codex session changed identity during read");
+      throw new Error("Agent session changed identity during read");
     }
     const source = buffer.subarray(0, bytes);
     const newline = source.lastIndexOf(0x0a);
@@ -251,6 +173,7 @@ export function updateAgentMonitorSession(candidate, {
       maxEvents: AGENT_MONITOR_LIMITS.maxEvents,
       maxFileBytes: limits.maxFileBytes,
       path: candidate.path,
+      provider: candidate.provider,
       session: candidate.session,
     });
     const snapshot = buildAgentMonitorSnapshot({
@@ -305,6 +228,7 @@ export function updateAgentMonitorSession(candidate, {
     position.cursor.line + 1,
     candidate.session,
     generatedAt,
+    candidate.provider,
   );
   const retained = position.continuing ? snapshotMonitorEvents(prior.snapshot) ?? [] : [];
   const visibleEvents = coalesceAgentMonitorEvents([...retained].reverse().concat(parsedEvents))
@@ -337,6 +261,7 @@ function writeProducerState(statePath, candidate, cursor, manifest) {
   writeAgentMonitorJson(statePath, {
     contract: AGENT_MONITOR_PRODUCER_CONTRACT,
     session: candidate.session,
+    provider: candidate.provider,
     file: candidate.path,
     dev: cursor.dev,
     ino: cursor.ino,

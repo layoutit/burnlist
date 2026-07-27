@@ -12,6 +12,7 @@ Use one skill for the full Burnlist lifecycle. Burnlist is task state, not imple
 
 ## Choose A Mode
 
+- **Repository setup mode:** when the user says “set up Burnlist in this repo,” “initialize Burnlist here,” or equivalent, read `references/getting-started.md`, run `burnlist init` in the current repository, confirm that the root is registered, briefly explain that a Burnlist is an evidence-backed shrinking work list, and ask one direct question: “What do you want to burn?” Do not make the user choose commands, folders, Ovens, Loops, or server settings before they have described the goal. Once they answer, switch to creation mode.
 - **Creation mode:** when creating, hardening, restructuring, or readying a Burnlist, read `references/burnlist-creation.md` completely before editing Burnlist files. Creation owns `draft -> ready` and does not implement the planned work unless the user also asks to continue into execution.
 - **Execution mode:** when implementing or continuing a ready/in-progress Burnlist, follow the execution path below. Keep the hot working set small: the active item, relevant `goal.md` guardrails, current implementation evidence, and the state mutation being performed.
 - **Coordination mode:** when selecting independent Burnlists, opening worker tasks, monitoring active workers, or assigning the next queue, read `references/oven-event-coordination.md` completely before acting. Retain exact task handles and use canonical Burnlist state plus Oven events; do not use model heartbeats as a status loop.
@@ -34,7 +35,7 @@ Read references only when their trigger applies:
 - `references/oven-event-coordination.md`: mandatory for multi-Burnlist worker coordination, generic Oven progress events, replayable subscriptions, and event-triggered coordinator wakeups.
 - `references/host-execution.md`: generic host next/execute/submit protocol for a prepared Loop Run; read before a host executes an agent node.
 - `references/operational-ux.md`: optional per-item recommendations, coarse-to-fine defaults, P0-P4 review handling, truthful live states, provenance, and task-fit Oven visual proof.
-- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet.
+- `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet. Its two top-level keys are inputs to *different* commands — `catalog` is the flat body of `.burnlist/loop-capabilities.json`, `grants` is the `--grants` file for `loop capability trust`. Copying the file verbatim to either location fails; see `references/host-execution.md`.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
 
@@ -123,7 +124,7 @@ For detailed examples and banned narration, read `references/burnlist-visible-ou
 
 ## Dashboard Boundary
 
-The live dashboard is mandatory as an observer, but agents do not own its server lifecycle. Do not start a per-plan server, manage ports, claim a dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize any dashboard server lifecycle or UI inspection.
+The live dashboard is mandatory as an observer, but agents do not manually manage its server lifecycle. A global Burnlist installation owns one persistent shared loopback service for registered repositories; `burnlist` and `burnlist -i` ensure it is healthy. A local installation owns an ephemeral loopback service only for `burnlist -i` and stops it when the TUI exits. Do not start a per-plan server, manage ports, claim an unverified dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Use `burnlist service status` only when lifecycle diagnosis is relevant; preserve `--server` as an explicit user-selected override. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize dashboard UI inspection.
 
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
@@ -152,7 +153,7 @@ Read `references/burnlist-dashboard.md` only for dashboard/chart/log/timeline/re
 
 Burnlist has two independent installable systems. Either or both may be present:
 
-- **Skill discovery** (`burnlist install`) makes this Burnlist skill discoverable to both agents. The default is a per-repository, untracked-local registration in `<repo>/.claude/skills/burnlist` for Claude Code and `<repo>/.agents/skills/burnlist` for Codex. `--global` instead uses `~/.claude/skills/burnlist` and `~/.agents/skills/burnlist`; a global npm installation of Burnlist automatically registers both global skills. Use `--commit` only for a per-repository portable copy intended for Git; `--agent codex,claude` limits targets and `--dry-run` previews. `burnlist uninstall` is the inverse; `burnlist uninstall --global --purge` also removes the global npm package.
+- **Skill discovery** (`burnlist install`) makes this Burnlist skill discoverable to both agents. The default is a per-repository, untracked-local registration in `<repo>/.claude/skills/burnlist` for Claude Code and `<repo>/.agents/skills/burnlist` for Codex. `--global` instead uses `~/.claude/skills/burnlist` and `~/.agents/skills/burnlist`; a global npm installation automatically registers both skills and starts the shared observer service. Use `--commit` only for a per-repository portable copy intended for Git; `--agent codex,claude` limits targets and `--dry-run` previews. `burnlist uninstall` is the inverse; `burnlist uninstall --global --purge` also removes the global npm package.
 - **Native observability hooks** (`burnlist hooks install`) install per-repository edit-capture and advisory Loop-observation commands, not skills. Codex consumes `<repo>/.codex/hooks.json`; Claude Code consumes `<repo>/.claude/settings.json`. They invoke `burnlist streaming-diff hook` around edits and `burnlist hooks observe` for supported native lifecycle events, merging with existing entries. Observations are bounded local facts and never semantic Loop outcomes. Hooks have no global mode: use `burnlist hooks uninstall` or `burnlist hooks status` in the repository, optionally with `--agent codex,claude`. `--untracked` asks install to add the config to `.git/info/exclude`; it cannot hide an already tracked config.
 - **Run retention** keeps operational reads bounded without a global history cap. `burnlist loop list` returns the newest bounded window; item hazards validate every relevant Run and fail closed on relevant corruption. `burnlist loop prune --retain <count>` explicitly archives only safely terminal, non-current Runs and never deletes active/converged authority.
 
@@ -171,6 +172,36 @@ Honor the choice already assigned by the user or active item:
 Do not substitute a different Loop because it is more convenient. Read
 `references/host-execution.md` for the core CLI protocol; it is intentionally
 not duplicated here.
+
+### Running an assigned Loop is mandatory
+
+**If an active item carries a Loop assignment, you MUST execute it.** An
+assigned Loop is the item's declared proof path, not a suggestion.
+
+```sh
+burnlist loop create item:<burnlist-id>#<item-id>   # note the `item:` prefix
+burnlist loop next run:<id>                         # claims node, returns the worker prompt
+burnlist loop submit run:<id> --outcome complete    # or approve / reject / escalate
+```
+
+`burnlist burn` refuses an item that carries Loop metadata
+(`direct burn is blocked by Loop metadata`). That refusal means *run the
+Loop*, not *remove the Loop*.
+
+**`burnlist loop unassign` is not an escape hatch.** Unassigning an item that
+has no terminal Run, then burning it directly, silently converts declared
+multi-agent work into unverified solo work and defeats the assignment. Doing
+so is a **scope change that requires explicit user approval** — state plainly
+that the item was assigned `<loop>`, that you intend to burn it without
+running that Loop, and why, then wait. Never unassign merely because the
+direct path is faster or because the Loop protocol is unfamiliar; if the CLI
+grammar is unclear, read `references/host-execution.md` rather than routing
+around it.
+
+Legitimate reasons to unassign are narrow: the user asks for it, the Loop's
+trusted-check capability provably cannot exist yet (e.g. the repo has nothing
+for `repo-verify` to run), or the item's scope changed enough to need a
+different Loop. Record which one applied.
 
 The host—not Burnlist—chooses and supervises each native agent or provider CLI.
 If provider availability is unknown, read `references/loop-provider-setup.md`,

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import type { ResolvedOvenIr } from "@hooks";
 import { adaptPerformanceTracingReport } from "@lib";
+import { adaptPerformanceTracingEnvelope } from "../../lib/performance-tracing-adapter";
 import { adaptDifferentialTesting, type DifferentialTestingData } from "../../lib/differential-testing-adapter";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
 import { withDifferentialTestingEnvelope } from "@/oven/runtime/oven-payload-metadata";
@@ -18,7 +19,7 @@ function adaptEnvelope(raw: unknown, adaptPayload: (payload: unknown) => Differe
 }
 
 export const dtAdapt = (raw: unknown) => adaptEnvelope(raw, (payload) => payload as DifferentialTestingData);
-export const ptAdapt = (raw: unknown) => adaptEnvelope(raw, (payload) => adaptPerformanceTracingReport(payload) as DifferentialTestingData);
+export const ptAdapt = (raw: unknown) => adaptPerformanceTracingEnvelope(raw);
 
 function DifferentialTestingShell({ children, performanceTracing = false }: { children: ReactNode; performanceTracing?: boolean }) {
   useEffect(() => {

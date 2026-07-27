@@ -12,6 +12,8 @@ const EXCLUDED_PREFIXES = [
   "notes/burnlists/",
   "output/",
   "research/",
+  "tui/dist/",
+  "tui/node_modules/",
   "website/.astro/",
   "website/dist/",
   "website/node_modules/",

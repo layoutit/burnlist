@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -64,6 +65,17 @@ test("lowers Storybook alert variants without requiring icons or custom styles",
   ));
   assertDomEquivalent(markup, expected);
   assert.doesNotMatch(markup, /<svg/u);
+});
+
+test("shared compiled progress fixture preserves optional and fallback bindings", () => {
+  const source = readFileSync("tui/src/catalog/progress-fixture.oven", "utf8");
+  const compiled = compileOven(source, { file: "tui/src/catalog/progress-fixture.oven" });
+  assert.equal(compiled.ok, true, compiled.ok ? "" : JSON.stringify(compiled.diagnostics));
+  const def = lowerOvenIr(compiled.ir), strip = def.sections[0].cells[0], optional = strip.children?.find((cell) => cell.props?.heading === "Optional");
+  assert.deepEqual(optional?.bind?.value, { source: "/missing", optional: true, fallback: "waiting" });
+  assert.deepEqual(optional?.slots?.visual && "bind" in optional.slots.visual ? optional.slots.visual.bind?.percent : undefined, { source: "/missing", optional: true, fallback: "25" });
+  const markup = renderToStaticMarkup(createElement(OvenView, { def, payload: { percent: 57, done: 4, total: 7, burns: [], metric: { total: 0 }, required: "ready" } }));
+  assert.match(markup, /waiting/u);
 });
 
 test("lowers trusted grid and panel geometry into style objects", () => {

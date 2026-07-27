@@ -1,13 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Badge } from "./Badge";
 
+const fixture = componentPairFixture.badge;
 const variants = ["default", "secondary", "outline", "ghost", "link", "destructive"] as const;
 
 const meta = {
   title: "UI/Badge",
   component: Badge,
   args: {
-    children: "active",
+    children: fixture.label,
     variant: "default",
   },
   argTypes: {
@@ -18,7 +21,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Playground = {} satisfies Story;
+export const Playground = {
+  render: (args) => <PairPreview component="badge" terminalArgs={{ ...args, label: args.children }}><Badge {...args} /></PairPreview>,
+} satisfies Story;
 
 export const Variants = {
   render: () => (

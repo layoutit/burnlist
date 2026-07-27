@@ -23,7 +23,7 @@ function renderRuntime(value: unknown) {
 }
 
 test("log-table runtime renders compiled @item columns like LogTable", () => {
-  const props = buildLogTableProps(table, payload, { resolvePointer, formatRegistry });
+  const props = buildLogTableProps(table, payload, { resolvePointer });
   const expected = renderToStaticMarkup(createElement(LogTable, { ...props }));
   assertDomEquivalent(renderRuntime(payload), expected);
   assert.equal(props.rows[0].cells[0].content, formatRegistry["time-only"](payload.events[0].time));

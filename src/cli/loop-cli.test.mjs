@@ -33,7 +33,11 @@ function fixture({ git = true } = {}) {
 }
 
 function runCommand(repo, args) {
-  return spawnSync(process.execPath, [cli, ...args], { cwd: repo, encoding: "utf8" });
+  return spawnSync(process.execPath, [cli, ...args], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, BURNLIST_HOME: join(dirname(repo), ".burnlist-home") },
+  });
 }
 function assign(context) {
   const result = runCommand(context.repo, ["loop", "assign", itemRef, "loop:builtin:review", "--repo", context.repo]);
@@ -174,7 +178,7 @@ test("real executable emits the same view bytes through a pipe and a PTY", { ski
     const pty = spawnSync("expect", ["-c", expect], {
       cwd: context.repo,
       encoding: "utf8",
-      env: { ...process.env, BL_NODE: process.execPath, BL_CLI: cli, BL_REPO: context.repo },
+      env: { ...process.env, BURNLIST_HOME: join(context.directory, ".burnlist-home"), BL_NODE: process.execPath, BL_CLI: cli, BL_REPO: context.repo },
     });
     assert.equal(pty.status, 0, pty.stderr);
     assert.equal(pty.stdout, pipe.stdout);

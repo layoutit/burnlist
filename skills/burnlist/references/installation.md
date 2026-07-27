@@ -18,7 +18,7 @@ By default, `burnlist install` registers the bundled Burnlist skill for both age
 | Claude Code | `<repo>/.claude/skills/burnlist` | `~/.claude/skills/burnlist` |
 | Codex | `<repo>/.agents/skills/burnlist` | `~/.agents/skills/burnlist` |
 
-The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. A global npm installation of Burnlist automatically registers those global skills for both agents. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--force` permits an untracked managed copy to be downgraded to a symlink; tracked copies must be removed through Git first. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
+The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. A global npm installation of Burnlist automatically registers those global skills for both agents and starts one persistent shared loopback observer. The service observes only the launch repository plus explicitly registered roots, writes its discoverable runtime under `~/.burnlist/server.json`, and is automatically restored by `burnlist` or `burnlist -i` if it is not healthy. A repository-local installation does not leave a service behind: `burnlist -i` starts an ephemeral observer and stops it when the terminal UI exits. Pass `--local` to force that behavior from a global installation, or `--server <url>` to use an explicitly managed server. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--force` permits an untracked managed copy to be downgraded to a symlink; tracked copies must be removed through Git first. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
 
 Codex uses the shared `~/.agents/skills` target. An older manually installed
 `~/.codex/skills/burnlist` can shadow that registration in some clients. If
@@ -86,6 +86,13 @@ burnlist install --global
 
 # Global skill plus this repository's hooks
 burnlist install --global && burnlist hooks install
+
+# Inspect or explicitly control the shared global observer
+burnlist service status
+burnlist service restart
+
+# Force one ephemeral observer for this TUI session
+burnlist -i --local
 
 # Remove the per-repository skill only
 burnlist uninstall

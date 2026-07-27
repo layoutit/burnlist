@@ -159,7 +159,7 @@ test("a projection upgrade replays the recent source tail instead of preserving 
     assert.equal(upgraded.changed, 1);
     assert.equal(upgraded.feeds[0].reprojected, true);
     const current = loadAgentMonitorFeed(identity.feedDir);
-    assert.equal(current.snapshot.monitor.projectionVersion, 11);
+    assert.equal(current.snapshot.monitor.projectionVersion, 12);
     assert.equal(current.snapshot.raw.completed[0].detail, "Working on the exact feed.");
   } finally {
     context.cleanup();

@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Field, FieldDescription, FieldLabel } from "../Field";
 import { Input } from "./Input";
 
+const fixture = componentPairFixture.input;
 const meta = {
   title: "UI/Input",
   component: Input,
@@ -13,8 +16,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground = {
-  args: { "aria-label": "Search Burnlists" },
-  render: (args) => <Input {...args} className="storybook-control-demo" />,
+  args: { "aria-label": fixture.label, defaultValue: fixture.value },
+  render: (args) => (
+    <PairPreview component="input" terminalArgs={{ ...args, label: args["aria-label"], value: args.value ?? args.defaultValue }}>
+      <Input {...args} className="storybook-control-demo" />
+    </PairPreview>
+  ),
 } satisfies Story;
 
 export const States = {

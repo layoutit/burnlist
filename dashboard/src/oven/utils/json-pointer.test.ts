@@ -26,4 +26,5 @@ test("returns the payload for empty and root pointers", () => {
 
 test("decodes RFC6901 escaped path segments", () => {
   assert.equal(resolvePointer(payload, "/a~1b/c~0d"), "escaped");
+  assert.equal(resolvePointer({ "bad~2": "literal" }, "/bad~2"), "literal");
 });

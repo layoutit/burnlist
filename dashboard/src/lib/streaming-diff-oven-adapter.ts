@@ -1,3 +1,4 @@
+// @ts-expect-error This production JavaScript helper intentionally has no declaration file.
 import { parseStreamingDiffCard } from "./streaming-diff.mjs";
 import type { StreamingDiffCard, StreamingDiffIdentity } from "./types";
 

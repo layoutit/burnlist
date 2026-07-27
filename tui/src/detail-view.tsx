@@ -1,0 +1,77 @@
+import { createTextAttributes } from "@opentui/core";
+import { BrandMark } from "./brand-mark";
+import { compactTime, fitText, progressLabel } from "./theme";
+import { useTerminalPalette } from "./terminal-accessibility";
+import { useTerminalChrome } from "./terminal-chrome";
+import { useCoalescedTerminalDimensions } from "./use-coalesced-terminal-dimensions";
+import type { BurnlistSummary, ProgressSnapshot } from "./types";
+import { LANDING_FILTERS, type LandingFilter } from "./landing-filter";
+
+export function BrandHeader({ center, subtitle, compact = false, activity, activityGlyph = "✦", landingFilter }: {
+  center?: string | null;
+  subtitle: string;
+  compact?: boolean;
+  activity?: { message: string; tone: "error" | "info" } | null;
+  activityGlyph?: string;
+  landingFilter?: LandingFilter;
+}) {
+  const palette = useTerminalPalette();
+  const chrome = useTerminalChrome();
+  const { width } = useCoalescedTerminalDimensions();
+  const activityText = activity?.tone === "info" ? `${activityGlyph} Refreshing` : activity?.message ?? "";
+  const right = landingFilter ? "landing filters" : activityText;
+  const innerWidth = Math.max(0, width - 4);
+  const leftWidth = Math.min(12, innerWidth);
+  const rightWidth = right && width >= 64 ? Math.min(landingFilter ? 43 : 24, Math.max(10, Math.floor(width * (landingFilter ? 0.42 : 0.22)))) : 0;
+  const centerWidth = Math.max(0, innerWidth - leftWidth - rightWidth);
+  return <box height={2} flexShrink={0} flexDirection="column" backgroundColor={chrome.header}>
+    <box height={1} flexDirection="row" alignItems="center" paddingLeft={2} paddingRight={2}>
+      <box width={leftWidth} flexShrink={0} flexDirection="row"><BrandMark /><text fg={palette.soft}>{fitText("Burnlist", Math.max(0, leftWidth - 3))}</text></box>
+      {centerWidth ? <box width={centerWidth} flexShrink={0} paddingLeft={1} paddingRight={1}><text fg={center ? palette.foreground : palette.muted}>{fitText(center ?? subtitle, Math.max(0, centerWidth - 2))}</text></box> : null}
+      {rightWidth ? <box width={rightWidth} flexShrink={0} justifyContent="flex-end" flexDirection="row">
+        {landingFilter ? LANDING_FILTERS.map((filter) => {
+          const selected = filter === landingFilter;
+          return <box key={filter} paddingLeft={1} paddingRight={1} backgroundColor={selected ? chrome.selected : chrome.header}>
+            <text fg={selected ? palette.foreground : palette.dim} attributes={selected ? createTextAttributes({ bold: true }) : undefined}>{filter.toUpperCase()}</text>
+          </box>;
+        }) : <text fg={activity?.tone === "error" ? palette.red : palette.dim}>{fitText(right, rightWidth).trimStart()}</text>}
+      </box> : null}
+    </box>
+    <box height={1} paddingLeft={2} paddingRight={2}><text fg={chrome.line}>{"─".repeat(Math.max(1, width - 4))}</text></box>
+  </box>;
+}
+
+function progressBar(percent: number | null, width: number): string {
+  if (percent === null) return "─".repeat(width);
+  const done = Math.max(0, Math.min(width, Math.round(width * percent / 100)));
+  return `${"━".repeat(done)}${"─".repeat(width - done)}`;
+}
+
+export function DetailSummary({ burnlist, progress, compact, width }: {
+  burnlist: BurnlistSummary | null;
+  progress: ProgressSnapshot | null;
+  compact: boolean;
+  width: number;
+}) {
+  const palette = useTerminalPalette();
+  if (!burnlist) return <box padding={2}><text fg={palette.dim}>Choose a Burnlist</text></box>;
+  const percent = progress?.percent ?? burnlist.percent;
+  const done = progress?.done ?? burnlist.done;
+  const total = progress?.total ?? burnlist.total;
+  const remaining = Math.max(0, total - (done ?? 0));
+  const goal = progress?.goal?.sections.find((section) => section.title.toLowerCase() === "goal")?.body
+    ?? progress?.goal?.sections[0]?.body
+    ?? "";
+  const textWidth = Math.max(8, width - 4);
+  return <box flexDirection="column" paddingLeft={2} paddingRight={2} overflow="hidden">
+    <box width={compact ? textWidth : undefined} flexGrow={compact ? 0 : 1} flexShrink={0} minWidth={0} flexDirection="column" overflow="hidden">
+      <text fg={palette.dim}>{fitText(`${burnlist.repo} · ${burnlist.id}`, textWidth).trimEnd()}</text>
+      <text fg={palette.foreground} attributes={createTextAttributes({ bold: true })}>{fitText(burnlist.title, textWidth).trimEnd()}</text>
+      <text fg={burnlist.statusLabel === "Blocked" ? palette.red : burnlist.status === "active" ? palette.green : palette.muted}>{fitText(`${burnlist.statusLabel.toUpperCase()} · ${burnlist.ovenName}`, textWidth).trimEnd()}</text>
+      <text fg={palette.muted}>{fitText(`${progressLabel(done, total, percent, burnlist.progressLabel)} · ${remaining} remaining`, textWidth).trimEnd()}</text>
+      <text fg={percent === null ? palette.dim : palette.green}>{progressBar(percent, Math.max(1, Math.min(textWidth, compact ? 18 : 28)))}</text>
+      {!compact && goal ? <text fg={palette.muted}>{fitText(goal, 34).trimEnd()}</text> : null}
+      {!compact ? <text fg={palette.dim}>{`Updated ${compactTime(burnlist.updatedAt)}`}</text> : null}
+    </box>
+  </box>;
+}

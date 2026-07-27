@@ -1,22 +1,28 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Progress } from "./Progress";
 
+const fixture = componentPairFixture.progress;
 const meta = {
   title: "UI/Progress",
   component: Progress,
   args: {
-    "aria-label": "Burnlist completion",
-    value: 68,
+    "aria-label": fixture.label,
+    value: fixture.value,
   },
-  decorators: [
-    (Story) => <div className="storybook-progress-demo"><Story /></div>,
-  ],
 } satisfies Meta<typeof Progress>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Playground = {} satisfies Story;
+export const Playground = {
+  render: (args) => (
+    <PairPreview component="progress" terminalArgs={{ ...args, label: args["aria-label"] }}>
+      <div className="storybook-progress-demo"><Progress {...args} /></div>
+    </PairPreview>
+  ),
+} satisfies Story;
 
 export const States = {
   render: () => (

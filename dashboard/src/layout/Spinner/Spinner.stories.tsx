@@ -1,23 +1,31 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PairPreview } from "../../components/TerminalFrame/TerminalPairPreview";
+import { componentPairFixture } from "../../../../tui/src/catalog/component-pair-fixture";
 import { Button } from "../Button";
 import { Spinner } from "./Spinner";
 
+const fixture = componentPairFixture.spinner;
 const meta = {
   title: "UI/Spinner",
   component: Spinner,
+  args: { label: fixture.label, size: "default", reducedMotion: false },
+  argTypes: {
+    size: { control: "inline-radio", options: ["sm", "default", "lg"] },
+    reducedMotion: { control: "boolean" },
+  },
   parameters: { layout: "centered" },
-} satisfies Meta<typeof Spinner>;
+} satisfies Meta;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Sizes = {
-  render: () => (
-    <div className="storybook-row">
-      <Spinner label="Loading small result" size="sm" />
-      <Spinner label="Loading result" />
-      <Spinner label="Loading large result" size="lg" />
-    </div>
+export const Playground = {
+  render: (args) => (
+    <PairPreview component="spinner" terminalArgs={args}>
+      <div className="storybook-row" data-reduced-motion={String(args.reducedMotion)}>
+        <Spinner label={String(args.label)} size={args.size as "sm" | "default" | "lg"} />
+      </div>
+    </PairPreview>
   ),
 } satisfies Story;
 

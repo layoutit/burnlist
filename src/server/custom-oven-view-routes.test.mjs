@@ -24,7 +24,15 @@ test("a custom Oven view serves compiled IR and author-shaped bound data", { tim
 
     const ovenResponse = await httpGet(baseUrl, `/api/ovens/widget-oven${query}`);
     assert.equal(ovenResponse.status, 200);
-    assert.equal(JSON.parse(ovenResponse.body).oven.ir.id, "widget-oven");
+    const definition = JSON.parse(ovenResponse.body).oven;
+    assert.equal(definition.ir.id, "widget-oven");
+    assert.equal(definition.version, "0.1.0");
+    assert.equal(definition.contract, "checklist-progress@1");
+    assert.equal(definition.dataInput, "json-payload");
+    assert.equal(definition.repoKey, repoKey);
+    for (const field of ["id", "name", "description", "version", "contract", "dataInput", "instructions", "oven", "ovenRevision", "ir"]) {
+      assert.ok(Object.hasOwn(definition, field), `terminal definition envelope is missing ${field}`);
+    }
 
     const dataResponse = await httpGet(baseUrl, `/api/oven-data/widget-oven${query}`);
     assert.equal(dataResponse.status, 200);
@@ -57,5 +65,32 @@ test("a custom Oven rejects canonical data above the configured source limit", {
     const response = await httpGet(baseUrl, `/api/oven-data/bounded-oven?repoKey=${repoKey}`);
     assert.equal(response.status, 422);
     assert.match(JSON.parse(response.body).error, /over the 64 byte limit/u);
+  });
+});
+
+test("a custom Visual Parity Oven serves a compact terminal projection", { timeout: 20_000 }, async () => {
+  const visualSource = `<oven id="visual-custom" version="0.1.0" contract="burnlist-visual-parity-data@1" theme="visual-parity">
+    <frame-card source="/byDomain"/>
+  </oven>`;
+  const payload = {
+    schema: "burnlist-visual-parity-data@1",
+    initialDomainId: "desktop",
+    domains: ["desktop"],
+    verdict: { targetPass: true, framesCount: 1, error: "" },
+    byDomain: { desktop: { frames: [{ frame: 1, tiles: [{ unused: true }], images: [{ label: "current", src: "data:image/png;base64,AA==" }] }] } },
+    comparisons: [{ duplicate: "x".repeat(10_000) }],
+  };
+  await withServer({
+    ovens: [{ id: "visual-custom", oven: visualSource }],
+    ovenData: [{ id: "visual-custom", payload }],
+  }, async ({ baseUrl }) => {
+    const catalog = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const repoKey = catalog.ovens.find((oven) => oven.id === "visual-custom")?.repoKey;
+    const full = JSON.parse((await httpGet(baseUrl, `/api/oven-data/visual-custom?repoKey=${repoKey}`)).body).payload;
+    const terminal = JSON.parse((await httpGet(baseUrl, `/api/oven-data/visual-custom?repoKey=${repoKey}&terminal=1`)).body).payload;
+    assert.ok(full.comparisons);
+    assert.equal(terminal.comparisons, undefined);
+    assert.equal(terminal.byDomain.desktop.frames[0].tiles, undefined);
+    assert.equal(terminal.byDomain.desktop.frames[0].images.length, 1);
   });
 });

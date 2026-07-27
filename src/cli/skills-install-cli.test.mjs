@@ -257,6 +257,8 @@ test("global install and uninstall honor isolated skill-directory overrides", ()
     const installed = run(context, ["install", "--global"], env);
     assert.equal(installed.status, 0);
     assert.match(installed.stdout, /global symlink \(no repo exclude\)/u);
+    assert.equal(existsSync(join(context.home, ".burnlist", "install.json")), false);
+    assert.equal(existsSync(join(context.home, ".burnlist", "server.json")), false);
     assertLink(join(claudeSkills, "burnlist"));
     assertLink(join(codexSkills, "burnlist"));
     assert.equal(existsSync(join(context.home, ".claude", "skills", "burnlist")), false);

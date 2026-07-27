@@ -13,6 +13,7 @@ import {
   writeAgentMonitorJson,
 } from "../../ovens/agent-monitor/engine/agent-monitor-feed.mjs";
 import { runAgentMonitorOnce } from "../../ovens/agent-monitor/engine/agent-monitor-producer.mjs";
+import { AGENT_MONITOR_PROVIDERS } from "../../ovens/agent-monitor/engine/agent-monitor-sources.mjs";
 import { resolveUmbrella } from "./umbrella.mjs";
 import { repoKey } from "../server/registry.mjs";
 
@@ -20,19 +21,21 @@ const tokens = process.argv.slice(2);
 if (tokens[0] === "agent-monitor") tokens.shift();
 const subcommand = tokens.shift() ?? "help";
 
-const HELP = `burnlist agent-monitor — publish one feed per exact Codex thread
+const HELP = `burnlist agent-monitor — publish one feed per exact agent session
 
 Usage:
-  burnlist agent-monitor start [--repo <path>] [--session-root <path>] [--interval-ms <ms>]
+  burnlist agent-monitor start [--repo <path>] [--providers <csv>] [--session-root <path>] [--interval-ms <ms>]
   burnlist agent-monitor stop [--repo <path>]
   burnlist agent-monitor status [--repo <path>]
-  burnlist agent-monitor run [--repo <path>] [--session-root <path>]
+  burnlist agent-monitor run [--repo <path>] [--providers <csv>] [--session-root <path>]
   burnlist agent-monitor url [--repo <path>] [--session <id>]
 
-The producer discovers recent Codex sessions by their recorded repository cwd.
+The producer discovers recent Codex, Claude, Antigravity, and Grok sessions.
+Use --providers codex,claude,agy,grok to limit discovery. --session-root overrides
+the Codex session root for compatibility and tests.
 The bare Oven route auto-opens one feed or lists exact sessions when several exist.
-Codex integrations pass their exact thread id to url --session; Burnlist never
-guesses a current thread.`;
+Integrations pass their exact provider-qualified session id to url --session;
+Burnlist never guesses a current session.`;
 
 function fail(message, status = 1) {
   console.error(`burnlist agent-monitor: ${message}`);
@@ -64,9 +67,14 @@ function logicalRepoRoot(value = process.cwd()) {
 }
 
 function producerOptions(flags) {
+  const requested = (flags.get("providers") ?? AGENT_MONITOR_PROVIDERS.join(","))
+    .split(",").map((value) => value.trim()).filter(Boolean);
+  const invalid = requested.find((provider) => !AGENT_MONITOR_PROVIDERS.includes(provider));
+  if (invalid) fail(`unsupported Agent Monitor provider "${invalid}"`, 2);
   return {
     repoRoot: logicalRepoRoot(flags.get("repo")),
     sessionRoot: resolve(flags.get("session-root") ?? join(homedir(), ".codex", "sessions")),
+    providers: requested,
   };
 }
 
@@ -112,7 +120,7 @@ function writePid(root, value) {
 }
 
 function start(flags) {
-  allowed(flags, ["repo", "session-root", "interval-ms"]);
+  allowed(flags, ["repo", "providers", "session-root", "interval-ms"]);
   const options = producerOptions(flags);
   ensureAgentMonitorFeedRoot(options.repoRoot);
   const prior = pidState(options.repoRoot);
@@ -127,6 +135,7 @@ function start(flags) {
     process.argv[1], "agent-monitor", "watch",
     "--repo", options.repoRoot,
     "--session-root", options.sessionRoot,
+    "--providers", options.providers.join(","),
     "--interval-ms", String(intervalMs),
     "--token", token,
   ];
@@ -173,7 +182,7 @@ function status(flags) {
 }
 
 function run(flags) {
-  allowed(flags, ["repo", "session-root"]);
+  allowed(flags, ["repo", "providers", "session-root"]);
   const result = runAgentMonitorOnce(producerOptions(flags));
   console.log(`Scanned ${result.scanned} session feed(s); published ${result.changed}.`);
   for (const error of result.errors) console.error(`${error.session}: ${error.error}`);
@@ -181,7 +190,7 @@ function run(flags) {
 }
 
 async function watch(flags) {
-  allowed(flags, ["repo", "session-root", "interval-ms", "token"]);
+  allowed(flags, ["repo", "providers", "session-root", "interval-ms", "token"]);
   const options = producerOptions(flags);
   const token = flags.get("token");
   if (!token || !/^[a-f0-9]{32}$/u.test(token)) fail("watch requires an internal producer token", 2);

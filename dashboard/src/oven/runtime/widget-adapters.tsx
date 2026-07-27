@@ -1,4 +1,6 @@
 import { HybridFieldList } from "../HybridFieldList/HybridFieldList";
+import { AsciiBlock } from "../AsciiBlock";
+import { ImageTriptych } from "../ImageTriptych/ImageTriptych";
 import { RefreshStatusChip } from "../RefreshStatusChip/RefreshStatusChip";
 import { ChecklistBurnPanel } from "../ChecklistBurnPanel/ChecklistBurnPanel";
 import { ChecklistEventCards } from "../ChecklistEventCards/ChecklistEventCards";
@@ -10,8 +12,8 @@ import { DomainNote } from "../DomainNote";
 import { FrameCard } from "../FrameCard";
 import { MetricTiles } from "../MetricTiles";
 import { VerdictHeader } from "../VerdictHeader";
-import { formatRegistry } from "../OvenView/registries";
 import { resolvePointer } from "../utils/json-pointer";
+import { evaluateOvenBinding } from "../../../../src/ovens/oven-value-runtime.mjs";
 import type { OvenAction, OvenIr, OvenState } from "./oven-reducer";
 import { selectCollection, selectDomain, selectMode, selectRefreshStatus } from "./oven-selectors";
 
@@ -26,14 +28,19 @@ function collectionControlId(ir: OvenIr, collectionId: string, name: string): st
   return typeof value === "string" ? value : "";
 }
 
-function bind(node: Node, prop: string, payload: unknown): unknown {
+function bind(node: Node, prop: string, payload: unknown, item?: unknown): unknown {
   const child = (node.children ?? []).find((item) => item.kind === "bind" && item.attributes?.prop === prop);
   if (!child || typeof child.attributes?.source !== "string") return undefined;
-  const format = formatRegistry[String(child.attributes.format ?? "identity")];
-  return format?.(resolvePointer(payload, child.attributes.source));
+  return evaluateOvenBinding({ source: child.attributes.source, format: String(child.attributes.format ?? "identity"), optional: child.attributes.optional === true, ...(child.attributes.fallback !== undefined ? { fallback: child.attributes.fallback } : {}) }, payload, item);
 }
 
-export function WidgetAdapter({ node, ir, state, dispatch }: { node: Node; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void }) {
+function bindProps(node: Node, payload: unknown, item?: unknown): Record<string, unknown> {
+  return Object.fromEntries((node.children ?? [])
+    .filter((child) => child.kind === "bind" && typeof child.attributes?.prop === "string")
+    .map((child) => [String(child.attributes?.prop), bind(node, String(child.attributes?.prop), payload, item)]));
+}
+
+export function WidgetAdapter({ node, ir, state, dispatch, item }: { node: Node; ir: OvenIr; state: OvenState; dispatch: (action: OvenAction) => void; item?: unknown }) {
   if (node.kind === "refresh-status") return <RefreshStatusChip refresh={resolvePointer(state.payload, String(attrs(node).source ?? "/")) as { status?: string; error?: string }} clientStatus={selectRefreshStatus(state).phase} />;
   if (node.kind === "field-list") {
     const collectionId = String(attrs(node).collectionFrom ?? "");
@@ -49,11 +56,15 @@ export function WidgetAdapter({ node, ir, state, dispatch }: { node: Node; ir: O
   const source = attrs(node).source;
   const bySelection = typeof source === "string" ? resolvePointer(state.payload, source) as Record<string, unknown> | undefined : undefined;
   const scope = selected && bySelection ? bySelection[selected] : undefined;
+  if (node.kind === "ascii-block") return <AsciiBlock {...bindProps(node, selected && bySelection ? scope : state.payload, item) as any} />;
+  // image-triptych was previously reachable only as a frame-card slot; routing it here
+  // lets an oven place a row of images directly inside an each, beside other widgets.
+  if (node.kind === "image-triptych") return <ImageTriptych {...bindProps(node, selected && bySelection ? scope : state.payload, item) as any} />;
   if (node.kind === "metric-tiles") return <MetricTiles passed={bind(node, "passed", scope) as number} total={bind(node, "total", scope) as number} ratio={bind(node, "ratio", scope) as number} meanAbsoluteDelta={bind(node, "meanAbsoluteDelta", scope) as number} maximumAbsoluteDelta={bind(node, "maximumAbsoluteDelta", scope) as number} />;
   if (node.kind === "domain-note") return <DomainNote isTarget={bind(node, "isTarget", scope) as boolean} rationale={bind(node, "rationale", scope) as string} />;
   if (node.kind === "frame-card") {
     const frames = scope && typeof scope === "object" && Array.isArray((scope as { frames?: unknown }).frames) ? (scope as { frames: Array<any> }).frames : [];
-    return <div className="visual-parity-frames">{frames.map((frame, index) => <FrameCard key={frame.frame ?? index} status={frame.status} frame={frame.frame} difference={frame.difference} images={frame.images} label={frame.label} />)}</div>;
+    return <div className="visual-parity-frames">{frames.map((frame, index) => <FrameCard key={frame.frame ?? index} status={frame.status} frame={frame.frame} difference={frame.difference} tiles={frame.tiles} images={frame.images} label={frame.label} />)}</div>;
   }
   return null;
 }

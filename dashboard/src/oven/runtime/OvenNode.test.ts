@@ -28,6 +28,23 @@ test("OvenNode collection each scopes @item and follows paging and search", () =
   assert.match(render(node, state), /second/); assert.doesNotMatch(render(node, state), /first/);
 });
 
+test("OvenNode renders ascii-block text from each collection item", () => {
+  const node: any = {
+    kind: "collection", attributes: { id: "items" }, children: [{ kind: "each", attributes: {}, children: [{
+      kind: "box", attributes: { element: "div" }, children: [{
+        kind: "ascii-block", attributes: {}, children: [
+          { kind: "bind", attributes: { prop: "text", source: "@item/art" }, children: [] },
+          { kind: "bind", attributes: { prop: "colors", source: "@item/colors" }, children: [] },
+        ],
+      }],
+    }] }],
+  };
+  const state = initOvenState(base, { items: [{ art: "xx", colors: [["red", "red"]] }] });
+  const markup = render(node, state);
+  assert.match(markup, /style="color:red">xx<\/span>/u);
+  assert.equal((markup.match(/<span /gu) ?? []).length, 1);
+});
+
 test("OvenNode composes LoopGraph from root and item-scoped sources", () => {
   const loopRun = {
     loopId: "review", state: "running", currentNode: "verify", attempt: 1, cycle: 0,
