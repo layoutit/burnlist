@@ -333,6 +333,17 @@ function dashboardEntries(ovenDataBindings) {
     contextForHandler: (handler) => ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings }),
     repoKeyForRoot: (root) => repoKey(realpathSync(root)),
     blockedEntry: blockedDashboardEntry,
+  }).map((entry) => {
+    if (!entry.planPath || !entry.repoKey) return entry;
+    const configured = findOven(entry.defaultOvenId ?? "checklist", entry.repoKey);
+    const selected = configured ?? findOven("checklist", entry.repoKey);
+    if (!selected) return entry;
+    return {
+      ...entry,
+      ovenId: selected.id,
+      ovenName: selected.name,
+      href: `/r/${encodeURIComponent(entry.repoKey)}/${encodeURIComponent(entry.id)}/o/${encodeURIComponent(selected.id)}`,
+    };
   });
 }
 

@@ -197,6 +197,8 @@ export type Burnlist = {
   lastCompletedAt: string | null;
   /** Server-validated Oven identifier. */
   ovenId: string;
+  /** Configured landing Oven before availability fallback. */
+  defaultOvenId?: string;
   ovenName: string;
   href: string;
   progressLabel: string;

@@ -66,9 +66,13 @@ Do not execute from `draft/<id>/`. If the user names a draft, switch to creation
 
 `burnlist.md` is hot shrinking state:
 
-- metadata
+- metadata, optionally including one `Default Oven: <oven-id>` presentation hint
 - `## Active Checklist`
 - terse `## Completed` ledger
+
+Use the optional default only when the user or repository has established a
+primary Oven. It changes the initial Web/TUI lens, not execution or proof. See
+`references/burnlist-protocol.md` for its exact placement and fallback.
 
 `goal.md` is the stable contract. Read it before moving `ready` to `inprogress`, before burning the first item of an active Burnlist, after compaction only when the stable contract is unclear, and whenever scope/proof authority is unclear. Do not reread it before every routine step.
 

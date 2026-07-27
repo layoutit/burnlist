@@ -2,7 +2,7 @@
 
 Read this reference only when changing or repairing the live Burnlist Progress dashboard, investigating chart/log behavior, or preparing a handoff where chart trust matters.
 
-Burnlist Progress is queue state: active checklist items burn down and completed ledger entries move progress toward `100%`. Checklist is the default Oven for that behavior. Differential Testing is source-backed reference-versus-candidate state: aligned values move toward the trusted reference under a declared comparison contract. Keep the Differential Testing detail surface separate from this Progress dashboard and bind project data only through its normalized read-only contract.
+Burnlist Progress is queue state: active checklist items burn down and completed ledger entries move progress toward `100%`. Checklist is the fallback Oven for that behavior. Differential Testing is source-backed reference-versus-candidate state: aligned values move toward the trusted reference under a declared comparison contract. Keep the Differential Testing detail surface separate from this Progress dashboard and bind project data only through its normalized read-only contract.
 
 ## Canonical State
 
@@ -12,6 +12,7 @@ The dashboard parses only:
 
 - top metadata
 - `Goal: ./goal.md`
+- optional `Default Oven: <oven-id>`
 - `## Active Checklist`
 - terse `## Completed` ledger
 
@@ -54,8 +55,11 @@ Agents should not start, stop, or announce this server during ordinary Burnlist 
 
 A Burnlist detail shows a lens switcher containing only Ovens whose data
 contract fits its `checklist-progress@1` contract. Each link opens
-`/r/<repoKey>/<burnlistId>/o/<ovenId>`; `checklist` is the default lens and
-the active lens is highlighted. Ovens with other contracts are not offered.
+`/r/<repoKey>/<burnlistId>/o/<ovenId>`. A top-level
+`Default Oven: <oven-id>` selects the initial Web and terminal lens; absent or
+unavailable values fall back to `checklist`. Explicit lens URLs remain
+authoritative, and the active lens is highlighted. Ovens with other contracts
+are not offered.
 
 The `/ovens` page renders two separate surfaces. **Official Ovens** comes only
 from `GET /api/oven-catalog`, preserves manifest order, and shows the catalog

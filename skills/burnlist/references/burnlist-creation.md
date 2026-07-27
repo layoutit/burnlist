@@ -76,6 +76,7 @@ Status: Burnlist Final
 Updated: <YYYY-MM-DD>
 Repo: `<absolute repo path>`
 Goal: ./goal.md
+Default Oven: <oven-id>
 
 ## Active Checklist
 - [ ] B1 | <short dashboard title>
@@ -85,6 +86,11 @@ Goal: ./goal.md
   Validate: `<command or artifact>`
 ## Completed
 ```
+
+Add `Default Oven:` only when the user requests a primary view or repository
+evidence clearly establishes one. Use its lowercase Oven id. Do not invent a
+default during ordinary planning; omission means Checklist. The field controls
+the initial Web/TUI lens only and is never execution or proof metadata.
 
 After writing or updating a Burnlist, report the absolute repo path, absolute `goal.md` path, absolute `burnlist.md` path, repo-local Burnlist id, whether the folder was parked in `ready/` or remains in `draft/`, whether the active queue is ready to execute, and any blocker that prevents immediate execution. Do not stage the Burnlist.
 

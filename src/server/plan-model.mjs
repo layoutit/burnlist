@@ -1,6 +1,7 @@
 import { basename, dirname, normalize, relative, resolve } from "node:path";
 import { readTextFileWithLimit, safeStat } from "./fs-safe.mjs";
 import { findLoopMetadata, locateItemSpan } from "../loops/assignment/item-metadata.mjs";
+import { ovenId } from "../ovens/oven-contract.mjs";
 
 export function twoDigit(value) {
   return String(value).padStart(2, "0");
@@ -102,6 +103,13 @@ export function parseCompleted(lines) {
   return { completed, malformed };
 }
 
+export function defaultOvenForMarkdown(markdown) {
+  const header = String(markdown).split(/^##\s+/mu, 1)[0];
+  const matches = [...header.matchAll(/^Default Oven:\s*(.*?)\s*$/gmu)];
+  if (matches.length > 1) throw new Error("Burnlist must declare Default Oven at most once.");
+  return matches.length ? ovenId(matches[0][1]) : "checklist";
+}
+
 export function parsePlan(planPath, maxBytes = 1048576) {
   const markdown = readTextFileWithLimit(planPath, maxBytes, "Burnlist");
   const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? basename(dirname(planPath));
@@ -120,6 +128,7 @@ export function parsePlan(planPath, maxBytes = 1048576) {
     items: parseActiveItems(activeLines),
     completed: completedResult.completed,
     malformedCompleted: completedResult.malformed,
+    defaultOvenId: defaultOvenForMarkdown(markdown),
     markdown,
   };
 }
@@ -279,6 +288,7 @@ export function summaryForPlan(path, maxBytes) {
       repoRoot: plan.repoRoot,
       planPath: path,
       planLabel: plan.planLabel,
+      defaultOvenId: plan.defaultOvenId,
       status: completedButUnmoved ? "complete" : lifecycle.status,
       statusLabel: completedButUnmoved ? "Done" : lifecycle.label,
       lifecycleStatus: lifecycle.status,
@@ -304,6 +314,7 @@ export function summaryForPlan(path, maxBytes) {
       repoRoot,
       planPath: path,
       planLabel: relative(repoRoot, path).replace(/\\/g, "/"),
+      defaultOvenId: "checklist",
       status: lifecycle.status,
       statusLabel: lifecycle.label,
       total: 0,

@@ -48,6 +48,12 @@ notes/burnlists/
 
 `burnlist.md` is the canonical shrinking queue. `goal.md` holds the stable contract, and `completed.md` can hold optional human-readable history. Ready work moves to `inprogress` before execution and to `completed` after the active queue is empty.
 
+An optional top-level `Default Oven: <oven-id>` line selects the first detail
+view opened from both the Web dashboard and `burnlist -i`. If it is absent, or
+the named Oven is unavailable, both surfaces open Checklist. The setting only
+chooses the landing lens; it does not change canonical progress or prevent
+switching to another compatible Oven.
+
 An active item is completed and validated before it leaves the checklist. The agent appends a terse completion record, deletes the active item, then validates the updated Burnlist. The lifecycle folder and `burnlist.md` remain the source of truth.
 
 One skill owns Burnlist creation, hardening, execution, and maintenance. The project owns implementation and verification.
