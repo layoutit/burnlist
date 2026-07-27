@@ -121,8 +121,13 @@ export function useAgentMonitorFeeds(
   return state;
 }
 
-export function useAgentMonitorSnapshot(selection: Selection) {
-  const query = selection ? new URLSearchParams(selection).toString() : "";
+export function useAgentMonitorSnapshot(selection: Selection, aggregate = false) {
+  const query = selection ? new URLSearchParams({
+    ...(aggregate ? { aggregate: "" } : {}),
+    repoKey: selection.repoKey,
+    worktreeKey: selection.worktreeKey,
+    session: selection.session,
+  }).toString() : "";
   return useOvenLiveData<AgentMonitorPayload>({
     transport: "snapshot",
     enabled: Boolean(selection),

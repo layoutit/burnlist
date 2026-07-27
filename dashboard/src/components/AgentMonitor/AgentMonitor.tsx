@@ -23,13 +23,20 @@ export function AgentMonitor({
 }) {
   const selection = agentMonitorSelection();
   const repoKey = ovenRepoKey();
+  const aggregateSelection = !selection && repoKey
+    ? { repoKey, worktreeKey: repoKey, session: "all" }
+    : null;
   const repositories = useMemo(
     () => repoKey ? [{ repoKey, label: repoKey }] : agentMonitorRepositories(projects),
     [projects, repoKey],
   );
   const activation = useAgentMonitorActivation(repositories);
-  const feeds = useAgentMonitorFeeds(repositories, projectsLoading || activation.loading, Boolean(selection));
-  const snapshot = useAgentMonitorSnapshot(selection);
+  const feeds = useAgentMonitorFeeds(
+    repositories,
+    projectsLoading || activation.loading,
+    Boolean(selection || aggregateSelection),
+  );
+  const snapshot = useAgentMonitorSnapshot(selection ?? aggregateSelection, Boolean(aggregateSelection));
   const notice = activation.error
     ? { kind: "error", text: activation.error }
     : agentMonitorSnapshotNotice(snapshot);
@@ -39,7 +46,7 @@ export function AgentMonitor({
     if (autoOpenHref) window.location.replace(autoOpenHref);
   }, [autoOpenHref]);
 
-  if (!selection) {
+  if (!selection && !aggregateSelection) {
     return <FeedList
       {...feeds}
       description="Recent Codex threads for this repository, identified by exact session id."
@@ -50,12 +57,13 @@ export function AgentMonitor({
     />;
   }
 
-  const backHref = `/r/${encodeURIComponent(selection.repoKey)}/o/agent-monitor`;
+  const current = selection ?? aggregateSelection!;
+  const backHref = `/r/${encodeURIComponent(current.repoKey)}/o/agent-monitor`;
   return <section className="agent-monitor-selected">
     <header className="agent-monitor-heading">
-      <a className="agent-monitor-back" href={backHref}>Recent threads</a>
+      {selection && <a className="agent-monitor-back" href={backHref}>All recent activity</a>}
       <h1>Agent Monitor</h1>
-      <p>Thread {selection.session}</p>
+      <p>{selection ? `Thread ${selection.session}` : "Latest activity across recent threads"}</p>
     </header>
     {notice && <p className={`agent-monitor-message${notice.kind === "error" ? " is-error" : ""}`}>{notice.text}</p>}
     {snapshot.data && <OvenRuntime ir={ir} payload={snapshot.data} />}

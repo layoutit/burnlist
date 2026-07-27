@@ -15,9 +15,15 @@ import {
   agentMonitorFeedDir,
   agentMonitorSessionPath,
   isAgentMonitorSessionPath,
+  loadAgentMonitorFeed,
   readAgentMonitorManifest,
   verifiedAgentMonitorFeedRoot,
 } from "./agent-monitor-feed.mjs";
+import {
+  buildAgentMonitorSnapshot,
+  snapshotMonitorEvents,
+} from "./agent-monitor-projection.mjs";
+import { codexRolloutSession } from "./agent-monitor-sources.mjs";
 
 const keyPattern = /^[a-f0-9]{12}$/u;
 const recentMs = 14 * 86_400_000;
@@ -91,6 +97,9 @@ function recentFeeds(root, repoKey, nowMs = Date.now()) {
         if (manifest.identity.logicalRepoKey !== repoKey
           || manifest.identity.worktreeKey !== worktree.name
           || agentMonitorSessionPath(manifest.identity.session) !== session.name) return true;
+        const rolloutSession = codexRolloutSession(manifest.cursor?.file);
+        if (rolloutSession && !manifest.identity.session.includes(":")
+          && rolloutSession !== manifest.identity.session) return true;
         const activityAt = manifest.summary?.updatedAt ?? manifest.updatedAt;
         const updated = Date.parse(activityAt);
         if (!Number.isFinite(updated) || updated > nowMs + 300_000 || nowMs - updated > recentMs) return true;
@@ -109,6 +118,52 @@ function recentFeeds(root, repoKey, nowMs = Date.now()) {
     feeds: feeds.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt)),
     truncated,
   };
+}
+
+function sessionLabel(session) {
+  return session.length > 12 ? `…${session.slice(-8)}` : session;
+}
+
+export function aggregateAgentMonitorFeeds(root, repoKey, nowMs = Date.now()) {
+  const listing = recentFeeds(root.root, repoKey, nowMs);
+  const events = [];
+  const counts = { commands: 0, diffs: 0, failures: 0, reasoning: 0 };
+  let lines = 0;
+  for (const feed of listing.feeds) {
+    try {
+      const loaded = loadAgentMonitorFeed(agentMonitorFeedDir({
+        repoRoot: root.repoRoot,
+        logicalRepoKey: repoKey,
+        worktreeKey: feed.identity.worktreeKey,
+        session: feed.identity.session,
+      }));
+      lines += loaded.snapshot.monitor.counts.lines;
+      for (const name of Object.keys(counts)) counts[name] += loaded.snapshot.monitor.counts[name];
+      const label = sessionLabel(feed.identity.session);
+      for (const event of snapshotMonitorEvents(loaded.snapshot) ?? []) {
+        events.push({
+          ...event,
+          id: `${feed.identity.worktreeKey}:${event.id}`.slice(0, 240),
+          detail: `${label} · ${event.detail}`.slice(0, 400),
+        });
+      }
+    } catch { /* A malformed individual feed must not erase the aggregate view. */ }
+  }
+  events.sort((left, right) =>
+    (Date.parse(right.time) - Date.parse(left.time)) || (right.line - left.line));
+  const generatedAt = new Date(nowMs).toISOString();
+  return buildAgentMonitorSnapshot({
+    activityAt: events[0]?.time,
+    events,
+    file: "recent-sessions",
+    generatedAt,
+    identity: { logicalRepoKey: repoKey, worktreeKey: repoKey, session: "all" },
+    line: lines,
+    maxEvents: AGENT_MONITOR_LIMITS.maxEvents,
+    newEvents: [],
+    priorCounts: counts,
+    nowMs,
+  });
 }
 
 function selectedFeed(ctx, root) {
@@ -152,6 +207,11 @@ export const agentMonitorHandler = Object.freeze({
       const root = rootInfo(ctx);
       if (ctx.url.searchParams.has("list")) {
         return { ovenId: AGENT_MONITOR_OVEN_ID, ...recentFeeds(root.root, listRepoKey(ctx)) };
+      }
+      if (ctx.url.searchParams.has("aggregate")) {
+        const payload = aggregateAgentMonitorFeeds(root, listRepoKey(ctx));
+        assertAgentMonitorSnapshot(payload);
+        return { ovenId: AGENT_MONITOR_OVEN_ID, payload, updatedAt: payload.generatedAt };
       }
       const feed = selectedFeed(ctx, root);
       const snapshotPath = containedJoin(

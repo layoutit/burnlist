@@ -65,7 +65,9 @@ export function discoverAgentMonitorSessions({
         resolved = resolveAgentMonitorIdentity({ cwd: file.cwd, session });
         identityCache.set(cacheKey, resolved);
       }
-      return resolved.logicalRepoRoot === root ? [{ ...file, rawSession: file.session, session, resolved }] : [];
+      return resolved.logicalRepoRoot === root
+        ? [{ ...file, rawSession: file.providerSession ?? file.session, session, resolved }]
+        : [];
     } catch {
       return [];
     }

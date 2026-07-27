@@ -13,6 +13,11 @@ import { homedir } from "node:os";
 export const AGENT_MONITOR_PROVIDERS = Object.freeze(["codex", "claude", "agy", "grok"]);
 
 const metadataCache = new Map();
+const codexRolloutPattern = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/iu;
+
+export function codexRolloutSession(path, fallback = null) {
+  return codexRolloutPattern.exec(basename(path))?.[1] ?? fallback;
+}
 
 function boundedFile(path, recentAfter, limits) {
   try {
@@ -98,7 +103,13 @@ function codexMetadata(path, limits) {
     if (record?.type !== "session_meta") continue;
     const session = record?.payload?.session_id ?? record?.payload?.id;
     const cwd = record?.payload?.cwd;
-    if (typeof session === "string" && typeof cwd === "string") return { session, cwd: resolve(cwd) };
+    if (typeof session === "string" && typeof cwd === "string") {
+      return {
+        session: codexRolloutSession(path, session),
+        providerSession: session,
+        cwd: resolve(cwd),
+      };
+    }
   }
   return null;
 }

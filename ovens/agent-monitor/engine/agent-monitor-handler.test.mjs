@@ -140,11 +140,18 @@ test("Agent Monitor lists manifests and serves only the exact canonical session 
   }
 });
 
-test("Agent Monitor is producer-managed and rejects an unselected or wrong session", () => {
+test("Agent Monitor aggregates recent sessions and rejects an unselected or wrong session", () => {
   const value = fixture();
   try {
     assert.equal(agentMonitorHandler.dataInput, "producer-managed");
     assert.equal(agentMonitorHandler.validateData, undefined);
+    const aggregate = agentMonitorHandler.serveData(context(
+      value,
+      new URL(`http://localhost/?aggregate&repoKey=${value.identity.identity.logicalRepoKey}`),
+    ));
+    assert.equal(aggregate.payload.identity.session, "all");
+    assert.equal(aggregate.payload.raw.completed.length, 1);
+    assert.match(aggregate.payload.raw.completed[0].detail, /…on-exact · Agent task started/u);
     assert.throws(
       () => agentMonitorHandler.serveData(context(value, new URL("http://localhost/"))),
       (error) => error.status === 400 && /selection requires/u.test(error.message),

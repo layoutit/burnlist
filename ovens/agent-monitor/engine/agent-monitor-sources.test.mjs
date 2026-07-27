@@ -52,3 +52,37 @@ test("provider discovery returns a common source shape for Codex, Claude, AGY, a
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("forked Codex rollouts keep unique feed sessions and their provider session for correlation", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-monitor-codex-forks-"));
+  try {
+    const repo = join(root, "repo");
+    const sessions = join(root, "sessions");
+    mkdirSync(repo);
+    mkdirSync(sessions);
+    execFileSync("git", ["init", "--quiet"], { cwd: repo });
+    const inherited = "11111111-1111-4111-8111-111111111111";
+    const rollouts = [
+      "22222222-2222-4222-8222-222222222222",
+      "33333333-3333-4333-8333-333333333333",
+    ];
+    for (const rollout of rollouts) {
+      const path = join(sessions, `rollout-2026-07-27T12-00-00-${rollout}.jsonl`);
+      writeFileSync(path, `${JSON.stringify({
+        type: "session_meta",
+        payload: { session_id: inherited, cwd: repo },
+      })}\n`);
+      utimesSync(path, new Date(NOW), new Date(NOW));
+    }
+    const found = discoverAgentSessionSources({
+      roots: { codex: sessions },
+      limits,
+      nowMs: Date.parse(NOW),
+      providers: ["codex"],
+    });
+    assert.deepEqual(found.map((item) => item.session).sort(), rollouts);
+    assert.ok(found.every((item) => item.providerSession === inherited));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
