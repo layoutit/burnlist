@@ -64,7 +64,6 @@
   "scripts/register-skills.mjs",
   "scripts/unregister-service.mjs",
   "scripts/unregister-skills.mjs",
-  "skills/burnlist-loop/SKILL.md",
   "skills/burnlist/SKILL.md",
   "skills/burnlist/agents/openai.yaml",
   "skills/burnlist/references/burnlist-creation.md",

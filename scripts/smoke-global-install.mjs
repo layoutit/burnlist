@@ -267,6 +267,28 @@ try {
     if (!expected.every((name) => typeof events[name] === "function")) process.exit(1);
   `], { cwd: packageRoot });
 
+  const serviceRuntimePath = join(home, ".burnlist", "server.json");
+  const serviceMarkerPath = join(home, ".burnlist", "install.json");
+  if (!existsSync(serviceRuntimePath) || !existsSync(serviceMarkerPath)) {
+    throw new Error("global npm install did not register its shared service");
+  }
+  const serviceRuntime = JSON.parse(readFileSync(serviceRuntimePath, "utf8"));
+  invokeCli(cli, ["uninstall", "--global"]);
+  if (existsSync(serviceRuntimePath) || existsSync(serviceMarkerPath)) {
+    throw new Error("global skill uninstall left its service registration behind");
+  }
+  let serviceAlive = true;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try { process.kill(serviceRuntime.pid, 0); }
+    catch (error) {
+      if (error.code !== "ESRCH") throw error;
+      serviceAlive = false;
+      break;
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+  }
+  if (serviceAlive) throw new Error("global skill uninstall left its service process running");
+
   invokeCli(cli, ["uninstall", "--global", "--purge"]);
   for (const agentDirectory of [".claude", ".agents"]) {
     for (const name of ["burnlist"]) {

@@ -414,7 +414,7 @@ assertSourceExcludes("README.md", "**Target**", "README still advertises the rem
 assertSourceExcludes("src/server/burnlist-dashboard-server.mjs", '"/targets"', "Dashboard server still exposes the removed Targets route.");
 assertSourceExcludes("dashboard/src/App.tsx", '"/targets"', "React dashboard still exposes the removed Targets route.");
 assertSourceExcludes("src/ovens/oven-contract.mjs", '"target"', "Oven contract still accepts the removed Target widget.");
-assertSkillSet(repoRoot, ["burnlist", "burnlist-loop"]);
+assertSkillSet(repoRoot, ["burnlist"]);
 const officialOvenExpectations = new Map([
   ["checklist", { name: "Checklist", validator: "validateGenericJsonData" }],
   ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
@@ -460,9 +460,7 @@ const skillDryRun = runCapture(process.execPath, ["scripts/register-skills.mjs",
 });
 for (const target of [
   join(verificationHome, ".claude", "skills", "burnlist"),
-  join(verificationHome, ".claude", "skills", "burnlist-loop"),
   join(verificationHome, ".agents", "skills", "burnlist"),
-  join(verificationHome, ".agents", "skills", "burnlist-loop"),
 ]) {
   if (!skillDryRun.includes(target)) {
     console.error(`Global skill registration dry-run did not include ${target}.`);

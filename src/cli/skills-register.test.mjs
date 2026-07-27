@@ -234,8 +234,7 @@ test("revalidation keeps a target that becomes correct immediately before mutati
       sourceRoot: join(repoRoot, "skills"), cwd: context.repo,
       env: { ...baseEnv, HOME: context.home, USERPROFILE: context.home }, agents: ["codex"],
       log: (line) => logs.push(line),
-      beforeTargetMutation: (registration) => {
-        if (registration.name !== "burnlist") return;
+      beforeTargetMutation: () => {
         symlinkSync(source, target, process.platform === "win32" ? "junction" : "dir");
         inode = lstatSync(target).ino;
       },

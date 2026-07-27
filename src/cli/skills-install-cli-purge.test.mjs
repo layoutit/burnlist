@@ -107,9 +107,9 @@ test("npm-successful global purge aggregates every cleanup failure", () => {
       error: (line) => errors.push(line),
     });
     assert.equal(status, 1);
-    assert.equal(attempted.length, 4);
-    assert.ok(attempted.every((path) => /\.[a-z0-9-]+\.burnlist-quarantine-.+\/object$/u.test(path)));
-    assert.match(errors.join("\n"), /could not remove 4 global skill registration/u);
+    assert.equal(attempted.length, 2);
+    assert.ok(attempted.every((path) => /\.burnlist\.burnlist-quarantine-.+\/object$/u.test(path)));
+    assert.match(errors.join("\n"), /could not remove 2 global skill registration/u);
     assertLink(join(claudeSkills, "burnlist"), packageSkill);
     assertLink(join(codexSkills, "burnlist"), packageSkill);
   } finally { context.cleanup(); }
