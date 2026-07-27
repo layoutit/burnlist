@@ -97,7 +97,9 @@ test("catalog pages a 70-field Differential fixture through advertised n/p keys"
   const setup = await createTestRenderer({ width: 82, height: 26, useThread: false }); renderers.push(setup.renderer);
   const root = createRoot(setup.renderer); flushSync(() => root.render(<CatalogApp shutdown={() => {}} />));
   for (let index = 0; index < 9; index += 1) await press(setup, "ARROW_DOWN"); await press(setup, "RETURN");
-  await setup.waitForFrame((frame) => frame.includes("n/p:page") && frame.includes("Tail 0")); await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("› Tail 1")); await press(setup, "n"); await press(setup, "n"); await setup.waitForFrame((frame) => frame.includes("Tail 69")); root.unmount();
+  await setup.waitForFrame((frame) => frame.includes("n/p:page") && frame.includes("Tail 0")); await press(setup, "ARROW_DOWN"); await setup.waitForFrame((frame) => frame.includes("› Tail 1"));
+  await press(setup, "n"); await setup.waitForFrame((frame) => frame.includes("Tail 49"));
+  await press(setup, "n"); await setup.waitForFrame((frame) => frame.includes("Tail 69")); root.unmount();
 });
 
 test("catalog Performance field preview does not advertise Differential paging", async () => {
