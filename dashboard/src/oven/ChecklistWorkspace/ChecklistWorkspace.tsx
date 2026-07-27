@@ -7,11 +7,13 @@ type ItemSelection =
   | { status: "active"; item: ChecklistItem; index: number }
   | { status: "completed"; item: CompletedItem; index: number };
 
-function inspectedItem(data: ChecklistProgressData): ItemSelection | null {
-  const activeIndex = data.active.findIndex((item) => item.id === data.selectedItemId);
+type ChecklistWorkspaceView = "split" | "items" | "detail";
+
+function inspectedItem(data: ChecklistProgressData, selectedItemId = data.selectedItemId): ItemSelection | null {
+  const activeIndex = data.active.findIndex((item) => item.id === selectedItemId);
   if (activeIndex >= 0) return { status: "active", item: data.active[activeIndex], index: activeIndex };
   const completed = eventRows(data);
-  const completedIndex = completed.findIndex((item) => item.id === data.selectedItemId);
+  const completedIndex = completed.findIndex((item) => item.id === selectedItemId);
   if (completedIndex >= 0) return { status: "completed", item: completed[completedIndex], index: completedIndex };
   if (data.active[0]) return { status: "active", item: data.active[0], index: 0 };
   return completed[0] ? { status: "completed", item: completed[0], index: 0 } : null;
@@ -45,7 +47,7 @@ function previewRun(item: ChecklistItem, data: ChecklistProgressData): LoopRunPr
   };
 }
 
-function ItemsColumn({ data, selected }: { data: ChecklistProgressData; selected: ItemSelection | null }) {
+function ItemsColumn({ data, onSelectItem, selected }: { data: ChecklistProgressData; onSelectItem?: (itemId: string) => void; selected: ItemSelection | null }) {
   const completed = eventRows(data);
   return <section className="checklist-workspace__column checklist-workspace__items" aria-label="All items">
     <header className="checklist-workspace__heading"><span>Items</span><span>{data.total}</span></header>
@@ -57,7 +59,7 @@ function ItemsColumn({ data, selected }: { data: ChecklistProgressData; selected
         const inspected = selected?.status === "active" && item.id === selected.item.id;
         const marker = state === "ACTIVE" ? "●" : state === "WAITING" ? "◐" : state === "BLOCKED" ? "!" : "○";
         const label = state === "ACTIVE" && work.progressing ? "progressing" : state.toLowerCase();
-        return <a className={`checklist-workspace__item is-${state.toLowerCase()}${current ? " is-current" : ""}${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={item.id} aria-current={inspected ? "true" : undefined}>
+        return <a className={`checklist-workspace__item is-${state.toLowerCase()}${current ? " is-current" : ""}${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={item.id} aria-current={inspected ? "true" : undefined} onClick={() => onSelectItem?.(item.id)}>
           <span className="checklist-workspace__item-marker">{marker}</span>
           <span className="checklist-workspace__item-copy"><b>{item.id}</b><span>{item.title}</span></span>
           <span className="checklist-workspace__loop-label">{label}</span>
@@ -66,7 +68,7 @@ function ItemsColumn({ data, selected }: { data: ChecklistProgressData; selected
       {!!data.active.length && !!completed.length && <div className="checklist-workspace__divider"><span>Completed</span><span>{completed.length}</span></div>}
       {completed.map((item) => {
         const inspected = selected?.status === "completed" && item.id === selected.item.id;
-        return <a className={`checklist-workspace__item is-completed${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={`${item.id}/${item.completedAt}`} aria-current={inspected ? "true" : undefined}>
+        return <a className={`checklist-workspace__item is-completed${inspected ? " is-selected" : ""}`} href={`#${encodeURIComponent(item.id)}`} key={`${item.id}/${item.completedAt}`} aria-current={inspected ? "true" : undefined} onClick={() => onSelectItem?.(item.id)}>
           <span className="checklist-workspace__item-marker">✓</span>
           <span className="checklist-workspace__item-copy"><b>{item.id}</b><span>{item.title}</span></span>
           <span className="checklist-workspace__loop-label">{compactAge(item.completedAt, data.generatedAt)}</span>
@@ -181,10 +183,15 @@ function DetailColumn({ data, selected }: { data: ChecklistProgressData; selecte
   </section>;
 }
 
-export function ChecklistWorkspace({ data }: { data: ChecklistProgressData }) {
-  const selected = inspectedItem(data);
-  return <section className="checklist-workspace" aria-label="Burnlist work queue">
-    <ItemsColumn data={data} selected={selected} />
-    <DetailColumn data={data} selected={selected} />
+export function ChecklistWorkspace({ data, onSelectItem, selectedItemId, view = "split" }: {
+  data: ChecklistProgressData;
+  onSelectItem?: (itemId: string) => void;
+  selectedItemId?: string | null;
+  view?: ChecklistWorkspaceView;
+}) {
+  const selected = inspectedItem(data, selectedItemId ?? data.selectedItemId);
+  return <section className={`checklist-workspace checklist-workspace--${view}`} aria-label="Burnlist work queue">
+    {view !== "detail" && <ItemsColumn data={data} onSelectItem={onSelectItem} selected={selected} />}
+    {view !== "items" && <DetailColumn data={data} selected={selected} />}
   </section>;
 }

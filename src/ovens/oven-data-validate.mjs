@@ -184,6 +184,7 @@ function sourceErrors(ir, payload) {
     "checklist-burn-panel": "data",
     "checklist-event-cards": "data",
     "checklist-ledger": "data",
+    "checklist-tabs": "data",
     "diff-card": "cards",
     "differential-kpi-strip": "payload",
     "differential-log-table": "entries",
@@ -265,13 +266,13 @@ function sourceErrors(ir, payload) {
   }
 
   const directSources = new Set([
-    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "collection",
+    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "checklist-tabs", "collection",
     "domain-note", "domain-tabs", "frame-card", "log-table", "metric-tiles",
     "model-lab-view", "refresh-status", "switch",
   ]);
   const arraySources = new Set(["collection", "domain-tabs", "log-table"]);
   const defaultRootSources = new Set([
-    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "domain-tabs", "refresh-status",
+    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "checklist-tabs", "domain-tabs", "refresh-status",
   ]);
 
   function visit(node, itemContexts = null) {

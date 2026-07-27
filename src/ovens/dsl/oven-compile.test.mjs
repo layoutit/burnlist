@@ -46,6 +46,14 @@ test("loop-progress is a closed declarative component", () => {
   assert.equal(result.ir.root[0].attributes.source, "/raw");
 });
 
+test("checklist-tabs is a closed declarative component", () => {
+  const result = compileOven('<oven id="checklist-tabs" version="0.1.0" contract="checklist-progress@1" theme="checklist"><checklist-tabs source="/raw"/></oven>');
+  assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
+  assert.equal(result.ir.root[0].kind, "checklist-tabs");
+  assert.equal(result.ir.root[0].attributes.source, "/raw");
+  assert.ok(result.ir.requirements.components.includes("checklist-tabs"));
+});
+
 test("loop-progress composes through the same standard containers as loop-graph", () => {
   const bodies = [
     '<grid columns="1"><loop-progress source="/raw"/></grid>',

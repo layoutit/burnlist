@@ -90,7 +90,7 @@ test("real M4 projections advance the full Checklist DOM through the frozen Loop
         ...(stableActivity ? { activity: stableActivity } : {}),
       });
       const markup = withDeterministicTime(() =>
-        renderToStaticMarkup(createElement(ChecklistDashboard, { data: itemData(projection) })));
+        renderToStaticMarkup(createElement(ChecklistDashboard, { data: itemData(projection), initialTab: "active-item" })));
       const domBytes = serializeCanonical(normalize(parseHtml(markup)));
       return {
         checkpoint: `${projection.currentNode}/${projection.attempt}/${projection.latestResult?.kind ?? "none"}`,
@@ -133,6 +133,7 @@ test("terminal, paused, stale, and corrupt Loop states retain frozen full Checkl
     const actual = variants.map(([checkpoint, patch]) => {
       const markup = withDeterministicTime(() => renderToStaticMarkup(createElement(ChecklistDashboard, {
         data: itemData({ ...final, ...patch }),
+        initialTab: "active-item",
       })));
       const domBytes = serializeCanonical(normalize(parseHtml(markup)));
       return { checkpoint, domBytes: Buffer.byteLength(domBytes), domSha256: digest(domBytes) };

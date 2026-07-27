@@ -81,6 +81,16 @@ test("closed specialized widgets still validate their source pointers", () => {
     path: "/model",
     message: "Oven source pointer does not resolve in the payload.",
   }]);
+
+  const checklistTabs = {
+    id: "custom-shape",
+    oven: customSource('<checklist-tabs source="/raw"/>'),
+  };
+  assert.equal(validateOvenData(checklistTabs, { raw: {} }).ok, true);
+  assert.deepEqual(validateOvenData(checklistTabs, {}).errors, [{
+    path: "/raw",
+    message: "Oven source pointer does not resolve in the payload.",
+  }]);
 });
 
 test("custom item pointers resolve against each collection item", () => {

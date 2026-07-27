@@ -34,8 +34,7 @@ const checklist: OvenTheme = Object.freeze({
   }),
   regions: Object.freeze([
     Object.freeze({ kinds: Object.freeze(["kpi-strip"]), element: "section", className: "differential-overview checklist-overview" }),
-    Object.freeze({ kinds: Object.freeze(["checklist-ledger", "checklist-burn-panel", "checklist-current"]), element: "div", className: "detail-workspace checklist-progress-workspace", props: Object.freeze({ "data-detail-tab": "dashboard" }) }),
-    Object.freeze({ kinds: Object.freeze(["checklist-event-cards"]), element: "fragment" }),
+    Object.freeze({ kinds: Object.freeze(["checklist-tabs"]), element: "fragment" }),
   ]),
   kpiItemVariants: Object.freeze({ current: "checklist-kpi-current" }),
   progressKpiClassName: "driving-parity-kpi-progress",
