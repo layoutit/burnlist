@@ -3,6 +3,7 @@ import { groupBurnlists } from "./landing-groups";
 import { compactTime, fitText, progressLabel, visibleWindow } from "./theme";
 import { useTerminalPalette } from "./terminal-accessibility";
 import { TableCell, TableGroup, TableLine } from "./table-view";
+import { LoadingStar } from "./loading-star";
 
 interface ListProps<T> {
   entries: T[];
@@ -33,7 +34,7 @@ function BurnlistColumns({ width, header, entry }: { width: number; header?: boo
   </box>;
 }
 
-export function BurnlistList({ landing, selected, focused, maxRows, terminalWidth, empty }: Omit<ListProps<BurnlistSummary>, "entries"> & { landing: LandingSnapshot }) {
+export function BurnlistList({ landing, selected, focused, maxRows, terminalWidth, empty, loading = false, loadingGlyph }: Omit<ListProps<BurnlistSummary>, "entries"> & { landing: LandingSnapshot; loading?: boolean; loadingGlyph?: string }) {
   const palette = useTerminalPalette();
   const entries = groupBurnlists(landing).flatMap((group) => group.entries);
   let itemRows = maxRows;
@@ -44,7 +45,11 @@ export function BurnlistList({ landing, selected, focused, maxRows, terminalWidt
     window = visibleWindow(entries, selected, itemRows);
   }
   const groups = groupBurnlists({ ...landing, burnlists: window.items });
-  if (!entries.length) return <box flexGrow={1} paddingLeft={2}><text fg={palette.dim}>{fitText(empty, Math.max(1, terminalWidth - 2)).trimEnd()}</text></box>;
+  if (!entries.length) return <box flexGrow={1} paddingLeft={2}>
+    {loading
+      ? <LoadingStar label="Loading Burnlists…" glyph={loadingGlyph} />
+      : <text fg={palette.dim}>{fitText(empty, Math.max(1, terminalWidth - 2)).trimEnd()}</text>}
+  </box>;
   return <box flexDirection="column" flexGrow={1}>
     <TableLine header>
       <BurnlistColumns width={terminalWidth - 3} header />

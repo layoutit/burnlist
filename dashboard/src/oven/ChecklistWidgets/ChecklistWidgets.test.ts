@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
-import { EventCardList, ProgressLedger, ProgressPanel } from "@/components/ChecklistDashboard/ChecklistDashboard";
+import { ChecklistTabs, EventCardList, ProgressLedger, ProgressPanel } from "@/components/ChecklistDashboard/ChecklistDashboard";
 import { checklistFixture } from "@/components/ChecklistDashboard/ChecklistDashboard.fixture.mjs";
 import { ChecklistWorkspace } from "../ChecklistWorkspace";
 import { assertDomEquivalent } from "../test-support/dom-normalize";
@@ -21,6 +21,7 @@ test("checklist widget adapters preserve the exported dashboard subregions", () 
   assertDomEquivalent(renderWidget("checklist-burn-panel"), renderToStaticMarkup(createElement(ProgressPanel, { data: checklistFixture })));
   assertDomEquivalent(renderWidget("checklist-ledger"), renderToStaticMarkup(createElement(ProgressLedger, { data: checklistFixture })));
   assertDomEquivalent(renderWidget("checklist-event-cards"), renderToStaticMarkup(createElement(EventCardList, { data: checklistFixture })));
+  assertDomEquivalent(renderWidget("checklist-tabs"), renderToStaticMarkup(createElement(ChecklistTabs, { data: checklistFixture })));
 });
 
 test("workspace exposes live execution identity, evidence, and observed paths", () => {
@@ -93,7 +94,7 @@ const result = compileOven('<oven id="box-test" version="0.1.0" contract="checkl
 });
 
 test("checklist declarative vocabulary and passthrough attributes compile", () => {
-  const source = '<oven id="fragment" version="0.1.0" contract="checklist-progress@1" theme="checklist"><box element="div" class="shell"><kpi-strip class="strip" title="summary"><kpi-item class="item" title="detail" heading="Progress"><progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/></kpi-item></kpi-strip><section-header class="head" title="Events" source="/events" /><log-table class="table" title="ledger" source="/ledger"><column label="Event" source="@item/event" /></log-table><checklist-burn-panel source="/raw" /><checklist-ledger source="/raw" /><checklist-event-cards source="/raw" /></box></oven>';
+  const source = '<oven id="fragment" version="0.1.0" contract="checklist-progress@1" theme="checklist"><box element="div" class="shell"><kpi-strip class="strip" title="summary"><kpi-item class="item" title="detail" heading="Progress"><progress-value done="/progress/done" total="/progress/total" percent="/progress/percent"/></kpi-item></kpi-strip><section-header class="head" title="Events" source="/events" /><log-table class="table" title="ledger" source="/ledger"><column label="Event" source="@item/event" /></log-table><checklist-burn-panel source="/raw" /><checklist-ledger source="/raw" /><checklist-event-cards source="/raw" /><checklist-tabs source="/raw" /></box></oven>';
   const result = compileOven(source);
   assert.equal(result.ok, true, result.ok ? "" : JSON.stringify(result.diagnostics));
 });

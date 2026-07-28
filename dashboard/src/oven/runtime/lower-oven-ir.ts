@@ -11,6 +11,11 @@ type IrNode = {
 type OvenIr = { id: string; theme?: string; root: IrNode[] };
 
 const components: Record<string, string> = Object.freeze({
+  "agent-monitor-activity-chart": "AgentMonitorActivityChart",
+  "agent-monitor-event-card": "AgentMonitorEventCard",
+  alert: "Alert",
+  "alert-title": "AlertTitle",
+  "alert-description": "AlertDescription",
   box: "Box",
   "kpi-strip": "KpiStrip",
   "kpi-item": "KpiItem",
@@ -92,6 +97,22 @@ function lowerCell(node: IrNode, path: string, theme?: OvenTheme): CellDef {
   const bind: Record<string, Binding> = { ...node.bindings };
   if (typeof attrs.id === "string") props.id = attrs.id;
   if (typeof attrs.class === "string") props.className = attrs.class;
+  if (node.kind === "alert") {
+    if (typeof attrs.variant === "string") props.variant = attrs.variant;
+    if (typeof attrs.role === "string") props.role = attrs.role;
+  }
+  if (node.kind === "alert-title" || node.kind === "alert-description") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.children = source;
+  }
+  if (node.kind === "agent-monitor-event-card") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.event = source;
+  }
+  if (node.kind === "agent-monitor-activity-chart") {
+    const source = binding(attrs.source, attrs.format);
+    if (source) bind.events = source;
+  }
   if (node.kind === "box") {
     props.element = attrs.element;
     if (typeof attrs.dataDetailTab === "string") props.dataDetailTab = attrs.dataDetailTab;

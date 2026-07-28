@@ -45,6 +45,7 @@ Status: Burnlist Final
 Updated: <YYYY-MM-DD>
 Repo: `<absolute repo path>`
 Goal: ./goal.md
+Default Oven: <oven-id>
 
 ## Active Checklist
 - [ ] B1 | <short dashboard title>
@@ -56,6 +57,12 @@ Goal: ./goal.md
 ## Completed
 - B0 | <YYYY-MM-DDTHH:mm:ss±HH:mm> | <short completed item title>
 ```
+
+`Default Oven:` is an optional top-level presentation hint. Its value must be
+a lowercase Oven id such as `agent-monitor`. Web and terminal detail links
+open that Oven first; an absent or unavailable Oven falls back to `checklist`.
+It does not alter lifecycle, execution order, completion, or proof authority.
+Write it only when the user or repository has established a primary view.
 
 `scratch.md` is optional, bounded, and not canonical task state. Use it only for task-scoped notes that would otherwise pollute the Burnlist. Every scratch entry must name an item id. Promote anything still needed for execution into `burnlist.md`; contract changes belong in `goal.md` and may require switching back to Burnlist creation mode.
 

@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditConsoleOvenBehavior, policyFor } from "./console-oven-behavior-lib.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const output = resolve(root, "console-oven-behavior.json"), policy = resolve(root, "console-oven-behavior-policy.json");
+const output = resolve(root, "audits/oven/console-oven-behavior.json"), policy = resolve(root, "audits/oven/console-oven-behavior-policy.json");
 const fail = (s) => { throw new Error(`console Oven behavior audit: ${s}`); };
 const print = (x) => `${JSON.stringify(x, null, 2)}\n`;
 async function atomic(path, value) { const temp = `${path}.${process.pid}.tmp`; await writeFile(temp, value); await rename(temp, path); }

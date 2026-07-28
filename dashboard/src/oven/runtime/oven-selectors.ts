@@ -14,8 +14,10 @@ function control(ir: OvenIr, id: unknown): Descriptor | undefined {
   return typeof id === "string" ? ir.controls.find((item) => item.id === id) as Descriptor | undefined : undefined;
 }
 function pageCount(total: number, pageSize: number): number { return Math.max(1, Math.ceil(total / Math.max(1, pageSize))); }
-function activeControl(ir: OvenIr, state: OvenState, id: unknown): { key: string; active: boolean } | undefined {
+function activeControl(ir: OvenIr, state: OvenState, id: unknown): string | { key: string; active: boolean } | undefined {
   const item = control(ir, id);
+  const value = item ? state.controls[item.id] : undefined;
+  if (item?.kind === "mode-toggle") return typeof value === "string" && value !== "all" ? value : undefined;
   return item && typeof item.key === "string" ? { key: item.key, active: state.controls[item.id] === true } : undefined;
 }
 

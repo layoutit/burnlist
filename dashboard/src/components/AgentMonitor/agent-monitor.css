@@ -1,0 +1,313 @@
+.agent-monitor-selected {
+  width: min(calc(100% - 32px), 1120px);
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.agent-monitor-heading { margin: 0 0 18px; }
+.agent-monitor-heading h1 { margin: 0; font: 400 24px/1.2 var(--dashboard-title-font); }
+.agent-monitor-heading p { margin: 6px 0 0; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.agent-monitor-back { display: inline-block; margin-bottom: 12px; color: var(--primary); font-size: 13px; }
+.agent-monitor-back:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+.agent-monitor-message {
+  margin: 0 0 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--muted-foreground);
+}
+
+.agent-monitor-message.is-error { border-color: rgba(239, 68, 68, .35); color: var(--destructive-foreground); }
+
+.agent-monitor-view {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.agent-monitor-view .checklist-kpi-strip {
+  display: grid;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  grid-template-columns: minmax(240px, 1.4fr) minmax(190px, 1.1fr) repeat(3, minmax(110px, .75fr));
+  gap: 8px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.agent-monitor-view .driving-parity-kpi-item {
+  min-height: 78px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.agent-monitor-view .driving-parity-kpi-item:first-child { border-left: 1px solid var(--line); }
+.agent-monitor-view .driving-parity-kpi-heading {
+  color: var(--muted);
+  font: 400 12px/1.2 var(--dashboard-title-font);
+}
+.agent-monitor-view .driving-parity-kpi-ratio {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 18px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-monitor-health [data-slot="alert"] {
+  min-height: 64px;
+  justify-content: center;
+}
+
+.agent-monitor-activity {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.agent-monitor-activity-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.agent-monitor-activity-heading h2 {
+  margin: 0;
+  color: var(--foreground);
+  font: 400 18px/1.25 var(--dashboard-title-font);
+}
+
+.agent-monitor-activity-heading p,
+.agent-monitor-activity-empty {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.agent-monitor-activity-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px 12px;
+  margin: 1px 0 0;
+  padding: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  list-style: none;
+}
+
+.agent-monitor-activity-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.agent-monitor-activity-legend span {
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.agent-monitor-activity-legend [data-category="command"] { color: var(--primary); }
+.agent-monitor-activity-legend [data-category="diff"] { color: var(--status-green); }
+.agent-monitor-activity-legend [data-category="message"] { color: var(--amber); }
+.agent-monitor-activity-legend [data-category="tool"] { color: var(--foreground); }
+.agent-monitor-activity-legend [data-category="lifecycle"] { color: var(--muted-foreground); }
+.agent-monitor-activity-legend [data-category="result"] { color: var(--destructive); }
+
+.agent-monitor-activity-chart {
+  display: block;
+  width: 100%;
+  height: 176px;
+  margin-top: 10px;
+}
+
+.agent-monitor-activity-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.agent-monitor-activity-axis {
+  fill: var(--muted);
+  font: 11px/1 var(--dashboard-font);
+}
+
+.agent-monitor-activity-mark[data-category="command"] { fill: var(--primary); }
+.agent-monitor-activity-mark[data-category="diff"] { fill: var(--status-green); }
+.agent-monitor-activity-mark[data-category="message"] { fill: var(--amber); }
+.agent-monitor-activity-mark[data-category="tool"] { fill: var(--foreground); }
+.agent-monitor-activity-mark[data-category="lifecycle"] { fill: var(--muted-foreground); }
+.agent-monitor-activity-mark[data-category="result"] { fill: var(--destructive); }
+
+.agent-monitor-activity-signal[data-signal="failure"] { fill: var(--destructive); }
+.agent-monitor-activity-signal[data-signal="message"] { fill: var(--amber); }
+.agent-monitor-activity-signal[data-signal="lifecycle"] {
+  stroke: var(--muted-foreground);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.agent-monitor-events {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.agent-monitor-events > h2 {
+  margin: 4px 0 2px;
+  color: var(--foreground);
+  font: 400 20px/1.25 var(--dashboard-title-font);
+}
+
+.agent-monitor-events .field-list-count {
+  color: var(--muted);
+  font: 400 13px/1 var(--dashboard-font);
+}
+
+#agent-monitor-event-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px 14px;
+  color: var(--muted);
+  font: 14px/1.2 var(--dashboard-title-font);
+}
+
+#agent-monitor-event-filter button {
+  appearance: none;
+  width: auto;
+  height: auto;
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font: inherit;
+  opacity: .5;
+}
+
+#agent-monitor-event-filter button[aria-pressed="true"] {
+  border-bottom-color: currentColor;
+  color: var(--foreground);
+  opacity: 1;
+}
+
+#agent-monitor-event-filter button:not(:disabled):hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--foreground);
+}
+
+.agent-monitor-filter-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.agent-monitor-events:has(.agent-monitor-event) .agent-monitor-filter-empty {
+  display: none;
+}
+
+.agent-monitor-event,
+.agent-monitor-event [data-slot="alert-title"],
+.agent-monitor-event [data-slot="alert-description"] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.agent-monitor-event-type { color: var(--muted-foreground); }
+.agent-monitor-event[data-category="command"] .agent-monitor-event-type { color: var(--primary); }
+.agent-monitor-event[data-category="diff"] .agent-monitor-event-type { color: var(--status-green); }
+.agent-monitor-event[data-category="message"] .agent-monitor-event-type { color: var(--amber); }
+.agent-monitor-event[data-category="result"] .agent-monitor-event-type { color: var(--destructive); }
+.agent-monitor-event[data-category="tool"] .agent-monitor-event-type { color: var(--foreground); }
+
+.agent-monitor-patch {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.agent-monitor-patch summary {
+  width: fit-content;
+  color: var(--foreground);
+  cursor: pointer;
+  font: 12px/1.35 var(--dashboard-font);
+}
+
+.agent-monitor-patch pre {
+  max-height: 360px;
+  margin: 10px 0 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, .28);
+  font: 12px/1.45 var(--dashboard-font);
+  tab-size: 2;
+  white-space: pre;
+}
+
+.agent-monitor-patch code { font: inherit; }
+.agent-monitor-patch code > span {
+  display: block;
+  min-height: 1.45em;
+}
+
+.agent-monitor-patch [data-kind="header"] { color: var(--muted); }
+.agent-monitor-patch [data-kind="hunk"] { color: var(--primary); }
+.agent-monitor-patch [data-kind="add"] { color: var(--status-green); }
+.agent-monitor-patch [data-kind="remove"] { color: var(--destructive); }
+.agent-monitor-patch [data-kind="context"] { color: var(--muted-foreground); }
+.agent-monitor-patch > p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.agent-monitor-events .driving-parity-pagination {
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding: 4px 0 0;
+}
+
+@media (max-width: 760px) {
+  .agent-monitor-view .checklist-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .agent-monitor-view .driving-parity-kpi-item:first-child {
+    grid-column: 1 / -1;
+  }
+  .agent-monitor-activity-heading {
+    display: grid;
+  }
+  .agent-monitor-activity-legend {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .agent-monitor-selected {
+    width: calc(100% - 20px);
+    padding-top: 16px;
+  }
+  .agent-monitor-view .checklist-kpi-strip { grid-template-columns: minmax(0, 1fr); }
+  .agent-monitor-view .driving-parity-kpi-item:first-child { grid-column: auto; }
+  .agent-monitor-events .driving-parity-pagination { justify-content: flex-start; }
+}

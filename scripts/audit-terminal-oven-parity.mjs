@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditTerminalOvenParity, validateStorybookOwnership, validateTerminalParity } from "./terminal-oven-parity-lib.mjs";
 import { buildTerminalOvenCorpus } from "./terminal-oven-parity-corpus.mjs";
-const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."), output = resolve(root, "terminal-oven-parity.json"), corpusPath = resolve(root, "terminal-oven-parity-corpus.json");
+const root = resolve(dirname(fileURLToPath(import.meta.url)), ".."), output = resolve(root, "audits/oven/terminal-oven-parity.json"), corpusPath = resolve(root, "audits/oven/terminal-oven-parity-corpus.json");
 const fail = (message) => { throw new Error(`terminal inventory audit: ${message}`); }, encode = (value) => `${JSON.stringify(value, null, 2)}\n`;
 async function atomic(path, text) { await mkdir(dirname(path), { recursive: true }); const temp = `${path}.${process.pid}.tmp`; try { await writeFile(temp, text); if (process.env.BURNLIST_TERMINAL_INVENTORY_FAIL_AFTER_TEMP === "1") throw new Error("injected atomic write failure"); await rename(temp, path); } finally { await unlink(temp).catch(() => {}); } }
 async function main(args) {

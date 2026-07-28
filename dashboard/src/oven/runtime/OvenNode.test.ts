@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { OvenNode } from "./OvenNode";
+import { collectionItemIdentity, OvenNode } from "./OvenNode";
 import { ModeToggleAdapter } from "./control-adapters";
 import { initOvenState, ovenReducer, type OvenAction, type OvenIr } from "./oven-reducer";
 
@@ -63,6 +63,48 @@ test("OvenNode composes LoopGraph from root and item-scoped sources", () => {
     children: [{ kind: "each", attributes: {}, children: [{ kind: "loop-graph", attributes: { source: "@item/loopRun" }, children: [] }] }],
   };
   assert.match(render(itemNode, initOvenState(base, { items: [{ name: "first", loopRun }] })), /aria-current="step"/);
+});
+
+test("OvenNode collection switch selects a case from each scoped item", () => {
+  const ir: OvenIr = {
+    ...base,
+    collections: [{ id: "items", kind: "collection", source: "/items", pageSize: 2 }],
+  };
+  const card = (label: string) => ({ kind: "kpi-item", attributes: { heading: label, source: "@item/name" }, bindings: {}, children: [] });
+  const node: any = {
+    kind: "collection",
+    attributes: { id: "items" },
+    children: [{
+      kind: "each",
+      attributes: {},
+      children: [{
+        kind: "switch",
+        attributes: { source: "@item/category" },
+        children: [
+          { kind: "case", attributes: { value: "diff" }, children: [card("Diff")] },
+          { kind: "case", attributes: { value: "reasoning" }, children: [card("Reasoning")] },
+        ],
+      }],
+    }],
+  };
+  const state = initOvenState(ir, { items: [
+    { category: "diff", name: "changed source" },
+    { category: "reasoning", name: "private step" },
+  ] });
+  const markup = renderToStaticMarkup(createElement(OvenNode, { node, ir, state, dispatch: () => {} }));
+  assert.match(markup, /Diff/);
+  assert.match(markup, /changed source/);
+  assert.match(markup, /Reasoning/);
+  assert.match(markup, /private step/);
+});
+
+test("OvenNode collection identity follows item-key across prepends", () => {
+  const first = { id: "line-1", name: "first" };
+  const second = { id: "line-2", name: "second" };
+  assert.equal(collectionItemIdentity(first, 0, "/id"), "line-1");
+  assert.equal(collectionItemIdentity(second, 1, "/id"), "line-2");
+  assert.equal(collectionItemIdentity(first, 1, "/id"), "line-1");
+  assert.equal(collectionItemIdentity({}, 7, "/id"), "7");
 });
 
 test("OvenNode sends mode-toggle callbacks through the closed dispatch", () => {

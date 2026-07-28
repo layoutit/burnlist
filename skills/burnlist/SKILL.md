@@ -38,6 +38,7 @@ Read references only when their trigger applies:
 - `references/loop-capability-example.json`: starting catalog only when a repository has no trusted check capability yet. Its two top-level keys are inputs to *different* commands — `catalog` is the flat body of `.burnlist/loop-capabilities.json`, `grants` is the `--grants` file for `loop capability trust`. Copying the file verbatim to either location fails; see `references/host-execution.md`.
 - `references/loop-provider-setup.md`: mandatory before the first Loop when available native agents, CLIs, logins, or subscriptions are unknown; inventory safely, show the user, and ask what to enable.
 - `references/loop-providers/<provider>.md`: bounded invocation recipe for Claude native, Codex native, Codex CLI, AGY, Grok, or a custom host. Read the selected provider recipe before invoking it.
+- `references/agent-monitor.md`: automatic Agent Monitor lifecycle, worker-skill simplification, and Loop session attribution boundaries.
 
 Do not load cold references for a normal single-item implementation unless needed. If a task touches a cold-rule area, read the matching reference before editing Burnlist state in that area.
 
@@ -65,9 +66,13 @@ Do not execute from `draft/<id>/`. If the user names a draft, switch to creation
 
 `burnlist.md` is hot shrinking state:
 
-- metadata
+- metadata, optionally including one `Default Oven: <oven-id>` presentation hint
 - `## Active Checklist`
 - terse `## Completed` ledger
+
+Use the optional default only when the user or repository has established a
+primary Oven. It changes the initial Web/TUI lens, not execution or proof. See
+`references/burnlist-protocol.md` for its exact placement and fallback.
 
 `goal.md` is the stable contract. Read it before moving `ready` to `inprogress`, before burning the first item of an active Burnlist, after compaction only when the stable contract is unclear, and whenever scope/proof authority is unclear. Do not reread it before every routine step.
 
@@ -124,7 +129,7 @@ For detailed examples and banned narration, read `references/burnlist-visible-ou
 
 ## Dashboard Boundary
 
-The live dashboard is mandatory as an observer, but agents do not manually manage its server lifecycle. A global Burnlist installation owns one persistent shared loopback service for registered repositories; `burnlist` and `burnlist -i` ensure it is healthy. A local installation owns an ephemeral loopback service only for `burnlist -i` and stops it when the TUI exits. Do not start a per-plan server, manage ports, claim an unverified dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Use `burnlist service status` only when lifecycle diagnosis is relevant; preserve `--server` as an explicit user-selected override. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize dashboard UI inspection.
+The live dashboard is mandatory as an observer, but agents do not manually manage its server lifecycle. A global Burnlist installation owns one persistent shared loopback service for registered repositories; `burnlist` and `burnlist -i` ensure it is healthy. If that verified global service exists and the user did not explicitly request local mode, always reuse it from every repository; never start, replace, or shadow it with another server. A local installation owns an ephemeral loopback service only when no global installation exists, or when the user explicitly requests `--local`, and stops it when the TUI exits. Do not start a per-plan server, manage ports, claim an unverified dashboard URL, or inspect dashboard UI unless the user asks or dashboard behavior is the task. Use `burnlist service status` only when lifecycle diagnosis is relevant; preserve `--server` as an explicit user-selected override. Adopting a shipped, pinned, read-only observer Oven is safe and needs no separate permission; it does not authorize dashboard UI inspection.
 
 The dashboard scans lifecycle folders and is read-only. `burnlist.md` and lifecycle folder location are canonical task state. Dashboard charts/logs/repo graphs are observer evidence, not implementation proof.
 
@@ -203,12 +208,17 @@ trusted-check capability provably cannot exist yet (e.g. the repo has nothing
 for `repo-verify` to run), or the item's scope changed enough to need a
 different Loop. Record which one applied.
 
-The host—not Burnlist—chooses and supervises each native agent or provider CLI.
-If provider availability is unknown, read `references/loop-provider-setup.md`,
-show the safe inventory, and ask what the user wants enabled. Then read only
-the selected provider recipe. Give workers the prepared task, not this skill:
-workers need no Burnlist commands, claim identities, graph knowledge, or
-lifecycle authority.
+The orchestrating host—not Burnlist and never the worker—owns provider setup
+and supervision. It inventories providers without reading credentials, asks
+the user what to enable, hands interactive login or trust consent to the user,
+runs authorized Burnlist-supported hook setup, allocates launch-only session
+metadata, supplies the exact repository/permissions/model flags, keeps the
+process supervised, validates its result, and submits the Loop outcome. If
+provider availability is unknown, read `references/loop-provider-setup.md`;
+then read only the selected provider recipe. Give workers only the prepared
+task prompt: workers do not configure providers or hooks, manage trust, receive
+skills, run Burnlist lifecycle commands, hold claim identities, or know graph
+mechanics.
 
 Make semantic decisions only from evidence:
 

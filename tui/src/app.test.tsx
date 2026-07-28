@@ -22,7 +22,7 @@ const burnlist = {
 };
 const oven = {
   id: "checklist", name: "Checklist", description: "Burnlist progress and events.", version: "0.1.0",
-  builtIn: true, repoKey: null, contract: "checklist-progress@1", dataInput: "producer-managed",
+  builtIn: true, repoKey: null, contract: "checklist-progress@1", dataInput: "json-payload",
 };
 const progress = {
   generatedAt: "now", repoKey: "repo1", title: "Demo Burnlist", repo: "demo", planPath: "/demo/burnlist.md", planLabel: "burnlist.md",
@@ -30,6 +30,12 @@ const progress = {
   active: [{ id: "demo-02", title: "Current item", fields: { description: "Finish navigation." } }],
   completed: [{ id: "demo-01", title: "Latest completed", completedAt: "2026-07-23T09:00:00Z", detail: "Navigation foundation done." }],
 };
+const landingResponse = ({
+  generatedAt = "now", projects = [], burnlists = [], ovens = [],
+}: {
+  generatedAt?: string; projects?: unknown[]; burnlists?: unknown[]; ovens?: unknown[];
+}) => Response.json({ generatedAt, projects, burnlists, ovens });
+
 function validCatalogDefinition(id: string) {
   const source = id === "checklist"
     ? readFileSync(new URL("../../ovens/checklist/checklist.oven", import.meta.url), "utf8")
@@ -43,9 +49,11 @@ function installApi() {
   const definition = validCatalogDefinition("checklist");
   globalThis.fetch = (async (input) => {
     const path = new URL(String(input)).pathname;
-    if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }] });
-    if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [burnlist] });
-    if (path === "/api/ovens") return Response.json({ ovens: [oven, { ...oven, id: "installed", name: "Installed", builtIn: false, repoKey: "repo1" }] });
+    if (path === "/api/landing") return landingResponse({
+      projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }],
+      burnlists: [burnlist],
+      ovens: [oven, { ...oven, id: "installed", name: "Installed", builtIn: false, repoKey: "repo1" }],
+    });
     if (path === "/api/progress") return Response.json(progress);
     if (path === "/api/loop-projection") return Response.json({ loopRun: {
       itemRef: "item:demo-01#demo-02", loopId: "loop:builtin:review", state: "ACTIVE", currentNode: "review",
@@ -71,9 +79,11 @@ function installGenericRuntimeApi(missingRequired = false) {
   if (!compiled.ok) throw new Error("generic runtime fixture did not compile");
   globalThis.fetch = (async (input) => {
     const path = new URL(String(input)).pathname;
-    if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }] });
-    if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [genericBurnlist] });
-    if (path === "/api/ovens") return Response.json({ ovens: [genericOven] });
+    if (path === "/api/landing") return landingResponse({
+      projects: [{ repoKey: "repo1", displayName: "demo", canonicalRoot: "/demo", health: "healthy", counts: { total: 1, active: 1 } }],
+      burnlists: [genericBurnlist],
+      ovens: [genericOven],
+    });
     if (path === "/api/oven-data/kpi-only") return Response.json({ ovenId: "kpi-only", validated: true, payload: { current: { value: 1 }, progress: { done: 1, total: 2, percent: 50 } } });
     if (path === "/api/ovens/kpi-only") return Response.json({ oven: { ...genericOven, instructions: "# KPI Only", oven: source, ovenRevision: `o1-sha256:${"b".repeat(64)}`, ir: compiled.ir } });
     return Response.json({ error: `unexpected ${path}` }, { status: 404 });
@@ -129,9 +139,12 @@ describe("TUI navigation stack", () => {
       const count = (calls.get(path) ?? 0) + 1;
       calls.set(path, count);
       if (count === 1) return new Promise<Response>((resolve) => pending.set(path, resolve));
-      if (path === "/api/projects") return Promise.resolve(Response.json({ generatedAt: "fresh", projects: [{ repoKey: "fresh", displayName: "fresh-project", canonicalRoot: "/fresh", health: "healthy", counts: { total: 1, active: 1 } }] }));
-      if (path === "/api/burnlists") return Promise.resolve(Response.json({ generatedAt: "fresh", burnlists: [{ ...burnlist, repoKey: "fresh", repo: "fresh-project", title: "Fresh Burnlist" }] }));
-      if (path === "/api/ovens") return Promise.resolve(Response.json({ ovens: [oven] }));
+      if (path === "/api/landing") return Promise.resolve(landingResponse({
+        generatedAt: "fresh",
+        projects: [{ repoKey: "fresh", displayName: "fresh-project", canonicalRoot: "/fresh", health: "healthy", counts: { total: 1, active: 1 } }],
+        burnlists: [{ ...burnlist, repoKey: "fresh", repo: "fresh-project", title: "Fresh Burnlist" }],
+        ovens: [oven],
+      }));
       return Promise.resolve(Response.json({ error: "unexpected" }, { status: 404 }));
     }) as typeof fetch;
     const setup = await createTestRenderer({ width: 110, height: 34 });
@@ -139,11 +152,14 @@ describe("TUI navigation stack", () => {
     const root = createRoot(setup.renderer);
     flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
     await setup.renderOnce();
+    expect(setup.captureCharFrame()).toContain("Loading Burnlists");
+    expect(setup.captureCharFrame()).not.toContain("No Burnlists discovered");
     await key(setup, "r");
     await waitForRenderedFrame(setup, (frame) => frame.includes("Fresh Burnlist") && !frame.includes("Refreshing"), "fresh landing generation");
-    pending.get("/api/projects")?.(Response.json({ generatedAt: "stale", projects: [] }));
-    pending.get("/api/burnlists")?.(Response.json({ generatedAt: "stale", burnlists: [{ ...burnlist, title: "Stale Burnlist" }] }));
-    pending.get("/api/ovens")?.(Response.json({ ovens: [] }));
+    pending.get("/api/landing")?.(landingResponse({
+      generatedAt: "stale",
+      burnlists: [{ ...burnlist, title: "Stale Burnlist" }],
+    }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     await setup.flush();
     expect(setup.captureCharFrame()).toContain("Fresh Burnlist");
@@ -204,7 +220,7 @@ describe("TUI navigation stack", () => {
     await setup.mockInput.pressKeys(["RETURN"]);
     await new Promise((resolve) => setTimeout(resolve, 60));
     await setup.flush();
-    await setup.waitForFrame((frame) => frame.includes("COMPILED") && frame.includes("Completion") && frame.includes("enter:latest detail"));
+    await setup.waitForFrame((frame) => frame.includes("COMPILED") && frame.includes("Progress") && frame.includes("enter:latest detail"));
     await key(setup, "q");
     await setup.waitForFrame((frame) => frame.includes("Oven catalog"));
     await key(setup, "q");
@@ -241,9 +257,7 @@ describe("TUI navigation stack", () => {
     const firstDefinition = validCatalogDefinition("first"), secondDefinition = validCatalogDefinition("second");
     globalThis.fetch = ((input, init) => {
       const path = new URL(String(input)).pathname;
-      if (path === "/api/projects") return Promise.resolve(Response.json({ generatedAt: "now", projects: [] }));
-      if (path === "/api/burnlists") return Promise.resolve(Response.json({ generatedAt: "now", burnlists: [] }));
-      if (path === "/api/ovens") return Promise.resolve(Response.json({ ovens: summaries }));
+      if (path === "/api/landing") return Promise.resolve(landingResponse({ ovens: summaries }));
       if (path === "/api/ovens/first" || path === "/api/ovens/second") {
         signals.push(init?.signal as AbortSignal);
         return path.endsWith("first") ? first.promise : second.promise;
@@ -283,9 +297,7 @@ describe("TUI navigation stack", () => {
     const signals: AbortSignal[] = [], paths: string[] = [];
     globalThis.fetch = ((input, init) => {
       const path = new URL(String(input)).pathname;
-      if (path === "/api/projects") return Promise.resolve(Response.json({ generatedAt: "now", projects: [] }));
-      if (path === "/api/burnlists") return Promise.resolve(Response.json({ generatedAt: "now", burnlists: [lensBurnlist] }));
-      if (path === "/api/ovens") return Promise.resolve(Response.json({ ovens: lensOvens }));
+      if (path === "/api/landing") return Promise.resolve(landingResponse({ burnlists: [lensBurnlist], ovens: lensOvens }));
       const pending = path === "/api/oven-data/first-lens" ? firstData : path === "/api/ovens/first-lens" ? firstDetail : path === "/api/oven-data/second-lens" ? secondData : path === "/api/ovens/second-lens" ? secondDetail : null;
       if (pending) { signals.push(init?.signal as AbortSignal); paths.push(path); return pending.promise; }
       return Promise.resolve(Response.json({ error: "unexpected" }, { status: 404 }));
@@ -319,9 +331,7 @@ describe("TUI navigation stack", () => {
     const payload = { pageMode: "detail", telemetry: { status: "comparable", fields: {} }, fields: [], progress: {}, log: [], refresh: {}, __burnlistOvenRuntime: { collectionPages: { "/fields": { page: 0, pageSize: 25, pageCount: 4, total: 80 } } } };
     globalThis.fetch = (async (input) => {
       const url = new URL(String(input)), path = url.pathname;
-      if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [] });
-      if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [pagedBurnlist] });
-      if (path === "/api/ovens") return Response.json({ ovens: [pagedOven] });
+      if (path === "/api/landing") return landingResponse({ burnlists: [pagedBurnlist], ovens: [pagedOven] });
       if (path === "/api/ovens/differential-testing") return Response.json({ oven: { ...pagedOven, repoKey: null, instructions: "# Differential", oven: source, ovenRevision: `o1-sha256:${"d".repeat(64)}`, ir: compiled.ir } });
       if (path === "/api/oven-data/differential-testing") { requests.push(url.search); const page = Number(url.searchParams.get("page") ?? 0), pageSize = Number(url.searchParams.get("pageSize") ?? 25); return Response.json({ ovenId: pagedOven.id, payload: { ...payload, __burnlistOvenRuntime: { collectionPages: { "/fields": { page, pageSize, pageCount: 4, total: 80 } } } }, validated: true }); }
       return Response.json({ error: "unexpected" }, { status: 404 });

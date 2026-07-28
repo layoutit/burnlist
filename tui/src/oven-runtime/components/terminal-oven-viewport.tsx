@@ -8,16 +8,20 @@ import { statusSurfaceModel, TerminalStatusSurface } from "./status-components";
 import { mediaModel, TerminalDomainTabs, TerminalFrameCards, TerminalMetricTiles, TerminalVerdictHeader, validateMediaRoots, validateVerdictRoot } from "./media-components";
 import { streamingDiffModel, TerminalStreamingDiff, TerminalStreamingDiffHeading } from "./streaming-diff-components";
 import { differentialKpiModel, TerminalDifferentialChart, TerminalDifferentialKpiStrip, TerminalDifferentialLogTable, TerminalHybridFieldList } from "./differential-components";
-import { TerminalChecklistBurnPanel, TerminalChecklistCurrent, TerminalChecklistEventCards, TerminalChecklistLedger, TerminalChecklistWorkspace } from "./checklist-components";
+import { TerminalChecklistBurnPanel, TerminalChecklistCurrent, TerminalChecklistEventCards, TerminalChecklistLedger, TerminalChecklistTabs, TerminalChecklistWorkspace } from "./checklist-components";
+import { TerminalAgentMonitorActivityChart, TerminalAgentMonitorEventCards, TerminalAlert } from "./agent-monitor-components";
 import { TerminalLoopGraph, TerminalLoopProgress } from "./loop-components";
 import { TerminalModelLabView } from "./model-lab-components";
 import { TerminalAsciiBlock } from "./ascii-block";
 import { fitTerminalText } from "../../terminal-text";
 import { useTerminalPalette } from "../../terminal-accessibility";
 
-type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null; pageIndex?: number; pageSize?: number }>;
+type ComponentProps = Readonly<{ node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean; selectedId?: string; selectedCard?: number; selectedFile?: number; expandedKey?: string | null; pageIndex?: number; pageSize?: number; controls?: Readonly<Record<string, string | boolean>> }>;
 export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: ComponentProps) => ReactNode>> = Object.freeze({
   "ascii-block": TerminalAsciiBlock,
+  "alert": TerminalAlert,
+  "agent-monitor-activity-chart": TerminalAgentMonitorActivityChart,
+  "agent-monitor-event-card": TerminalAgentMonitorEventCards,
   "kpi-strip": TerminalKpiStrip,
   "kpi-item": TerminalKpiItem,
   "log-table": TerminalLogTable,
@@ -36,6 +40,7 @@ export const TERMINAL_COMPONENT_ROOTS: Readonly<Record<string, (props: Component
   "checklist-burn-panel": TerminalChecklistBurnPanel,
   "checklist-current": TerminalChecklistCurrent,
   "checklist-workspace": TerminalChecklistWorkspace,
+  "checklist-tabs": TerminalChecklistTabs,
   "checklist-event-cards": TerminalChecklistEventCards,
   "loop-graph": TerminalLoopGraph,
   "loop-progress": TerminalLoopProgress,
@@ -105,7 +110,7 @@ export function TerminalOvenViewport({ result, footer = "q:back  esc:exit", stre
         const collectionId = typeof root.node.attributes.collectionFrom === "string" ? root.node.attributes.collectionFrom : "";
         const selectedKey = prepared.state.selections[collectionId] ?? prepared.state.expandedKeys.find((key) => key.startsWith(`${collectionId}:`))?.slice(collectionId.length + 1);
         const fieldKey = selectedKey ? prepared.state.expandedKeys.find((key) => key === `${collectionId}:${selectedKey}`) : undefined;
-        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} {...(root.node.kind === "diff-card" ? { selectedCard: streaming?.selectedCard ?? 0, selectedFile: streaming?.selectedFile ?? 0, expandedKey: streaming?.expandedKey ?? (prepared.state.expandedKeys.includes("streaming-diff:first-file") ? "a1b2:src/app.ts" : null) } : root.node.kind === "field-list" ? { expanded: !!fieldKey && fieldKey.slice(collectionId.length + 1) === selectedKey, selectedId: selectedKey, pageIndex: prepared.state.collections[collectionId]?.pageIndex, pageSize: prepared.state.collections[collectionId]?.pageSize } : root.node.kind === "checklist-event-cards" ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
+        return Component ? <box key={cell.path} position="absolute" left={cell.rect.x} top={cell.rect.y} width={cell.rect.width} height={cell.rect.height} overflow="hidden"><Component node={root.node} payload={prepared.payload} width={cell.rect.width} height={cell.rect.height} controls={prepared.state.controls} {...(root.node.kind === "diff-card" ? { selectedCard: streaming?.selectedCard ?? 0, selectedFile: streaming?.selectedFile ?? 0, expandedKey: streaming?.expandedKey ?? (prepared.state.expandedKeys.includes("streaming-diff:first-file") ? "a1b2:src/app.ts" : null) } : ["field-list", "agent-monitor-event-card"].includes(root.node.kind) ? { expanded: !!fieldKey && fieldKey.slice(collectionId.length + 1) === selectedKey, selectedId: selectedKey, pageIndex: prepared.state.collections[collectionId]?.pageIndex, pageSize: prepared.state.collections[collectionId]?.pageSize } : ["checklist-event-cards", "checklist-tabs"].includes(root.node.kind) ? { expanded: prepared.state.expandedKeys.some((key) => key.startsWith("checklist-event-cards:")) } : {})} /></box> : null;
       }
       return hidden ? null : <StructuralCell key={cell.path} cell={cell} />;
     })}

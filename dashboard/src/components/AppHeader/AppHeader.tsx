@@ -5,14 +5,16 @@ const HEADER_LINKS = [
   { href: "/ovens/new", label: "New Oven", section: "new-oven" },
 ] as const;
 
-const OVEN_SECTIONS = ["differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"];
+const OVEN_SECTIONS = ["agent-monitor", "custom-oven", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"];
 
-export function AppHeader({ detail, section }: { detail: ChecklistProgressData | null; section: string }) {
-  const title = section === "differential-testing" ? "Differential Testing"
+export function AppHeader({ detail, ovenId, section }: { detail: ChecklistProgressData | null; ovenId?: string | null; section: string }) {
+  const title = section === "agent-monitor" ? "Agent Monitor"
+    : section === "differential-testing" ? "Differential Testing"
     : section === "model-lab" ? "Model Lab"
       : section === "performance-tracing" ? "Performance Tracing"
         : section === "streaming-diff" ? "Streaming Diff"
-          : section === "visual-parity" ? "Visual Parity" : detail?.title;
+          : section === "visual-parity" ? "Visual Parity"
+            : section === "custom-oven" ? detail?.title ?? ovenId : detail?.title;
   return (
     <header className="dashboard-header">
       <div className="dashboard-header-inner">
@@ -20,7 +22,7 @@ export function AppHeader({ detail, section }: { detail: ChecklistProgressData |
           <img alt="" className="dashboard-brand-logo" src="/favicon.svg" />
           <span className="dashboard-brand-name">Burnlist</span>
         </a>
-        {title && <div className="dashboard-oven-title">{title}</div>}
+        {title && <div className="dashboard-oven-title" title={title}>{title}</div>}
         <nav aria-label="Primary navigation" className="dashboard-primary-nav">
           {detail ? <time className="dashboard-detail-time" dateTime={detail.generatedAt}>{formatTime(detail.generatedAt)}</time> : !OVEN_SECTIONS.includes(section) && HEADER_LINKS.map((link, index) => (
             <span className="dashboard-primary-nav-item" key={link.href}>

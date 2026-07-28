@@ -30,9 +30,13 @@
 .dashboard-oven-title {
   position: absolute;
   left: 50%;
+  max-width: calc(100% - 220px);
+  overflow: hidden;
   color: var(--muted);
   font: 400 16px/1 var(--dashboard-title-font);
+  text-overflow: ellipsis;
   transform: translateX(-50%);
+  white-space: nowrap;
   pointer-events: none;
 }
 
@@ -434,6 +438,7 @@ body.checklist-detail-view .dashboard-oven-title {
 }
 
 @media (max-width: 760px) {
+  .dashboard-oven-title { max-width: calc(100% - 112px); font-size: 14px; }
   body.checklist-detail-view .dashboard-oven-title { max-width: calc(100% - 190px); font-size: 14px; }
   .dashboard-detail-time { display: none; }
   .dashboard-brand-name { display: none; }

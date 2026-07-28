@@ -31,6 +31,8 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
     if (node.name === "icon" && !REGISTRY.icons.has(a.name)) add(d, "REGISTRY_ICON", `Unknown icon ${a.name}`, node, "name");
     if (node.name === "kpi-item" && a.icon && !REGISTRY.icons.has(a.icon)) add(d, "REGISTRY_ICON", `Unknown icon ${a.icon}`, node, "icon");
     if (node.name === "kpi-item" && a.variant && !["current", "scenario", "burns", "fields", "frames"].includes(a.variant)) add(d, "SCALAR_VARIANT", "kpi-item variant is not registered", node, "variant");
+    if (node.name === "alert" && a.variant && !["default", "info", "success", "warning", "destructive"].includes(a.variant)) add(d, "SCALAR_VARIANT", "alert variant is not registered", node, "variant");
+    if (node.name === "alert" && a.role && a.role !== "alert") add(d, "SCALAR_ROLE", "alert role must be alert", node, "role");
     if (node.name === "oven") { if (!REGISTRY.themes.has(a.theme)) add(d, "REGISTRY_THEME", `Unknown theme ${a.theme}`, node, "theme"); if (!REGISTRY.contracts.has(a.contract)) add(d, "REGISTRY_CONTRACT", `Unknown contract ${a.contract}`, node, "contract"); if (!/^\d+\.\d+\.\d+$/u.test(a.version)) add(d, "SCALAR_VERSION", "Oven version must use major.minor.patch", node, "version"); }
     if (node.name === "box" && !["div", "section", "main", "span"].includes(a.element)) add(d, "SCALAR_ELEMENT", "box element must be div, section, main, or span", node, "element");
     if (node.name === "sort-toggle" && !REGISTRY.sorts.has(a.key)) add(d, "REGISTRY_SORT", `Unknown sort ${a.key}`, node, "key");
@@ -46,7 +48,7 @@ export function validateOven(ast, { file = "<oven>" } = {}) {
   });
   for (const [node, key, value] of refs) {
     const target = ids.get(value);
-    const kinds = { "mode-from": ["mode-toggle"], "search-from": ["search"], "filter-from": ["filter-toggle"], "sort-from": ["sort-toggle"], "collection-from": ["collection"], "selection-from": ["domain-tabs"] }[key];
+    const kinds = { "mode-from": ["mode-toggle"], "search-from": ["search"], "filter-from": ["filter-toggle", "mode-toggle"], "sort-from": ["sort-toggle"], "collection-from": ["collection"], "selection-from": ["domain-tabs"] }[key];
     if (!target || !kinds.includes(target.name)) add(d, "REFERENCE_TARGET", `${key} must name a ${kinds.join(" or ")}`, node, key);
   }
   gridChecks(ast, d); switchChecks(ast, d); propChecks(ast, d); interactionChecks(ast, d);

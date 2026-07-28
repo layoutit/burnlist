@@ -81,6 +81,7 @@ assert.deepEqual(timerCounts, {
 
 const handlers = [
   "src/ovens/handlers/generic-json-handler.mjs",
+  "ovens/agent-monitor/engine/agent-monitor-handler.mjs",
   "ovens/differential-testing/engine/handler.mjs",
   "ovens/model-lab/engine/model-lab-handler.mjs",
   "ovens/performance-tracing/handler.mjs",
@@ -94,6 +95,7 @@ for (const path of handlers) {
 }
 
 const livePages = [
+  "dashboard/src/components/AgentMonitor/AgentMonitor.tsx",
   "dashboard/src/components/ChecklistDashboard/ChecklistOvenView.tsx",
   "dashboard/src/components/CustomOvenView/CustomOvenView.tsx",
   "dashboard/src/components/DifferentialTestingOven/DifferentialTestingOven.tsx",

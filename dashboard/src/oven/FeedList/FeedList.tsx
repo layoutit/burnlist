@@ -1,22 +1,54 @@
-import { streamingDiffFeedKey } from "@lib";
-import type { StreamingDiffFeed } from "@lib";
 import { timestamp } from "../utils/streaming-diff-time";
+import "./feed-list.css";
 
-export function FeedList({ feeds, error, loading, showRepository }: { feeds: StreamingDiffFeed[]; error: string; loading: boolean; showRepository: boolean }) {
+type SessionFeed = {
+  identity: { logicalRepoKey: string; worktreeKey: string; session: string };
+  updatedAt: string | null;
+  href: string;
+  repoLabel?: string;
+  title?: string;
+  detail?: string;
+  state?: "Live" | "Idle" | null;
+};
+
+function feedKey(feed: SessionFeed) {
+  return `${feed.identity.logicalRepoKey}/${feed.identity.worktreeKey}/${feed.identity.session}`;
+}
+
+export function FeedList({
+  feeds,
+  error,
+  loading,
+  showRepository,
+  title = "Streaming Diff",
+  description = "Recent feeds are ordered by published activity time, not process liveness.",
+  loadingText = "Loading recent feeds.",
+  emptyText = "No recent feeds.",
+}: {
+  feeds: SessionFeed[];
+  error: string;
+  loading: boolean;
+  showRepository: boolean;
+  title?: string;
+  description?: string;
+  loadingText?: string;
+  emptyText?: string;
+}) {
   return (
-    <section className="streaming-diff-view">
-      <header className="streaming-diff-heading">
-        <h1>Streaming Diff</h1>
-        <p>Recent feeds are ordered by published activity time, not process liveness.</p>
+    <section className="session-feed-view">
+      <header className="session-feed-heading">
+        <h1>{title}</h1>
+        <p>{description}</p>
       </header>
-      {error ? <p className="streaming-diff-message is-error">{error}</p> : loading ? <p className="streaming-diff-message">Loading recent feeds.</p> : !feeds.length ? <p className="streaming-diff-message">No recent feeds.</p> : (
-        <div className="streaming-diff-feed-list">
+      {error ? <p className="session-feed-message is-error">{error}</p> : loading ? <p className="session-feed-message">{loadingText}</p> : !feeds.length ? <p className="session-feed-message">{emptyText}</p> : (
+        <div className="session-feed-list">
           {feeds.map((feed) => (
-            <a className="streaming-diff-feed" href={feed.href} key={streamingDiffFeedKey(feed)}>
-              <span className="streaming-diff-feed-session">{feed.identity.session}</span>
-              {showRepository && <span className="streaming-diff-feed-worktree">repository {feed.repoLabel}</span>}
-              <span className="streaming-diff-feed-worktree">worktree {feed.identity.worktreeKey}</span>
-              <time className="streaming-diff-feed-time" dateTime={feed.updatedAt ?? undefined}>{timestamp(feed.updatedAt)}</time>
+            <a className="session-feed" data-state={feed.state ?? undefined} href={feed.href} key={feedKey(feed)}>
+              <span className="session-feed-session">{feed.title ?? feed.identity.session}</span>
+              {feed.detail && <span className="session-feed-detail">{feed.detail}</span>}
+              {showRepository && <span className="session-feed-worktree">repository {feed.repoLabel}</span>}
+              <span className="session-feed-worktree">worktree {feed.identity.worktreeKey}</span>
+              <time className="session-feed-time" dateTime={feed.updatedAt ?? undefined}>{timestamp(feed.updatedAt)}</time>
             </a>
           ))}
         </div>

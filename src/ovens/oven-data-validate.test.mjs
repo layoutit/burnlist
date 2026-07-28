@@ -81,6 +81,16 @@ test("closed specialized widgets still validate their source pointers", () => {
     path: "/model",
     message: "Oven source pointer does not resolve in the payload.",
   }]);
+
+  const checklistTabs = {
+    id: "custom-shape",
+    oven: customSource('<checklist-tabs source="/raw"/>'),
+  };
+  assert.equal(validateOvenData(checklistTabs, { raw: {} }).ok, true);
+  assert.deepEqual(validateOvenData(checklistTabs, {}).errors, [{
+    path: "/raw",
+    message: "Oven source pointer does not resolve in the payload.",
+  }]);
 });
 
 test("custom item pointers resolve against each collection item", () => {
@@ -128,7 +138,7 @@ test("custom validation checks literal-or-pointer runtime attributes", () => {
   ]);
 });
 
-test("interactive nodes nested under each do not inherit its item scope", () => {
+test("nested collections and tables stay root-scoped while a switch follows its iterated item", () => {
   const oven = {
     id: "custom-shape",
     oven: customSource(`
@@ -166,6 +176,9 @@ test("interactive nodes nested under each do not inherit its item scope", () => 
   };
   assert.deepEqual(validateOvenData(nested, {
     rows: [{ id: "a", mode: "on", events: [{ message: "visible" }] }],
+  }).errors.map((error) => error.path), ["@item/events"]);
+  assert.deepEqual(validateOvenData(nested, {
+    rows: [{ id: "a", events: [{ message: "visible" }] }],
   }).errors.map((error) => error.path), ["@item/mode", "@item/events"]);
 });
 

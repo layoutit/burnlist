@@ -9,6 +9,7 @@ import { checklistFixture as data } from "./ChecklistDashboard.fixture.mjs";
 
 const componentPath = new URL("./ChecklistDashboard.tsx", import.meta.url).pathname;
 const stylesheetPath = new URL("./ChecklistDashboard.css", import.meta.url).pathname;
+const workspaceStylesheetPath = new URL("../../oven/ChecklistWorkspace/ChecklistWorkspace.css", import.meta.url).pathname;
 const indexStylesheetPath = new URL("../../index.css", import.meta.url).pathname;
 const appPath = new URL("../../App.tsx", import.meta.url).pathname;
 const libPath = new URL("../../lib", import.meta.url).pathname;
@@ -16,13 +17,13 @@ const ovenPath = new URL("../../oven", import.meta.url).pathname;
 
 test("checklist progress owns its workspace height instead of inheriting the differential default", async () => {
   const stylesheet = await readFile(stylesheetPath, "utf8");
-  assert.match(stylesheet, /body\.checklist-detail-view \.shell\.checklist-detail-shell #burnlist-detail \.checklist-overview:not\(\[hidden\]\) \+ \.checklist-progress-workspace \{\s+height: 232px;\s+min-height: 232px;\s+max-height: 232px;/u);
+  assert.match(stylesheet, /\.checklist-detail-shell #burnlist-detail \.checklist-progress-workspace \{\s+width: 100%;\s+height: 232px;\s+min-height: 232px;\s+max-height: 232px;/u);
 });
 
 test("checklist progress stacks into one full-width column at narrow widths", async () => {
   const stylesheet = await readFile(stylesheetPath, "utf8");
   const responsiveBlock = stylesheet.slice(stylesheet.indexOf("@media (max-width: 1100px)"), stylesheet.indexOf("@media (max-width: 640px)"));
-  assert.match(responsiveBlock, /\.checklist-overview:not\(\[hidden\]\) \+ \.checklist-progress-workspace,/u);
+  assert.match(responsiveBlock, /\.checklist-detail-shell #burnlist-detail \.checklist-progress-workspace/u);
   assert.match(responsiveBlock, /min-height: 0;/u);
   assert.match(responsiveBlock, /flex: none;/u);
   assert.match(responsiveBlock, /grid-template-columns: minmax\(0, 1fr\);/u);
@@ -40,6 +41,19 @@ test("checklist ledger typography stays 14px at every responsive breakpoint", as
   const stylesheet = await readFile(indexStylesheetPath, "utf8");
   const rules = [...stylesheet.matchAll(/\.checklist-detail-shell \.event-ledger-panel \.log-row\.log-table-row \{ font-size: (\d+)px; \}/gu)];
   assert.deepEqual(rules.map((match) => match[1]), ["14", "14"]);
+});
+
+test("tab content keeps primary copy at readable sizes", async () => {
+  const [stylesheet, workspaceStylesheet] = await Promise.all([
+    readFile(stylesheetPath, "utf8"),
+    readFile(workspaceStylesheetPath, "utf8"),
+  ]);
+  assert.match(stylesheet, /\.event-card-title \{[\s\S]*?font-size: 15px;/u);
+  assert.match(stylesheet, /\.event-card-description \{[\s\S]*?font-size: 14px;/u);
+  assert.match(workspaceStylesheet, /\.checklist-workspace__item-copy span \{[\s\S]*?font-size: 14px;/u);
+  assert.match(workspaceStylesheet, /\.checklist-workspace__item-copy b \{[^}]*font-size: 14px;/u);
+  assert.match(workspaceStylesheet, /\.checklist-workspace__detail-title h2 \{[^}]*font: 16px\/1\.3/u);
+  assert.match(workspaceStylesheet, /\.checklist-workspace__fields dd \{[^}]*font-size: 14px;/u);
 });
 
 test("checklist KPIs become a compact text-first rail on phones", async () => {
@@ -64,7 +78,7 @@ test("routine retained-data refreshes do not insert layout-shifting banners", as
   assert.match(source, /\{error && <DashboardError message=\{error\} \/>\}<LensSwitcher \/>/u);
 });
 
-test("checklist detail renders the split progress surface and event card list", async () => {
+test("checklist detail keeps progress visible while tabs switch the lower workspace", async () => {
   const outputDir = await mkdtemp(join(process.cwd(), ".checklist-dashboard-test-"));
   try {
     const outputPath = join(outputDir, "ChecklistDashboard.mjs");
@@ -85,13 +99,24 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.match(markup, /<div class="driving-parity-kpi-heading">Time left<\/div>/u);
     assert.match(markup, /class="driving-parity-kpi-gauge driving-parity-kpi-progress-donut" viewBox="0 0 58 58"/u);
     assert.match(markup, /class="driving-parity-kpi-progress-donut-segment"[^>]+stroke-dasharray="100\.000 0\.000"/u);
+    assert.match(markup, /class="ui-tabs checklist-tabs"/u);
+    assert.match(markup, /role="tablist"[^>]*aria-label="Checklist views"/u);
+    assert.equal((markup.match(/role="tab"/gu) ?? []).length, 3);
+    assert.match(markup, />Events<span class="checklist-tabs__count">2<\/span><\/button>/u);
+    assert.match(markup, />Burnlist<span class="checklist-tabs__count">2<\/span><\/button>/u);
+    assert.match(markup, />Active item<\/button>/u);
+    assert.match(markup, /data-state="active"[^>]*>Events/u);
     assert.match(markup, /aria-label="Remaining work over time"/u);
     assert.match(markup, /class="checklist-progress-chart-column"><div class="checklist-progress-mobile-title">Progress<\/div><section class="panel progress-panel">/u);
+    assert.equal(markup.indexOf("checklist-progress-workspace") < markup.indexOf('aria-label="Checklist views"'), true);
+    assert.equal(markup.indexOf('aria-label="Checklist views"') < markup.indexOf('id="checklist-panel-events"'), true);
     assert.doesNotMatch(markup, /class="panel progress-panel"><div class="checklist-progress-mobile-title"/u);
     assert.doesNotMatch(markup, /burn-chart-label|>Completion<\/span>/u);
     assert.doesNotMatch(markup, /aria-label="Burnlist progress chart view"/u);
     assert.match(markup, /<span>Age<\/span><span>Event<\/span><span>Result<\/span><span>Delta<\/span><span>Done<\/span>/u);
     assert.match(markup, /class="event-card-list"/u);
+    assert.doesNotMatch(markup, /class="checklist-events-head"/u);
+    assert.doesNotMatch(markup, /class="checklist-workspace/u);
     assert.equal((markup.match(/data-event-card="true"/gu) ?? []).length, 2);
     assert.equal(markup.indexOf("Second event") < markup.indexOf("First event"), true);
     assert.match(markup, /First proof\./u);
@@ -142,6 +167,22 @@ test("checklist detail renders the split progress surface and event card list", 
     assert.doesNotMatch(markup, /<button[^>]*>Changes<\/button>/u);
     assert.doesNotMatch(markup, /Burnlist detail view/u);
     assert.doesNotMatch(markup, /Repo Graph/u);
+
+    const burnlistMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data, initialTab: "burnlist" }));
+    assert.match(burnlistMarkup, /data-state="active"[^>]*>Burnlist/u);
+    assert.match(burnlistMarkup, /class="checklist-workspace checklist-workspace--items"/u);
+    assert.match(burnlistMarkup, /aria-label="All items"/u);
+    assert.doesNotMatch(burnlistMarkup, /aria-label="Item detail"/u);
+    assert.match(burnlistMarkup, /aria-label="Remaining work over time"/u);
+    assert.doesNotMatch(burnlistMarkup, /class="event-card-list"/u);
+
+    const activeItemMarkup = renderToStaticMarkup(createElement(ChecklistDashboard, { data, initialTab: "active-item" }));
+    assert.match(activeItemMarkup, /data-state="active"[^>]*>Active item/u);
+    assert.match(activeItemMarkup, /class="checklist-workspace checklist-workspace--detail"/u);
+    assert.match(activeItemMarkup, /aria-label="Item B2 detail"/u);
+    assert.doesNotMatch(activeItemMarkup, /aria-label="All items"/u);
+    assert.match(activeItemMarkup, /aria-label="Remaining work over time"/u);
+    assert.doesNotMatch(activeItemMarkup, /class="event-card-list"/u);
   } finally {
     await rm(outputDir, { force: true, recursive: true });
   }

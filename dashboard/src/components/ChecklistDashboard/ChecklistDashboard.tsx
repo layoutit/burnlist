@@ -5,6 +5,7 @@ import { checklistEventDetailFields, compactAge, effectiveItemWork, eventRows, f
 export { checklistEventDetailFields } from "@lib/checklist-adapter";
 import "./ChecklistDashboard.css";
 import { buildChecklistProgressChart, KpiItem, KpiStrip, LogTable, ProgressDonut, SectionHeader } from "@oven";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@layout";
 import { LoopGraph } from "@/components/LoopGraph";
 import { ChecklistWorkspace } from "@/oven/ChecklistWorkspace";
 
@@ -63,7 +64,7 @@ export function ProgressLedger({ data }: { data: ChecklistProgressData }) {
   return <section className="panel work-panel event-ledger-panel"><div className="work-panel-head"><div className="work-panel-title">Progress</div></div><div className="work-panel-body"><div className="checklist-log"><LogTable
     columns={["Age", "Event", "Result", "Delta", "Done"]}
     rows={rows.map((item) => ({
-      key: `${item.id}/${item.completedAt}`,
+      key: item.key ?? `${item.id}/${item.completedAt}`,
       className: "log-row log-table-row",
       cells: [
         { className: "log-table-cell age", content: compactAge(item.completedAt, data.generatedAt) },
@@ -94,10 +95,10 @@ function EventDetail({ detail }: { detail: string }) {
   })}</div>;
 }
 
-export function EventCardList({ data }: { data: ChecklistProgressData }) {
+export function EventCardList({ data, showHeading = true }: { data: ChecklistProgressData; showHeading?: boolean }) {
   const rows = eventRows(data);
-  return <section className="checklist-events-section"><div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div><div className="event-card-list">{rows.map((item) => {
-    const key = `${item.id}/${item.completedAt}`;
+  return <section className={`checklist-events-section${showHeading ? "" : " is-tab-panel"}`}>{showHeading && <div className="checklist-events-head"><SectionHeader title="Events" count={rows.length} /></div>}<div className="event-card-list">{rows.map((item) => {
+    const key = item.key ?? `${item.id}/${item.completedAt}`;
     const fields = item.detail ? checklistEventDetailFields(item.detail) : [];
     const hasDetail = fields.some((field) => field.label !== "Completed" && field.values.length);
     return <article className="event-card" data-event-card="true" key={key}>
@@ -116,10 +117,41 @@ export function LoopRunPanel({ data }: { data: ChecklistProgressData }) {
   />;
 }
 
-export function ChecklistDashboard({ data }: { data: ChecklistProgressData }) {
+type ChecklistTab = "events" | "burnlist" | "active-item";
+
+export function ChecklistTabs({ data, initialTab = "events" }: { data: ChecklistProgressData; initialTab?: ChecklistTab }) {
+  const [tab, setTab] = useState<ChecklistTab>(initialTab);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(() => data.selectedItemId ?? data.active[0]?.id ?? eventRows(data)[0]?.id ?? null);
+  useEffect(() => {
+    if (data.selectedItemId) setSelectedItemId(data.selectedItemId);
+  }, [data.selectedItemId]);
+  const selectItem = (itemId: string) => {
+    setSelectedItemId(itemId);
+    setTab("active-item");
+  };
+  return <Tabs className="checklist-tabs" onValueChange={(value) => setTab(value as ChecklistTab)} value={tab}>
+    <div className="detail-workspace checklist-progress-workspace checklist-tabs__progress" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div>
+    <TabsList aria-label="Checklist views" className="checklist-tabs__list" variant="line">
+      <TabsTrigger aria-controls="checklist-panel-events" className="checklist-tabs__trigger" id="checklist-tab-events" value="events">Events<span className="checklist-tabs__count">{eventRows(data).length}</span></TabsTrigger>
+      <TabsTrigger aria-controls="checklist-panel-burnlist" className="checklist-tabs__trigger" id="checklist-tab-burnlist" value="burnlist">Burnlist<span className="checklist-tabs__count">{data.total}</span></TabsTrigger>
+      <TabsTrigger aria-controls="checklist-panel-active-item" className="checklist-tabs__trigger" id="checklist-tab-active-item" value="active-item">Active item</TabsTrigger>
+    </TabsList>
+    <TabsContent aria-labelledby="checklist-tab-events" className="checklist-tabs__panel checklist-tabs__panel--events" id="checklist-panel-events" value="events">
+      <EventCardList data={data} showHeading={false} />
+    </TabsContent>
+    <TabsContent aria-labelledby="checklist-tab-burnlist" className="checklist-tabs__panel" id="checklist-panel-burnlist" value="burnlist">
+      <ChecklistWorkspace data={data} onSelectItem={selectItem} selectedItemId={selectedItemId} view="items" />
+    </TabsContent>
+    <TabsContent aria-labelledby="checklist-tab-active-item" className="checklist-tabs__panel" id="checklist-panel-active-item" value="active-item">
+      <ChecklistWorkspace data={data} selectedItemId={selectedItemId} view="detail" />
+    </TabsContent>
+  </Tabs>;
+}
+
+export function ChecklistDashboard({ data, initialTab = "events" }: { data: ChecklistProgressData; initialTab?: ChecklistTab }) {
   useEffect(() => {
     document.body.classList.add("driving-parity-view", "checklist-detail-view");
     return () => document.body.classList.remove("driving-parity-view", "checklist-detail-view");
   }, []);
-  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><div className="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard"><ProgressLedger data={data} /><ProgressPanel data={data} /></div><ChecklistWorkspace data={data} /><EventCardList data={data} /></main></div>;
+  return <div className="shell detail-view-shell driving-parity-view checklist-detail-shell"><main className="detail-view" id="burnlist-detail"><section className="differential-overview checklist-overview"><ChecklistKpis data={data} /></section><ChecklistTabs data={data} initialTab={initialTab} /></main></div>;
 }

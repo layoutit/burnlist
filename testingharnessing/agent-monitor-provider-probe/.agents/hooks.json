@@ -1,0 +1,33 @@
+{
+  "burnlist-provider-probe": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node probe-hook.mjs agy PreInvocation"
+      }
+    ],
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "node probe-hook.mjs agy PostInvocation"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node probe-hook.mjs agy PostToolUse"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node probe-hook.mjs agy Stop"
+      }
+    ]
+  }
+}

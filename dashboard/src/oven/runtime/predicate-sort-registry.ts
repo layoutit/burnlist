@@ -26,6 +26,8 @@ function telemetry(item: Item): Item | undefined {
 
 /** DT's renderer treats either failed or missing samples as non-passing. */
 const nonPass: Predicate = (item) => number(item.failedSampleCount) + number(item.missingSampleCount) > 0;
+const eventCategory = (category: string): Predicate => (item) => item.category === category;
+const failedEvent: Predicate = (item) => item.result === "failed";
 
 /** DT's changed view orders transition volume, then net improvement, then source order. */
 const changed = ((left: Item, right: Item) => {
@@ -42,6 +44,12 @@ changed.include = (item) => {
 };
 
 export const predicateRegistry = registry<Predicate>([
+  ["checklist-progress@1", "command", eventCategory("command")],
+  ["checklist-progress@1", "diff", eventCategory("diff")],
+  ["checklist-progress@1", "failed", failedEvent],
+  ["checklist-progress@1", "lifecycle", eventCategory("lifecycle")],
+  ["checklist-progress@1", "message", eventCategory("message")],
+  ["checklist-progress@1", "tool", eventCategory("tool")],
   ["burnlist-differential-testing-data@1", "non-pass", nonPass],
 ]);
 

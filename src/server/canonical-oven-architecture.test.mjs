@@ -40,6 +40,7 @@ test("one server snapshot store, observer, and projection coordinator own ordina
 test("every JSON Oven handler uses the shared canonical snapshot and response service", async () => {
   const handlers = [
     "src/ovens/handlers/generic-json-handler.mjs",
+    "ovens/agent-monitor/engine/agent-monitor-handler.mjs",
     "ovens/differential-testing/engine/handler.mjs",
     "ovens/model-lab/engine/model-lab-handler.mjs",
     "ovens/performance-tracing/handler.mjs",

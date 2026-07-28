@@ -28,6 +28,30 @@ test("reducer initializes descriptors and resets only consuming collection contr
   assert.deepEqual(state.collections.view, { pageIndex: 0, pageSize: 3 });
 });
 
+test("category mode changes reset their filtered collection to the first page", () => {
+  const categoryIr: OvenIr = {
+    contract: "checklist-progress@1",
+    controls: [{ id: "category", kind: "mode-toggle", initial: "all" }],
+    collections: [{ id: "events", source: "/items", pageSize: 2, filterFrom: "category" }],
+    root: [
+      {
+        kind: "mode-toggle",
+        attributes: { id: "category", initial: "all" },
+        children: [
+          { kind: "option", attributes: { value: "all" } },
+          { kind: "option", attributes: { value: "diff" } },
+        ],
+      },
+      { kind: "collection", attributes: { id: "events", source: "/items", pageSize: 2, filterFrom: "category" } },
+    ],
+  };
+  let state = initOvenState(categoryIr, { items: Array.from({ length: 8 }, (_, id) => ({ id })) });
+  state = ovenReducer(state, { type: "pageNext", collectionId: "events" }, categoryIr);
+  assert.equal(state.collections.events.pageIndex, 1);
+  state = ovenReducer(state, { type: "modeSelected", id: "category", value: "diff" }, categoryIr);
+  assert.equal(state.collections.events.pageIndex, 0);
+});
+
 test("initial control seeds override valid defaults and ignore invalid values", () => {
   const state = initOvenState(ir, payload, { mode: "b", filter: true, sort: false, domain: "one", unknown: true, search: true });
   assert.deepEqual(state.controls, { mode: "b", search: "", sort: false, filter: true, domain: "one" });

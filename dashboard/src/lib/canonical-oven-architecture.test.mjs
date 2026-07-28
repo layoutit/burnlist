@@ -20,6 +20,7 @@ async function productionFiles(directory) {
 
 test("every live Oven page renders through the canonical runtime", async () => {
   const pages = [
+    "components/AgentMonitor/AgentMonitor.tsx",
     "components/ChecklistDashboard/ChecklistOvenView.tsx",
     "components/CustomOvenView/CustomOvenView.tsx",
     "components/DifferentialTestingOven/DifferentialTestingOven.tsx",

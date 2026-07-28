@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ClipboardList } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@layout";
 import { compileOven } from "../../../../src/ovens/dsl/oven-compile.mjs";
 import { KpiItem } from "../KpiItem/KpiItem";
 import { KpiStrip } from "../KpiStrip/KpiStrip";
@@ -52,6 +53,18 @@ test("lowers progress-donut and section-header primary source shorthands", () =>
   assertDomEquivalent(extractFirstByClass(render(donut), "driving-parity-kpi-progress-donut"), renderToStaticMarkup(createElement(ProgressDonut, { percent: 12.3 })));
   const header = lower('<section-header title="Items" source="/items" format="length" />');
   assertDomEquivalent(render(header), handwritten(createElement(SectionHeader, { title: "Items", count: 2 })));
+});
+
+test("lowers Storybook alert variants without requiring icons or custom styles", () => {
+  const result = lower('<alert variant="warning"><alert-title source="/title"/><alert-description source="/detail"/></alert>');
+  const alertPayload = { title: "COMMAND · line 42", detail: "pnpm test" };
+  const markup = renderToStaticMarkup(createElement(OvenView, { def: result, payload: alertPayload }));
+  const expected = handwritten(createElement(Alert, { variant: "warning" },
+    createElement(AlertTitle, null, alertPayload.title),
+    createElement(AlertDescription, null, alertPayload.detail),
+  ));
+  assertDomEquivalent(markup, expected);
+  assert.doesNotMatch(markup, /<svg/u);
 });
 
 test("shared compiled progress fixture preserves optional and fallback bindings", () => {

@@ -33,4 +33,3 @@ test("generic keyboard actions cycle declarative domain controls", () => {
   const state = initTerminalRuntime(ir, visualParityFixture.payload);
   expect(terminalKeyboardAction("right", ir, state)).toEqual({ type: "domainSelected", id: "domain-select", value: "mobile" });
 });
-

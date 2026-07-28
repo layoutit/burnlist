@@ -40,6 +40,15 @@ test("live mode does not require a legacy refresh interval", () => {
   });
 });
 
+test("runtime exposes a structured canonical loading state", () => {
+  const ir = { contract: "fixture", controls: [], collections: [], root: [] };
+  const markup = renderToStaticMarkup(createElement(OvenRuntime, { ir }));
+
+  assert.match(markup, /class="oven-runtime-state is-loading" role="status"/u);
+  assert.match(markup, /class="oven-runtime-state-title">Loading Oven data</u);
+  assert.match(markup, /Waiting for the canonical snapshot\./u);
+});
+
 test("runtime visibly labels retained canonical data after a refresh failure", () => {
   const ir = { contract: "fixture", controls: [], collections: [], root: [] };
   const markup = renderToStaticMarkup(createElement(OvenRuntime, {
@@ -48,6 +57,7 @@ test("runtime visibly labels retained canonical data after a refresh failure", (
     initialAction: { type: "payloadRejected", error: "offline", generation: 0 },
   }));
   assert.match(markup, /role="alert"/u);
+  assert.match(markup, /Canonical refresh failed/u);
   assert.match(markup, /Showing the last canonical snapshot\. offline/u);
 });
 
@@ -59,6 +69,7 @@ test("runtime shows canonical missing as an error without old payload", () => {
     initialAction: { type: "payloadMissing", error: "Oven is unbound.", generation: 0 },
   }));
   assert.match(markup, /role="alert"/u);
+  assert.match(markup, /Oven data unavailable/u);
   assert.match(markup, /Oven is unbound\./u);
   assert.doesNotMatch(markup, /Showing the last canonical snapshot/u);
 });

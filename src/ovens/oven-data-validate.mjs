@@ -176,10 +176,15 @@ function sourceErrors(ir, payload) {
   }
 
   const sourceBindings = Object.freeze({
+    "agent-monitor-activity-chart": "events",
+    "agent-monitor-event-card": "event",
+    "alert-description": "children",
+    "alert-title": "children",
     "burn-donut": "entries",
     "checklist-burn-panel": "data",
     "checklist-event-cards": "data",
     "checklist-ledger": "data",
+    "checklist-tabs": "data",
     "diff-card": "cards",
     "differential-kpi-strip": "payload",
     "differential-log-table": "entries",
@@ -192,6 +197,7 @@ function sourceErrors(ir, payload) {
     "waffle-metric": "metric",
   });
   const arrayBindings = new Set([
+    "agent-monitor-activity-chart:events",
     "burn-donut:entries",
     "diff-card:cards",
     "differential-log-table:entries",
@@ -260,13 +266,13 @@ function sourceErrors(ir, payload) {
   }
 
   const directSources = new Set([
-    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "collection",
+    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "checklist-tabs", "collection",
     "domain-note", "domain-tabs", "frame-card", "log-table", "metric-tiles",
     "model-lab-view", "refresh-status", "switch",
   ]);
   const arraySources = new Set(["collection", "domain-tabs", "log-table"]);
   const defaultRootSources = new Set([
-    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "domain-tabs", "refresh-status",
+    "checklist-burn-panel", "checklist-event-cards", "checklist-ledger", "checklist-tabs", "domain-tabs", "refresh-status",
   ]);
 
   function visit(node, itemContexts = null) {
@@ -276,7 +282,7 @@ function sourceErrors(ir, payload) {
       check(runtimePointer, itemContexts, {
         optional: node.attributes?.optional === true && typeof node.attributes?.selectionFrom !== "string",
         array: arraySources.has(node.kind),
-        mode: "root",
+        mode: node.kind === "switch" && itemContexts !== null ? "contextual" : "root",
       });
     }
     const nestedItems = node.kind === "collection" || node.kind === "log-table"

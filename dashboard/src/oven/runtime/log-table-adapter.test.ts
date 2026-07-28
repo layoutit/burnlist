@@ -32,6 +32,14 @@ test("log-table runtime renders compiled @item columns like LogTable", () => {
 });
 
 test("log-table runtime renders empty-text for a missing or empty source", () => {
-  assert.match(renderRuntime({ events: [] }), /Nothing here\./);
+  assert.match(renderRuntime({ events: [] }), /class="oven-log-empty" role="status">Nothing here\./);
   assert.match(renderRuntime({}), /Nothing here\./);
+});
+
+test("log-table runtime supplies an accessible default empty state", () => {
+  const node = { ...table, attributes: { ...table.attributes, emptyText: undefined } };
+  const props = buildLogTableProps(node, { events: [] }, { resolvePointer, formatRegistry });
+  const markup = renderToStaticMarkup(createElement(LogTable, { ...props }));
+
+  assert.match(markup, /class="oven-log-empty" role="status">No entries yet\./);
 });

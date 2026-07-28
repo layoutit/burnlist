@@ -13,14 +13,14 @@ import { compileOven } from "../src/ovens/dsl/oven-compile.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const run = (cwd, args, env = {}) => new Promise((done) => { const child = spawn(process.execPath, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] }); let output = ""; child.stdout.on("data", (x) => { output += x; }); child.stderr.on("data", (x) => { output += x; }); child.on("close", (code) => done({ code, output })); });
-async function fixture() { const target = await mkdtemp(join(tmpdir(), "burnlist-terminal-inventory-")); try { for (const path of ["dashboard", "src", "ovens", "tui", "scripts", "console-oven-behavior-policy.json", "console-oven-behavior.json", "package.json"]) await cp(join(root, path), join(target, path), { recursive: true }); await symlink(join(root, "node_modules"), join(target, "node_modules"), "dir"); assert.equal((await run(target, ["scripts/write-terminal-story-contracts.mjs"])).code, 0); assert.equal((await run(target, ["scripts/audit-terminal-oven-parity.mjs", "--write"])).code, 0); return target; } catch (error) { await rm(target, { recursive: true, force: true }); throw error; } }
+async function fixture() { const target = await mkdtemp(join(tmpdir(), "burnlist-terminal-inventory-")); try { for (const path of ["dashboard", "src", "ovens", "tui", "scripts", "audits", "package.json"]) await cp(join(root, path), join(target, path), { recursive: true }); await symlink(join(root, "node_modules"), join(target, "node_modules"), "dir"); assert.equal((await run(target, ["scripts/write-terminal-story-contracts.mjs"])).code, 0); assert.equal((await run(target, ["scripts/audit-terminal-oven-parity.mjs", "--write"])).code, 0); return target; } catch (error) { await rm(target, { recursive: true, force: true }); throw error; } }
 async function withFixture(fn) { const target = await fixture(); try { await fn(target); } finally { await rm(target, { recursive: true, force: true }); } }
 async function replace(target, path, before, after) { const full = join(target, path), source = await readFile(full, "utf8"); assert.ok(source.includes(before), `missing ${before}`); await writeFile(full, source.replace(before, after)); }
 async function fails(target, pattern, args = ["scripts/audit-terminal-oven-parity.mjs", "--check"]) { const result = await run(target, args); assert.notEqual(result.code, 0); assert.match(result.output, pattern); }
 
 test("source union is finite, classifies FILTERS as data, and records all source gaps", async () => {
   const manifest = await auditTerminalOvenParity(root), rows = [...manifest.denominatorA.grammar, ...manifest.denominatorA.compiledIR, ...manifest.denominatorA.b34References, ...manifest.denominatorA.officialOvens, ...manifest.denominatorB.publicExports, ...manifest.denominatorB.stories];
-  assert.equal(manifest.schema, SCHEMA); assert.equal(manifest.denominatorA.compiledIR.length, 521); assert.equal(new Set(rows.map((x) => x.id)).size, rows.length); assert.equal(manifest.terminal.coverage.implemented, 29); for (const kind of ["box", "grid", "icon", "panel", "stack", "text", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value"]) for (const layer of ["compiled", "grammar"]) assert.ok(manifest.terminal.registry.covered.includes(`${layer}:element:${kind}`)); assert.ok(manifest.denominatorB.publicExports.some((row) => row.export === "FILTERS" && row.classification === "data"));
+  assert.equal(manifest.schema, SCHEMA); assert.equal(manifest.denominatorA.compiledIR.length, 583); assert.equal(new Set(rows.map((x) => x.id)).size, rows.length); assert.equal(manifest.terminal.coverage.implemented, 29); for (const kind of ["box", "grid", "icon", "panel", "stack", "text", "kpi-strip", "kpi-item", "progress-donut", "burn-donut", "waffle-metric", "progress-value"]) for (const layer of ["compiled", "grammar"]) assert.ok(manifest.terminal.registry.covered.includes(`${layer}:element:${kind}`)); assert.ok(manifest.denominatorB.publicExports.some((row) => row.export === "FILTERS" && row.classification === "data"));
 });
 
 test("structural evidence has an exact twelve-atom claim and fifteen-frame matrix", async () => {
@@ -79,7 +79,7 @@ test("bare hidden controls are excluded instead of being treated as absent attri
 }));
 
 test("each legal corpus target is compared against raw compiled IR", async () => withFixture(async (target) => {
-  await replace(target, "scripts/terminal-oven-parity-corpus.mjs", "const attributes = Object.fromEntries", 'if (id === "box:data-detail-tab") element = "missing"; const attributes = Object.fromEntries'); const writer = 'import { writeFile } from "node:fs/promises"; import { buildTerminalOvenCorpus } from "./scripts/terminal-oven-parity-corpus.mjs"; await writeFile("terminal-oven-parity-corpus.json", `${JSON.stringify(buildTerminalOvenCorpus(), null, 2)}\\n`);'; assert.equal((await run(target, ["--input-type=module", "--eval", writer])).code, 0); await fails(target, /compiled target mismatch/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
+  await replace(target, "scripts/terminal-oven-parity-corpus.mjs", "const attributes = Object.fromEntries", 'if (id === "box:data-detail-tab") element = "missing"; const attributes = Object.fromEntries'); const writer = 'import { writeFile } from "node:fs/promises"; import { buildTerminalOvenCorpus } from "./scripts/terminal-oven-parity-corpus.mjs"; await writeFile("audits/oven/terminal-oven-parity-corpus.json", `${JSON.stringify(buildTerminalOvenCorpus(), null, 2)}\\n`);'; assert.equal((await run(target, ["--input-type=module", "--eval", writer])).code, 0); await fails(target, /compiled target mismatch/u, ["scripts/audit-terminal-oven-parity.mjs", "--official-ovens"]);
 }));
 
 test("every corpus predicate rejects a changed raw compiler output", () => {
@@ -160,9 +160,9 @@ test("a Story action cannot cover its state render atom", async () => {
 
 
 test("check mode is non-writing and atomic failure removes only its exact temporary output", async () => withFixture(async (target) => {
-  const manifest = join(target, "terminal-oven-parity.json"), before = await readFile(manifest, "utf8"), time = (await stat(manifest)).mtimeMs;
+  const manifest = join(target, "audits/oven/terminal-oven-parity.json"), before = await readFile(manifest, "utf8"), time = (await stat(manifest)).mtimeMs;
   assert.equal((await run(target, ["scripts/audit-terminal-oven-parity.mjs", "--check"])).code, 0); assert.equal(await readFile(manifest, "utf8"), before); assert.equal((await stat(manifest)).mtimeMs, time);
-  const result = await run(target, ["scripts/audit-terminal-oven-parity.mjs", "--write"], { BURNLIST_TERMINAL_INVENTORY_FAIL_AFTER_TEMP: "1" }); assert.notEqual(result.code, 0); assert.equal(await readFile(manifest, "utf8"), before); const names = await readdir(target); assert.ok(!names.some((name) => name.startsWith("terminal-oven-parity.json.") && name.endsWith(".tmp")));
+  const result = await run(target, ["scripts/audit-terminal-oven-parity.mjs", "--write"], { BURNLIST_TERMINAL_INVENTORY_FAIL_AFTER_TEMP: "1" }); assert.notEqual(result.code, 0); assert.equal(await readFile(manifest, "utf8"), before); const names = await readdir(join(target, "audits/oven")); assert.ok(!names.some((name) => name.startsWith("terminal-oven-parity.json.") && name.endsWith(".tmp")));
 }));
 
 test("malformed manifests and current behavior source mutations fail closed", async () => {

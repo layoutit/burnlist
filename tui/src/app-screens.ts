@@ -37,4 +37,7 @@ export function terminalChecklistPayload(progress: ProgressSnapshot, selectedIte
 }
 
 export const isManagedChecklist = (oven: OvenSummary | null | undefined, burnlist: BurnlistSummary | null | undefined) =>
-  oven?.contract === "checklist-progress@1" && typeof burnlist?.planPath === "string" && burnlist.planPath.length > 0;
+  oven?.contract === "checklist-progress@1"
+  && oven.dataInput === "json-payload"
+  && typeof burnlist?.planPath === "string"
+  && burnlist.planPath.length > 0;

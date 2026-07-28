@@ -12,6 +12,8 @@ test("vocabulary, scalar, registry and references are closed", () => {
   invalid(root("<switch mode-from='missing'><case value='x'/></switch>"), "REFERENCE_TARGET");
   invalid(root("<kpi-item source='/' format='nope'/>"), "REGISTRY_FORMAT");
   invalid(root("<kpi-item><icon slot='visual' name='Nope'/></kpi-item>"), "REGISTRY_ICON");
+  invalid(root("<alert variant='invented'/>"), "SCALAR_VARIANT");
+  invalid(root("<alert role='status'/>"), "SCALAR_ROLE");
   invalid(root("<field-toolbar id='tools'><filter-toggle id='f' key='nope' label='x' initial='on'/></field-toolbar>"), "REGISTRY_FILTER");
   invalid(root("<field-toolbar id='tools'><sort-toggle id='s' key='nope' label='x' initial='on'/></field-toolbar>"), "REGISTRY_SORT");
   invalid('<oven id="test" version="0.1.0" contract="checklist-progress@1" theme="wrong"/>', "REGISTRY_THEME");
@@ -30,6 +32,19 @@ test("switch accepts a payload pointer without a control reference", () => {
   const result = compileOven(root("<switch source='/pageMode'><case value='detail'><section-header title='Fields'/></case></switch>"));
   assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
   assert.equal(result.ir.root[0].attributes.source, "/pageMode");
+});
+
+test("a mode toggle can declaratively filter a collection", () => {
+  const result = compileOven(root(`
+    <box element="section">
+      <mode-toggle id="category" initial="all" aria-label="Event category">
+        <option value="all" label="All"/>
+        <option value="diff" label="Diff"/>
+      </mode-toggle>
+      <collection id="rows" source="/" item-key="/id" filter-from="category" paging="client" page-size="25"/>
+    </box>
+  `));
+  assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
 });
 
 test("pagination without page-sizes returns a required-attribute diagnostic", () => {

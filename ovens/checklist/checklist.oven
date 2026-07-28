@@ -13,12 +13,7 @@
           <kpi-item heading="Time left" icon="TimerReset" value="/durations/timeLeft"/>
         </kpi-strip>
       </box>
-      <box element="div" class="detail-workspace checklist-progress-workspace" data-detail-tab="dashboard">
-        <checklist-ledger source="/raw"/>
-        <checklist-burn-panel source="/raw"/>
-      </box>
-      <checklist-workspace source="/raw"/>
-      <checklist-event-cards source="/raw"/>
+      <checklist-tabs source="/raw"/>
     </box>
   </box>
 </oven>

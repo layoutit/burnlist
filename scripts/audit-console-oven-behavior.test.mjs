@@ -10,7 +10,7 @@ import { auditConsoleOvenBehavior, policyFor, SCHEMA, validateInventory } from "
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 async function fixture() {
   const temp = await mkdtemp(join(tmpdir(), "burnlist-console-oven-"));
-  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "src/ovens/oven-value-runtime.mjs"), join(temp, "src/ovens/oven-value-runtime.mjs")), cp(join(root, "src/ovens/oven-progress-metrics.mjs"), join(temp, "src/ovens/oven-progress-metrics.mjs")), cp(join(root, "console-oven-behavior-policy.json"), join(temp, "console-oven-behavior-policy.json"))]);
+  await Promise.all([cp(join(root, "dashboard"), join(temp, "dashboard"), { recursive: true }), cp(join(root, "src/ovens/dsl"), join(temp, "src/ovens/dsl"), { recursive: true }), cp(join(root, "src/ovens/oven-value-runtime.mjs"), join(temp, "src/ovens/oven-value-runtime.mjs")), cp(join(root, "src/ovens/oven-progress-metrics.mjs"), join(temp, "src/ovens/oven-progress-metrics.mjs")), cp(join(root, "audits"), join(temp, "audits"), { recursive: true })]);
   return temp;
 }
 async function mutate(root, path, before, after) {
@@ -31,7 +31,7 @@ test("audit has exact versioned ownership and complete source coverage", async (
 test("generated audit JSON has no personal paths or forbidden generated wording", async () => {
   const canonical = (text) => text.replaceAll(/driving-parity/giu, "").replaceAll(/driving parity/giu, "").replaceAll(/visual-parity/giu, "").replaceAll(/visual parity/giu, "").replaceAll(/parity progress/giu, "");
   const forbiddenWord = new RegExp(`\\b${["par", "ity"].join("")}\\b`, "iu");
-  for (const file of ["console-oven-behavior.json", "console-oven-behavior-policy.json"]) {
+  for (const file of ["audits/oven/console-oven-behavior.json", "audits/oven/console-oven-behavior-policy.json"]) {
     const text = canonical(await readFile(join(root, file), "utf8"));
     assert.doesNotMatch(text, /\/Users\//u, `${file} contains a personal path`);
     assert.doesNotMatch(text, forbiddenWord, `${file} contains forbidden generated wording`);
@@ -80,7 +80,7 @@ test("shared evaluator decisions are authoritative and policy-owned", async () =
   const owned = before.behaviors.filter((row) => row.source.path === "src/ovens/oven-value-runtime.mjs");
   assert.ok(owned.length > 0);
   assert.ok(owned.every((row) => row.classification === "closed-shared-adapter" && row.semanticOwner.ownerTarget === `${row.source.path}:${row.source.export}`));
-  await writeFile(join(temp, "console-oven-behavior-policy.json"), `${JSON.stringify(policyFor(before), null, 2)}\n`, "utf8");
+  await writeFile(join(temp, "audits/oven/console-oven-behavior-policy.json"), `${JSON.stringify(policyFor(before), null, 2)}\n`, "utf8");
   await mutate(temp, "src/ovens/oven-value-runtime.mjs", "if (!binding.optional)", "if (binding.optional)");
   const after = await auditConsoleOvenBehavior(temp, { compare: false });
   assert.notDeepEqual(after.behaviors.filter((row) => row.source.path === "src/ovens/oven-value-runtime.mjs"), owned);
@@ -116,7 +116,7 @@ test("wrapper, dispatcher owner, and structured-policy mutations are fail closed
     await mutate(dispatch, "dashboard/src/oven/runtime/OvenNode.tsx", "<ModelLabView", "<UnexpectedModelLabView");
     await assert.rejects(auditConsoleOvenBehavior(dispatch), /model-lab dispatcher has no static ModelLabView owner/u);
   } finally { await rm(dispatch, { recursive: true, force: true }); }
-  const policyPath = join(temp, "console-oven-behavior-policy.json");
+  const policyPath = join(temp, "audits/oven/console-oven-behavior-policy.json");
   const policy = JSON.parse(await readFile(policyPath, "utf8"));
   policy.capabilities[0].semanticOwner.ownerTarget = "unapproved-owner";
   await writeFile(policyPath, `${JSON.stringify(policy, null, 2)}\n`, "utf8");
@@ -180,7 +180,7 @@ test("registry spread provenance names its source export and is policy-owned", a
   const progress = rows.find((row) => row.id === "registry:formatRegistry:progress-headline");
   assert.deepEqual({ path: progress.source.path, export: progress.source.export, owner: progress.semanticOwner.ownerTarget }, { path: "dashboard/src/oven/OvenView/registries.ts", export: "formatRegistry", owner: "dashboard/src/oven/OvenView/registries.ts:formatRegistry" });
   await withFixture(async (temp) => {
-    const policyPath = join(temp, "console-oven-behavior-policy.json"), policy = JSON.parse(await readFile(policyPath, "utf8"));
+    const policyPath = join(temp, "audits/oven/console-oven-behavior-policy.json"), policy = JSON.parse(await readFile(policyPath, "utf8"));
     policy.capabilities.find((row) => row.id === "registry:formatRegistry:progress-headline").semanticOwner.ownerTarget = "wrong-origin";
     await writeFile(policyPath, `${JSON.stringify(policy, null, 2)}\n`, "utf8");
     await assert.rejects(auditConsoleOvenBehavior(temp), /semantic capabilities differ from approved policy/u);

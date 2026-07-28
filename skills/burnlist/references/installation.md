@@ -20,6 +20,15 @@ By default, `burnlist install` registers the bundled Burnlist skill for both age
 
 The default per-repository mode is a managed symlink and adds its target to `.git/info/exclude`, so it stays local and untracked. `--global` creates the managed global registrations instead. A global npm installation of Burnlist automatically registers those global skills for both agents and starts one persistent shared loopback observer. The service observes only the launch repository plus explicitly registered roots, writes its discoverable runtime under `~/.burnlist/server.json`, and is automatically restored by `burnlist` or `burnlist -i` if it is not healthy. A repository-local installation does not leave a service behind: `burnlist -i` starts an ephemeral observer and stops it when the terminal UI exits. Pass `--local` to force that behavior from a global installation, or `--server <url>` to use an explicitly managed server. `--commit` is per-repository only: it creates a portable managed copy and removes Burnlist's local exclusion entry so the copy can be added to Git. `--force` permits an untracked managed copy to be downgraded to a symlink; tracked copies must be removed through Git first. `--agent codex`, `--agent claude`, or `--agent codex,claude` limits registrations; without it, both agents are targeted. `--dry-run` prints the planned link or copy operations without writing.
 
+Service selection is global-first. From any repository, if
+`burnlist service status` reports the verified shared service and the user did
+not explicitly request local mode, use the normal `burnlist` or `burnlist -i`
+command and reuse that service. Do not run `burnlist serve`, add `--local`,
+choose another port, or replace the shared process merely because the current
+repository differs from the installation repository. Use an ephemeral service
+only when no global installation exists or the user explicitly asks for local
+isolation; `--server <url>` remains an explicit user-selected override.
+
 Codex uses the shared `~/.agents/skills` target. An older manually installed
 `~/.codex/skills/burnlist` can shadow that registration in some clients. If
 both exist, compare them before a Loop trial and remove or rename only the
@@ -38,6 +47,11 @@ burnlist hooks [install|uninstall|status] [--agent codex,claude] [--untracked]
 ```
 
 Bare `burnlist hooks` defaults to `status`.
+
+The current installer supports Codex and Claude only. Grok and Antigravity
+launch requirements live in their `loop-providers/` recipes; do not hand-write
+their hook configs or claim exact external Loop attribution from the planned
+Agent Monitor design.
 
 `burnlist hooks install` is repository-only and must run inside a Git worktree; there is no `--global` flag. It adds managed Streaming Diff commands plus advisory `burnlist hooks observe` commands while preserving unrelated hook entries:
 

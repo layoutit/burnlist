@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import { completedDetailMap, documentSections, repoRootForPlan } from "./plan-model.mjs";
+import { completedDetailMap, defaultOvenForMarkdown, documentSections, repoRootForPlan } from "./plan-model.mjs";
 
 test("repoRootForPlan returns the repository root for a normal plan path", () => {
   const root = join("/tmp", "burnlist-repo");
@@ -13,6 +13,28 @@ test("repoRootForPlan uses the last notes/burnlists marker", () => {
   const root = join("/tmp", "notes", "burnlists", "work", "app");
   const planPath = join(root, "notes", "burnlists", "inprogress", "260713-001", "burnlist.md");
   assert.equal(repoRootForPlan(planPath), root);
+});
+
+test("defaultOvenForMarkdown defaults to Checklist and reads only top metadata", () => {
+  assert.equal(defaultOvenForMarkdown("# Fixture\n\n## Active Checklist\n"), "checklist");
+  assert.equal(defaultOvenForMarkdown([
+    "# Fixture",
+    "Default Oven: agent-monitor",
+    "",
+    "## Active Checklist",
+    "Default Oven: visual-parity",
+  ].join("\n")), "agent-monitor");
+});
+
+test("defaultOvenForMarkdown rejects duplicate or malformed metadata", () => {
+  assert.throws(
+    () => defaultOvenForMarkdown("# Fixture\nDefault Oven: checklist\nDefault Oven: agent-monitor\n"),
+    /at most once/u,
+  );
+  assert.throws(
+    () => defaultOvenForMarkdown("# Fixture\nDefault Oven: Agent Monitor\n"),
+    /lowercase slug/u,
+  );
 });
 
 test("completedDetailMap accepts common agent heading separators without splitting stable ids", () => {

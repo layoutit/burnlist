@@ -117,7 +117,7 @@ export function subscribeOvenRuntimeSnapshot({
   return client.subscribe(ovenRuntimeSnapshotDescriptor({ id, search, adapt, refreshSeconds }), (snapshot) => {
     if (snapshot.outcome === "initial") return;
     if (snapshot.outcome === "loading") {
-      dispatch({ type: "payloadRequested", generation: snapshot.generation });
+      dispatch({ type: "payloadRequested", generation: snapshot.generation, ...(acceptedForSubscription ? { background: true } : {}) });
       return;
     }
     if (snapshot.outcome === "accepted") {

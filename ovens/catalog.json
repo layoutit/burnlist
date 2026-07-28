@@ -1,7 +1,18 @@
 {
   "schema": "burnlist-official-oven-catalog@1",
-  "catalogVersion": "1.0.0",
+  "catalogVersion": "1.2.0",
   "entries": [
+    {
+      "id": "agent-monitor",
+      "version": "0.3.0",
+      "inputContract": "burnlist-agent-monitor-data@1",
+      "renderContract": "checklist-progress@1",
+      "dataInput": "producer-managed",
+      "producer": "burnlist-agent-monitor",
+      "routeKind": "repo-oven",
+      "maturity": "experimental",
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
+    },
     {
       "id": "checklist",
       "version": "0.1.0",

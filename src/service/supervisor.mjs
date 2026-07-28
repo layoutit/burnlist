@@ -47,17 +47,18 @@ async function waitForRuntime(path, instanceId, options = {}) {
   throw new Error("Burnlist server did not become ready.");
 }
 
-function serverCommand(packageRoot, stateDir) {
-  return [
+export function serviceServerArgs(packageRoot, stateDir, scope) {
+  const args = [
     resolve(packageRoot, "src/server/burnlist-dashboard-server.mjs"),
-    "--port", "0",
-    "--auto-port",
+    "--port", scope === "shared" ? "4510" : "0",
     "--state-dir", stateDir,
   ];
+  if (scope !== "shared") args.push("--auto-port");
+  return args;
 }
 
 function spawnServer({ packageRoot, cwd, stateDir, scope, instanceId, token, detached, spawn = spawnChild, env = process.env }) {
-  const child = spawn(process.execPath, serverCommand(packageRoot, stateDir), {
+  const child = spawn(process.execPath, serviceServerArgs(packageRoot, stateDir, scope), {
     cwd,
     env: {
       ...env,

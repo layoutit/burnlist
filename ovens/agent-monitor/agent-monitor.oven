@@ -1,0 +1,68 @@
+<oven id="agent-monitor" version="0.3.0" contract="checklist-progress@1" theme="checklist">
+  <box element="main" class="agent-monitor-view">
+    <kpi-strip aria-label="Thread status">
+      <kpi-item variant="current" heading="Status" title="/monitor/summary/drift" value="/monitor/summary/display"/>
+      <kpi-item heading="Current" title="/current/title" value="/current/value"/>
+      <kpi-item heading="Commands" value="/monitor/counts/commands"/>
+      <kpi-item heading="Diffs" value="/monitor/counts/diffs"/>
+      <kpi-item heading="Failures" value="/monitor/counts/failures"/>
+    </kpi-strip>
+
+    <box element="section" class="agent-monitor-health">
+      <switch source="/monitor/summary/driftLevel">
+        <case value="alert">
+          <alert variant="destructive" role="alert">
+            <alert-title source="/monitor/summary/drift"/>
+            <alert-description source="/monitor/summary/driftDetail"/>
+          </alert>
+        </case>
+        <case value="watch">
+          <alert variant="warning">
+            <alert-title source="/monitor/summary/drift"/>
+            <alert-description source="/monitor/summary/driftDetail"/>
+          </alert>
+        </case>
+        <case default="true">
+          <alert variant="success">
+            <alert-title source="/monitor/summary/drift"/>
+            <alert-description source="/monitor/summary/driftDetail"/>
+          </alert>
+        </case>
+      </switch>
+    </box>
+
+    <agent-monitor-activity-chart source="/raw/completed"/>
+
+    <box element="section" class="agent-monitor-events">
+      <section-header title="Recent monitorable events"
+                      collection-from="monitor-events"/>
+      <mode-toggle id="agent-monitor-event-filter"
+                   initial="all"
+                   aria-label="Filter Agent Monitor events">
+        <option value="all" label="ALL"/>
+        <option value="command" label="COMMAND"/>
+        <option value="diff" label="DIFF"/>
+        <option value="tool" label="TOOL"/>
+        <option value="message" label="MESSAGE"/>
+        <option value="failed" label="FAILURE"/>
+        <option value="lifecycle" label="LIFECYCLE"/>
+      </mode-toggle>
+      <box element="div"
+           class="agent-monitor-filter-empty"
+           text="No recent events in this filter."/>
+      <collection id="monitor-events"
+                  source="/raw/completed"
+                  item-key="/key"
+                  filter-from="agent-monitor-event-filter"
+                  paging="client"
+                  page-size="25">
+        <each>
+          <agent-monitor-event-card source="@item"/>
+        </each>
+        <pagination collection-from="monitor-events"
+                    page-sizes="25 50 100 200"
+                    subject="Agent Monitor events"/>
+      </collection>
+    </box>
+  </box>
+</oven>

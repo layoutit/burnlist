@@ -27,7 +27,7 @@ async function withServer({
       const planPath = planPaths[index];
       await mkdir(dirname(planPath), { recursive: true });
       await Promise.all([
-        writeFile(planPath, burnlistMarkdown(fixture.title ?? "Fixture Burnlist")),
+        writeFile(planPath, burnlistMarkdown(fixture.title ?? "Fixture Burnlist", fixture.defaultOvenId)),
         writeFile(join(dirname(planPath), "goal.md"), "# Fixture Goal\n\n## Goal\n\nRoute behavior fixture.\n"),
       ]);
     }));
@@ -94,10 +94,11 @@ function fixturePlanPath(fixtureRoot, fixture) {
   );
 }
 
-function burnlistMarkdown(title) {
+function burnlistMarkdown(title, defaultOvenId) {
   return [
     `# ${title}`,
     "",
+    ...(defaultOvenId ? [`Default Oven: ${defaultOvenId}`, ""] : []),
     "## Active Checklist",
     "",
     "- [ ] ROUTE-01 | Keep root on the list",

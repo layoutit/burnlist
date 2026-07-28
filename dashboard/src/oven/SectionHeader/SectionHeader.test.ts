@@ -14,6 +14,10 @@ test("SectionHeader keeps count and child markup stable", async () => {
       `<h2>Fields List <span class="field-list-count">(12)</span></h2>`,
     );
     assert.equal(
+      renderToStaticMarkup(createElement(SectionHeader, { title: "Deploy status" })),
+      `<h2>Deploy status</h2>`,
+    );
+    assert.equal(
       renderToStaticMarkup(createElement(SectionHeader, {
         title: "Events", count: 3, children: createElement("span", { className: "custom-count" }, "(custom)"),
       })),

@@ -13,7 +13,7 @@ const CONTRACT_SCHEMA = "burnlist-terminal-story-contracts@4";
 const fail = (message) => { throw new Error(`terminal inventory audit: ${message}`); };
 const stable = (value) => `${JSON.stringify(value, null, 2)}\n`;
 const all = (sets) => [...new Set(sets.flat())].sort();
-async function trackedB34(root) { const generated = await auditConsoleOvenBehavior(root), path = resolve(root, "console-oven-behavior.json"), expected = stable(generated); let actual; try { actual = await readFile(path, "utf8"); } catch { fail("missing console-oven-behavior.json"); } if (actual !== expected) fail("console-oven-behavior.json is stale; run audit-console-oven-behavior --write"); return { generated, digest: hash(actual) }; }
+async function trackedB34(root) { const generated = await auditConsoleOvenBehavior(root), path = resolve(root, "audits/oven/console-oven-behavior.json"), expected = stable(generated); let actual; try { actual = await readFile(path, "utf8"); } catch { fail("missing audits/oven/console-oven-behavior.json"); } if (actual !== expected) fail("audits/oven/console-oven-behavior.json is stale; run audit-console-oven-behavior --write"); return { generated, digest: hash(actual) }; }
 const scalar = (value) => ["string", "number", "boolean"].includes(typeof value) && value !== "";
 const same = (left, right) => stable(left) === stable(right);
 function expectedStates(story) {

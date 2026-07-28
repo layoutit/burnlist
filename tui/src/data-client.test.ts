@@ -13,14 +13,20 @@ function validIr(id: string) {
 }
 
 describe("Burnlist TUI data client", () => {
-  test("loads the three landing resources concurrently", async () => {
+  test("loads the indexed landing snapshot in one request", async () => {
+    const requested: string[] = [];
     globalThis.fetch = mock(async (request: string | URL | Request) => {
       const path = new URL(String(request)).pathname;
-      if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ displayName: "app" }] });
-      if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [{ id: "ui" }] });
-      return Response.json({ ovens: [{ id: "checklist" }] });
+      requested.push(path);
+      return Response.json({
+        generatedAt: "now",
+        projects: [{ displayName: "app" }],
+        burnlists: [{ id: "ui" }],
+        ovens: [{ id: "checklist" }],
+      });
     }) as unknown as typeof fetch;
     const snapshot = await createDataClient("http://127.0.0.1:4815").landing();
+    expect(requested).toEqual(["/api/landing"]);
     expect(snapshot.projects[0]?.displayName).toBe("app");
     expect(snapshot.burnlists[0]?.id).toBe("ui");
     expect(snapshot.ovens[0]?.id).toBe("checklist");
@@ -41,6 +47,37 @@ describe("Burnlist TUI data client", () => {
     await createDataClient("http://127.0.0.1:4815").progress("aaaaaaaaaaaa", "260722-001");
     expect(new URL(requested).pathname + new URL(requested).search)
       .toBe("/api/progress?repoKey=aaaaaaaaaaaa&id=260722-001");
+  });
+
+  test("renews Agent Monitor through the protected service controller", async () => {
+    let requested: Request | null = null;
+    globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+      requested = new Request(input, init);
+      return Response.json({ active: true }, { status: 202 });
+    }) as unknown as typeof fetch;
+    await createDataClient("http://127.0.0.1:4815")
+      .activateAgentMonitor("aaaaaaaaaaaa", "write-token");
+    expect(new URL(requested!.url).pathname + new URL(requested!.url).search)
+      .toBe("/api/service/agent-monitor/activate?repoKey=aaaaaaaaaaaa");
+    expect(requested!.method).toBe("POST");
+    expect(requested!.headers.get("x-burnlist-token")).toBe("write-token");
+  });
+
+  test("lists repository Agent Monitor sessions through the canonical mapper", async () => {
+    let requested = "";
+    globalThis.fetch = mock(async (request: string | URL | Request) => {
+      requested = String(request);
+      return Response.json({ feeds: [{
+        identity: { logicalRepoKey: "aaaaaaaaaaaa", worktreeKey: "bbbbbbbbbbbb", session: "codex:session-1" },
+        updatedAt: "2026-07-27T12:00:00.000Z",
+        summary: { state: "Live", current: "Editing", lines: 4, failures: 0 },
+      }] });
+    }) as unknown as typeof fetch;
+    const feeds = await createDataClient("http://127.0.0.1:4815").agentMonitorFeeds("aaaaaaaaaaaa");
+    expect(new URL(requested).pathname + new URL(requested).search)
+      .toBe("/api/oven-data/agent-monitor?list=&repoKey=aaaaaaaaaaaa");
+    expect(feeds).toHaveLength(1);
+    expect(feeds[0]?.identity.session).toBe("codex:session-1");
   });
 
   test("loads the selected item Loop projection through the dashboard route", async () => {

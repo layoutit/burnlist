@@ -60,8 +60,15 @@ real source to satisfy the scan.
    Its optional forecast is a bounded planning range with explicit confidence
    and provenance. It is not proof, a deadline, or a billing estimate.
 
+   Before launch, the orchestrating host completes the selected provider
+   recipe: safe availability/auth checks, user-approved hook setup and
+   interactive trust handoff, session/workspace/permission flags, and capture
+   preparation. Never put setup instructions or raw session metadata in the
+   worker prompt.
+
 2. Execute the supplied prompt against the assigned repository. The worker
-   needs no Burnlist skill, CLI commands, claim identity, graph knowledge, or
+   needs no Burnlist skill, CLI commands, provider setup, hook management,
+   trust decisions, session metadata, claim identity, graph knowledge, or
    telemetry instructions. Respect the packet's authority and legal outcomes.
    Do not ask the worker to choose a graph edge or run the trusted check;
    Burnlist owns both.
@@ -131,12 +138,15 @@ the transition authority.
 
 ## Ownership and observability
 
-The host owns every provider invocation and optional best-effort telemetry.
-Burnlist owns the frozen graph, claim authority, validation, deterministic
-checks, transition selection, canonical journal, and item completion. After
-`loop submit` (or recovery `loop report`), Burnlist automatically advances trusted checks and graph-only
-nodes until the next host agent claim or a terminal state. It never launches a
-provider process.
+The orchestrating host owns provider selection, user-consent handoff, supported
+hook setup, launch metadata, every provider invocation, supervision, capture,
+workspace/result validation, and optional best-effort telemetry. The worker
+owns only its bounded assigned task. Burnlist owns the frozen graph, claim
+authority, validation, deterministic checks, transition selection, canonical
+journal, and item completion. After `loop submit` (or recovery `loop report`),
+Burnlist automatically advances trusted checks and graph-only nodes until the
+next host agent claim or a terminal state. It never launches a provider
+process.
 
 Installable skills and Streaming Diff hooks are independent. Neither installs,
 selects, or starts a host executor; hooks only provide optional observational

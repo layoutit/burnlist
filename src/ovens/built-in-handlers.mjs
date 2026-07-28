@@ -1,5 +1,6 @@
 import "./handlers/checklist.mjs";
 import "./handlers/loop-progress.mjs";
+import "../../ovens/agent-monitor/engine/agent-monitor-handler.mjs";
 import "../../ovens/differential-testing/engine/handler.mjs";
 import "../../ovens/model-lab/engine/model-lab-handler.mjs";
 import "../../ovens/performance-tracing/handler.mjs";

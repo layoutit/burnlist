@@ -23,6 +23,16 @@ test("KpiItem omits an undefined title attribute", () => {
   const markup = renderToStaticMarkup(createElement(KpiItem, { heading: "Elapsed", value: "2m" }));
 
   assert.doesNotMatch(markup, / title=/u);
+  assert.match(markup, /class="is-visual-free"/u);
+});
+
+test("KpiItem makes absent and false values explicit", () => {
+  const absent = renderToStaticMarkup(createElement(KpiItem, { heading: "Service", value: undefined }));
+  const boolean = renderToStaticMarkup(createElement(KpiItem, { heading: "Enabled", value: false }));
+
+  assert.match(absent, /aria-label="No value" class="oven-kpi-empty-value">—</u);
+  assert.match(boolean, />false<\/div>/u);
+  assert.doesNotMatch(boolean, /oven-kpi-empty-value/u);
 });
 
 test("KpiItem preserves the value fragment topology", () => {
@@ -56,5 +66,5 @@ test("KpiItem preserves the value fragment topology", () => {
 
   assert.equal(renderToString(kpiItemElement), renderToString(createElement(FrozenProgressItem)));
   const item = createElement(KpiItem, { heading: "Progress", value });
-  assert.equal(renderToStaticMarkup(item), "<div><div class=\"driving-parity-kpi-text\"><div class=\"driving-parity-kpi-heading\">Progress</div><div class=\"driving-parity-kpi-ratio\"><span class=\"pass\">2</span><span class=\"separator\">·</span><span class=\"total\">2</span> <span class=\"pass\">(100%)</span></div></div></div>");
+  assert.equal(renderToStaticMarkup(item), "<div class=\"is-visual-free\"><div class=\"driving-parity-kpi-text\"><div class=\"driving-parity-kpi-heading\">Progress</div><div class=\"driving-parity-kpi-ratio\"><span class=\"pass\">2</span><span class=\"separator\">·</span><span class=\"total\">2</span> <span class=\"pass\">(100%)</span></div></div></div>");
 });

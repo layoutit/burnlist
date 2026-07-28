@@ -437,6 +437,9 @@ body.driving-parity-view .dashboard-header {
   column-gap: 8px;
   align-items: center;
 }
+.driving-parity-kpi-section.is-visual-free {
+  grid-template-columns: minmax(0, 1fr);
+}
 .driving-parity-kpi-title {
   min-width: 0;
   overflow: hidden;

@@ -5,5 +5,6 @@ export * from "./media-components";
 export * from "./streaming-diff-components";
 export * from "./differential-components";
 export * from "./checklist-components";
+export * from "./agent-monitor-components";
 export * from "./terminal-capabilities";
 export * from "./terminal-oven-viewport";

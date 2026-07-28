@@ -85,7 +85,7 @@ test("shared snapshot outcomes retain reducer generations and unchanged payloads
   assert.deepEqual(actions, [
     { type: "payloadRequested", generation: 41 },
     { type: "payloadAccepted", payload: { version: 1 }, generation: 41 },
-    { type: "payloadRequested", generation: 42 },
+    { type: "payloadRequested", generation: 42, background: true },
     { type: "payloadUnchanged", generation: 42 },
   ]);
 });

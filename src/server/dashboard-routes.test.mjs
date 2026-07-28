@@ -14,6 +14,7 @@ test("reserved and path-scoped dashboard routes serve the SPA shell", { timeout:
     for (const pathname of [
       "/ovens",
       "/ovens/example-oven",
+      "/r/aaaaaaaaaaaa/o/agent-monitor",
       "/r/aaaaaaaaaaaa/o/model-lab",
       "/r/aaaaaaaaaaaa/fixture/o/streaming-diff",
     ]) assert.equal((await httpGet(baseUrl, pathname)).status, 200);
@@ -82,6 +83,45 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
+test("/api/landing returns the complete terminal index in one snapshot", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/landing");
+    assert.equal(response.status, 200);
+    const payload = JSON.parse(response.body);
+    assert.equal(typeof payload.generatedAt, "string");
+    assert.equal(payload.projects.some((project) => project.entries.some((entry) => entry.id === "fixture")), true);
+    assert.equal(payload.burnlists.some((entry) => entry.id === "fixture"), true);
+    assert.equal(payload.ovens.some((oven) => oven.id === "checklist"), true);
+    assert.equal(typeof payload.writeToken, "string");
+  });
+});
+
+test("/api/burnlists exposes the configured default Oven as the canonical entry link", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{ defaultOvenId: "agent-monitor" }],
+  }, async ({ baseUrl }) => {
+    const payload = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body);
+    const entry = payload.burnlists.find((candidate) => candidate.id === "fixture");
+    assert.equal(entry.defaultOvenId, "agent-monitor");
+    assert.equal(entry.ovenId, "agent-monitor");
+    assert.equal(entry.ovenName, "Agent Monitor");
+    assert.match(entry.href, /^\/r\/[a-f0-9]{12}\/fixture\/o\/agent-monitor$/u);
+  });
+});
+
+test("/api/burnlists falls back to Checklist when the configured Oven is unavailable", { timeout: 20_000 }, async () => {
+  await withServer({
+    burnlists: [{ defaultOvenId: "not-installed" }],
+  }, async ({ baseUrl }) => {
+    const payload = JSON.parse((await httpGet(baseUrl, "/api/burnlists")).body);
+    const entry = payload.burnlists.find((candidate) => candidate.id === "fixture");
+    assert.equal(entry.defaultOvenId, "not-installed");
+    assert.equal(entry.ovenId, "checklist");
+    assert.equal(entry.ovenName, "Checklist");
+    assert.match(entry.href, /^\/r\/[a-f0-9]{12}\/fixture\/o\/checklist$/u);
+  });
+});
+
 test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled inventory", { timeout: 20_000 }, async () => {
   await withServer({
     withBurnlist: true,
@@ -91,9 +131,10 @@ test("/api/oven-catalog is official-only while /api/ovens remains origin-labeled
     assert.equal(response.status, 200);
     const catalog = JSON.parse(response.body);
     assert.equal(catalog.schema, "burnlist-official-oven-catalog@1");
-    assert.equal(catalog.catalogVersion, "1.0.0");
+    assert.equal(catalog.catalogVersion, "1.2.0");
     assert.match(catalog.catalogRevision, /^[a-f0-9]{64}$/u);
     assert.deepEqual(catalog.entries.map(({ id }) => id), [
+      "agent-monitor",
       "checklist",
       "differential-testing",
       "loop-progress",

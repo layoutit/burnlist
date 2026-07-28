@@ -48,6 +48,17 @@ export function TerminalChecklistCurrent({ node, payload, width, height = 3 }: {
   </box>;
 }
 
+/** Default Events tab with the same counts and event surface as the console. */
+export function TerminalChecklistTabs({ node, payload, width, height = 10, expanded = false }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number; expanded?: boolean }) {
+  const palette = useTerminalPalette();
+  const data = raw(node, payload), eventCount = completed(data).length, total = Number(data.total) || 0;
+  const bodyHeight = Math.max(1, height - 1);
+  return <box width={width} height={height} flexDirection="column" overflow="hidden">
+    <text fg={palette.foreground}>{fitText(width < 42 ? "[Events]  Burnlist  Active item" : `[Events ${eventCount}]  Burnlist ${total}  Active item`, width)}</text>
+    <TerminalChecklistEventCards node={node} payload={payload} width={width} height={bodyHeight} expanded={expanded} />
+  </box>;
+}
+
 export function TerminalChecklistLedger({ node, payload, width, height = 5 }: { node: TerminalNode; payload?: JsonValue; width: number; height?: number }) {
   const palette = useTerminalPalette();
   const data = raw(node, payload), all = completed(data), entries = all.slice(-Math.max(1, height - 1)).reverse(), total = Math.max(1, Number(data.total) || all.length);

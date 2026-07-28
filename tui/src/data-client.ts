@@ -5,6 +5,9 @@ import { ResourceBudgetError, readBoundedJson } from "./oven-runtime/resource-bu
 import { TERMINAL_RESOURCE_LIMITS } from "./oven-runtime/resource-limits";
 // @ts-expect-error Console feed mapper is the canonical route/filter boundary.
 import { mapStreamingDiffFeeds } from "../../dashboard/src/lib/streaming-diff.mjs";
+// @ts-expect-error Console feed mapper is the canonical route/filter boundary.
+import { mapAgentMonitorFeeds } from "../../dashboard/src/lib/agent-monitor.mjs";
+import type { AgentMonitorFeed } from "./agent-monitor-navigation";
 
 function baseUrl(input: string): string {
   const url = new URL(input);
@@ -52,6 +55,19 @@ async function getJson<T>(base: string, path: string, cache: Map<string, CachedJ
   return (await getJsonResult<T>(base, path, cache, signal, maximumBytes)).data;
 }
 
+async function activateAgentMonitor(base: string, repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
+  const query = new URLSearchParams({ repoKey });
+  const response = await fetch(`${base}/api/service/agent-monitor/activate?${query}`, {
+    method: "POST",
+    headers: { accept: "application/json", "x-burnlist-token": token },
+    signal,
+  });
+  if (response.ok) return;
+  const body = await readBoundedJson(response, TERMINAL_RESOURCE_LIMITS.httpJsonBytes)
+    .catch(() => null) as { error?: string } | null;
+  throw new DataClientError(body?.error ?? `Burnlist server returned ${response.status}.`, response.status);
+}
+
 export function createDataClient(input: string) {
   const base = baseUrl(input);
   const cache = new Map<string, CachedJson>();
@@ -61,18 +77,14 @@ export function createDataClient(input: string) {
   return Object.freeze({
     base,
     async landing(signal?: AbortSignal): Promise<LandingSnapshot> {
-      const [projectPayload, burnlistPayload, ovenPayload] = await Promise.all([
-        getJson<{ generatedAt: string; projects: LandingSnapshot["projects"] }>(base, "/api/projects", cache, signal),
-        getJson<{ generatedAt: string; burnlists: LandingSnapshot["burnlists"] }>(base, "/api/burnlists", cache, signal),
-        getJson<{ ovens: LandingSnapshot["ovens"]; writeToken?: string }>(base, "/api/ovens", cache, signal),
-      ]);
-      return {
-        projects: projectPayload.projects,
-        burnlists: burnlistPayload.burnlists,
-        ovens: ovenPayload.ovens,
-        generatedAt: burnlistPayload.generatedAt ?? projectPayload.generatedAt,
-        ...(typeof ovenPayload.writeToken === "string" ? { writeToken: ovenPayload.writeToken } : {}),
-      };
+      return getJson<LandingSnapshot>(base, "/api/landing", cache, signal);
+    },
+    activateAgentMonitor(repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
+      return activateAgentMonitor(base, repoKey, token, signal);
+    },
+    async agentMonitorFeeds(repoKey: string, signal?: AbortSignal): Promise<AgentMonitorFeed[]> {
+      const raw = await getJson<unknown>(base, `/api/oven-data/agent-monitor?list=&repoKey=${encodeURIComponent(repoKey)}`, cache, signal);
+      return mapAgentMonitorFeeds(raw).filter((feed: AgentMonitorFeed) => feed.identity.logicalRepoKey === repoKey);
     },
     progress(repoKey: string, id: string, signal?: AbortSignal): Promise<ProgressSnapshot> {
       const query = new URLSearchParams({ repoKey, id });

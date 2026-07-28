@@ -7,14 +7,15 @@ type FieldsProps = {
   toolbar: ReactNode;
   fields: ReactNode;
   pagination: ReactNode;
+  title?: string;
 };
 
 const inlineStyles = [...templateHtml().matchAll(/<style>([\s\S]*?)<\/style>/gu)].map((match) => match[1]);
 
-export function DifferentialTestingFields({ total, toolbar, fields, pagination }: FieldsProps) {
+export function DifferentialTestingFields({ total, toolbar, fields, pagination, title = "Fields List" }: FieldsProps) {
   return <main id="driving-parity-page" className="driving-parity-page">
     <div className="driving-parity-toolbar meta-row plan-meta-row">
-      <h2 id="driving-parity-summary" className="driving-parity-summary">Fields List<span className="field-list-count">({count(total)})</span></h2>
+      <h2 id="driving-parity-summary" className="driving-parity-summary">{title}<span className="field-list-count">({count(total)})</span></h2>
       {toolbar}
     </div>
     <section className="driving-parity-inline-renderer" id="driving-parity-inline-renderer">

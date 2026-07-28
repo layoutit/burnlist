@@ -6,6 +6,9 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+// The exact manifest remains authoritative; 255 permits the 253-file package
+// plus two deliberate entries of release headroom without weakening the cap.
+const maxPackageEntries = 255;
 const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -60,6 +63,7 @@ const required = [
   "scripts/unregister-skills.mjs",
   "src/cli/skills-install-cli.mjs",
   "src/cli/skills-register.mjs",
+  "src/cli/agent-monitor-cli.mjs",
   "src/cli/oven-cli.mjs",
   "src/cli/registry-cli.mjs",
   "src/events/oven-event-contract.mjs",
@@ -76,6 +80,9 @@ const required = [
   "skills/burnlist/references/burnlist-creation.md",
   "skills/burnlist/references/oven-event-coordination.md",
   "ovens/catalog.json",
+  "ovens/agent-monitor/instructions.md",
+  "ovens/agent-monitor/agent-monitor.oven",
+  "ovens/agent-monitor/engine/agent-monitor-handler.mjs",
   "ovens/checklist/instructions.md",
   "ovens/differential-testing/instructions.md",
   "ovens/differential-testing/differential-testing.oven",
@@ -179,7 +186,7 @@ if ((bin.mode & 0o111) === 0) {
   console.error("npm package CLI is not executable.");
   process.exit(1);
 }
-if (report.entryCount > 240 || report.unpackedSize > 40_000_000) {
+if (report.entryCount > maxPackageEntries || report.unpackedSize > 40_000_000) {
   console.error(`npm package exceeds its bounded payload budget: ${report.entryCount} files, ${report.unpackedSize} bytes.`);
   process.exit(1);
 }

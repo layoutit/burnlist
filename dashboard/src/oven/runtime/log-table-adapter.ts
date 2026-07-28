@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import { evaluateOvenBinding } from "../../../../src/ovens/oven-value-runtime.mjs";
 
 type ColumnNode = { kind: string; attributes?: Record<string, unknown> };
@@ -51,6 +51,8 @@ export function buildLogTableProps(node: LogTableNode, payload: unknown, { resol
         return { className: columnClass(column), content };
       }),
     })),
-    emptyState: source.length === 0 && emptyText !== undefined ? String(emptyText) : undefined,
+    emptyState: source.length === 0
+      ? createElement("div", { className: "oven-log-empty", role: "status" }, String(emptyText ?? "No entries yet."))
+      : undefined,
   };
 }

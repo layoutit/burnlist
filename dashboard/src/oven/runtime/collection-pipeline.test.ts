@@ -38,3 +38,22 @@ test("sidecar telemetry is attached by id before a collection sort", () => {
     ["second"],
   );
 });
+
+test("Agent Monitor category tabs filter event types and failures", () => {
+  const events = [
+    { id: "command", category: "command", result: "complete" },
+    { id: "diff", category: "diff", result: "complete" },
+    { id: "failed-tool", category: "tool", result: "failed" },
+  ];
+  const options = { contract: "checklist-progress@1" };
+  assert.deepEqual(
+    runCollection(events, { ...options, filter: "diff" }, resolvePointer)
+      .map((item) => (item as { id: string }).id),
+    ["diff"],
+  );
+  assert.deepEqual(
+    runCollection(events, { ...options, filter: "failed" }, resolvePointer)
+      .map((item) => (item as { id: string }).id),
+    ["failed-tool"],
+  );
+});

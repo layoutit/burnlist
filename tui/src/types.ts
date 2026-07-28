@@ -27,6 +27,7 @@ export interface BurnlistSummary {
   updatedAt: string | null;
   lastCompletedAt: string | null;
   ovenId: string;
+  defaultOvenId?: string;
   ovenName: string;
   href: string;
   progressLabel: string;

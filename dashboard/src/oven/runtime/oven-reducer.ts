@@ -20,7 +20,7 @@ export type OvenState = {
 export type OvenControlSeed = Record<string, string | boolean>;
 export type OvenPageSeed = Record<string, OvenServerPage>;
 export type OvenAction =
-  | { type: "payloadRequested"; generation?: number }
+  | { type: "payloadRequested"; generation?: number; background?: boolean }
   | { type: "payloadAccepted"; payload: unknown; generation?: number }
   | { type: "payloadUnchanged"; generation: number }
   | { type: "payloadRejected"; error: unknown; generation: number }
@@ -56,9 +56,12 @@ function pipelineItems(ir: OvenIr, payload: unknown, controls: OvenState["contro
   const search = typeof collection.searchFrom === "string" ? ir.controls.find((item) => item.id === collection.searchFrom) : undefined;
   const filter = typeof collection.filterFrom === "string" ? ir.controls.find((item) => item.id === collection.filterFrom) : undefined;
   const sort = typeof collection.sortFrom === "string" ? ir.controls.find((item) => item.id === collection.sortFrom) : undefined;
+  const filterValue = filter ? controls[filter.id] : undefined;
   return runCollection(source, {
     contract: ir.contract, query: search ? String(controls[search.id] ?? "") : "", matchFields: search?.matchFields as string | undefined,
-    filter: filter && controls[filter.id] === true ? { key: String(filter.key), active: true } : undefined,
+    filter: filter?.kind === "mode-toggle"
+      ? typeof filterValue === "string" && filterValue !== "all" ? filterValue : undefined
+      : filter && filterValue === true ? { key: String(filter.key), active: true } : undefined,
     sort: sort && controls[sort.id] === true ? { key: String(sort.key), active: true } : undefined,
   }, resolvePointer);
 }
@@ -156,7 +159,7 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
     case "payloadRequested":
       if (action.generation !== undefined) {
         if (action.generation <= state.refresh.generation) return state;
-        return { ...state, refresh: { phase: "loading", error: undefined, generation: action.generation, stale: state.payload !== undefined } };
+        return { ...state, refresh: { phase: "loading", error: undefined, generation: action.generation, stale: action.background ? false : state.payload !== undefined } };
       }
       if (state.refresh.phase === "loading" || state.refresh.phase === "running") return { ...state, refresh: { ...state.refresh, phase: "queued" } };
       return { ...state, refresh: { phase: state.refresh.phase === "queued" ? "running" : "loading", error: undefined, generation: state.refresh.generation + 1, stale: state.payload !== undefined } };
@@ -188,7 +191,11 @@ export function ovenReducer(state: OvenState, action: OvenAction, ir: OvenIr): O
         refresh: { ...state.refresh, phase: "failed", error: action.error, stale: false },
       };
     case "scenarioSelected": return { ...state, scenario: action.scenarioId };
-    case "modeSelected": return { ...state, controls: { ...state.controls, [action.id]: action.value } };
+    case "modeSelected": return {
+      ...state,
+      controls: { ...state.controls, [action.id]: action.value },
+      collections: resetConsumers(state, ir, action.id),
+    };
     case "queryChanged": return { ...state, controls: { ...state.controls, [action.id]: action.query }, collections: resetConsumers(state, ir, action.id) };
     case "toggleChanged": return { ...state, controls: { ...state.controls, [action.id]: action.active }, collections: resetConsumers(state, ir, action.id) };
     case "domainSelected": return { ...state, controls: { ...state.controls, [action.id]: action.selectedId } };
