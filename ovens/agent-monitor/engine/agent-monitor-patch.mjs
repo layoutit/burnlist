@@ -6,9 +6,25 @@ export const AGENT_MONITOR_PATCH_LIMITS = Object.freeze({
 
 function redactSecrets(value) {
   return String(value)
+    .replace(/\b((?:proxy-)?authorization)\b(\s*[:=]\s*)((?:bearer|token)\s+)?[^\n]*/giu, "$1$2$3[REDACTED]")
+    .replace(/\b(api[_-]?key|key|secret|token|password|passwd)\b(\s*[:=]\s*)[^\n]*/giu, "$1$2[REDACTED]")
     .replace(/\b(sk-[A-Za-z0-9_-]{8,}|(?:ghp|github_pat|xox[baprs]|AKIA)[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._~+/-]{8,})\b/giu, "[REDACTED]")
     .replace(/\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*=\s*[^\s]+/gu, "$1=[REDACTED]")
     .replace(/(--(?:api-?key|password|secret|token)(?:=|\s+))\S+/giu, "$1[REDACTED]");
+}
+
+function sensitivePath(path) {
+  return String(path).split("/").some((part) => {
+    const name = part.toLowerCase();
+    return name === ".git" || name.startsWith(".env")
+      || /(?:^|[._-])(?:key|keys|cert|certificate|credential|credentials|secret|secrets|password|token)(?:[._-]|$)/u.test(name)
+      || /^(?:id_rsa|id_dsa|id_ecdsa|id_ed25519)$/u.test(name)
+      || /\.(?:pem|p12|pfx|key|crt)$/u.test(name);
+  });
+}
+
+function containsSensitiveContent(value) {
+  return /-----BEGIN\s+(?:[A-Z ]+\s+)?PRIVATE\s+KEY-----/u.test(String(value));
 }
 
 function textCandidates(value, depth = 0) {
@@ -105,10 +121,18 @@ export function extractAgentMonitorPatch(value) {
   const candidates = textCandidates(value);
   for (const candidate of candidates) {
     const direct = patchBody(candidate);
-    if (direct) return boundedPatch(direct.body, direct.truncated);
+    if (direct) {
+      const patch = boundedPatch(direct.body, direct.truncated);
+      if (containsSensitiveContent(direct.body) || agentMonitorPatchFiles(patch).some(sensitivePath)) return null;
+      return patch;
+    }
     for (const decoded of decodedStringCandidates(candidate)) {
       const nested = patchBody(decoded);
-      if (nested) return boundedPatch(nested.body, nested.truncated);
+      if (nested) {
+        const patch = boundedPatch(nested.body, nested.truncated);
+        if (containsSensitiveContent(nested.body) || agentMonitorPatchFiles(patch).some(sensitivePath)) return null;
+        return patch;
+      }
     }
   }
   return null;
@@ -118,7 +142,9 @@ export function agentMonitorPatchFiles(patch) {
   if (!patch || !Array.isArray(patch.lines)) return [];
   const files = [];
   const add = (value) => {
-    const file = String(value ?? "").trim().replace(/^[ab]\//u, "");
+    const quoted = String(value ?? "").trim();
+    const file = (quoted.startsWith("\"") && quoted.endsWith("\"") ? quoted.slice(1, -1) : quoted)
+      .replace(/^[ab]\//u, "");
     if (file && file !== "/dev/null" && !files.includes(file)) files.push(file);
   };
   for (const line of patch.lines) {

@@ -17,6 +17,7 @@ import {
   isAgentMonitorSessionPath,
   loadAgentMonitorFeed,
   readAgentMonitorManifest,
+  readAgentMonitorRecentIndex,
   verifiedAgentMonitorFeedRoot,
 } from "./agent-monitor-feed.mjs";
 import {
@@ -80,35 +81,59 @@ function directoryEntries(path, limit, visit) {
 }
 
 function recentFeeds(root, repoKey, nowMs = Date.now()) {
+  try {
+    const index = readAgentMonitorRecentIndex(root, repoKey);
+    const feeds = [];
+    for (const entry of index.entries) {
+      const feed = validRecentFeed(
+        root, repoKey, entry.identity.worktreeKey,
+        agentMonitorSessionPath(entry.identity.session), nowMs,
+      );
+      if (feed) feeds.push(feed);
+      if (feeds.length >= AGENT_MONITOR_LIMITS.maxFeeds) break;
+    }
+    return { feeds, truncated: index.truncated || feeds.length >= AGENT_MONITOR_LIMITS.maxFeeds };
+  } catch {
+    return scannedRecentFeeds(root, repoKey, nowMs);
+  }
+}
+
+function validRecentFeed(root, repoKey, worktreeKey, sessionPath, nowMs) {
+  try {
+    const path = realpathSync(join(root, repoKey, worktreeKey, sessionPath));
+    if (!isWithin(root, path)) return null;
+    const manifest = readAgentMonitorManifest(path);
+    if (manifest.identity.logicalRepoKey !== repoKey
+      || manifest.identity.worktreeKey !== worktreeKey
+      || agentMonitorSessionPath(manifest.identity.session) !== sessionPath) return null;
+    const rolloutSession = codexRolloutSession(manifest.cursor?.file);
+    if (rolloutSession && !manifest.identity.session.includes(":")
+      && rolloutSession !== manifest.identity.session) return null;
+    const activityAt = manifest.summary?.updatedAt ?? manifest.updatedAt;
+    const updated = Date.parse(activityAt);
+    if (!Number.isFinite(updated) || updated > nowMs + 300_000 || nowMs - updated > recentMs) return null;
+    return { identity: manifest.identity, updatedAt: activityAt, summary: manifest.summary ?? null };
+  } catch {
+    return null;
+  }
+}
+
+function scannedRecentFeeds(root, repoKey, nowMs) {
   const feeds = [];
   let remaining = AGENT_MONITOR_LIMITS.maxFeeds;
   let truncated = false;
   const repoPath = join(root, repoKey);
-  truncated ||= directoryEntries(repoPath, AGENT_MONITOR_LIMITS.maxFeeds, (worktree) => {
+  const scanLimit = AGENT_MONITOR_LIMITS.maxFeeds * 4;
+  truncated ||= directoryEntries(repoPath, scanLimit, (worktree) => {
     if (!worktree.isDirectory() || !keyPattern.test(worktree.name) || remaining <= 0) return remaining > 0;
     const worktreePath = join(repoPath, worktree.name);
-    const more = directoryEntries(worktreePath, remaining, (session) => {
+    const more = directoryEntries(worktreePath, scanLimit, (session) => {
+      if (remaining <= 0) return false;
       if (!session.isDirectory() || !isAgentMonitorSessionPath(session.name)) return true;
+      const feed = validRecentFeed(root, repoKey, worktree.name, session.name, nowMs);
+      if (!feed) return true;
+      feeds.push(feed);
       remaining -= 1;
-      try {
-        const path = realpathSync(join(worktreePath, session.name));
-        if (!isWithin(root, path)) return true;
-        const manifest = readAgentMonitorManifest(path);
-        if (manifest.identity.logicalRepoKey !== repoKey
-          || manifest.identity.worktreeKey !== worktree.name
-          || agentMonitorSessionPath(manifest.identity.session) !== session.name) return true;
-        const rolloutSession = codexRolloutSession(manifest.cursor?.file);
-        if (rolloutSession && !manifest.identity.session.includes(":")
-          && rolloutSession !== manifest.identity.session) return true;
-        const activityAt = manifest.summary?.updatedAt ?? manifest.updatedAt;
-        const updated = Date.parse(activityAt);
-        if (!Number.isFinite(updated) || updated > nowMs + 300_000 || nowMs - updated > recentMs) return true;
-        feeds.push({
-          identity: manifest.identity,
-          updatedAt: activityAt,
-          summary: manifest.summary ?? null,
-        });
-      } catch { /* Invalid directories are not feeds. */ }
       return true;
     });
     if (more || remaining === 0) truncated = true;

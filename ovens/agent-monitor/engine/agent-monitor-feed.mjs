@@ -37,6 +37,8 @@ import {
 const keyPattern = /^[a-f0-9]{12}$/u;
 const sessionPathPattern = /^[a-f0-9]{32}$/u;
 export const AGENT_MONITOR_FEED_VERSION = "v1";
+const AGENT_MONITOR_RECENT_INDEX = "burnlist-agent-monitor-recent@1";
+const recentIndexLimit = AGENT_MONITOR_LIMITS.maxFeeds;
 
 function sessionIdentifier(value) {
   if (typeof value !== "string" || !value.trim() || value !== value.trim()
@@ -210,6 +212,60 @@ export function readAgentMonitorManifest(feedDir) {
   ));
 }
 
+function recentIndexPath(feedRoot, logicalRepoKey) {
+  return join(feedRoot, logicalRepoKey, "recent.json");
+}
+
+export function readAgentMonitorRecentIndex(feedRoot, logicalRepoKey) {
+  if (!keyPattern.test(logicalRepoKey ?? "")) throw new Error("Agent Monitor recent index repository key is invalid");
+  const value = readJson(
+    recentIndexPath(feedRoot, logicalRepoKey),
+    AGENT_MONITOR_LIMITS.maxManifestBytes,
+    "Agent Monitor recent index",
+  );
+  if (!value || typeof value !== "object" || Array.isArray(value)
+      || Object.keys(value).sort().join(",") !== "contract,entries,truncated"
+      || value.contract !== AGENT_MONITOR_RECENT_INDEX || !Array.isArray(value.entries)
+      || value.entries.length > recentIndexLimit || typeof value.truncated !== "boolean") {
+    throw new Error("Agent Monitor recent index is invalid");
+  }
+  for (const entry of value.entries) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)
+        || Object.keys(entry).sort().join(",") !== "identity,updatedAt") {
+      throw new Error("Agent Monitor recent index entry is invalid");
+    }
+    assertAgentMonitorIdentity(entry.identity);
+    if (entry.identity.logicalRepoKey !== logicalRepoKey || !Number.isFinite(Date.parse(entry.updatedAt))) {
+      throw new Error("Agent Monitor recent index entry identity is invalid");
+    }
+  }
+  return value;
+}
+
+function updateRecentIndex(value, manifest) {
+  const path = recentIndexPath(value.feedRoot, value.identity.logicalRepoKey);
+  const lockPath = join(value.feedRoot, value.identity.logicalRepoKey, ".recent.lock");
+  withDirectoryLock({
+    lockPath,
+    fn: () => {
+      let prior = { entries: [], truncated: false };
+      try { prior = readAgentMonitorRecentIndex(value.feedRoot, value.identity.logicalRepoKey); } catch {}
+      const key = (entry) => `${entry.identity.worktreeKey}\0${entry.identity.session}`;
+      const currentKey = key(manifest);
+      const entries = [
+        { identity: manifest.identity, updatedAt: manifest.updatedAt },
+        ...prior.entries.filter((entry) => key(entry) !== currentKey),
+      ].sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+      writeDurableAtomic(path, Buffer.from(JSON.stringify({
+        contract: AGENT_MONITOR_RECENT_INDEX,
+        entries: entries.slice(0, recentIndexLimit),
+        truncated: prior.truncated || entries.length > recentIndexLimit,
+      })));
+    },
+    errorFactory: () => Object.assign(new Error("Agent Monitor recent index is busy (locked)"), { code: "ELOCKED" }),
+  });
+}
+
 export function loadAgentMonitorFeed(feedDir) {
   const manifest = readAgentMonitorManifest(feedDir);
   const snapshotPath = join(feedDir, manifest.snapshot);
@@ -260,7 +316,7 @@ export function commitAgentMonitorSnapshot(value, snapshot, now = () => new Date
       },
     } : {}),
   });
-  return withDirectoryLock({
+  const committed = withDirectoryLock({
     lockPath: join(value.feedDir, ".lock"),
     fn: () => {
       writeDurableExclusive(join(value.feedDir, snapshotName), source);
@@ -270,6 +326,8 @@ export function commitAgentMonitorSnapshot(value, snapshot, now = () => new Date
     },
     errorFactory: () => Object.assign(new Error(`${basename(value.feedDir)} is busy (locked)`), { code: "ELOCKED" }),
   });
+  updateRecentIndex(value, committed);
+  return committed;
 }
 
 export function publishAgentMonitorInvalidation(repoRoot, manifest) {

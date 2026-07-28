@@ -377,7 +377,7 @@ Every provider row records:
 - Forensic identity, tamper resistance, or proof that a worker was read-only.
 - Semantic outcomes, graph transitions, gates, or completion from Monitor data.
 - Worker installation or use of the Burnlist skill.
-- Grok/Antigravity Streaming Diff parity.
+- Matching Grok/Antigravity Streaming Diff support.
 - A Burnlist-owned provider daemon or universal launcher.
 - Preventing a worker from disabling hooks or deliberately disclosing,
   transforming, or fabricating observation data.

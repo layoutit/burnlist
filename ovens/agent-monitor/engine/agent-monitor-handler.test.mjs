@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 import { buildAgentMonitorSnapshot } from "./agent-monitor-projection.mjs";
+import { AGENT_MONITOR_LIMITS } from "./agent-monitor-data-contract.mjs";
 import {
   commitAgentMonitorSnapshot,
   resolveAgentMonitorIdentity,
@@ -160,6 +161,28 @@ test("Agent Monitor aggregates recent sessions and rejects an unselected or wron
       () => agentMonitorHandler.serveData(context(value, selectionUrl(value, "wrong-session"))),
       (error) => error.status === 404 && /not available/u.test(error.message),
     );
+  } finally {
+    value.cleanup();
+  }
+});
+
+test("invalid session directories cannot consume the indexed live-feed cap", () => {
+  const value = fixture();
+  try {
+    const worktreeRoot = join(
+      value.identity.feedRoot,
+      value.identity.identity.logicalRepoKey,
+      value.identity.identity.worktreeKey,
+    );
+    for (let index = 0; index <= AGENT_MONITOR_LIMITS.maxFeeds; index += 1) {
+      mkdirSync(join(worktreeRoot, String(index).padStart(32, "0")), { recursive: true });
+    }
+    const listed = agentMonitorHandler.serveData(context(
+      value,
+      new URL(`http://localhost/?list&repoKey=${value.identity.identity.logicalRepoKey}`),
+    ));
+    assert.equal(listed.feeds.length, 1);
+    assert.deepEqual(listed.feeds[0].identity, value.identity.identity);
   } finally {
     value.cleanup();
   }

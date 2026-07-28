@@ -45,17 +45,43 @@ test("extracts unified git output and redacts secrets without flattening lines",
   const patch = extractAgentMonitorPatch({
     output: `Process exited with code 0
 Output:
-diff --git a/src/token.ts b/src/token.ts
+diff --git a/src/auth.ts b/src/auth.ts
 index 111..222 100644
---- a/src/token.ts
-+++ b/src/token.ts
+--- a/src/auth.ts
++++ b/src/auth.ts
 @@ -1 +1 @@
 -const token = "old";
 +const token = "sk-secretvalue123";`,
   });
-  assert.deepEqual(agentMonitorPatchFiles(patch), ["src/token.ts"]);
-  assert.equal(patch.lines[0], "diff --git a/src/token.ts b/src/token.ts");
-  assert.equal(patch.lines.at(-1), "+const token = \"[REDACTED]\";");
+  assert.deepEqual(agentMonitorPatchFiles(patch), ["src/auth.ts"]);
+  assert.equal(patch.lines[0], "diff --git a/src/auth.ts b/src/auth.ts");
+  assert.equal(patch.lines.at(-1), "+const token = [REDACTED]");
+});
+
+test("withholds sensitive paths and private-key patches before persistence", () => {
+  const secret = "not-for-storage";
+  const patch = `*** Begin Patch
+*** Add File: .env.production
++password = ${secret}
++-----BEGIN PRIVATE KEY-----
++${secret}
++-----END PRIVATE KEY-----
+*** End Patch`;
+  assert.equal(extractAgentMonitorPatch(patch), null);
+  assert.equal(JSON.stringify(extractAgentMonitorPatch(patch)).includes(secret), false);
+});
+
+test("redacts lowercase secret assignments in otherwise safe patches", () => {
+  const patch = extractAgentMonitorPatch(`*** Begin Patch
+*** Update File: src/config.txt
+@@
+-password = old
++password = hunter2
+*** End Patch`);
+  assert.deepEqual(patch?.lines.slice(-2), [
+    "-password = [REDACTED]",
+    "+password = [REDACTED]",
+  ]);
 });
 
 test("retains an explicit excerpt when a shell tail cuts off the diff header", () => {
