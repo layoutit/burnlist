@@ -60,15 +60,34 @@ index 111..222 100644
 
 test("withholds sensitive paths and private-key patches before persistence", () => {
   const secret = "not-for-storage";
+  const keyKind = ["PRIVATE", "KEY"].join(" ");
+  const begin = ["-----BEGIN", keyKind, "-----"].join(" ");
+  const end = ["-----END", keyKind, "-----"].join(" ");
   const patch = `*** Begin Patch
 *** Add File: .env.production
 +password = ${secret}
-+-----BEGIN PRIVATE KEY-----
++${begin}
 +${secret}
-+-----END PRIVATE KEY-----
++${end}
 *** End Patch`;
   assert.equal(extractAgentMonitorPatch(patch), null);
   assert.equal(JSON.stringify(extractAgentMonitorPatch(patch)).includes(secret), false);
+});
+
+test("scans sensitive paths and move destinations beyond the display-file cap", () => {
+  const safe = Array.from(
+    { length: 8 },
+    (_, index) => `*** Update File: src/safe-${index}.txt\n@@\n-old\n+new`,
+  ).join("\n");
+  const patch = `*** Begin Patch
+${safe}
+*** Update File: src/config.txt
+*** Move to: .env
+@@
+-database = old
++database = protocol://user:password@host/db
+*** End Patch`;
+  assert.equal(extractAgentMonitorPatch(patch), null);
 });
 
 test("redacts lowercase secret assignments in otherwise safe patches", () => {

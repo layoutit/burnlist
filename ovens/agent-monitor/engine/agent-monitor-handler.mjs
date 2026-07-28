@@ -92,7 +92,23 @@ function recentFeeds(root, repoKey, nowMs = Date.now()) {
       if (feed) feeds.push(feed);
       if (feeds.length >= AGENT_MONITOR_LIMITS.maxFeeds) break;
     }
-    return { feeds, truncated: index.truncated || feeds.length >= AGENT_MONITOR_LIMITS.maxFeeds };
+    if (!index.truncated) {
+      return { feeds, truncated: feeds.length >= AGENT_MONITOR_LIMITS.maxFeeds };
+    }
+    const scanned = scannedRecentFeeds(root, repoKey, nowMs);
+    const key = (feed) => `${feed.identity.worktreeKey}\0${feed.identity.session}`;
+    const seen = new Set(feeds.map(key));
+    for (const feed of scanned.feeds) {
+      if (!seen.has(key(feed))) {
+        feeds.push(feed);
+        seen.add(key(feed));
+      }
+    }
+    feeds.sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt));
+    return {
+      feeds: feeds.slice(0, AGENT_MONITOR_LIMITS.maxFeeds),
+      truncated: true,
+    };
   } catch {
     return scannedRecentFeeds(root, repoKey, nowMs);
   }
@@ -106,7 +122,7 @@ function validRecentFeed(root, repoKey, worktreeKey, sessionPath, nowMs) {
     if (manifest.identity.logicalRepoKey !== repoKey
       || manifest.identity.worktreeKey !== worktreeKey
       || agentMonitorSessionPath(manifest.identity.session) !== sessionPath) return null;
-    const rolloutSession = codexRolloutSession(manifest.cursor?.file);
+    const rolloutSession = manifest.cursor?.file ? codexRolloutSession(manifest.cursor.file) : null;
     if (rolloutSession && !manifest.identity.session.includes(":")
       && rolloutSession !== manifest.identity.session) return null;
     const activityAt = manifest.summary?.updatedAt ?? manifest.updatedAt;

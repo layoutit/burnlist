@@ -76,6 +76,7 @@ function fixture() {
     root,
     identity,
     manifest,
+    snapshot,
     cleanup: () => rmSync(root, { recursive: true, force: true }),
   };
 }
@@ -177,6 +178,50 @@ test("invalid session directories cannot consume the indexed live-feed cap", () 
     for (let index = 0; index <= AGENT_MONITOR_LIMITS.maxFeeds; index += 1) {
       mkdirSync(join(worktreeRoot, String(index).padStart(32, "0")), { recursive: true });
     }
+    const listed = agentMonitorHandler.serveData(context(
+      value,
+      new URL(`http://localhost/?list&repoKey=${value.identity.identity.logicalRepoKey}`),
+    ));
+    assert.equal(listed.feeds.length, 1);
+    assert.deepEqual(listed.feeds[0].identity, value.identity.identity);
+  } finally {
+    value.cleanup();
+  }
+});
+
+test("an incomplete recent index keeps existing legacy feeds visible", () => {
+  const value = fixture();
+  try {
+    const second = resolveAgentMonitorIdentity({ cwd: value.root, session: "session-second" });
+    const secondSnapshot = {
+      ...value.snapshot,
+      identity: second.identity,
+      session: { ...value.snapshot.session, id: second.identity.session },
+    };
+    commitAgentMonitorSnapshot(second, secondSnapshot, () => NOW);
+    rmSync(join(
+      value.identity.feedRoot,
+      value.identity.identity.logicalRepoKey,
+      "recent.json",
+    ), { force: true });
+    commitAgentMonitorSnapshot(value.identity, value.snapshot, () => NOW);
+    const listed = agentMonitorHandler.serveData(context(
+      value,
+      new URL(`http://localhost/?list&repoKey=${value.identity.identity.logicalRepoKey}`),
+    ));
+    assert.deepEqual(
+      new Set(listed.feeds.map((feed) => feed.identity.session)),
+      new Set(["session-exact", "session-second"]),
+    );
+  } finally {
+    value.cleanup();
+  }
+});
+
+test("cursorless committed feeds remain visible", () => {
+  const value = fixture();
+  try {
+    commitAgentMonitorSnapshot(value.identity, value.snapshot, () => NOW);
     const listed = agentMonitorHandler.serveData(context(
       value,
       new URL(`http://localhost/?list&repoKey=${value.identity.identity.logicalRepoKey}`),

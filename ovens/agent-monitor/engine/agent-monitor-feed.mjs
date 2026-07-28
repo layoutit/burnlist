@@ -37,7 +37,7 @@ import {
 const keyPattern = /^[a-f0-9]{12}$/u;
 const sessionPathPattern = /^[a-f0-9]{32}$/u;
 export const AGENT_MONITOR_FEED_VERSION = "v1";
-const AGENT_MONITOR_RECENT_INDEX = "burnlist-agent-monitor-recent@1";
+const AGENT_MONITOR_RECENT_INDEX = "burnlist-agent-monitor-recent@2";
 const recentIndexLimit = AGENT_MONITOR_LIMITS.maxFeeds;
 
 function sessionIdentifier(value) {
@@ -248,8 +248,12 @@ function updateRecentIndex(value, manifest) {
   withDirectoryLock({
     lockPath,
     fn: () => {
-      let prior = { entries: [], truncated: false };
-      try { prior = readAgentMonitorRecentIndex(value.feedRoot, value.identity.logicalRepoKey); } catch {}
+      let prior;
+      try {
+        prior = readAgentMonitorRecentIndex(value.feedRoot, value.identity.logicalRepoKey);
+      } catch {
+        prior = { entries: [], truncated: true };
+      }
       const key = (entry) => `${entry.identity.worktreeKey}\0${entry.identity.session}`;
       const currentKey = key(manifest);
       const entries = [

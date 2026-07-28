@@ -27,6 +27,33 @@ function containsSensitiveContent(value) {
   return /-----BEGIN\s+(?:[A-Z ]+\s+)?PRIVATE\s+KEY-----/u.test(String(value));
 }
 
+function patchFiles(lines, limit = Number.POSITIVE_INFINITY) {
+  const files = [];
+  const add = (value) => {
+    const quoted = String(value ?? "").trim();
+    const file = (quoted.startsWith("\"") && quoted.endsWith("\"") ? quoted.slice(1, -1) : quoted)
+      .replace(/^[ab]\//u, "");
+    if (file && file !== "/dev/null" && !files.includes(file)) files.push(file);
+  };
+  for (const line of lines) {
+    const custom = /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/u.exec(line);
+    if (custom) add(custom[1]);
+    const moved = /^\*\*\* Move to:\s*(.+)$/u.exec(line);
+    if (moved) add(moved[1]);
+    const unified = /^diff --git (?:a\/)?(.+?) (?:b\/)?(.+)$/u.exec(line);
+    if (unified) {
+      add(unified[1]);
+      add(unified[2]);
+    }
+    const fileMarker = /^(?:---|\+\+\+)\s+(.+)$/u.exec(line);
+    if (fileMarker) add(fileMarker[1]);
+    const renamed = /^rename (?:from|to)\s+(.+)$/u.exec(line);
+    if (renamed) add(renamed[1]);
+    if (files.length >= limit) break;
+  }
+  return files.slice(0, limit);
+}
+
 function textCandidates(value, depth = 0) {
   if (depth > 4 || value === null || value === undefined) return [];
   if (typeof value === "string") return [value];
@@ -122,15 +149,17 @@ export function extractAgentMonitorPatch(value) {
   for (const candidate of candidates) {
     const direct = patchBody(candidate);
     if (direct) {
+      const paths = patchFiles(direct.body.split("\n"));
       const patch = boundedPatch(direct.body, direct.truncated);
-      if (containsSensitiveContent(direct.body) || agentMonitorPatchFiles(patch).some(sensitivePath)) return null;
+      if (containsSensitiveContent(direct.body) || paths.some(sensitivePath)) return null;
       return patch;
     }
     for (const decoded of decodedStringCandidates(candidate)) {
       const nested = patchBody(decoded);
       if (nested) {
+        const paths = patchFiles(nested.body.split("\n"));
         const patch = boundedPatch(nested.body, nested.truncated);
-        if (containsSensitiveContent(nested.body) || agentMonitorPatchFiles(patch).some(sensitivePath)) return null;
+        if (containsSensitiveContent(nested.body) || paths.some(sensitivePath)) return null;
         return patch;
       }
     }
@@ -140,20 +169,5 @@ export function extractAgentMonitorPatch(value) {
 
 export function agentMonitorPatchFiles(patch) {
   if (!patch || !Array.isArray(patch.lines)) return [];
-  const files = [];
-  const add = (value) => {
-    const quoted = String(value ?? "").trim();
-    const file = (quoted.startsWith("\"") && quoted.endsWith("\"") ? quoted.slice(1, -1) : quoted)
-      .replace(/^[ab]\//u, "");
-    if (file && file !== "/dev/null" && !files.includes(file)) files.push(file);
-  };
-  for (const line of patch.lines) {
-    const custom = /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/u.exec(line);
-    if (custom) add(custom[1]);
-    const unified = /^diff --git (?:a\/)?(.+?) (?:b\/)?(.+)$/u.exec(line);
-    if (unified) add(unified[2]);
-    const added = /^\+\+\+\s+(.+)$/u.exec(line);
-    if (added) add(added[1]);
-  }
-  return files.slice(0, 8);
+  return patchFiles(patch.lines, 8);
 }

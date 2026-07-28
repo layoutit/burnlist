@@ -152,19 +152,22 @@ test("patch calls retain the exact bounded changed lines", () => {
 
 test("sensitive patches are withheld before entering the persisted snapshot shape", () => {
   const secret = "lowercase-password-value";
+  const keyKind = ["PRIVATE", "KEY"].join(" ");
+  const begin = ["-----BEGIN", keyKind, "-----"].join(" ");
+  const end = ["-----END", keyKind, "-----"].join(" ");
   const event = call("apply_patch", {
     input: `*** Begin Patch
 *** Add File: .env
 +password = ${secret}
-+-----BEGIN PRIVATE KEY-----
++${begin}
 +${secret}
-+-----END PRIVATE KEY-----
++${end}
 *** End Patch`,
   });
   const persisted = JSON.stringify(snapshot([event]));
   assert.equal(event.patch, null);
   assert.equal(persisted.includes(secret), false);
-  assert.equal(persisted.includes("PRIVATE KEY"), false);
+  assert.equal(persisted.includes(keyKind), false);
 });
 
 test("git diff output is attached to its originating DIFF event", () => {
