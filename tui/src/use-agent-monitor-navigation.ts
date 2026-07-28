@@ -25,8 +25,8 @@ export function useAgentMonitorNavigation(client: DataClient) {
     const feeds = await client.agentMonitorFeeds(repoKey, signal);
     const next = selectAgentMonitorFeed(feeds, retainedFeed.current);
     const query = agentMonitorFeedQuery(next);
-    if (!query) throw new Error("Agent Monitor has not observed a session in this repository yet.");
-    retainedFeed.current = agentMonitorFeedKey(next.feeds[next.selected]!);
+    const feed = next.feeds[next.selected];
+    retainedFeed.current = feed ? agentMonitorFeedKey(feed) : null;
     setNavigation(next);
     return query;
   }, [client]);
@@ -35,8 +35,8 @@ export function useAgentMonitorNavigation(client: DataClient) {
     if (!navigation) return false;
     const next = moveAgentMonitorFeed(navigation, direction);
     const feed = next.feeds[next.selected];
-    if (!feed || next === navigation) return true;
-    retainedFeed.current = agentMonitorFeedKey(feed);
+    if (next === navigation) return true;
+    retainedFeed.current = feed ? agentMonitorFeedKey(feed) : null;
     setNavigation(next);
     selected();
     return true;

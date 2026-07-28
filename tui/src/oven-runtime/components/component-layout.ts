@@ -69,7 +69,7 @@ export function projectComponentLayout(nodes: readonly TerminalNode[], width: nu
     if (node.kind === "collection") {
       const template = node.children.find((child) => child.kind === "each")?.children.find((child) => child.kind === "agent-monitor-event-card");
       if (template) {
-        const aggregate = { ...template, attributes: { ...template.attributes, source: node.attributes.source, filterFrom: node.attributes.filterFrom } };
+        const aggregate = { ...template, attributes: { ...template.attributes, source: node.attributes.source, filterFrom: node.attributes.filterFrom, collectionFrom: node.attributes.id } };
         roots.push({ path, node: aggregate });
         return reserve(aggregate, width, viewportHeight);
       }

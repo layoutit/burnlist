@@ -139,6 +139,8 @@ describe("TUI navigation stack", () => {
     const root = createRoot(setup.renderer);
     flushSync(() => root.render(<App serverUrl="http://127.0.0.1:4510" shutdown={() => {}} />));
     await setup.renderOnce();
+    expect(setup.captureCharFrame()).toContain("Loading Burnlists");
+    expect(setup.captureCharFrame()).not.toContain("No Burnlists discovered");
     await key(setup, "r");
     await waitForRenderedFrame(setup, (frame) => frame.includes("Fresh Burnlist") && !frame.includes("Refreshing"), "fresh landing generation");
     pending.get("/api/projects")?.(Response.json({ generatedAt: "stale", projects: [] }));

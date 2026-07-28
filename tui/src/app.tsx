@@ -366,7 +366,11 @@ export function App({ serverUrl, shutdown }: { serverUrl: string; shutdown(): vo
       return;
     }
     if (view === "burnlist") {
-      if ((key.name === "up" || key.name === "down") && selectedBurnlist && activeOven?.id === "agent-monitor" && agentMonitor.move(key.name === "up" ? -1 : 1, () => void loadBurnlist(selectedBurnlist, activeOven, false))) return;
+      if ((key.name === "pageup" || key.name === "pagedown") && selectedBurnlist && activeOven?.id === "agent-monitor" && agentMonitor.move(key.name === "pageup" ? -1 : 1, () => void loadBurnlist(selectedBurnlist, activeOven, false))) return;
+      if (activeOven?.id === "agent-monitor" && ["up", "down", "n", "p", "m"].includes(key.name ?? "")) {
+        dispatchRuntimeKey(key.name ?? "");
+        return;
+      }
       if (key.name === "up" && items.length) return moveItem(-1);
       if (key.name === "down" && items.length) return moveItem(1);
       if ((key.name === "return" || key.name === "enter") && selectedItem) { setItemDetailScroll(0); return pushView("item"); }

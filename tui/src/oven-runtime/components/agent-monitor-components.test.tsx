@@ -47,12 +47,15 @@ async function capture(filter: string) {
   }
 }
 
-test("official Agent Monitor uses terminal alert, activity, filter, and event-card counterparts", async () => {
+test("official Agent Monitor uses terminal alert, activity, filter, and event table counterparts", async () => {
   expect(compiled.ok).toBe(true);
   const frame = await capture("command");
   expect(frame).toContain("✓ On course");
   expect(frame).toContain("Work rhythm");
-  expect(frame).toContain("COMMAND · 10 · DONE");
-  expect(frame).not.toContain("DIFF · 11 · DONE");
+  expect(frame).toContain("STATE");
+  expect(frame).toContain("TYPE");
+  expect(frame).toContain("DONE");
+  expect(frame).toContain("COMMAND");
+  expect(frame).not.toContain("DIFF");
   expect(frame).toContain("q:back");
 });

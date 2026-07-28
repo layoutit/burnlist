@@ -201,6 +201,8 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
         maxRows={Math.max(2, height - 5)}
         terminalWidth={width}
         empty={String(node.attributes.empty ?? "No Burnlists")}
+        loading={props.loading === true}
+        loadingGlyph={loadingGlyph}
       />;
     case "oven-list":
       return <OvenList
@@ -224,7 +226,7 @@ function renderNode(node: GlyphNode, props: ScreenRuntimeProps, width: number, h
       {
         const managedChecklist = props.progress !== null && props.progress !== undefined;
         const ovenHints = props.screen.id === "burnlist" && props.activeOven?.id === "agent-monitor"
-          ? "↑/↓:session · ←/→:filter · [/]:Oven lens · r:refresh · q/esc:back"
+          ? "↑/↓:events · n/p:page · pgup/pgdn:session · m:filter · [/]:Oven lens · r:refresh · q/esc:back"
           : props.screen.id === "burnlist" && !managedChecklist
           ? officialOvenFixture(props.activeOven?.id)?.footer ?? "arrows/enter:interact · x/f/s/m:controls · q/esc:back"
           : String(node.attributes.hints);
