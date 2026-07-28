@@ -13,14 +13,20 @@ function validIr(id: string) {
 }
 
 describe("Burnlist TUI data client", () => {
-  test("loads the three landing resources concurrently", async () => {
+  test("loads the indexed landing snapshot in one request", async () => {
+    const requested: string[] = [];
     globalThis.fetch = mock(async (request: string | URL | Request) => {
       const path = new URL(String(request)).pathname;
-      if (path === "/api/projects") return Response.json({ generatedAt: "now", projects: [{ displayName: "app" }] });
-      if (path === "/api/burnlists") return Response.json({ generatedAt: "now", burnlists: [{ id: "ui" }] });
-      return Response.json({ ovens: [{ id: "checklist" }] });
+      requested.push(path);
+      return Response.json({
+        generatedAt: "now",
+        projects: [{ displayName: "app" }],
+        burnlists: [{ id: "ui" }],
+        ovens: [{ id: "checklist" }],
+      });
     }) as unknown as typeof fetch;
     const snapshot = await createDataClient("http://127.0.0.1:4815").landing();
+    expect(requested).toEqual(["/api/landing"]);
     expect(snapshot.projects[0]?.displayName).toBe("app");
     expect(snapshot.burnlists[0]?.id).toBe("ui");
     expect(snapshot.ovens[0]?.id).toBe("checklist");

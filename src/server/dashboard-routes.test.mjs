@@ -83,6 +83,19 @@ test("/api/burnlists lists discovered Burnlists across the observer set", { time
   });
 });
 
+test("/api/landing returns the complete terminal index in one snapshot", { timeout: 20_000 }, async () => {
+  await withServer({ withBurnlist: true }, async ({ baseUrl }) => {
+    const response = await httpGet(baseUrl, "/api/landing");
+    assert.equal(response.status, 200);
+    const payload = JSON.parse(response.body);
+    assert.equal(typeof payload.generatedAt, "string");
+    assert.equal(payload.projects.some((project) => project.entries.some((entry) => entry.id === "fixture")), true);
+    assert.equal(payload.burnlists.some((entry) => entry.id === "fixture"), true);
+    assert.equal(payload.ovens.some((oven) => oven.id === "checklist"), true);
+    assert.equal(typeof payload.writeToken, "string");
+  });
+});
+
 test("/api/burnlists exposes the configured default Oven as the canonical entry link", { timeout: 20_000 }, async () => {
   await withServer({
     burnlists: [{ defaultOvenId: "agent-monitor" }],

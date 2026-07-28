@@ -16,14 +16,21 @@ function packageReader(root, id) {
 }
 
 test("official server discovery materializes only catalog entries with origin metadata", () => {
+  let reads = 0;
   const discovery = createOfficialOvenDiscovery({
     ovensDir,
     handlers: listOvenHandlers(),
-    readOven: packageReader,
+    readOven(...args) {
+      reads += 1;
+      return packageReader(...args);
+    },
   });
   const ovens = discovery.discover();
+  discovery.discover();
+  discovery.find("checklist");
 
   assert.deepEqual(ovens.map(({ id }) => id), discovery.catalog.entries.map(({ id }) => id));
+  assert.equal(reads, discovery.catalog.entries.length);
   assert.ok(ovens.every(({ origin }) => origin === "official"));
   assert.ok(ovens.every(({ repoKey, repoRoot }) => repoKey === null && repoRoot === null));
   assert.equal(new Set(ovens.map(({ catalogRevision }) => catalogRevision)).size, 1);

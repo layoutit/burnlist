@@ -16,8 +16,8 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import { mutatorRepoRoots, observerRepoRoots } from "./discovery.mjs";
 import { effectiveBindings } from "./oven-bindings.mjs";
-import { classifyRoots, readRegistry, repoKey } from "./registry.mjs";
-import { buildProjectsSnapshot } from "./projects.mjs";
+import { repoKey } from "./registry.mjs";
+import { observedProjectsSnapshot } from "./projects-snapshot.mjs";
 import { containedJoin, repoStateDir, withRepoStateLock } from "./repo-state.mjs";
 import { resolveUmbrella } from "../cli/umbrella.mjs";
 import { assertGitIgnored } from "../cli/git-ignore.mjs";
@@ -64,6 +64,7 @@ import { createModelLabTerminalProtocol, serveModelLabTerminalProtocol } from ".
 import { readJsonRequest } from "./read-json-request.mjs";
 import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-vendor.mjs";
 import { createAgentMonitorLeaseManager } from "../service/agent-monitor-leases.mjs";
+import { createLandingSnapshot } from "./landing-snapshot.mjs";
 import {
   LIFECYCLES,
   burnlistIdForPlan,
@@ -281,8 +282,8 @@ function candidateRepoRoots() {
   return observerRepoRoots({ cwd: launchCwd, home: os.homedir(), scanRoot: args.get("scan-root") });
 }
 
-function resolvedOvenDataBindings() {
-  return effectiveBindings({ repoRoots: ovenScopeRepos().map((repo) => repo.root), override: ovenDataOverrides });
+function resolvedOvenDataBindings(repos = ovenScopeRepos()) {
+  return effectiveBindings({ repoRoots: repos.map((repo) => repo.root), override: ovenDataOverrides });
 }
 
 function selectedOvenDataBinding(ovenDataBindings, id, url) {
@@ -323,20 +324,31 @@ function burnlistPaths() {
   return burnlistPathsFor(candidateRepoRoots());
 }
 
-function discoverBurnlists() {
-  return discoverBurnlistSummaries({ repoRoots: candidateRepoRoots(), maxPlanBytes });
+function discoverBurnlists(repoRoots = candidateRepoRoots()) {
+  return discoverBurnlistSummaries({ repoRoots, maxPlanBytes });
 }
 
-function dashboardEntries(ovenDataBindings) {
+function dashboardEntries(ovenDataBindings, repos = ovenScopeRepos()) {
+  const repoRoots = repos.map((repo) => repo.root);
+  const reposByKey = new Map(repos.map((repo) => [repo.repoKey, repo]));
+  const resolvedOvens = new Map();
+  const resolveEntryOven = (id, selectedKey) => {
+    const key = `${selectedKey ?? ""}\0${id}`;
+    if (!resolvedOvens.has(key)) resolvedOvens.set(key, findOven(id, selectedKey, reposByKey));
+    return resolvedOvens.get(key);
+  };
   return isolatedDashboardEntries({
     handlers: [...listOvenHandlers(), { id: "custom-oven", dashboardEntries: customOvenDashboardEntries }],
-    contextForHandler: (handler) => ovenHandlerContext({ id: handler.id, oven: { id: handler.id }, ovenDataBindings }),
+    contextForHandler: (handler) => ovenHandlerContext({
+      id: handler.id, oven: { id: handler.id }, ovenDataBindings, repos,
+      discoverBurnlists: () => discoverBurnlists(repoRoots),
+    }),
     repoKeyForRoot: (root) => repoKey(realpathSync(root)),
     blockedEntry: blockedDashboardEntry,
   }).map((entry) => {
     if (!entry.planPath || !entry.repoKey) return entry;
-    const configured = findOven(entry.defaultOvenId ?? "checklist", entry.repoKey);
-    const selected = configured ?? findOven("checklist", entry.repoKey);
+    const configured = resolveEntryOven(entry.defaultOvenId ?? "checklist", entry.repoKey);
+    const selected = configured ?? resolveEntryOven("checklist", entry.repoKey);
     if (!selected) return entry;
     return {
       ...entry,
@@ -348,9 +360,9 @@ function dashboardEntries(ovenDataBindings) {
 }
 
 function customOvenDashboardEntries(ctx) {
-  const repos = ovenScopeRepos();
+  const repos = ctx.repos ?? ovenScopeRepos();
   const entries = [];
-  for (const oven of discoverOvens().filter((candidate) => !candidate.builtIn)) {
+  for (const oven of discoverOvens(repos).filter((candidate) => !candidate.builtIn)) {
     try {
       const bindings = ctx.ovenDataBindings.get(oven.id) ?? [];
       const binding = bindings.find((candidate) => candidate.repoKey === oven.repoKey)
@@ -398,7 +410,11 @@ function blockedDashboardEntry(handler, error) {
   };
 }
 
-function ovenHandlerContext({ id, oven, req, res, url, binding, bindingPath, ovenDataBindings = resolvedOvenDataBindings() } = {}) {
+function ovenHandlerContext({
+  id, oven, req, res, url, binding, bindingPath,
+  ovenDataBindings = resolvedOvenDataBindings(), repos,
+  discoverBurnlists: discoverBurnlistsForContext = discoverBurnlists,
+} = {}) {
   const cacheId = id ?? oven?.id;
   if (cacheId && !ovenHandlerCaches.has(cacheId)) ovenHandlerCaches.set(cacheId, new Map());
   return {
@@ -413,61 +429,33 @@ function ovenHandlerContext({ id, oven, req, res, url, binding, bindingPath, ove
     ovenJsonSnapshots,
     ovenDataBindings,
     maxOvenDataBytes,
-    discoverBurnlists,
+    repos,
+    discoverBurnlists: discoverBurnlistsForContext,
     discoveredRepos,
   };
 }
 
-function projectsSnapshot(ovenDataBindings) {
-  const home = os.homedir();
-  const hasScanRootOverride = Boolean(args.get("scan-root"));
-  let registeredRoots = [];
-  if (!hasScanRootOverride) {
-    try {
-      registeredRoots = readRegistry({ home }).roots;
-    } catch {
-      // The dashboard remains useful when a manually edited registry is corrupt.
-    }
-  }
-  const observerRoots = candidateRepoRoots();
-  const health = new Map();
-  for (const root of observerRoots) {
-    let canonicalRoot = root;
-    try {
-      canonicalRoot = realpathSync(root);
-    } catch {
-      // Discovery only returns readable roots, but preserve a useful status if it changes.
-    }
-    try {
-      health.set(canonicalRoot, burnlistPathsFor([canonicalRoot]).length ? "healthy" : "empty");
-    } catch {
-      health.set(canonicalRoot, "unreadable");
-    }
-  }
-  if (!hasScanRootOverride) {
-    try {
-      for (const entry of classifyRoots({ home })) {
-        let canonicalRoot = entry.root;
-        try {
-          canonicalRoot = realpathSync(entry.root);
-        } catch {
-          // Missing registered roots are keyed by their recorded root.
-        }
-        health.set(canonicalRoot, entry.status);
-      }
-    } catch {
-      // A corrupt registry has already been downgraded to no registered roots.
-    }
-  }
-  return buildProjectsSnapshot({
+function projectsSnapshot(
+  ovenDataBindings,
+  entries = dashboardEntries(ovenDataBindings),
+  observerRoots = candidateRepoRoots(),
+) {
+  return observedProjectsSnapshot({
+    home: os.homedir(),
+    scanRootOverride: Boolean(args.get("scan-root")),
     observerRoots,
-    registeredRoots,
-    health,
-    entries: dashboardEntries(ovenDataBindings),
+    entries,
+    burnlistPathsFor,
     repoKey,
     realpath: realpathSync,
   });
 }
+
+const landingSnapshot = createLandingSnapshot({
+  repos: ovenScopeRepos, burnlistPathsFor, customOvensDirFor,
+  resolveBindings: resolvedOvenDataBindings, dashboardEntries, projectsSnapshot,
+  discoverOvens, ovenSummary, writeToken,
+});
 
 function instructionsName(instructions, defaultName) {
   const heading = instructions.split(/\r?\n/u).find((line) => /^#\s+\S/u.test(line.trim()));
@@ -606,9 +594,9 @@ function customOvensIn(root, customRepoRoot = umbrellaRoot) {
     .filter(Boolean);
 }
 
-function discoverOvens() {
+function discoverOvens(repos = ovenScopeRepos()) {
   const ovens = officialOvenDiscovery.discover();
-  for (const repo of ovenScopeRepos()) {
+  for (const repo of repos) {
     for (const oven of vendoredOvensIn(repo.root)) {
       ovens.push({ ...oven, repoKey: repo.repoKey, repoRoot: repo.root });
     }
@@ -632,21 +620,22 @@ function selectedRepoKey(url) {
   return repoKeys[0] ?? null;
 }
 
-function findOven(id, selectedKey = null) {
+function findOven(id, selectedKey = null, reposByKey = null) {
   const safeId = ovenId(id);
+  const selectedRepo = selectedKey === null
+    ? null
+    : reposByKey?.get(selectedKey) ?? ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
   if (selectedKey !== null) {
-    const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
-    const vendored = repo ? readVendoredOvenForRepo(repo.root, safeId) : null;
-    if (vendored) return { ...vendored, repoKey: repo.repoKey, repoRoot: repo.root };
+    const vendored = selectedRepo ? readVendoredOvenForRepo(selectedRepo.root, safeId) : null;
+    if (vendored) return { ...vendored, repoKey: selectedRepo.repoKey, repoRoot: selectedRepo.root };
   }
   // Built-ins are global: resolve them by id regardless of repoKey when no repo has a pin.
   // Custom ovens are identified by (repoKey, id).
   const builtin = officialOvenDiscovery.find(safeId);
   if (builtin) return { ...builtin, repoKey: null, repoRoot: null };
   if (selectedKey === null) return null;
-  const repo = ovenScopeRepos().find((entry) => entry.repoKey === selectedKey);
-  const oven = repo ? readOven(customOvensDirFor(repo.root), safeId, false, repo.root) : null;
-  return oven ? { ...oven, repoKey: repo.repoKey, repoRoot: repo.root } : null;
+  const oven = selectedRepo ? readOven(customOvensDirFor(selectedRepo.root), safeId, false, selectedRepo.root) : null;
+  return oven ? { ...oven, repoKey: selectedRepo.repoKey, repoRoot: selectedRepo.root } : null;
 }
 
 function ovenSummary(oven) {
@@ -1361,12 +1350,19 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/projects") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, projectsSnapshot(resolvedOvenDataBindings()));
+      const { generatedAt, projects } = landingSnapshot();
+      json(res, 200, { generatedAt, projects });
+      return;
+    }
+    if (url.pathname === "/api/landing") {
+      if (method !== "GET") return json(res, 405, { error: "method not allowed" });
+      json(res, 200, landingSnapshot());
       return;
     }
     if (url.pathname === "/api/burnlists") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, { generatedAt: new Date().toISOString(), burnlists: dashboardEntries(resolvedOvenDataBindings()) });
+      const { generatedAt, burnlists } = landingSnapshot();
+      json(res, 200, { generatedAt, burnlists });
       return;
     }
     if (url.pathname === "/api/progress") {
@@ -1408,7 +1404,8 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/ovens") {
       if (method === "GET") {
-        json(res, 200, { ovens: discoverOvens().map(ovenSummary), writeToken });
+        const { ovens } = landingSnapshot();
+        json(res, 200, { ovens, writeToken });
         return;
       }
       if (method === "POST") {
@@ -1572,6 +1569,7 @@ function listen(port) {
     console.log(url);
     console.error(`PID: ${process.pid}`);
     console.error(`Runtime: ${runtimePath}`);
+    setImmediate(landingSnapshot.prime);
   });
 }
 

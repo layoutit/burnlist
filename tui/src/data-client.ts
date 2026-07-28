@@ -77,18 +77,7 @@ export function createDataClient(input: string) {
   return Object.freeze({
     base,
     async landing(signal?: AbortSignal): Promise<LandingSnapshot> {
-      const [projectPayload, burnlistPayload, ovenPayload] = await Promise.all([
-        getJson<{ generatedAt: string; projects: LandingSnapshot["projects"] }>(base, "/api/projects", cache, signal),
-        getJson<{ generatedAt: string; burnlists: LandingSnapshot["burnlists"] }>(base, "/api/burnlists", cache, signal),
-        getJson<{ ovens: LandingSnapshot["ovens"]; writeToken?: string }>(base, "/api/ovens", cache, signal),
-      ]);
-      return {
-        projects: projectPayload.projects,
-        burnlists: burnlistPayload.burnlists,
-        ovens: ovenPayload.ovens,
-        generatedAt: burnlistPayload.generatedAt ?? projectPayload.generatedAt,
-        ...(typeof ovenPayload.writeToken === "string" ? { writeToken: ovenPayload.writeToken } : {}),
-      };
+      return getJson<LandingSnapshot>(base, "/api/landing", cache, signal);
     },
     activateAgentMonitor(repoKey: string, token: string, signal?: AbortSignal): Promise<void> {
       return activateAgentMonitor(base, repoKey, token, signal);
