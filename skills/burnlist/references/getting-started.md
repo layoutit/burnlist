@@ -46,7 +46,7 @@ hardens the first Burnlist through the normal creation workflow.
    npm i -g burnlist
    ```
 
-   The npm postinstall automatically registers the Burnlist skill for both agents: Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. The skill is available immediately. Alternatively, point any agent at the hosted skill at <https://burnlist.dev/skill.md>. It is a complete, self-contained document and needs no installation.
+   The npm postinstall automatically registers the Burnlist skill for both agents: Claude Code under `~/.claude/skills` and Codex under `~/.agents/skills`. It also owns one shared observer service that every repository reuses unless the user explicitly requests local mode. The skill is available immediately. Alternatively, point any agent at the hosted skill at <https://burnlist.dev/skill.md>. It is a complete, self-contained document and needs no installation.
 
 2. Initialize the repository (normally performed by the agent after “Set up
    Burnlist in this repo”):
