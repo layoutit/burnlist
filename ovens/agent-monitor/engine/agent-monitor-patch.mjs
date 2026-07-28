@@ -27,31 +27,43 @@ function containsSensitiveContent(value) {
   return /-----BEGIN\s+(?:[A-Z ]+\s+)?PRIVATE\s+KEY-----/u.test(String(value));
 }
 
-function patchFiles(lines, limit = Number.POSITIVE_INFINITY) {
-  const files = [];
+function visitPatchPaths(lines, visit) {
   const add = (value) => {
     const quoted = String(value ?? "").trim();
     const file = (quoted.startsWith("\"") && quoted.endsWith("\"") ? quoted.slice(1, -1) : quoted)
       .replace(/^[ab]\//u, "");
-    if (file && file !== "/dev/null" && !files.includes(file)) files.push(file);
+    return !file || file === "/dev/null" || visit(file) !== false;
   };
   for (const line of lines) {
     const custom = /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/u.exec(line);
-    if (custom) add(custom[1]);
+    if (custom && !add(custom[1])) return;
     const moved = /^\*\*\* Move to:\s*(.+)$/u.exec(line);
-    if (moved) add(moved[1]);
+    if (moved && !add(moved[1])) return;
     const unified = /^diff --git (?:a\/)?(.+?) (?:b\/)?(.+)$/u.exec(line);
-    if (unified) {
-      add(unified[1]);
-      add(unified[2]);
-    }
+    if (unified && (!add(unified[1]) || !add(unified[2]))) return;
     const fileMarker = /^(?:---|\+\+\+)\s+(.+)$/u.exec(line);
-    if (fileMarker) add(fileMarker[1]);
+    if (fileMarker && !add(fileMarker[1])) return;
     const renamed = /^rename (?:from|to)\s+(.+)$/u.exec(line);
-    if (renamed) add(renamed[1]);
-    if (files.length >= limit) break;
+    if (renamed && !add(renamed[1])) return;
   }
-  return files.slice(0, limit);
+}
+
+function hasSensitivePatchPath(lines) {
+  let found = false;
+  visitPatchPaths(lines, (path) => {
+    found = sensitivePath(path);
+    return !found;
+  });
+  return found;
+}
+
+function patchFiles(lines, limit) {
+  const files = new Set();
+  visitPatchPaths(lines, (path) => {
+    files.add(path);
+    return files.size < limit;
+  });
+  return [...files];
 }
 
 function textCandidates(value, depth = 0) {
@@ -149,17 +161,17 @@ export function extractAgentMonitorPatch(value) {
   for (const candidate of candidates) {
     const direct = patchBody(candidate);
     if (direct) {
-      const paths = patchFiles(direct.body.split("\n"));
+      const paths = direct.body.split("\n");
+      if (containsSensitiveContent(direct.body) || hasSensitivePatchPath(paths)) return null;
       const patch = boundedPatch(direct.body, direct.truncated);
-      if (containsSensitiveContent(direct.body) || paths.some(sensitivePath)) return null;
       return patch;
     }
     for (const decoded of decodedStringCandidates(candidate)) {
       const nested = patchBody(decoded);
       if (nested) {
-        const paths = patchFiles(nested.body.split("\n"));
+        const paths = nested.body.split("\n");
+        if (containsSensitiveContent(nested.body) || hasSensitivePatchPath(paths)) return null;
         const patch = boundedPatch(nested.body, nested.truncated);
-        if (containsSensitiveContent(nested.body) || paths.some(sensitivePath)) return null;
         return patch;
       }
     }
