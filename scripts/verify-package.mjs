@@ -6,9 +6,8 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-// The exact manifest remains authoritative; 255 permits the 253-file package
-// plus two deliberate entries of release headroom without weakening the cap.
-const maxPackageEntries = 255;
+// The exact manifest remains authoritative; 262 is the current complete package.
+const maxPackageEntries = 262;
 const result = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -57,6 +56,7 @@ function sourceFiles(directory, root = repoRoot) {
 const required = [
   "LICENSE",
   "README.md",
+  "bin/burnlist-codex-bridge.mjs",
   "bin/burnlist.mjs",
   "package.json",
   "scripts/register-skills.mjs",
@@ -73,6 +73,11 @@ const required = [
   "src/ovens/oven-contract.mjs",
   "src/ovens/official-oven-catalog.mjs",
   "src/server/burnlist-dashboard-server.mjs",
+  "src/server/codex-app-server-client.mjs",
+  "src/server/loopback-peer.mjs",
+  "src/server/multi-monitor-messages.mjs",
+  "src/server/multi-monitor-receipts.mjs",
+  "src/server/multi-monitor-server-requests.mjs",
   "loops/review/review.loop",
   "loops/review/instructions.md",
   "skills/burnlist/references/loop-capability-example.json",
@@ -83,6 +88,8 @@ const required = [
   "ovens/agent-monitor/instructions.md",
   "ovens/agent-monitor/agent-monitor.oven",
   "ovens/agent-monitor/engine/agent-monitor-handler.mjs",
+  "ovens/multi-monitor/instructions.md",
+  "ovens/multi-monitor/multi-monitor.oven",
   "ovens/checklist/instructions.md",
   "ovens/differential-testing/instructions.md",
   "ovens/differential-testing/differential-testing.oven",

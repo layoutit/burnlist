@@ -4,6 +4,7 @@ const ovenSections = new Map([
   ["model-lab", "model-lab"],
   ["performance-tracing", "performance-tracing"],
   ["streaming-diff", "streaming-diff"],
+  ["multi-monitor", "multi-monitor"],
   ["visual-parity", "visual-parity"],
 ]);
 

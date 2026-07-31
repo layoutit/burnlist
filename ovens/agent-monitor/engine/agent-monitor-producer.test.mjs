@@ -20,7 +20,11 @@ import {
   loadAgentMonitorFeed,
   resolveAgentMonitorIdentity,
 } from "./agent-monitor-feed.mjs";
-import { discoverAgentMonitorSessions, runAgentMonitorOnce } from "./agent-monitor-producer.mjs";
+import {
+  AGENT_MONITOR_PRODUCER_LIMITS,
+  discoverAgentMonitorSessions,
+  runAgentMonitorOnce,
+} from "./agent-monitor-producer.mjs";
 import { AGENT_MONITOR_PROJECTION_VERSION } from "./agent-monitor-projection.mjs";
 
 const NOW = "2026-07-26T12:00:00.000Z";
@@ -103,6 +107,116 @@ test("the repository producer publishes separate exact session feeds incremental
     assert.equal(loadAgentMonitorFeed(firstIdentity.feedDir).snapshot.monitor.counts.lines, 3);
     assert.equal(loadAgentMonitorFeed(firstIdentity.feedDir).snapshot.raw.completed.length, 2);
     assert.equal(loadAgentMonitorFeed(secondIdentity.feedDir).snapshot.monitor.counts.lines, 2);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("Codex feeds publish authoritative ownership and open-turn metadata", () => {
+  const context = fixture();
+  try {
+    writeFileSync(context.first, [
+      record("session_meta", {
+        session_id: "session-a",
+        cwd: context.root,
+        thread_source: "user",
+      }),
+      record("event_msg", { type: "task_started" }),
+    ].join("\n") + "\n");
+    writeFileSync(context.second, [
+      record("session_meta", {
+        session_id: "session-b",
+        cwd: context.root,
+        thread_source: "subagent",
+        parent_thread_id: "session-a",
+      }),
+      record("event_msg", { type: "task_started" }),
+      record("event_msg", { type: "task_complete" }),
+    ].join("\n") + "\n");
+    for (const path of [context.first, context.second]) {
+      utimesSync(path, new Date(NOW), new Date(NOW));
+    }
+
+    const result = runAgentMonitorOnce({
+      repoRoot: context.root,
+      sessionRoot: context.sessionRoot,
+      nowMs: Date.parse(NOW),
+      now: () => NOW,
+    });
+    assert.deepEqual(result.errors, []);
+    const user = loadAgentMonitorFeed(
+      resolveAgentMonitorIdentity({ cwd: context.root, session: "session-a" }).feedDir,
+    );
+    const subagent = loadAgentMonitorFeed(
+      resolveAgentMonitorIdentity({ cwd: context.root, session: "session-b" }).feedDir,
+    );
+    assert.deepEqual(user.manifest.summary, {
+      state: "Live",
+      current: "LIFECYCLE · line 2",
+      lines: 2,
+      failures: 0,
+      updatedAt: NOW,
+      provider: "codex",
+      threadSource: "user",
+      topLevel: true,
+      turnOpen: true,
+      caughtUp: true,
+    });
+    assert.deepEqual(user.snapshot.monitor.thread, {
+      provider: "codex",
+      threadSource: "user",
+      topLevel: true,
+      turnOpen: true,
+      caughtUp: true,
+    });
+    assert.equal(subagent.manifest.summary.threadSource, "subagent");
+    assert.equal(subagent.manifest.summary.topLevel, false);
+    assert.equal(subagent.manifest.summary.turnOpen, false);
+    assert.equal(subagent.manifest.summary.caughtUp, true);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("large Codex feeds start from the current complete tail", () => {
+  const context = fixture();
+  try {
+    const lines = [
+      record("session_meta", {
+        session_id: "session-a",
+        cwd: context.root,
+        thread_source: "user",
+      }),
+      record("event_msg", { type: "task_complete" }, "2026-07-26T11:00:00.000Z"),
+      ...Array.from({ length: 24 }, (_, index) => record(
+        "response_item",
+        { type: "agent_message", message: `Historical message ${index}` },
+        "2026-07-26T11:00:01.000Z",
+      )),
+      record("event_msg", { type: "task_started" }, "2026-07-26T11:59:58.000Z"),
+      record("response_item", {
+        type: "agent_message",
+        message: "Current tail activity.",
+      }, "2026-07-26T11:59:59.000Z"),
+    ];
+    writeFileSync(context.first, `${lines.join("\n")}\n`);
+    utimesSync(context.first, new Date(NOW), new Date(NOW));
+    const result = runAgentMonitorOnce({
+      repoRoot: context.root,
+      sessionRoot: context.sessionRoot,
+      limits: { ...AGENT_MONITOR_PRODUCER_LIMITS, maxChunkBytes: 512, maxFileBytes: 1_000_000 },
+      nowMs: Date.parse(NOW),
+      now: () => NOW,
+    });
+    assert.deepEqual(result.errors, []);
+    const feed = loadAgentMonitorFeed(
+      resolveAgentMonitorIdentity({ cwd: context.root, session: "session-a" }).feedDir,
+    );
+    assert.equal(feed.manifest.summary.turnOpen, true);
+    assert.equal(feed.manifest.summary.caughtUp, true);
+    assert.equal(feed.snapshot.monitor.counts.lines, lines.length);
+    assert.equal(feed.snapshot.monitor.truncated, true);
+    assert.equal(feed.snapshot.raw.completed[0].detail, "Current tail activity.");
   } finally {
     context.cleanup();
   }

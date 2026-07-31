@@ -37,7 +37,7 @@ export function burnlistLensContext(): { repoKey: string; burnlistId: string; ac
 
 export function ovenRepoKey() {
   const current = route();
-  return ["agent-monitor", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity", "custom-oven"].includes(current.section)
+  return ["agent-monitor", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "multi-monitor", "visual-parity", "custom-oven"].includes(current.section)
     ? current.repoKey
     : null;
 }

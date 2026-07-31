@@ -421,6 +421,7 @@ const officialOvenExpectations = new Map([
   ["differential-testing", { name: "Differential Testing", validator: "validateDifferentialTestingRuntimeData" }],
   ["loop-progress", { name: "Loop Progress", validator: "validateGenericJsonData" }],
   ["model-lab", { name: "Model Lab", validator: "validateModelLabRuntimeData" }],
+  ["multi-monitor", { name: "Multi Monitor" }],
   ["performance-tracing", { name: "Performance Tracing", validator: "validatePerformanceTracingRuntimeData" }],
   ["streaming-diff", { name: "Streaming Diff" }],
   ["visual-parity", { name: "Visual Parity", validator: "validateVisualParityRuntimeData" }],

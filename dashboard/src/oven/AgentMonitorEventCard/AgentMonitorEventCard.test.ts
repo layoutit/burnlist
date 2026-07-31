@@ -32,14 +32,56 @@ test("message cards render safe inline Markdown without splitting prose separato
     event: {
       category: "message",
       detail: "B5 is **burned** · canonical `/` only now.",
+      eventType: "response_item/agent_message",
       line: 8562,
       result: "observed",
     },
   }));
 
   assert.match(markup, /agent-monitor-event-type">MESSAGE<\/span> · line 8562 · OBSERVED/u);
+  assert.match(markup, /data-message-role="agent"/u);
   assert.match(markup, /B5 is <strong>burned<\/strong> · canonical <code>\/<\/code> only now\./u);
   assert.doesNotMatch(markup, /\*\*burned\*\*|canonical `\/`/u);
+});
+
+test("message cards expose user and agent roles for conversation layouts", () => {
+  const user = renderToStaticMarkup(createElement(AgentMonitorEventCard, {
+    event: { category: "message", detail: "New user instruction", eventType: "event_msg/user_message" },
+  }));
+  const agent = renderToStaticMarkup(createElement(AgentMonitorEventCard, {
+    event: { category: "message", detail: "Working on it.", eventType: "response_item/agent_message" },
+  }));
+
+  assert.match(user, /data-message-role="user"/u);
+  assert.match(agent, /data-message-role="agent"/u);
+});
+
+test("Codex presentation renders literal thread messages and edit summaries", () => {
+  const message = renderToStaticMarkup(createElement(AgentMonitorEventCard, {
+    event: {
+      presentation: "codex",
+      kind: "message",
+      role: "user",
+      content: "the **literal** thread",
+    },
+  }));
+  const edits = renderToStaticMarkup(createElement(AgentMonitorEventCard, {
+    event: {
+      presentation: "codex",
+      kind: "edits",
+      count: 1,
+      additions: 3,
+      removals: 2,
+      files: [{ path: "dashboard/src/App.tsx", additions: 3, removals: 2 }],
+    },
+  }));
+
+  assert.match(message, /class="codex-thread-event codex-message"[\s\S]*data-role="user"/u);
+  assert.match(message, /the <strong>literal<\/strong> thread/u);
+  assert.match(edits, /Edited 1 file/u);
+  assert.match(edits, /dashboard\/src\/App\.tsx/u);
+  assert.match(edits, /data-tone="add">\+3/u);
+  assert.match(edits, /data-tone="remove">-2/u);
 });
 
 test("search cards keep separators inside the quoted pattern", () => {

@@ -9,6 +9,7 @@ export const AGENT_MONITOR_LIMITS = Object.freeze({
   maxManifestBytes: 64 * 1024,
   maxSnapshotBytes: 8 * 1024 * 1024,
   maxSessionBytes: 160,
+  maxConversationMessageChars: 12_000,
 });
 
 const keyPattern = /^[a-f0-9]{12}$/u;
@@ -54,6 +55,15 @@ function optionalString(value, label, maxLength = 400) {
   if (value !== undefined && value !== null) string(value, label, maxLength);
 }
 
+function optionalConversationText(value, label) {
+  if (value === undefined || value === null) return;
+  if (typeof value !== "string" || !value.trim() || value !== value.trim()
+      || value.length > AGENT_MONITOR_LIMITS.maxConversationMessageChars
+      || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(value)) {
+    throw new Error(`${label} must be bounded printable conversation text`);
+  }
+}
+
 function assertPatch(value, index) {
   if (value === undefined || value === null) return;
   const label = `Agent Monitor completed[${index}].patch`;
@@ -96,7 +106,9 @@ function assertCompletedItem(value, index) {
   string(value.result, `Agent Monitor completed[${index}].result`, 40);
   optionalString(value.actionKey, `Agent Monitor completed[${index}].actionKey`, 64);
   optionalString(value.callKey, `Agent Monitor completed[${index}].callKey`, 64);
+  optionalConversationText(value.message, `Agent Monitor completed[${index}].message`);
   assertPatch(value.patch, index);
+  optionalString(value.phase, `Agent Monitor completed[${index}].phase`, 40);
   if (value.risk !== undefined && value.risk !== null && value.risk !== "destructive") {
     throw new Error(`Agent Monitor completed[${index}].risk is invalid`);
   }
@@ -113,6 +125,28 @@ function assertLoopContext(value) {
   for (const name of ["role", "mode", "authority", "model", "effort"]) {
     optionalString(value[name], `Agent Monitor Loop ${name}`, 128);
   }
+}
+
+function assertThreadMetadata(value, label) {
+  exact(value, ["provider", "threadSource", "topLevel", "turnOpen", "caughtUp"], label);
+  if (!["codex", "claude", "agy", "grok"].includes(value.provider)) {
+    throw new Error(`${label}.provider is invalid`);
+  }
+  if (!["user", "subagent", "other"].includes(value.threadSource)) {
+    throw new Error(`${label}.threadSource is invalid`);
+  }
+  if (typeof value.topLevel !== "boolean" || typeof value.caughtUp !== "boolean") {
+    throw new Error(`${label}.topLevel and caughtUp must be boolean`);
+  }
+  if (value.provider === "codex") {
+    if (typeof value.turnOpen !== "boolean") throw new Error(`${label}.turnOpen must be boolean for Codex`);
+  } else if (value.turnOpen !== null) {
+    throw new Error(`${label}.turnOpen must be null outside Codex`);
+  }
+  if (value.topLevel && (value.provider !== "codex" || value.threadSource !== "user")) {
+    throw new Error(`${label}.topLevel must identify a user-owned Codex task`);
+  }
+  return value;
 }
 
 export function assertAgentMonitorSnapshot(value) {
@@ -148,6 +182,9 @@ export function assertAgentMonitorSnapshot(value) {
   }
   const monitor = object(value.monitor, "Agent Monitor monitor");
   assertLoopContext(monitor.loop);
+  if (monitor.thread !== undefined) {
+    assertThreadMetadata(monitor.thread, "Agent Monitor thread metadata");
+  }
   if (monitor.projectionVersion !== undefined) integer(monitor.projectionVersion, "Agent Monitor projectionVersion", 1);
   const summary = object(monitor.summary, "Agent Monitor summary");
   if (!["Live", "Idle"].includes(summary.state)) throw new Error("Agent Monitor summary.state is invalid");
@@ -180,12 +217,31 @@ export function assertAgentMonitorCursor(value) {
 
 function assertManifestSummary(value) {
   const legacyKeys = ["state", "current", "lines", "failures"];
-  exact(value, value.updatedAt === undefined ? legacyKeys : [...legacyKeys, "updatedAt"], "Agent Monitor manifest summary");
+  const currentKeys = [...legacyKeys, "updatedAt"];
+  const metadataKeys = [
+    ...currentKeys, "provider", "threadSource", "topLevel", "turnOpen", "caughtUp",
+  ];
+  exact(
+    value,
+    value.provider === undefined
+      ? (value.updatedAt === undefined ? legacyKeys : currentKeys)
+      : metadataKeys,
+    "Agent Monitor manifest summary",
+  );
   if (!["Live", "Idle"].includes(value.state)) throw new Error("Agent Monitor manifest summary.state is invalid");
   string(value.current, "Agent Monitor manifest summary.current", 200);
   integer(value.lines, "Agent Monitor manifest summary.lines");
   integer(value.failures, "Agent Monitor manifest summary.failures");
   if (value.updatedAt !== undefined) timestamp(value.updatedAt, "Agent Monitor manifest summary.updatedAt");
+  if (value.provider !== undefined) {
+    assertThreadMetadata({
+      provider: value.provider,
+      threadSource: value.threadSource,
+      topLevel: value.topLevel,
+      turnOpen: value.turnOpen,
+      caughtUp: value.caughtUp,
+    }, "Agent Monitor manifest thread metadata");
+  }
   return value;
 }
 

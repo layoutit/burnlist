@@ -67,6 +67,34 @@ function readPrefix(path, limit) {
   }
 }
 
+function readSuffix(path, limit) {
+  let fd;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const stat = fstatSync(fd);
+    const start = Math.max(0, stat.size - limit);
+    const buffer = Buffer.alloc(stat.size - start);
+    const bytes = readSync(fd, buffer, 0, buffer.length, start);
+    let source = buffer.subarray(0, bytes).toString("utf8");
+    if (start > 0) {
+      const newline = source.indexOf("\n");
+      source = newline < 0 ? "" : source.slice(newline + 1);
+    }
+    return source;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function parseRecords(source, maximum = 256) {
+  const value = [];
+  for (const line of source.split("\n")) {
+    if (!line.trim()) continue;
+    try { value.push(JSON.parse(line)); } catch { /* An incomplete tail is not metadata. */ }
+  }
+  return value.slice(-maximum);
+}
+
 function records(path, limits) {
   let stat;
   try { stat = statSync(path); } catch { return []; }
@@ -82,6 +110,61 @@ function records(path, limits) {
   } catch { /* An unreadable file is not a discoverable session. */ }
   metadataCache.set(path, { size: stat.size, mtimeMs: stat.mtimeMs, value });
   return value;
+}
+
+function recentRecords(path, limits) {
+  let stat;
+  try { stat = statSync(path); } catch { return []; }
+  const cached = metadataCache.get(path);
+  if (cached?.size === stat.size && cached?.mtimeMs === stat.mtimeMs && cached.recent) {
+    return cached.recent;
+  }
+  let recent = [];
+  try { recent = parseRecords(readSuffix(path, limits.metadataBytes)); } catch { /* unreadable */ }
+  metadataCache.set(path, {
+    ...(cached?.size === stat.size && cached?.mtimeMs === stat.mtimeMs ? cached : {}),
+    size: stat.size,
+    mtimeMs: stat.mtimeMs,
+    recent,
+  });
+  return recent;
+}
+
+function customToolWorkingDirectory(record) {
+  const payload = record?.payload;
+  if (record?.type === "turn_context" && typeof payload?.cwd === "string") return payload.cwd;
+  if (record?.type !== "response_item" || payload?.type !== "custom_tool_call"
+      || typeof payload.input !== "string") return null;
+  const matches = [...payload.input.matchAll(/\bworkdir\s*:\s*["'](\/[^"'\r\n]+)["']/gu)];
+  return matches.at(-1)?.[1] ?? null;
+}
+
+function insideGitWorktree(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  let current = resolve(value);
+  while (true) {
+    try {
+      if (statSync(join(current, ".git")).isDirectory()) return true;
+    } catch { /* Keep walking toward the filesystem root. */ }
+    const parent = dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
+
+function codexCurrentWorkingDirectory(path, limits) {
+  const find = (values) => values
+    .map(customToolWorkingDirectory)
+    .filter(insideGitWorktree)
+    .at(-1);
+  const recent = find(recentRecords(path, limits));
+  if (recent) return recent;
+  try {
+    const deepLimit = Math.min(limits.maxFileBytes, limits.metadataBytes * 8);
+    return find(parseRecords(readSuffix(path, deepLimit), 4_096)) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function stringAt(value, keys) {
@@ -104,10 +187,18 @@ function codexMetadata(path, limits) {
     const session = record?.payload?.session_id ?? record?.payload?.id;
     const cwd = record?.payload?.cwd;
     if (typeof session === "string" && typeof cwd === "string") {
+      const threadSource = ["user", "subagent"].includes(record.payload.thread_source)
+        ? record.payload.thread_source
+        : "other";
+      const currentCwd = codexCurrentWorkingDirectory(path, limits);
       return {
         session: codexRolloutSession(path, session),
         providerSession: session,
-        cwd: resolve(cwd),
+        cwd: resolve(currentCwd ?? cwd),
+        threadSource,
+        topLevel: threadSource === "user"
+          && !(typeof record.payload.parent_thread_id === "string"
+            && record.payload.parent_thread_id.trim()),
       };
     }
   }

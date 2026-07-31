@@ -4,29 +4,52 @@ import type { AgentMonitorFeed, AgentMonitorPayload } from "@lib";
 import { useOvenLiveData } from "@oven";
 
 type FeedState = { feeds: AgentMonitorFeed[]; error: string; loading: boolean };
-type ActivationState = { error: string; loading: boolean };
+type ActivationState = {
+  canSend: boolean;
+  canSteerExternal: boolean;
+  error: string;
+  loading: boolean;
+  writeToken: string;
+};
 type Selection = { repoKey: string; worktreeKey: string; session: string } | null;
 type Repository = { repoKey: string; label: string };
+const AGENT_MONITOR_DISCOVERY_REFRESH_MS = 2_000;
 
 export function useAgentMonitorActivation(repositories: Repository[]): ActivationState {
   const keys = repositories.map((repository) => repository.repoKey).join(",");
-  const [state, setState] = useState<ActivationState>({ error: "", loading: Boolean(keys) });
+  const [state, setState] = useState<ActivationState>({
+    canSend: false,
+    canSteerExternal: false,
+    error: "",
+    loading: Boolean(keys),
+    writeToken: "",
+  });
 
   useEffect(() => {
     if (!keys) {
-      setState({ error: "", loading: false });
+      setState({ canSend: false, canSteerExternal: false, error: "", loading: false, writeToken: "" });
       return;
     }
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | null = null;
     const repoKeys = keys.split(",");
     void (async () => {
-      const inventory = await fetch("/api/ovens", {
-        cache: "no-store",
-        headers: { accept: "application/json" },
-        signal: controller.signal,
-      });
+      const [inventory, messaging] = await Promise.all([
+        fetch("/api/ovens", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+          signal: controller.signal,
+        }),
+        fetch("/api/multi-monitor/messages", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+          signal: controller.signal,
+        }).catch(() => null),
+      ]);
       const payload = await inventory.json();
+      const messageStatus = messaging?.ok
+        ? await messaging.json().catch(() => null)
+        : null;
       const token = typeof payload?.writeToken === "string" ? payload.writeToken : "";
       if (!inventory.ok || !token) throw new Error(payload?.error ?? "Agent Monitor activation is unavailable.");
       const activate = async () => {
@@ -39,13 +62,29 @@ export function useAgentMonitorActivation(repositories: Repository[]): Activatio
           const failure = await rejected.json().catch(() => null);
           throw new Error(failure?.error ?? "Could not activate Agent Monitor.");
         }
+        const payloads = await Promise.all(responses.map((response) => response.json().catch(() => null)));
+        const observerFailure = payloads.find((value) => typeof value?.observer?.error === "string");
+        return observerFailure?.observer?.error ?? "";
       };
-      await activate();
+      const observerError = await activate();
       if (!controller.signal.aborted) {
-        setState({ error: "", loading: false });
+        setState({
+          canSend: messageStatus?.canSend === true,
+          canSteerExternal: messageStatus?.canSteerExternal === true,
+          error: observerError,
+          loading: false,
+          writeToken: token,
+        });
         const renew = () => {
           timer = setTimeout(() => {
-            void activate().catch(() => {}).finally(() => {
+            void activate().then((error) => {
+              if (!controller.signal.aborted) setState((current) => ({ ...current, error }));
+            }).catch((cause) => {
+              if (!controller.signal.aborted) setState((current) => ({
+                ...current,
+                error: cause instanceof Error ? cause.message : "Agent Monitor refresh failed.",
+              }));
+            }).finally(() => {
               if (!controller.signal.aborted) renew();
             });
           }, 15_000);
@@ -54,8 +93,11 @@ export function useAgentMonitorActivation(repositories: Repository[]): Activatio
       }
     })().catch((cause) => {
       if (!controller.signal.aborted) setState({
+        canSend: false,
+        canSteerExternal: false,
         error: cause instanceof Error ? cause.message : "Could not activate Agent Monitor.",
         loading: false,
+        writeToken: "",
       });
     });
     return () => {
@@ -87,35 +129,49 @@ export function useAgentMonitorFeeds(
       setState({ feeds: [], error: "", loading: false });
       return;
     }
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     setState((current) => ({ ...current, error: "", loading: true }));
-    void Promise.allSettled(repositories.map(async (repository) => {
-      const query = new URLSearchParams({ list: "", repoKey: repository.repoKey });
-      const response = await fetch(`/api/oven-data/agent-monitor?${query}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Could not load recent thread feeds.");
-      return { repository, payload };
-    })).then((results) => {
-      const successful = results
-        .filter((result): result is PromiseFulfilledResult<{ repository: Repository; payload: unknown }> => result.status === "fulfilled")
-        .map((result) => result.value);
-      if (!successful.length) {
-        const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-        throw failure?.reason ?? new Error("Could not load recent thread feeds.");
-      }
-      if (!cancelled) setState({
-        feeds: mapAgentMonitorLandingFeeds(successful),
-        error: "",
-        loading: false,
+    const load = () => {
+      void Promise.allSettled(repositories.map(async (repository) => {
+        const query = new URLSearchParams({ list: "", repoKey: repository.repoKey });
+        const response = await fetch(`/api/oven-data/agent-monitor?${query}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error ?? "Could not load recent thread feeds.");
+        return { repository, payload };
+      })).then((results) => {
+        const successful = results
+          .filter((result): result is PromiseFulfilledResult<{ repository: Repository; payload: unknown }> => result.status === "fulfilled")
+          .map((result) => result.value);
+        if (!successful.length) {
+          const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+          throw failure?.reason ?? new Error("Could not load recent thread feeds.");
+        }
+        if (!cancelled) setState({
+          feeds: mapAgentMonitorLandingFeeds(successful),
+          error: "",
+          loading: false,
+        });
+      }).catch((cause) => {
+        if (!cancelled) setState((current) => ({
+          ...current,
+          error: cause instanceof Error ? cause.message : "Could not load recent thread feeds.",
+          loading: false,
+        }));
+      }).finally(() => {
+        if (!cancelled) timer = setTimeout(load, AGENT_MONITOR_DISCOVERY_REFRESH_MS);
       });
-    }).catch((cause) => {
-      if (!cancelled) setState({
-        feeds: [],
-        error: cause instanceof Error ? cause.message : "Could not load recent thread feeds.",
-        loading: false,
-      });
-    });
-    return () => { cancelled = true; };
+    };
+    load();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
   }, [discoveryLoading, repositoryKey, selected]);
 
   return state;

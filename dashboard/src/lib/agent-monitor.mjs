@@ -18,11 +18,25 @@ function summary(value) {
   if (!object(value) || !["Live", "Idle"].includes(value.state) || !text(value.current)
       || !Number.isSafeInteger(value.lines) || value.lines < 0
       || !Number.isSafeInteger(value.failures) || value.failures < 0) return null;
+  const hasThreadMetadata = value.provider !== undefined;
+  if (hasThreadMetadata && (
+    !["codex", "claude", "agy", "grok"].includes(value.provider)
+    || !["user", "subagent", "other"].includes(value.threadSource)
+    || typeof value.topLevel !== "boolean"
+    || !(typeof value.turnOpen === "boolean" || value.turnOpen === null)
+    || typeof value.caughtUp !== "boolean"
+  )) return null;
   return {
     state: value.state,
     current: value.current,
+    updatedAt: text(value.updatedAt),
     lines: value.lines,
     failures: value.failures,
+    provider: hasThreadMetadata ? value.provider : null,
+    threadSource: hasThreadMetadata ? value.threadSource : null,
+    topLevel: hasThreadMetadata ? value.topLevel : null,
+    turnOpen: hasThreadMetadata ? value.turnOpen : null,
+    caughtUp: hasThreadMetadata ? value.caughtUp : null,
   };
 }
 
@@ -51,6 +65,12 @@ export function mapAgentMonitorFeeds(value) {
         ? `Thread ${shortSession(feedIdentity.session)} · ${feedSummary.lines.toLocaleString()} events${feedSummary.failures ? ` · ${feedSummary.failures} failure${feedSummary.failures === 1 ? "" : "s"}` : ""}`
         : `Exact session ${feedIdentity.session}`,
       state: feedSummary?.state ?? null,
+      activityAt: feedSummary?.updatedAt ?? null,
+      provider: feedSummary?.provider ?? null,
+      threadSource: feedSummary?.threadSource ?? null,
+      topLevel: feedSummary?.topLevel ?? null,
+      turnOpen: feedSummary?.turnOpen ?? null,
+      caughtUp: feedSummary?.caughtUp ?? null,
     }];
   }).sort((left, right) => (Date.parse(right.updatedAt ?? "") || 0) - (Date.parse(left.updatedAt ?? "") || 0));
 }

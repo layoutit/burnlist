@@ -1,0 +1,313 @@
+.multi-monitor-shell {
+  position: relative;
+  display: grid;
+  height: 100dvh;
+  min-height: 420px;
+  grid-template-rows: 58px minmax(0, 1fr);
+  overflow: hidden;
+  background: #111;
+  color: #f4f4f4;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.multi-monitor-toolbar {
+  z-index: 5;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 14px 10px 18px;
+  border-bottom: 1px solid #303030;
+  background: #171717;
+}
+
+.multi-monitor-workspace-title {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.multi-monitor-workspace-title h1 {
+  margin: 0;
+  overflow: hidden;
+  color: #ededed;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-monitor-count {
+  flex: 0 0 auto;
+  color: #8d8d8d;
+  font-size: 13px;
+}
+
+.multi-monitor-add {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.multi-monitor-add .ui-select {
+  width: min(420px, 42vw);
+  height: 34px;
+  border-color: #333;
+  background: #1b1b1b;
+  color: #dedede;
+  font: 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.multi-monitor-add .ui-button {
+  height: 34px;
+  border-color: #373737;
+  background: #202020;
+  color: #f4f4f4;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.multi-monitor-add .ui-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.multi-monitor-track {
+  display: grid;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-auto-columns: minmax(min(520px, 100vw), 1fr);
+  grid-auto-flow: column;
+  grid-template-rows: minmax(0, 1fr);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #3c3c3c transparent;
+}
+
+.multi-monitor-column {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: 56px minmax(0, 1fr) auto;
+  border-right: 1px solid #303030;
+  background: #111;
+}
+
+.multi-monitor-column:last-child {
+  border-right: 0;
+}
+
+.multi-monitor-thread-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px 8px 16px;
+  border-bottom: 1px solid #2c2c2c;
+  background: #141414;
+}
+
+.multi-monitor-thread-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.multi-monitor-thread-copy {
+  min-width: 0;
+}
+
+.multi-monitor-thread-copy h2 {
+  margin: 0;
+  overflow: hidden;
+  color: #e7e7e7;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-monitor-thread-copy p {
+  display: flex;
+  margin: 2px 0 0;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.2;
+  gap: 9px;
+}
+
+.multi-monitor-thread-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.multi-monitor-status-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #777;
+}
+
+.multi-monitor-column[data-state="working"] .multi-monitor-status-dot,
+.multi-monitor-column[data-state="live"] .multi-monitor-status-dot {
+  background: #5bd497;
+  box-shadow: 0 0 0 3px rgba(91, 212, 151, .1);
+}
+
+.multi-monitor-column[data-state="stale"] .multi-monitor-status-dot,
+.multi-monitor-column[data-state="refreshing"] .multi-monitor-status-dot {
+  background: #d3a758;
+}
+
+.multi-monitor-column-action {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #858585;
+  cursor: pointer;
+}
+
+.multi-monitor-column-action:hover {
+  background: #292929;
+  color: #f2f2f2;
+}
+
+.multi-monitor-column-action:focus-visible {
+  outline: 2px solid #d8d8d8;
+  outline-offset: 1px;
+}
+
+.multi-monitor-column-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.multi-monitor-column-body {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #3c3c3c transparent;
+}
+
+.multi-monitor-conversation {
+  min-height: 100%;
+  padding: 30px 30px 46px;
+}
+
+.multi-monitor-notice,
+.multi-monitor-service-error {
+  margin: 16px 30px;
+  padding: 10px 12px;
+  border: 1px solid #343434;
+  border-radius: 9px;
+  background: #1b1b1b;
+  color: #999;
+  font-size: 13px;
+}
+
+.multi-monitor-notice.is-error,
+.multi-monitor-service-error {
+  border-color: rgba(248, 113, 113, .25);
+  color: #fca5a5;
+}
+
+.multi-monitor-retention {
+  margin: 18px 30px 0;
+  color: #777;
+  font-size: 12px;
+  text-align: center;
+}
+
+.multi-monitor-composer-slot {
+  display: flex;
+  min-height: 124px;
+  align-items: stretch;
+}
+
+.codex-composer-placeholder {
+  min-height: 112px;
+  flex: 1;
+  margin: 0 18px 12px;
+}
+
+.multi-monitor-service-error {
+  position: absolute;
+  z-index: 4;
+  top: 66px;
+  right: 12px;
+  max-width: 420px;
+}
+
+.multi-monitor-empty {
+  display: grid;
+  min-height: 280px;
+  place-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: #888;
+  text-align: center;
+}
+
+.multi-monitor-empty h1 {
+  margin: 0;
+  color: #d4d4d4;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.multi-monitor-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 620px) {
+  .multi-monitor-shell {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .multi-monitor-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .multi-monitor-workspace-title {
+    justify-content: space-between;
+  }
+
+  .multi-monitor-add {
+    width: 100%;
+  }
+
+  .multi-monitor-add .ui-select {
+    width: 100%;
+    flex: 1;
+  }
+
+  .multi-monitor-track {
+    grid-auto-columns: 100vw;
+  }
+
+  .multi-monitor-conversation {
+    padding-inline: 18px;
+  }
+}

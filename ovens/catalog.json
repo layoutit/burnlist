@@ -1,6 +1,6 @@
 {
   "schema": "burnlist-official-oven-catalog@1",
-  "catalogVersion": "1.2.0",
+  "catalogVersion": "1.3.0",
   "entries": [
     {
       "id": "agent-monitor",
@@ -55,6 +55,17 @@
       "producer": "project-model-lab-adapter",
       "routeKind": "repo-oven",
       "maturity": "shipped",
+      "runtimeCompatibility": "burnlist-oven-runtime@1"
+    },
+    {
+      "id": "multi-monitor",
+      "version": "0.4.0",
+      "inputContract": "burnlist-agent-monitor-data@1",
+      "renderContract": "checklist-progress@1",
+      "dataInput": "producer-managed",
+      "producer": "burnlist-agent-monitor",
+      "routeKind": "repo-oven",
+      "maturity": "experimental",
       "runtimeCompatibility": "burnlist-oven-runtime@1"
     },
     {

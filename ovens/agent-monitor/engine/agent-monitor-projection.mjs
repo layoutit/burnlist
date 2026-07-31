@@ -4,7 +4,7 @@ import {
   assertAgentMonitorSnapshot,
 } from "./agent-monitor-data-contract.mjs";
 
-export const AGENT_MONITOR_PROJECTION_VERSION = 14;
+export const AGENT_MONITOR_PROJECTION_VERSION = 17;
 const visibleCategories = new Set(["command", "diff", "lifecycle", "message", "result", "tool"]);
 const actionableCategories = new Set(["command", "diff", "tool"]);
 
@@ -156,7 +156,9 @@ function completedEvent(event, generatedAt) {
     result: event.result,
     actionKey: event.actionKey ?? null,
     callKey: event.callKey ?? null,
+    message: event.message ?? null,
     patch: event.patch ?? null,
+    phase: event.phase ?? null,
     risk: event.risk ?? null,
     signature: event.signature,
   };
@@ -178,7 +180,9 @@ export function snapshotMonitorEvents(snapshot) {
     result: item.result ?? "observed",
     actionKey: item.actionKey ?? null,
     callKey: item.callKey ?? null,
+    message: item.message ?? null,
     patch: item.patch ?? null,
+    phase: item.phase ?? null,
     risk: item.risk ?? null,
     signature: item.signature,
   })).map(normalizeDisplayEvent).filter(isVisibleAgentMonitorEvent);
@@ -195,6 +199,7 @@ export function buildAgentMonitorSnapshot({
   maxEvents = AGENT_MONITOR_LIMITS.maxEvents,
   newEvents = [],
   priorCounts = {},
+  thread = null,
   nowMs = Date.parse(generatedAt),
 }) {
   const retained = events.map(normalizeDisplayEvent).filter(isVisibleAgentMonitorEvent).slice(0, maxEvents);
@@ -249,6 +254,7 @@ export function buildAgentMonitorSnapshot({
     monitor: {
       projectionVersion: AGENT_MONITOR_PROJECTION_VERSION,
       loop,
+      ...(thread ? { thread } : {}),
       summary: {
         state: live ? "Live" : "Idle",
         category: latest?.category ?? "other",

@@ -238,6 +238,22 @@ function selectedFeed(ctx, root) {
   return { path, manifest };
 }
 
+export function agentMonitorMessageTarget(ctx) {
+  const root = rootInfo(ctx);
+  const feed = selectedFeed(ctx, root);
+  const summary = feed.manifest.summary ?? {};
+  return {
+    repoRoot: root.repoRoot,
+    threadId: feed.manifest.identity.session,
+    identity: feed.manifest.identity,
+    provider: summary.provider ?? null,
+    threadSource: summary.threadSource ?? null,
+    topLevel: summary.topLevel ?? null,
+    turnOpen: summary.turnOpen ?? null,
+    caughtUp: summary.caughtUp ?? false,
+  };
+}
+
 export const agentMonitorHandler = Object.freeze({
   id: AGENT_MONITOR_OVEN_ID,
   inputContract: AGENT_MONITOR_DATA_CONTRACT,
@@ -291,3 +307,12 @@ export const agentMonitorHandler = Object.freeze({
 });
 
 registerOvenHandler(AGENT_MONITOR_OVEN_ID, agentMonitorHandler);
+
+export const multiMonitorHandler = Object.freeze({
+  id: "multi-monitor",
+  inputContract: AGENT_MONITOR_DATA_CONTRACT,
+  dataInput: OVEN_DATA_INPUT.producerManaged,
+  serveData: agentMonitorHandler.serveData,
+});
+
+registerOvenHandler(multiMonitorHandler.id, multiMonitorHandler);

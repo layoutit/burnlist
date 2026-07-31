@@ -317,6 +317,7 @@ export function commitAgentMonitorSnapshot(value, snapshot, now = () => new Date
         lines: snapshot.monitor.counts.lines,
         failures: snapshot.monitor.counts.failures,
         updatedAt: snapshot.monitor.summary.updatedAt,
+        ...(snapshot.monitor.thread ?? {}),
       },
     } : {}),
   });

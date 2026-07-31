@@ -7,6 +7,31 @@ provider sessions while the view remains open and stops scanning after the
 lease expires. `burnlist agent-monitor start` is only needed for manual
 diagnostics or standalone producer use.
 
+## Multi Monitor message control
+
+Multi Monitor may send only to an exact, caught-up, top-level, user-owned Codex
+feed. The loopback controller waits for Codex App Server to acknowledge
+`turn/start` or `turn/steer`; it never writes JSONL, reports a spawned process as
+sent, or keeps a deferred delivery queue. Browser drafts survive reloads and
+clear only after acknowledgement. Atomic ignored receipts bind one delivery id
+to one message digest, so an uncertain crash window fails closed instead of
+silently sending twice.
+
+Every send requires one shared App Server owner; an isolated App Server can
+race Codex Desktop even when a transcript appears idle. Set `CODEX_CLI_PATH` in
+the Desktop launch environment to the installed `burnlist-codex-bridge`
+executable, then restart Desktop and the Burnlist service. The bridge starts
+the official Unix-socket App Server in a private directory and proxies Desktop
+to it; Burnlist auto-discovers the same default socket.
+`BURNLIST_CODEX_APP_SERVER_SOCKET` or
+`burnlist serve --codex-app-server-socket <absolute-path>` selects an explicit
+socket. Never point Burnlist at a different server while the task is active.
+
+App Server command, file, permission, and user-input requests appear in the
+originating Multi Monitor column. Decisions are token-gated and loopback-only.
+Unsupported or abandoned requests fail closed instead of leaving the task
+stalled.
+
 The worker executing a prepared Loop task does not need the Burnlist skill.
 Give it only the `burnlist loop next` task packet and respect the packet's role
 and read/write authority. Keep the Burnlist skill and lifecycle commands with

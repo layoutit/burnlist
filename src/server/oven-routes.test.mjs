@@ -24,9 +24,88 @@ test("opening Agent Monitor acquires a token-protected service lease", { timeout
     });
     assert.equal(activated.status, 202);
     assert.equal(JSON.parse(activated.body).active, true);
+    const port = new URL(baseUrl).port;
+    const rebound = await httpRequest(baseUrl, path, {
+      method: "POST",
+      headers: {
+        host: `attacker.invalid:${port}`,
+        origin: `http://attacker.invalid:${port}`,
+        "x-burnlist-token": inventory.writeToken,
+      },
+      body: "",
+    });
+    assert.equal(rebound.status, 403);
+    assert.match(JSON.parse(rebound.body).error, /loopback Host/u);
     const feeds = await httpGet(baseUrl, `/api/oven-data/agent-monitor?list=&repoKey=${repoKey}`);
     assert.equal(feeds.status, 200);
     assert.deepEqual(JSON.parse(feeds.body).feeds, []);
+    const multiMonitorFeeds = await httpGet(baseUrl, `/api/oven-data/multi-monitor?list=&repoKey=${repoKey}`);
+    assert.equal(multiMonitorFeeds.status, 200);
+    assert.deepEqual(JSON.parse(multiMonitorFeeds.body).feeds, []);
+  });
+});
+
+test("Multi Monitor message delivery is token protected and reports controller ownership", { timeout: 20_000 }, async () => {
+  await withServer({
+    withBurnlist: true,
+    serverArgs: ["--codex-app-server-socket", "/tmp/burnlist-test-codex.sock"],
+  }, async ({ baseUrl }) => {
+    const status = await httpGet(baseUrl, "/api/multi-monitor/messages");
+    assert.equal(status.status, 200);
+    assert.deepEqual(JSON.parse(status.body), {
+      contract: "burnlist-multi-monitor-message@1",
+      mode: "shared",
+      canSend: true,
+      canSteerExternal: true,
+      pendingRequests: 0,
+    });
+    const body = JSON.stringify({
+      identity: {
+        logicalRepoKey: "aaaaaaaaaaaa",
+        worktreeKey: "bbbbbbbbbbbb",
+        session: "019f9426-6dde-7293-a57a-163f81e195cb",
+      },
+      message: "Fixture message.",
+      requestId: "019fb4c7-c14e-7600-8ef0-5f0736bc4e75",
+    });
+    const unauthorized = await httpRequest(baseUrl, "/api/multi-monitor/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    assert.equal(unauthorized.status, 403);
+    const inventory = JSON.parse((await httpGet(baseUrl, "/api/ovens")).body);
+    const requestQuery = new URLSearchParams({
+      logicalRepoKey: "aaaaaaaaaaaa",
+      worktreeKey: "bbbbbbbbbbbb",
+      session: "019f9426-6dde-7293-a57a-163f81e195cb",
+    });
+    const hiddenRequests = await httpRequest(
+      baseUrl,
+      `/api/multi-monitor/requests?${requestQuery}`,
+      { method: "GET", headers: {}, body: "" },
+    );
+    assert.equal(hiddenRequests.status, 403);
+    const missingRequests = await httpRequest(
+      baseUrl,
+      `/api/multi-monitor/requests?${requestQuery}`,
+      {
+        method: "GET",
+        headers: { "x-burnlist-token": inventory.writeToken },
+        body: "",
+      },
+    );
+    assert.equal(missingRequests.status, 404);
+    const missing = await httpRequest(baseUrl, "/api/multi-monitor/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-burnlist-token": inventory.writeToken,
+      },
+      body,
+    });
+    assert.equal(missing.status, 404);
+    assert.match(JSON.parse(missing.body).error, /repository is not available/u);
   });
 });
 

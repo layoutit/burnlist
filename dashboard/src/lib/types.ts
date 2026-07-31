@@ -269,11 +269,17 @@ export type AgentMonitorIdentity = { logicalRepoKey: string; worktreeKey: string
 export type AgentMonitorFeed = {
   identity: AgentMonitorIdentity;
   updatedAt: string | null;
+  activityAt?: string | null;
   href: string;
   repoLabel?: string;
   title?: string;
   detail?: string;
   state?: "Live" | "Idle" | null;
+  provider?: "codex" | "claude" | "agy" | "grok" | null;
+  threadSource?: "user" | "subagent" | "other" | null;
+  topLevel?: boolean | null;
+  turnOpen?: boolean | null;
+  caughtUp?: boolean | null;
 };
 export type AgentMonitorPayload = Record<string, unknown> & {
   contract: "burnlist-agent-monitor-data@1";

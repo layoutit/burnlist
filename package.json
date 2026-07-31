@@ -13,7 +13,8 @@
     ]
   },
   "bin": {
-    "burnlist": "bin/burnlist.mjs"
+    "burnlist": "bin/burnlist.mjs",
+    "burnlist-codex-bridge": "bin/burnlist-codex-bridge.mjs"
   },
   "exports": {
     "./oven-events": "./src/events/oven-events.mjs",

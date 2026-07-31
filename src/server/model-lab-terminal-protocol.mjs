@@ -1,10 +1,10 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { isLoopbackPeerAddress } from "./loopback-peer.mjs";
 
 export const MODEL_LAB_TERMINAL_PROTOCOL = "burnlist-model-lab-terminal@1";
 const SESSION_ID = /^[a-f0-9]{32}$/u;
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$/u;
 const PRODUCER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/u;
-const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 const MAX_PENDING_COMMANDS = 64;
 const MAX_COMPLETED_COMMANDS = 64;
 const DEFAULT_MAX_SESSIONS = 64;
@@ -139,7 +139,7 @@ export async function serveModelLabTerminalProtocol({ req, res, url, protocol, r
   const route = terminalRoute(path);
   if (!route) return false;
   if (req.method !== route.method) return json(res, 405, { error: "method not allowed" });
-  if (!LOOPBACK.has(req.socket?.remoteAddress ?? "")) return json(res, 403, { error: "loopback connection required" });
+  if (!isLoopbackPeerAddress(req.socket?.remoteAddress)) return json(res, 403, { error: "loopback connection required" });
   try {
     if (route.name === "sessions") {
       assertControllerWrite(req);

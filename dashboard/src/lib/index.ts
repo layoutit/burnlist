@@ -10,6 +10,7 @@ export { browserOvenSnapshotClient, createOvenSnapshotClient, ovenSnapshotKey } 
 export { ovenSamplePayload, ovenSamplePayloadForEntry } from "./oven-samples.mjs";
 export { adaptPerformanceTracingReport } from "./performance-tracing.mjs";
 export { applyStreamingDiffUpdate, fileKindChip, groupStreamingDiffCard, isTextFileKind, mapStreamingDiffFeeds, mapStreamingDiffLandingFeeds, parseStreamingDiffCard, streamingDiffAutoOpenHref, streamingDiffFeedHref, streamingDiffFeedKey, streamingDiffRepositories } from "./streaming-diff.mjs";
+export { parseMultiMonitorSelections, shortThreadSession, multiMonitorAvailableFeeds, multiMonitorConversationPayload, multiMonitorDefaultSelections, multiMonitorFeedKey, multiMonitorHasExplicitEmpty, multiMonitorHref, multiMonitorThreadTitle } from "./multi-monitor.mjs";
 export { visualParityDomainSummary } from "./visual-parity";
 export type { VisualParityDifference, VisualParityDomain, VisualParityDomainComparison, VisualParityImage, VisualParityPayload } from "./visual-parity";
 export type { AgentMonitorFeed, AgentMonitorIdentity, AgentMonitorPayload, Burnlist, ChecklistProgressData, ChecklistItem, CompletedItem, Filter, HistoryPoint, OfficialOvenCatalogEntry, OfficialOvenCatalogResponse, OvenSummary, ProgressData, Project, SelectedBurnlist, StreamingDiffCard, StreamingDiffFeed, StreamingDiffFile, StreamingDiffFileKind, StreamingDiffIdentity, Warning } from "./types";
