@@ -108,6 +108,72 @@ test("the repository producer publishes separate exact session feeds incremental
   }
 });
 
+test("Codex feeds publish authoritative ownership and open-turn metadata", () => {
+  const context = fixture();
+  try {
+    writeFileSync(context.first, [
+      record("session_meta", {
+        session_id: "session-a",
+        cwd: context.root,
+        thread_source: "user",
+      }),
+      record("event_msg", { type: "task_started" }),
+    ].join("\n") + "\n");
+    writeFileSync(context.second, [
+      record("session_meta", {
+        session_id: "session-b",
+        cwd: context.root,
+        thread_source: "subagent",
+        parent_thread_id: "session-a",
+      }),
+      record("event_msg", { type: "task_started" }),
+      record("event_msg", { type: "task_complete" }),
+    ].join("\n") + "\n");
+    for (const path of [context.first, context.second]) {
+      utimesSync(path, new Date(NOW), new Date(NOW));
+    }
+
+    const result = runAgentMonitorOnce({
+      repoRoot: context.root,
+      sessionRoot: context.sessionRoot,
+      nowMs: Date.parse(NOW),
+      now: () => NOW,
+    });
+    assert.deepEqual(result.errors, []);
+    const user = loadAgentMonitorFeed(
+      resolveAgentMonitorIdentity({ cwd: context.root, session: "session-a" }).feedDir,
+    );
+    const subagent = loadAgentMonitorFeed(
+      resolveAgentMonitorIdentity({ cwd: context.root, session: "session-b" }).feedDir,
+    );
+    assert.deepEqual(user.manifest.summary, {
+      state: "Live",
+      current: "LIFECYCLE · line 2",
+      lines: 2,
+      failures: 0,
+      updatedAt: NOW,
+      provider: "codex",
+      threadSource: "user",
+      topLevel: true,
+      turnOpen: true,
+      caughtUp: true,
+    });
+    assert.deepEqual(user.snapshot.monitor.thread, {
+      provider: "codex",
+      threadSource: "user",
+      topLevel: true,
+      turnOpen: true,
+      caughtUp: true,
+    });
+    assert.equal(subagent.manifest.summary.threadSource, "subagent");
+    assert.equal(subagent.manifest.summary.topLevel, false);
+    assert.equal(subagent.manifest.summary.turnOpen, false);
+    assert.equal(subagent.manifest.summary.caughtUp, true);
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("the canonical manifest cursor recovers when the producer mirror is stale", () => {
   const context = fixture();
   try {

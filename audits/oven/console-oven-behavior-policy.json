@@ -2,6 +2,22 @@
   "schema": "burnlist-console-oven-behavior-policy@2",
   "capabilities": [
     {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:0c030c0dfa138bb9",
+      "fingerprint": "0c030c0dfa138bb971baad58e100a7e2b3e33df0933cc179fe95fa14dd89030c",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:0e91c0434dab74c6",
       "fingerprint": "0e91c0434dab74c6d8099893af17ae51154dda739455b280188621ce4a0fb170",
       "classification": "blocker-to-migrate",
@@ -34,8 +50,56 @@
       }
     },
     {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:2d7653d3c5be1780",
+      "fingerprint": "2d7653d3c5be1780de41d1fddf49ca0057cd6eae231c316285a0185a8ff2dea6",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:348023dcedfc8bf9",
+      "fingerprint": "348023dcedfc8bf92174e824d346f2569ac05891a69ec78b3b92b8de7db726a9",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:3f9dd4948879086e",
       "fingerprint": "3f9dd4948879086e4c6599576c739a8e8f4e7ffb67849810e4dcf23a2532c8ed",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:40dd702cfe5c952b",
+      "fingerprint": "40dd702cfe5c952bd16e0dc222cec01de3d65aad36c598ad70682aec306e3a82",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -98,40 +162,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:5ba000b86bebf3c8",
-      "fingerprint": "5ba000b86bebf3c8f16ecce4acbb7a7c1f512a31acb08ca6d3263e7f88c7cd6c",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:7d3765175c92ae64",
       "fingerprint": "7d3765175c92ae644ab7e8855b741b70a96ba3cf523c86f7040498ad373dd15e",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:869312be2760fd24",
-      "fingerprint": "869312be2760fd2482c9aae8ff851f2eb0fbf7dbef8a917d795e204fda903e75",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -164,22 +196,6 @@
     {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:92efbbb36b7932f9",
       "fingerprint": "92efbbb36b7932f9fbe99cfde78b210e3c2bb7477e0d0926b34abee167c80be1",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:9719effcb0f55d0f",
-      "fingerprint": "9719effcb0f55d0ffaee19bfd07a27f4b745d21081986c9c7e53309c57862b9e",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -242,8 +258,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:b75437f13ae72c3e",
-      "fingerprint": "b75437f13ae72c3ece5807ee0f60b4cbbb6c01c7a96828e4424639c2a3277c61",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c0432f0723f8faf4",
+      "fingerprint": "c0432f0723f8faf4ced05a5833aa36d99e75a2cacbeec421fe80d8178e14a41c",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -290,8 +306,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:db078c47db3e50c3",
-      "fingerprint": "db078c47db3e50c3be160d3fc7c88302b949cd37a92c87b57ad15d850a2e4144",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:d8527748576a174f",
+      "fingerprint": "d8527748576a174f4d9aa25552207e5865c86d416665403ffa5ef00b5f4d4e7f",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -322,8 +338,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:ec0dec63345d49fe",
-      "fingerprint": "ec0dec63345d49febfe15e61ed75a2e4d1300fe40bee3efff9df07e27fd28c15",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:e778a1cabcd841f7",
+      "fingerprint": "e778a1cabcd841f722e748714b059589f00ce9e5c1eb6c40b7ff380c326cb612",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -338,8 +354,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:f4aaac745193880e",
-      "fingerprint": "f4aaac745193880e0d70587453da4e3423a346212bc48e1862d66c5cea346a22",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:ec0dec63345d49fe",
+      "fingerprint": "ec0dec63345d49febfe15e61ed75a2e4d1300fe40bee3efff9df07e27fd28c15",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -370,8 +386,40 @@
       }
     },
     {
+      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:05fd5ac5daa1e607",
+      "fingerprint": "05fd5ac5daa1e607a3a486cf8f998433941d4b414ef4dd3b5f6ad0d8941118fe",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
       "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:3651b5c07432da72",
       "fingerprint": "3651b5c07432da726f6ba9febb4e7c215abb7b76e61165bab14fbc99c6f83770",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:43b8fef001929055",
+      "fingerprint": "43b8fef001929055ce5ca711809cf5a54fe90a1a74b0734eb268445c22ac73cd",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -434,40 +482,24 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:6ea5a02132549b79",
-      "fingerprint": "6ea5a02132549b79b75583eeb9bce2e8c31ec98790221e606b37f92cf5da0862",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:ac413be8f7156f5a",
-      "fingerprint": "ac413be8f7156f5a6171e93d1fd20a65fb0f115d9d0a79ce027e55a064da1e21",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:b67210fdce841e44",
       "fingerprint": "b67210fdce841e44b3cd523e0c3ecc3dbe2e908d9fa2b9c9dad297789908d9c0",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:LogicalExpression:c55af9294825118a",
+      "fingerprint": "c55af9294825118a683d98226b527f244d854e0734939eb0e2af0e605824452b",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -1666,8 +1698,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/lib/hrefs.ts:ovenRepoKey:ConditionalExpression:26cbb2fb634679a0",
-      "fingerprint": "26cbb2fb634679a0c1865a08c928a0d5dd7cbcdfbd9248acc919346a9a5bfe8c",
+      "id": "branch:dashboard/src/lib/hrefs.ts:ovenRepoKey:ConditionalExpression:63e46ac71b349afc",
+      "fingerprint": "63e46ac71b349afc881d5b78f386193995c864fd17343669dfc3c36e11c5158d",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -2790,8 +2822,32 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:AgentMonitorEventCard:ConditionalExpression:bb8ee3b550371d4e",
+      "fingerprint": "bb8ee3b550371d4e1a877cf83972218f58aa8811b8633eed4df9a857451b5c1f",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:AgentMonitorEventCard",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "AgentMonitorEventCard",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:AgentMonitorEventCard:ConditionalExpression:f5d5a951381e35d2",
       "fingerprint": "f5d5a951381e35d2561d57e9147a17b50201b48962f51bbc9cb47223ddb1bf2d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:AgentMonitorEventCard",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "AgentMonitorEventCard",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:AgentMonitorEventCard:IfStatement:e9cbcf4188a02297",
+      "fingerprint": "e9cbcf4188a022974de7f73744081082e3b68f395670fd30f93f73eb197e4a73",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -2898,6 +2954,18 @@
       }
     },
     {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:ConditionalExpression:90573345f9ff3769",
+      "fingerprint": "90573345f9ff3769fa8f98152b561c3d24ebd0b0b37c5a3ffa1ab64c691028ae",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
       "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:ConditionalExpression:945aaf2d9c633122",
       "fingerprint": "945aaf2d9c63312207e2f69a4ca446027616e72b1315e483ed518e8ccf754b9a",
       "classification": "closed-shared-adapter",
@@ -2948,6 +3016,18 @@
     {
       "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:ConditionalExpression:ebbb3f793e157af6",
       "fingerprint": "ebbb3f793e157af6116123f8e4dc9f6515b8fb8fcb934fc295903eea324b521b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:ConditionalExpression:f035db98ee9c3a99",
+      "fingerprint": "f035db98ee9c3a9966ad6e73975bcdd73b4ebe351c126083be9a1fd826d76edd",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -3044,6 +3124,18 @@
     {
       "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:IfStatement:6be06653e9876d6e",
       "fingerprint": "6be06653e9876d6ea92a41dfb98b0327067cd4f6b9b9e963362cf3cf84f96c71",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module:IfStatement:7316e2c1304eda91",
+      "fingerprint": "7316e2c1304eda91008625b7b9d6f8fd0aafe91c68ea96188c2369663e488f86",
       "classification": "closed-shared-adapter",
       "semanticOwner": {
         "ownerType": "named-adapter",
@@ -3361,6 +3453,390 @@
         "ownerType": "named-adapter",
         "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx:module",
         "path": "dashboard/src/oven/AgentMonitorEventCard/AgentMonitorEventCard.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:ConditionalExpression:2a54795e34f2ed5e",
+      "fingerprint": "2a54795e34f2ed5e59ffe232591780405bac616e6fd139d41d6b304826a13359",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:ConditionalExpression:6c98bb7d56e077f7",
+      "fingerprint": "6c98bb7d56e077f7fbb359b227dcc230e6a13cc8be8a4e63452a30859e91e6af",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:ConditionalExpression:8c7bfe4a5843738f",
+      "fingerprint": "8c7bfe4a5843738ff670d23b4304d25f2952be4f276215675a634261288bc6eb",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:ConditionalExpression:ef1577ef68846185",
+      "fingerprint": "ef1577ef68846185f9710b31c71407bf392c8eafdef9b3a33d46071fde5fadfd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:IfStatement:58152696fac25c31",
+      "fingerprint": "58152696fac25c3179f4ae2e6050e6c9a55a28b84f9386c4979145337955032d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent:IfStatement:a475fb192d334949",
+      "fingerprint": "a475fb192d334949b31e25064111c57653e422bd3512454d70c0abad66801caa",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:CodexThreadEvent",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "CodexThreadEvent",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:1ad2ca1d1d8c087e",
+      "fingerprint": "1ad2ca1d1d8c087e05fe84aea8d32906ecbd84e5a3eca435b7e5be2db551c28d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:355054ea717d610f",
+      "fingerprint": "355054ea717d610f619849eae109298062a7e63ba15f0e3efbf3e639695fd289",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:82f10f23e8410309",
+      "fingerprint": "82f10f23e8410309269c4384ae76a09798b5e9014715bd357d41aef7d4bdb22d",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:835ee5c079a9427f",
+      "fingerprint": "835ee5c079a9427f771af37049e58dcdd3d3af51cc5001436194aed64fd7a76a",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:dda8c601551c15bb",
+      "fingerprint": "dda8c601551c15bb8dd88072ccad0ea37203a0b3cfb59cd11aef8be5ba463264",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:ConditionalExpression:e45efbe1266b349f",
+      "fingerprint": "e45efbe1266b349f27ed35b1b17a68259b676a493a3eba0e95589fb7758ab12b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:052ad8adcf098629",
+      "fingerprint": "052ad8adcf098629c0a1a59499571048858d93c3ce17f39f3cda9f925664c7ff",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:13592c46eb7bdc56",
+      "fingerprint": "13592c46eb7bdc56dfc1a2bc4d45ef5a4bdb9dc931cdd7304c13c4a1efa5484b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:1ef745a0517747ef",
+      "fingerprint": "1ef745a0517747ef556f5ea33546e64f3408ffbf6408a71ea6b096fac010a4be",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:21441fe1f10b23ea",
+      "fingerprint": "21441fe1f10b23ea41f0f924002cbdb0fa3b6104b711c49375107fb6d8d7c0f8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:3be14009b029be1f",
+      "fingerprint": "3be14009b029be1f57d2f0bee83589cdc031aee4c970a22d179d9f4ecb852749",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:44dcfe328c3e1826",
+      "fingerprint": "44dcfe328c3e1826aa37c4a49686c5bf4877192c52bd7b3f039d0b98cb72b01b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:9287495dc2447ef3",
+      "fingerprint": "9287495dc2447ef32961113cb30226e8010bcf8e812f828d7cae6af6b8be63d8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:c47b24d096b3b9a7",
+      "fingerprint": "c47b24d096b3b9a7e91779a7472237f930a17e8a12c1dc792a718cf1429fc2cf",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:d099650db9e07dea",
+      "fingerprint": "d099650db9e07dea6d5022245acfeda6467992f9dc2a253931cc2cf81cfde32b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:IfStatement:d17b28be779777b8",
+      "fingerprint": "d17b28be779777b85291fdcc057dd1aaae9d9c86a86cf1c63d47aed819294bdd",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:0cf0c8ba085b902c",
+      "fingerprint": "0cf0c8ba085b902c6c8561d1ff81d6f15e097629670dd1f847dddfc145115028",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:18810195abcf251a",
+      "fingerprint": "18810195abcf251acf1bf60a4e964d497868bf2e318bf0a7f456129b96d599c7",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:2d2c6d08639f12cd",
+      "fingerprint": "2d2c6d08639f12cdf9663da5a2dcb29b51683871a973266ea9f3b10e3546f976",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:71dbcd3f57b32faf",
+      "fingerprint": "71dbcd3f57b32fafc591f050a622acc8a59618eaefae5e54719ca924b1c6d7b8",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:74e3e42a4d700ebf",
+      "fingerprint": "74e3e42a4d700ebf55ce0bad5ac37ff2351c02bd854266893c8f0d3c89cdc74c",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:917cd51c42f977d1",
+      "fingerprint": "917cd51c42f977d1ad979dcd8052e0ae934d9664fb0461cc6ed7af8bc83587a4",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:d09ee0ef5a4783c4",
+      "fingerprint": "d09ee0ef5a4783c40e4ec096e57772b2b6dee43972145999ab744e350ecfd39b",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:d09f93170e0215b8",
+      "fingerprint": "d09f93170e0215b8fec915b0382eeb4df5aafff9bdb8dcd17ffdeb610d351d56",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:f0acbfb007f59f9b",
+      "fingerprint": "f0acbfb007f59f9b96b3bb4016a0ab8ea5de8ee66078c405ec6929457108eacb",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
+        "export": "module",
+        "version": "burnlist-console-oven-behavior@1"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module:LogicalExpression:fe5b6a2e2e827528",
+      "fingerprint": "fe5b6a2e2e82752894ebbd59f71471ca25fe064c28410c1a6c7cd98a669a1f54",
+      "classification": "closed-shared-adapter",
+      "semanticOwner": {
+        "ownerType": "named-adapter",
+        "ownerTarget": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx:module",
+        "path": "dashboard/src/oven/AgentMonitorEventCard/CodexThreadEvent.tsx",
         "export": "module",
         "version": "burnlist-console-oven-behavior@1"
       }
@@ -30443,7 +30919,7 @@
     },
     {
       "id": "surface:dashboard/src/App.tsx",
-      "fingerprint": "205aa6b64af24b68e4401120560ab28544d414b3912a95726dac2929410f3eba",
+      "fingerprint": "2f54e6d106504fd73a4640ff1afc0d9ac4cf76cad4c39d90fd995b8c7008c55f",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -30603,7 +31079,7 @@
     },
     {
       "id": "surface:dashboard/src/lib/hrefs.ts",
-      "fingerprint": "8cbb99bfcf27c70cefa93bc103c09d8e2ee76a5f873576396956d057e0e02575",
+      "fingerprint": "0ae7884fffcbcc5ea2cdd5e99e605224d7f33e940a8eedf36c28b91805b2a9e6",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",

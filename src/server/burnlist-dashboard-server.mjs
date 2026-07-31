@@ -66,6 +66,19 @@ import { readVendoredOven, vendoredOvenPath, vendoredOvensDir } from "./oven-ven
 import { createAgentMonitorLeaseManager } from "../service/agent-monitor-leases.mjs";
 import { createLandingSnapshot } from "./landing-snapshot.mjs";
 import {
+  isLoopbackPeerAddress,
+  withoutWriteToken,
+} from "./loopback-peer.mjs";
+import {
+  createCodexAppServerClient,
+  resolveCodexAppServerLaunch,
+} from "./codex-app-server-client.mjs";
+import {
+  createCodexMessageController,
+  createMultiMonitorMessageProtocol,
+} from "./multi-monitor-messages.mjs";
+import { agentMonitorMessageTarget } from "../../ovens/agent-monitor/engine/agent-monitor-handler.mjs";
+import {
   LIFECYCLES,
   burnlistIdForPlan,
   completedDetailMap,
@@ -85,6 +98,7 @@ const allowedArgs = new Set([
   "auto-port",
   "check",
   "close-completed",
+  "codex-app-server-socket",
   "digest",
   "host",
   "max-oven-data-bytes",
@@ -166,6 +180,34 @@ const legacyRunsDir = args.has("runs-dir") ? resolve(launchCwd, args.get("runs-d
 const ovenDataOverrides = parseOvenDataBindings(args.get("oven-data") ?? "");
 const writeToken = randomBytes(24).toString("hex");
 const modelLabTerminalProtocol = createModelLabTerminalProtocol({ writeToken });
+const codexAppServerLaunch = resolveCodexAppServerLaunch({
+  socket: args.get("codex-app-server-socket") ?? null,
+});
+const multiMonitorMessages = createMultiMonitorMessageProtocol({
+  controller: createCodexMessageController({
+    client: createCodexAppServerClient({ launch: codexAppServerLaunch }),
+  }),
+  resolveTarget(identity) {
+    const repo = ovenScopeRepos().find((entry) => entry.repoKey === identity.logicalRepoKey);
+    if (!repo) throw Object.assign(new Error("Codex task repository is not available."), { status: 404 });
+    const ovenDataBindings = resolvedOvenDataBindings();
+    const binding = (ovenDataBindings.get("agent-monitor") ?? [])
+      .find((entry) => entry.repoKey === identity.logicalRepoKey);
+    if (!binding) throw Object.assign(new Error("Agent Monitor feed is not available."), { status: 404 });
+    const url = new URL("http://burnlist.local/api/oven-data/agent-monitor");
+    for (const [name, value] of Object.entries({
+      repoKey: identity.logicalRepoKey,
+      worktreeKey: identity.worktreeKey,
+      session: identity.session,
+    })) url.searchParams.set(name, value);
+    return agentMonitorMessageTarget(ovenHandlerContext({
+      id: "agent-monitor",
+      url,
+      binding,
+      ovenDataBindings,
+    }));
+  },
+});
 const repoMapCache = new Map();
 const ovenHandlerCaches = new Map();
 const REPO_MAP_CACHE_MS = 2_000;
@@ -896,30 +938,55 @@ function readBurnRun(id) {
   return null;
 }
 
+function writeRequestError(message) {
+  return Object.assign(new Error(message), { status: 403 });
+}
+
+function requestAuthority(req) {
+  const raw = String(req.headers.host ?? "");
+  if (!raw || /[\s,]/u.test(raw)) throw writeRequestError("Dashboard write authority is invalid.");
+  let authority;
+  try {
+    authority = new URL(`http://${raw}`);
+  } catch {
+    throw writeRequestError("Dashboard write authority is invalid.");
+  }
+  const requestPort = Number(authority.port || "80");
+  const localPort = Number(req.socket?.localPort);
+  if (!Number.isSafeInteger(requestPort) || !Number.isSafeInteger(localPort)
+      || requestPort !== localPort) {
+    throw writeRequestError("Dashboard write authority does not match this service.");
+  }
+  if (isLoopbackHost(host) && !isLoopbackHost(authority.hostname)) {
+    throw writeRequestError("Loopback dashboard writes require a loopback Host.");
+  }
+  return authority;
+}
+
 function assertWriteRequest(req) {
+  if (!isLoopbackPeerAddress(req.socket?.remoteAddress)) {
+    throw writeRequestError("Dashboard controller writes require a loopback connection.");
+  }
   const fetchSite = String(req.headers["sec-fetch-site"] ?? "");
   if (fetchSite && !["same-origin", "none"].includes(fetchSite)) {
-    const error = new Error("Cross-site writes are not allowed.");
-    error.status = 403;
-    throw error;
+    throw writeRequestError("Cross-site writes are not allowed.");
   }
+  const authority = requestAuthority(req);
   const origin = String(req.headers.origin ?? "");
-  const requestHost = String(req.headers.host ?? "");
   if (origin) {
-    let originHost = "";
+    let originUrl;
     try {
-      originHost = new URL(origin).host;
-    } catch {}
-    if (!originHost || originHost !== requestHost) {
-      const error = new Error("Write origin does not match this dashboard.");
-      error.status = 403;
-      throw error;
+      originUrl = new URL(origin);
+    } catch {
+      throw writeRequestError("Write origin does not match this dashboard.");
+    }
+    if (originUrl.protocol !== "http:" || originUrl.host !== authority.host
+        || (isLoopbackHost(host) && !isLoopbackHost(originUrl.hostname))) {
+      throw writeRequestError("Write origin does not match this dashboard.");
     }
   }
   if (String(req.headers["x-burnlist-token"] ?? "") !== writeToken) {
-    const error = new Error("Missing or invalid dashboard write token.");
-    error.status = 403;
-    throw error;
+    throw writeRequestError("Missing or invalid dashboard write token.");
   }
 }
 
@@ -1331,8 +1398,50 @@ const server = createServer(async (req, res) => {
       if (!requested) return json(res, 400, { error: "repoKey is required" });
       const repo = ovenScopeRepos().find((entry) => entry.repoKey === requested);
       if (!repo) return json(res, 404, { error: "repository not found" });
-      const { active, expiresAt } = agentMonitorLeases.activate(repo.root);
-      return json(res, 202, { active, expiresAt });
+      const { active, expiresAt, observer } = agentMonitorLeases.activate(repo.root);
+      return json(res, 202, { active, expiresAt, observer });
+    }
+    if (url.pathname === "/api/multi-monitor/messages") {
+      if (method === "GET") return json(res, 200, multiMonitorMessages.status());
+      if (method !== "POST") return json(res, 405, { error: "method not allowed" });
+      assertWriteRequest(req);
+      try {
+        const receipt = await multiMonitorMessages.send(
+          await readJsonRequest(req, { maximumBytes: 64 * 1024 }),
+        );
+        return json(res, 202, { receipt });
+      } catch (error) {
+        return json(res, Number.isInteger(error?.status) ? error.status : 502, {
+          error: error?.message ?? "Codex did not accept the message.",
+          code: error?.code ?? "CODEX_DELIVERY_FAILED",
+          retrySafe: error?.definite === true,
+        });
+      }
+    }
+    if (url.pathname === "/api/multi-monitor/requests") {
+      assertWriteRequest(req);
+      try {
+        if (method === "GET") {
+          const requests = await multiMonitorMessages.requests({
+            logicalRepoKey: url.searchParams.get("logicalRepoKey"),
+            worktreeKey: url.searchParams.get("worktreeKey"),
+            session: url.searchParams.get("session"),
+          });
+          return json(res, 200, { requests });
+        }
+        if (method === "POST") {
+          const receipt = await multiMonitorMessages.respondRequest(
+            await readJsonRequest(req, { maximumBytes: 32 * 1024 }),
+          );
+          return json(res, 200, { receipt });
+        }
+        return json(res, 405, { error: "method not allowed" });
+      } catch (error) {
+        return json(res, Number.isInteger(error?.status) ? error.status : 502, {
+          error: error?.message ?? "Codex request handling failed.",
+          code: error?.code ?? "CODEX_REQUEST_FAILED",
+        });
+      }
     }
     const modelLabProtocolResponse = await serveModelLabTerminalProtocol({
       req, res, url, protocol: modelLabTerminalProtocol, readJson: readJsonRequest, json,
@@ -1356,7 +1465,7 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/landing") {
       if (method !== "GET") return json(res, 405, { error: "method not allowed" });
-      json(res, 200, landingSnapshot());
+      json(res, 200, withoutWriteToken(landingSnapshot(), req.socket?.remoteAddress));
       return;
     }
     if (url.pathname === "/api/burnlists") {
@@ -1405,7 +1514,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/ovens") {
       if (method === "GET") {
         const { ovens } = landingSnapshot();
-        json(res, 200, { ovens, writeToken });
+        json(res, 200, withoutWriteToken({ ovens, writeToken }, req.socket?.remoteAddress));
         return;
       }
       if (method === "POST") {
@@ -1434,16 +1543,20 @@ const server = createServer(async (req, res) => {
       const oven = findOven(id, requestedRepoKey);
       const handler = oven?.builtIn || !oven ? getOvenHandler(id) : null;
       const ovenDataBindings = resolvedOvenDataBindings();
-      if (id === "streaming-diff" || id === "agent-monitor") {
+      if (id === "streaming-diff" || id === "agent-monitor" || id === "multi-monitor") {
         const repoKeys = url.searchParams.getAll("repoKey");
         if (repoKeys.length > 1 || (url.searchParams.has("list") && repoKeys.length !== 1)
           || repoKeys.some((repoKey) => !/^[a-f0-9]{12}$/u.test(repoKey))) {
           return json(res, 400, { error: url.searchParams.has("list")
-            ? `${id === "streaming-diff" ? "Streaming Diff" : "Agent Monitor"} list requires one lowercase 12-character hexadecimal repoKey`
+            ? `${id === "streaming-diff" ? "Streaming Diff" : id === "multi-monitor" ? "Multi Monitor" : "Agent Monitor"} list requires one lowercase 12-character hexadecimal repoKey`
             : "repoKey must be a lowercase 12-character hexadecimal key" });
         }
       }
-      const binding = selectedOvenDataBinding(ovenDataBindings, id, url);
+      const binding = selectedOvenDataBinding(
+        ovenDataBindings,
+        id === "multi-monitor" ? "agent-monitor" : id,
+        url,
+      );
       if (!handler && !oven) return json(res, 404, { validated: false, error: `Oven ${id} is not available` });
       try {
         if (!binding) {
@@ -1515,6 +1628,7 @@ const server = createServer(async (req, res) => {
   }
 });
 server.once("close", () => agentMonitorLeases?.stop());
+server.once("close", () => multiMonitorMessages.close());
 server.once("close", () => {
   ovenProjectionCoordinator?.stop();
   ovenEventObserver.close();

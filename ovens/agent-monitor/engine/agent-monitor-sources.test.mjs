@@ -30,7 +30,10 @@ test("provider discovery returns a common source shape for Codex, Claude, AGY, a
     }));
     const codex = join(roots.codex, "2026", "07", "27", "session.jsonl");
     mkdirSync(join(roots.codex, "2026", "07", "27"), { recursive: true });
-    writeFileSync(codex, `${JSON.stringify({ type: "session_meta", payload: { session_id: "c1", cwd: repo } })}\n`);
+    writeFileSync(codex, `${JSON.stringify({
+      type: "session_meta",
+      payload: { session_id: "c1", cwd: repo, thread_source: "user" },
+    })}\n`);
     const claude = join(roots.claude, "project", "d1.jsonl");
     mkdirSync(join(roots.claude, "project"));
     writeFileSync(claude, `${JSON.stringify({ type: "user", sessionId: "d1", cwd: repo })}\n`);
@@ -48,6 +51,54 @@ test("provider discovery returns a common source shape for Codex, Claude, AGY, a
     });
     assert.deepEqual(found.map((item) => item.provider).sort(), ["agy", "claude", "codex", "grok"]);
     assert.ok(found.every((item) => item.cwd === repo));
+    const codexFeed = found.find((item) => item.provider === "codex");
+    assert.equal(codexFeed.threadSource, "user");
+    assert.equal(codexFeed.topLevel, true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Codex discovery marks subagents and parented sessions as non-top-level", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-monitor-codex-ownership-"));
+  try {
+    const repo = join(root, "repo");
+    const sessions = join(root, "sessions");
+    mkdirSync(repo);
+    mkdirSync(sessions);
+    execFileSync("git", ["init", "--quiet"], { cwd: repo });
+    const write = (id, threadSource, parentThreadId = null) => {
+      const path = join(sessions, `${id}.jsonl`);
+      writeFileSync(path, `${JSON.stringify({
+        type: "session_meta",
+        payload: {
+          session_id: id,
+          cwd: repo,
+          thread_source: threadSource,
+          parent_thread_id: parentThreadId,
+        },
+      })}\n`);
+      utimesSync(path, new Date(NOW), new Date(NOW));
+    };
+    write("user-task", "user");
+    write("subagent-task", "subagent", "user-task");
+    write("parented-user-task", "user", "user-task");
+
+    const found = discoverAgentSessionSources({
+      roots: { codex: sessions },
+      limits,
+      nowMs: Date.parse(NOW),
+      providers: ["codex"],
+    });
+    assert.deepEqual(
+      found.map(({ session, threadSource, topLevel }) => ({ session, threadSource, topLevel }))
+        .sort((left, right) => left.session.localeCompare(right.session)),
+      [
+        { session: "parented-user-task", threadSource: "user", topLevel: false },
+        { session: "subagent-task", threadSource: "subagent", topLevel: false },
+        { session: "user-task", threadSource: "user", topLevel: true },
+      ],
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

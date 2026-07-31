@@ -20,7 +20,18 @@ test("Agent Monitor feed discovery preserves exact session identity", () => {
     feeds: [{
       identity,
       updatedAt: "2026-07-26T12:00:00.000Z",
-      summary: { state: "Live", current: "COMMAND · line 42", lines: 42, failures: 1 },
+      summary: {
+        state: "Live",
+        current: "COMMAND · line 42",
+        lines: 42,
+        failures: 1,
+        updatedAt: "2026-07-26T12:00:00.000Z",
+        provider: "codex",
+        threadSource: "user",
+        topLevel: true,
+        turnOpen: true,
+        caughtUp: true,
+      },
     }],
   });
   assert.deepEqual(feeds[0].identity, identity);
@@ -31,6 +42,11 @@ test("Agent Monitor feed discovery preserves exact session identity", () => {
   assert.equal(feeds[0].title, "Live · COMMAND · line 42");
   assert.equal(feeds[0].detail, "Thread …1ce69bef · 42 events · 1 failure");
   assert.equal(feeds[0].state, "Live");
+  assert.equal(feeds[0].provider, "codex");
+  assert.equal(feeds[0].threadSource, "user");
+  assert.equal(feeds[0].topLevel, true);
+  assert.equal(feeds[0].turnOpen, true);
+  assert.equal(feeds[0].caughtUp, true);
   assert.equal(agentMonitorAutoOpenHref(feeds), feeds[0].href);
   assert.equal(agentMonitorAutoOpenHref([...feeds, ...feeds]), null);
 });

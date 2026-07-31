@@ -14,4 +14,5 @@ export { OvenDefinition } from "./OvenDefinition";
 export { OvenExplainer } from "./OvenExplainer";
 export { BurnlistTable, ProjectGroup } from "./ProjectGroup";
 export { StreamingDiff } from "./StreamingDiff";
+export { MultiMonitor } from "./MultiMonitor";
 export { VisualParityPage } from "./VisualParity";

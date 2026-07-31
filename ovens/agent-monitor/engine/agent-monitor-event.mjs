@@ -8,12 +8,36 @@ function bounded(value, limit = 360) {
   return String(value ?? "").replace(/\s+/gu, " ").trim().slice(0, limit);
 }
 
-function redact(value, limit = 360) {
-  const safe = bounded(value, 4_000)
+function redactSecrets(value) {
+  return String(value ?? "")
     .replace(/\b(sk-[A-Za-z0-9_-]{8,}|(?:ghp|github_pat|xox[baprs]|AKIA)[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._~+/-]{8,})\b/giu, "[REDACTED]")
     .replace(/\b([A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD))\s*=\s*[^\s]+/gu, "$1=[REDACTED]")
     .replace(/(--(?:api-?key|password|secret|token)(?:=|\s+))\S+/giu, "$1[REDACTED]");
+}
+
+function redact(value, limit = 360) {
+  const safe = redactSecrets(bounded(value, 4_000));
   return bounded(safe, limit);
+}
+
+function conversationText(value, { user = false } = {}, limit = 12_000) {
+  let safe = redactSecrets(String(value ?? "")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, " "))
+    .replace(/<in-app-browser-context\b[\s\S]*?<\/in-app-browser-context>/gu, "")
+    .replace(/<oai-mem-citation>[\s\S]*?<\/oai-mem-citation>/gu, "")
+    .replace(/^::[a-z][a-z-]*\{[^\n]*\}\s*$/gmu, "")
+    .trim();
+  if (user) {
+    const marker = /(?:^|\n)#{1,6}\s+My request for Codex:\s*\n/gu;
+    const matches = [...safe.matchAll(marker)];
+    const last = matches.at(-1);
+    if (last) safe = safe.slice((last.index ?? 0) + last[0].length);
+  }
+  return safe
+    .trim()
+    .slice(0, limit)
+    .trim();
 }
 
 function commands(input) {
@@ -224,7 +248,9 @@ export function projectCodexRecord(record, line, session, raw, fallbackTime = ne
   let result = "observed";
   let eventActionKey = null;
   let eventCallKey = null;
+  let message = null;
   let patch = null;
+  let phase = null;
   let risk = null;
   const payload = record?.payload ?? {};
 
@@ -256,9 +282,12 @@ export function projectCodexRecord(record, line, session, raw, fallbackTime = ne
   } else if (subtype === "agent_message") {
     category = "message";
     detail = redact(payload.message || "Agent update");
+    message = conversationText(payload.message || "Agent update");
+    phase = ["commentary", "final_answer"].includes(payload.phase) ? payload.phase : null;
   } else if (subtype === "user_message") {
     category = "message";
     detail = "New user instruction";
+    message = conversationText(payload.message || "New user instruction", { user: true });
   } else if (subtype === "message") {
     category = "message";
     detail = `${payload.role ?? "Conversation"} message envelope`;
@@ -294,7 +323,9 @@ export function projectCodexRecord(record, line, session, raw, fallbackTime = ne
     result,
     actionKey: eventActionKey,
     callKey: eventCallKey,
+    message,
     patch,
+    phase,
     risk,
     signature,
   };

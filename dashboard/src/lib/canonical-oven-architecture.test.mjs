@@ -26,6 +26,7 @@ test("every live Oven page renders through the canonical runtime", async () => {
     "components/DifferentialTestingOven/DifferentialTestingOven.tsx",
     "components/ModelLab/ModelLab.tsx",
     "components/StreamingDiff/StreamingDiff.tsx",
+    "components/MultiMonitor/MultiMonitor.tsx",
     "components/VisualParity/VisualParity.tsx",
   ];
   for (const path of pages) assert.match(await source(path), /<OvenRuntime\b/u, path);
@@ -55,4 +56,13 @@ test("dashboard intervals are restricted to reconciliation and display clocks", 
   ]);
   assert.match(await source("lib/oven-event-client.mjs"), /OVEN_BROWSER_RECONCILE_MS = 30_000/u);
   assert.match(await source("oven/DifferentialLogTable/DifferentialLogTable.tsx"), /setInterval\(\(\) => setClock\(Date\.now\(\)\), 60_000\)/u);
+});
+
+test("Agent Monitor discovery retries on the producer cadence without replacing mounted state", async () => {
+  const hook = await source("hooks/useAgentMonitor.ts");
+  const multiMonitor = await source("components/MultiMonitor/MultiMonitor.tsx");
+  assert.match(hook, /AGENT_MONITOR_DISCOVERY_REFRESH_MS = 2_000/u);
+  assert.match(hook, /timer = setTimeout\(load, AGENT_MONITOR_DISCOVERY_REFRESH_MS\)/u);
+  assert.match(multiMonitor, /setSelections\(next\)/u);
+  assert.doesNotMatch(multiMonitor, /setSelections\(multiMonitorDefaultSelections/u);
 });

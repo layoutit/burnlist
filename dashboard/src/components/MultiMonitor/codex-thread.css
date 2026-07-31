@@ -1,0 +1,260 @@
+.codex-thread-event {
+  min-width: 0;
+  color: #ededed;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.codex-message {
+  display: flex;
+  margin: 30px 0;
+}
+
+.codex-message:first-child {
+  margin-top: 0;
+}
+
+.codex-message[data-role="user"] {
+  justify-content: flex-end;
+  margin-top: 44px;
+  margin-bottom: 48px;
+}
+
+.codex-message[data-role="user"] + .codex-message[data-role="user"] {
+  margin-top: -30px;
+}
+
+.codex-message-body {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 15.5px;
+  line-height: 1.52;
+}
+
+.codex-message[data-role="user"] .codex-message-body {
+  width: fit-content;
+  max-width: 78%;
+  padding: 11px 15px 12px;
+  border-radius: 20px;
+  background: #242424;
+  color: #f4f4f4;
+}
+
+.codex-message-body > :first-child {
+  margin-top: 0;
+}
+
+.codex-message-body > :last-child {
+  margin-bottom: 0;
+}
+
+.codex-message-body p {
+  margin: 0 0 14px;
+}
+
+.codex-message-body h3,
+.codex-message-body h4,
+.codex-message-body h5 {
+  margin: 18px 0 8px;
+  color: #f4f4f4;
+  font-size: 15.5px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.codex-message-body ul,
+.codex-message-body ol {
+  margin: 8px 0 14px;
+  padding-left: 22px;
+}
+
+.codex-message-body li {
+  margin: 4px 0;
+  padding-left: 2px;
+}
+
+.codex-message-body a {
+  color: #f1f1f1;
+  text-decoration-color: #737373;
+  text-underline-offset: 3px;
+}
+
+.codex-message-body code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #292929;
+  color: #efefef;
+  font: .88em/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.codex-message-body pre {
+  margin: 14px 0;
+  padding: 13px 14px;
+  overflow: auto;
+  border: 1px solid #303030;
+  border-radius: 9px;
+  background: #0b0b0b;
+  color: #e5e5e5;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre;
+}
+
+.codex-message-body pre code {
+  padding: 0;
+  background: transparent;
+  font: inherit;
+}
+
+.codex-worked {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 48px 0 28px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #292929;
+  color: #8e8e8e;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.codex-edit-card {
+  margin: 18px 0 44px;
+  overflow: hidden;
+  border: 1px solid #343434;
+  border-radius: 12px;
+  background: #171717;
+}
+
+.codex-edit-header {
+  display: grid;
+  min-height: 58px;
+  align-items: center;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #303030;
+  background: #1d1d1d;
+}
+
+.codex-edit-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 8px;
+  background: #111;
+  color: #b7b7b7;
+}
+
+.codex-edit-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.codex-edit-heading {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.codex-edit-heading strong {
+  overflow: hidden;
+  color: #e5e5e5;
+  font-size: 15.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-edit-stats {
+  display: inline-flex;
+  gap: 3px;
+  font: 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.codex-edit-stats [data-tone="add"] {
+  color: #00c865;
+}
+
+.codex-edit-stats [data-tone="remove"] {
+  color: #ff4a4a;
+}
+
+.codex-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #e1e1e1;
+  font-size: 15px;
+}
+
+.codex-edit-actions > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.codex-edit-actions svg {
+  width: 14px;
+  height: 14px;
+}
+
+.codex-review-button {
+  padding: 5px 10px;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  background: #232323;
+}
+
+.codex-edit-files {
+  color: #bdbdbd;
+  font-size: 15px;
+}
+
+.codex-edit-file {
+  display: flex;
+  min-height: 37px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #242424;
+}
+
+.codex-edit-file > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-edit-files > .codex-edit-file:last-child {
+  border-bottom: 0;
+}
+
+.codex-edit-files details summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: #202020;
+  color: #e1e1e1;
+  cursor: pointer;
+  list-style: none;
+}
+
+.codex-edit-files details summary::-webkit-details-marker {
+  display: none;
+}
+
+.codex-edit-files details summary svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 120ms ease;
+}
+
+.codex-edit-files details[open] summary svg {
+  transform: rotate(180deg);
+}

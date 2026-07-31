@@ -104,10 +104,17 @@ function codexMetadata(path, limits) {
     const session = record?.payload?.session_id ?? record?.payload?.id;
     const cwd = record?.payload?.cwd;
     if (typeof session === "string" && typeof cwd === "string") {
+      const threadSource = ["user", "subagent"].includes(record.payload.thread_source)
+        ? record.payload.thread_source
+        : "other";
       return {
         session: codexRolloutSession(path, session),
         providerSession: session,
         cwd: resolve(cwd),
+        threadSource,
+        topLevel: threadSource === "user"
+          && !(typeof record.payload.parent_thread_id === "string"
+            && record.payload.parent_thread_id.trim()),
       };
     }
   }

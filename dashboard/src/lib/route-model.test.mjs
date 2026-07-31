@@ -24,6 +24,7 @@ test("parseRoute recognizes the dashboard path model", () => {
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/performance-tracing", search: "" }), { section: "performance-tracing", repoKey: "repo", ovenId: "performance-tracing" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/agent-monitor", search: "?worktreeKey=work&session=s1" }), { section: "agent-monitor", repoKey: "repo", ovenId: "agent-monitor", worktreeKey: "work", session: "s1" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/streaming-diff", search: "?worktreeKey=work&session=s1" }), { section: "streaming-diff", repoKey: "repo", ovenId: "streaming-diff", worktreeKey: "work", session: "s1" });
+  assert.deepEqual(parseRoute({ pathname: "/r/repo/o/multi-monitor", search: "?thread=work%3As1&thread=work%3As2" }), { section: "multi-monitor", repoKey: "repo", ovenId: "multi-monitor" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/o/visual-parity", search: "" }), { section: "visual-parity", repoKey: "repo", ovenId: "visual-parity" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/list/o/differential-testing", search: "?scenario=case-1" }), { section: "differential-testing", repoKey: "repo", burnlistId: "list", ovenId: "differential-testing", scenario: "case-1" });
   assert.deepEqual(parseRoute({ pathname: "/r/repo/list/o/checklist", search: "" }), { section: "burnlist", repoKey: "repo", burnlistId: "list", ovenId: "checklist" });

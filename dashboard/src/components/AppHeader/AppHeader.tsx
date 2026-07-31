@@ -5,7 +5,7 @@ const HEADER_LINKS = [
   { href: "/ovens/new", label: "New Oven", section: "new-oven" },
 ] as const;
 
-const OVEN_SECTIONS = ["agent-monitor", "custom-oven", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity"];
+const OVEN_SECTIONS = ["agent-monitor", "custom-oven", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "multi-monitor", "visual-parity"];
 
 export function AppHeader({ detail, ovenId, section }: { detail: ChecklistProgressData | null; ovenId?: string | null; section: string }) {
   const title = section === "agent-monitor" ? "Agent Monitor"
@@ -13,6 +13,7 @@ export function AppHeader({ detail, ovenId, section }: { detail: ChecklistProgre
     : section === "model-lab" ? "Model Lab"
       : section === "performance-tracing" ? "Performance Tracing"
         : section === "streaming-diff" ? "Streaming Diff"
+          : section === "multi-monitor" ? "Multi Monitor"
           : section === "visual-parity" ? "Visual Parity"
             : section === "custom-oven" ? detail?.title ?? ovenId : detail?.title;
   return (

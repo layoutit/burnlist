@@ -203,6 +203,8 @@ Options:
   --auto-port           Try the next available loopback port.
   --host <host>         Bind host; loopback is required by default.
   --state-dir <path>    Override ignored dashboard observer state.
+  --codex-app-server-socket <path>
+                        Share Codex App Server ownership for live-task messaging.
   --ovens-dir <path>    Override launch-repository custom Oven storage only.
   --runs-dir <path>     Override Run snapshot storage.
   --oven-data <id=path> Bind one Oven to a read-only normalized JSON payload.

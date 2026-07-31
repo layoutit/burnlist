@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { AgentMonitor, AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, OvenCatalog, OvenDefinition, OvenExplainer, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, VisualParityPage } from "@components";
+import { AgentMonitor, AppHeader, BurnlistTable, ChecklistOvenView, CustomOvenView, DashboardError, DifferentialTestingOvenPage, EmptyState, FILTERS, Filters, LensSwitcher, ModelLabPage, NewOvenPage, OvenCatalog, OvenDefinition, OvenExplainer, PerformanceTracingOvenPage, ProjectGroup, RunBurnPage, StreamingDiff, MultiMonitor, VisualParityPage } from "@components";
 import { useDashboardData } from "@hooks";
 import { checklistOvenRepoKey, currentSection, customOvenSelection, filterFromUrl, ovenRepoKey, selectedBurnlist } from "@lib";
 import type { Filter } from "@lib";
@@ -12,7 +12,7 @@ export function App() {
   const repoKey = ovenRepoKey();
   const customOven = section === "custom-oven" ? customOvenSelection() : null;
   const [filter, setFilter] = useState(() => filterFromUrl(FILTERS));
-  const dashboardSection = ["landing", "burnlist", "agent-monitor", "streaming-diff"].includes(section) || (section === "custom-oven" && selected) ? "burnlists" : section;
+  const dashboardSection = ["landing", "burnlist", "agent-monitor", "streaming-diff", "multi-monitor"].includes(section) || (section === "custom-oven" && selected) ? "burnlists" : section;
   const { projects, progress, error, loading, stale } = useDashboardData({ section: dashboardSection, selected });
   const checklistRepoKey = checklistOvenRepoKey(progress, selected);
   const visibleBurnlistCount = projects.reduce((total, project) => total + project.entries.filter((entry) => filter === "all" || entry.status === filter).length, 0);
@@ -27,13 +27,13 @@ export function App() {
     setFilter(nextFilter);
   };
 
-  const fullLayout = ["agent-monitor", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "visual-parity", "custom-oven"].includes(section) || selected;
+  const fullLayout = ["agent-monitor", "differential-testing", "model-lab", "performance-tracing", "streaming-diff", "multi-monitor", "visual-parity", "custom-oven"].includes(section) || selected;
 
   return (
     <div className="dashboard-app">
-      <AppHeader detail={progress} ovenId={customOven?.id} section={section} />
+      {section !== "multi-monitor" && <AppHeader detail={progress} ovenId={customOven?.id} section={section} />}
       <main className="dashboard-main" data-layout={fullLayout ? "full" : "index"} data-section={section}>
-        {section === "agent-monitor" ? <OvenDefinition id="agent-monitor" repoKey={repoKey}>{(ir) => <AgentMonitor ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "differential-testing" ? <OvenDefinition id="differential-testing" repoKey={repoKey}>{(ir) => <DifferentialTestingOvenPage ir={ir} />}</OvenDefinition> : section === "model-lab" ? <OvenDefinition id="model-lab" repoKey={repoKey}>{(ir) => <ModelLabPage ir={ir} />}</OvenDefinition> : section === "performance-tracing" ? <OvenDefinition id="performance-tracing" repoKey={repoKey}>{(ir) => <PerformanceTracingOvenPage ir={ir} />}</OvenDefinition> : section === "streaming-diff" ? <OvenDefinition id="streaming-diff" repoKey={repoKey}>{(ir) => <StreamingDiff ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "visual-parity" ? <OvenDefinition id="visual-parity" repoKey={repoKey}>{(ir) => <VisualParityPage ir={ir} />}</OvenDefinition> : section === "custom-oven" ? <CustomOvenView error={error} loading={loading} progress={progress} stale={stale} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
+        {section === "agent-monitor" ? <OvenDefinition id="agent-monitor" repoKey={repoKey}>{(ir) => <AgentMonitor ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "differential-testing" ? <OvenDefinition id="differential-testing" repoKey={repoKey}>{(ir) => <DifferentialTestingOvenPage ir={ir} />}</OvenDefinition> : section === "model-lab" ? <OvenDefinition id="model-lab" repoKey={repoKey}>{(ir) => <ModelLabPage ir={ir} />}</OvenDefinition> : section === "performance-tracing" ? <OvenDefinition id="performance-tracing" repoKey={repoKey}>{(ir) => <PerformanceTracingOvenPage ir={ir} />}</OvenDefinition> : section === "streaming-diff" ? <OvenDefinition id="streaming-diff" repoKey={repoKey}>{(ir) => <StreamingDiff ir={ir} projects={projects} projectsLoading={loading} />}</OvenDefinition> : section === "multi-monitor" ? <OvenDefinition id="multi-monitor" repoKey={repoKey}>{(ir) => <MultiMonitor ir={ir} repoKey={repoKey} />}</OvenDefinition> : section === "visual-parity" ? <OvenDefinition id="visual-parity" repoKey={repoKey}>{(ir) => <VisualParityPage ir={ir} />}</OvenDefinition> : section === "custom-oven" ? <CustomOvenView error={error} loading={loading} progress={progress} stale={stale} /> : section === "new-oven" ? <NewOvenPage /> : section === "run-burn" ? <RunBurnPage /> : section === "ovens-catalog" ? <OvenCatalog /> : section === "oven-explainer" ? <OvenExplainer /> : selected ? (
           loading && !progress ? <EmptyState title="Loading progress" detail="Reading the selected Burnlist." /> : progress ? (
             <>{error && <DashboardError message={error} />}<LensSwitcher /><OvenDefinition id="checklist" repoKey={checklistRepoKey}>{(ir) => <ChecklistOvenView data={progress} ir={ir} />}</OvenDefinition></>
           ) : error ? <DashboardError message={error} /> : <EmptyState title="Choose a Burnlist" detail="Select an item from the list to inspect its progress." icon={ListChecks} />

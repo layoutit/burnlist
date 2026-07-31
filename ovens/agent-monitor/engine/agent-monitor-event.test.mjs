@@ -252,13 +252,29 @@ test("object tool results preserve nonzero exit failures without exposing output
   assert.equal(isVisibleAgentMonitorEvent(event), true);
 });
 
-test("routine envelopes are collapsed while useful conversation markers remain", () => {
-  const instruction = projected({ type: "user_message", message: "private request" });
-  const update = projected({ type: "agent_message", message: "Implemented the parser" });
+test("routine envelopes collapse while Codex display messages retain safe formatting", () => {
+  const instruction = projected({ type: "user_message", message: "keep\nthis request" });
+  const update = projected({
+    type: "agent_message",
+    message: "Implemented **the parser**.\n\nReady.",
+    phase: "final_answer",
+  });
+  const ambientInstruction = projected({
+    type: "user_message",
+    message: [
+      "<in-app-browser-context>internal browser state</in-app-browser-context>",
+      "## My request for Codex:",
+      "show only this",
+    ].join("\n\n"),
+  });
   const messageEnvelope = projected({ type: "message", role: "assistant", content: "duplicate" });
   const successfulResult = projected({ type: "function_call_output", output: { exit_code: 0 } });
 
   assert.equal(instruction.detail, "New user instruction");
+  assert.equal(instruction.message, "keep\nthis request");
+  assert.equal(update.message, "Implemented **the parser**.\n\nReady.");
+  assert.equal(update.phase, "final_answer");
+  assert.equal(ambientInstruction.message, "show only this");
   assert.equal(isVisibleAgentMonitorEvent(instruction), true);
   assert.equal(isVisibleAgentMonitorEvent(update), true);
   assert.equal(isVisibleAgentMonitorEvent(messageEnvelope), false);

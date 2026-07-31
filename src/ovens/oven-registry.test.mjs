@@ -79,6 +79,10 @@ test("every built-in declares its real runtime data capability", async () => {
   assert.equal(agentMonitor.dataInput, OVEN_DATA_INPUT.producerManaged);
   assert.equal(agentMonitor.inputContract, "burnlist-agent-monitor-data@1");
   assert.equal(agentMonitor.validateData, undefined);
+  const multiMonitor = getOvenHandler("multi-monitor");
+  assert.equal(multiMonitor.dataInput, OVEN_DATA_INPUT.producerManaged);
+  assert.equal(multiMonitor.inputContract, "burnlist-agent-monitor-data@1");
+  assert.equal(multiMonitor.validateData, undefined);
   const streamingDiff = getOvenHandler("streaming-diff");
   assert.equal(streamingDiff.dataInput, OVEN_DATA_INPUT.producerManaged);
   assert.equal(streamingDiff.inputContract, "burnlist-streaming-diff-data@2");

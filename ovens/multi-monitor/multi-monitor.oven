@@ -1,0 +1,13 @@
+<oven id="multi-monitor" version="0.3.0" contract="checklist-progress@1" theme="checklist">
+  <box element="section" class="multi-monitor-conversation">
+    <collection id="thread-events"
+                source="/raw/completed"
+                item-key="/key"
+                paging="client"
+                page-size="300">
+      <each>
+        <agent-monitor-event-card source="@item"/>
+      </each>
+    </collection>
+  </box>
+</oven>

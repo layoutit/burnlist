@@ -9,17 +9,23 @@ const agentMonitorCli = fileURLToPath(new URL("../../bin/burnlist.mjs", import.m
 
 /** Keep transcript discovery off the dashboard event loop. */
 export function runAgentMonitorChild({ repoRoot, signal, spawnChild = spawn } = {}) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawnChild(process.execPath, [
       agentMonitorCli, "agent-monitor", "run", "--repo", repoRoot,
     ], {
       cwd: repoRoot,
       stdio: "ignore",
     });
-    const finish = () => resolve();
-    child.once("error", finish);
-    child.once("exit", finish);
-    signal?.addEventListener("abort", () => child.kill("SIGTERM"), { once: true });
+    let aborted = false;
+    child.once("error", () => reject(new Error("Agent Monitor refresh could not start.")));
+    child.once("exit", (code, childSignal) => {
+      if (code === 0 || (aborted && childSignal === "SIGTERM")) resolve();
+      else reject(new Error("Agent Monitor refresh failed."));
+    });
+    signal?.addEventListener("abort", () => {
+      aborted = true;
+      child.kill("SIGTERM");
+    }, { once: true });
   });
 }
 
@@ -35,6 +41,7 @@ export function createAgentMonitorLeaseManager({
 } = {}) {
   const leases = new Map();
   const observed = new Set();
+  const health = new Map();
   let stopped = false;
   let timer = null;
   let running = false;
@@ -65,9 +72,22 @@ export function createAgentMonitorLeaseManager({
     running = true;
     const controller = new AbortController();
     activeRun = controller;
-    const complete = () => {
+    const complete = (error = null) => {
       if (activeRun === controller) activeRun = null;
-      observed.add(repoRoot);
+      if (error) {
+        health.set(repoRoot, {
+          error: "Agent Monitor refresh failed.",
+          failedAt: new Date(now()).toISOString(),
+          lastSuccessAt: health.get(repoRoot)?.lastSuccessAt ?? null,
+        });
+      } else {
+        health.set(repoRoot, {
+          error: null,
+          failedAt: null,
+          lastSuccessAt: new Date(now()).toISOString(),
+        });
+        observed.add(repoRoot);
+      }
       running = false;
       if (activeRoots().length) schedule();
     };
@@ -76,11 +96,12 @@ export function createAgentMonitorLeaseManager({
     try {
       const result = run({ repoRoot, signal: controller.signal });
       if (result && typeof result.then === "function") {
-        result.catch(() => {}).finally(complete);
+        result.then(() => complete(), (error) => complete(error));
         return;
       }
-    } catch {
-      /* A later lease cycle retries without failing the observer. */
+    } catch (error) {
+      complete(error);
+      return;
     }
     complete();
   }
@@ -99,15 +120,29 @@ export function createAgentMonitorLeaseManager({
       } else {
         schedule();
       }
-      return { active: true, expiresAt: new Date(expiresAt).toISOString(), repoRoot: root };
+      return {
+        active: true,
+        expiresAt: new Date(expiresAt).toISOString(),
+        repoRoot: root,
+        observer: health.get(root) ?? {
+          error: null,
+          failedAt: null,
+          lastSuccessAt: null,
+        },
+      };
     },
     status() {
-      return { activeRoots: activeRoots(), running };
+      return {
+        activeRoots: activeRoots(),
+        running,
+        observers: Object.fromEntries([...health]),
+      };
     },
     stop() {
       stopped = true;
       leases.clear();
       observed.clear();
+      health.clear();
       activeRun?.abort();
       activeRun = null;
       if (timer !== null) clearTimer(timer);

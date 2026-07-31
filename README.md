@@ -207,6 +207,7 @@ Untracked hook configs are added to `.git/info/exclude` by default; tracked conf
 - `burnlist --stamp` prints a local ISO timestamp for completion records.
 - `burnlist install` / `burnlist uninstall` manage the independent agent-skill registrations.
 - `burnlist hooks install|uninstall|status` manages the independent per-repository native observability hooks.
+- `burnlist-codex-bridge` is the optional `CODEX_CLI_PATH` bridge that lets Codex Desktop and Multi Monitor share one App Server for acknowledged live-task messaging.
 
 Use `burnlist --help` for dashboard ports, scan roots, local state paths, and Oven data bindings.
 

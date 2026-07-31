@@ -43,6 +43,7 @@ test("loads and freezes the exact shipped Oven catalog", () => {
     "differential-testing",
     "loop-progress",
     "model-lab",
+    "multi-monitor",
     "performance-tracing",
     "streaming-diff",
     "visual-parity",

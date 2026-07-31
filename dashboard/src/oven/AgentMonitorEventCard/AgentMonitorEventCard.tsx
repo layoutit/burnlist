@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@layout";
+import { CodexThreadEvent, type CodexThreadEventValue } from "./CodexThreadEvent";
 
 type AgentMonitorEvent = {
+  [key: string]: unknown;
   category?: unknown;
   detail?: unknown;
+  eventType?: unknown;
   line?: unknown;
+  presentation?: unknown;
   patch?: unknown;
   result?: unknown;
   time?: unknown;
@@ -38,6 +42,12 @@ function categoryOf(value: unknown): Category {
 
 function resultOf(value: unknown): Result {
   return typeof value === "string" && value in resultLabels ? value as Result : "observed";
+}
+
+function messageRoleOf(value: unknown): "agent" | "user" | undefined {
+  if (typeof value !== "string") return undefined;
+  const subtype = value.split("/").at(-1);
+  return subtype === "agent_message" ? "agent" : subtype === "user_message" ? "user" : undefined;
 }
 
 function text(value: unknown): string {
@@ -157,7 +167,11 @@ function ExactPatch({ patch }: { patch: AgentMonitorPatch }) {
 }
 
 export function AgentMonitorEventCard({ event }: { event?: AgentMonitorEvent }) {
+  if (event?.presentation === "codex") {
+    return <CodexThreadEvent event={event as unknown as CodexThreadEventValue} />;
+  }
   const category = categoryOf(event?.category);
+  const messageRole = category === "message" ? messageRoleOf(event?.eventType) : undefined;
   const result = resultOf(event?.result);
   const line = lineOf(event?.line);
   const patch = patchOf(event?.patch);
@@ -170,6 +184,7 @@ export function AgentMonitorEventCard({ event }: { event?: AgentMonitorEvent }) 
     aria-label={`${label} ${line}, ${status}`}
     className="agent-monitor-event"
     data-category={category}
+    data-message-role={messageRole}
     data-result={result}
   >
     <Alert>
