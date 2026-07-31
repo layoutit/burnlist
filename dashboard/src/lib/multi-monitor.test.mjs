@@ -25,16 +25,35 @@ const second = {
   worktreeKey: "cccccccccccc",
   session: "claude:session-two",
 };
+const currentActivity = "2026-07-31T12:00:00.000Z";
+const currentNow = Date.parse("2026-07-31T12:10:00.000Z");
 
 test("Multi Monitor preserves ordered exact session identities in repeated URL fields", () => {
   const href = multiMonitorHref({ repoKey, selections: [first, second] });
   assert.equal(
     href,
-    "/r/aaaaaaaaaaaa/o/multi-monitor?thread=bbbbbbbbbbbb%3A019fa-session-one&thread=cccccccccccc%3Aclaude%3Asession-two",
+    "/r/aaaaaaaaaaaa/o/multi-monitor?thread=aaaaaaaaaaaa%3Abbbbbbbbbbbb%3A019fa-session-one&thread=aaaaaaaaaaaa%3Acccccccccccc%3Aclaude%3Asession-two",
   );
   assert.deepEqual(
     parseMultiMonitorSelections({ repoKey, search: href.slice(href.indexOf("?")) }),
     [first, second],
+  );
+});
+
+test("Multi Monitor preserves cross-repository selections and accepts legacy URLs", () => {
+  const crossRepository = {
+    logicalRepoKey: "dddddddddddd",
+    worktreeKey: "eeeeeeeeeeee",
+    session: "019fa-session-three",
+  };
+  const href = multiMonitorHref({ repoKey, selections: [first, crossRepository] });
+  assert.deepEqual(
+    parseMultiMonitorSelections({ repoKey, search: href.slice(href.indexOf("?")) }),
+    [first, crossRepository],
+  );
+  assert.deepEqual(
+    parseMultiMonitorSelections({ repoKey, search: "?thread=bbbbbbbbbbbb%3A019fa-session-one" }),
+    [first],
   );
 });
 
@@ -62,6 +81,7 @@ test("Multi Monitor rejects malformed and duplicate selection tokens", () => {
 test("Multi Monitor offers only feeds not already mounted", () => {
   const selectable = (identity) => ({
     identity,
+    activityAt: currentActivity,
     provider: "codex",
     topLevel: true,
     caughtUp: true,
@@ -73,10 +93,10 @@ test("Multi Monitor offers only feeds not already mounted", () => {
     { ...selectable({ ...second, session: "claude" }), provider: "claude" },
     { ...selectable({ ...second, session: "catching-up" }), caughtUp: false },
   ];
-  assert.deepEqual(multiMonitorAvailableFeeds(feeds, [first]), [selectable(second)]);
+  assert.deepEqual(multiMonitorAvailableFeeds(feeds, [first], currentNow), [selectable(second)]);
 });
 
-test("Multi Monitor defaults only to caught-up open top-level Codex tasks", () => {
+test("Multi Monitor defaults to recent caught-up top-level Codex tasks", () => {
   const third = {
     logicalRepoKey: repoKey,
     worktreeKey: "dddddddddddd",
@@ -85,6 +105,7 @@ test("Multi Monitor defaults only to caught-up open top-level Codex tasks", () =
   const feeds = [
     {
       identity: first,
+      activityAt: currentActivity,
       provider: "codex",
       threadSource: "user",
       topLevel: true,
@@ -94,6 +115,7 @@ test("Multi Monitor defaults only to caught-up open top-level Codex tasks", () =
     },
     {
       identity: second,
+      activityAt: currentActivity,
       provider: "codex",
       threadSource: "user",
       topLevel: true,
@@ -103,6 +125,7 @@ test("Multi Monitor defaults only to caught-up open top-level Codex tasks", () =
     },
     {
       identity: third,
+      activityAt: currentActivity,
       provider: "codex",
       threadSource: "subagent",
       topLevel: false,
@@ -112,18 +135,22 @@ test("Multi Monitor defaults only to caught-up open top-level Codex tasks", () =
     },
   ];
 
-  assert.deepEqual(multiMonitorDefaultSelections(feeds), [first]);
+  assert.deepEqual(multiMonitorDefaultSelections(feeds, currentNow), [first, second]);
   assert.deepEqual(multiMonitorDefaultSelections(
     feeds.map((feed) => ({ ...feed, turnOpen: false })),
-  ), []);
+    currentNow,
+  ), [first, second]);
   assert.deepEqual(multiMonitorDefaultSelections([
     { ...feeds[0], state: "Idle" },
-  ]), []);
+  ], currentNow), [first]);
   assert.deepEqual(multiMonitorDefaultSelections([
     { ...feeds[0], caughtUp: false },
     { ...feeds[0], identity: third, provider: "claude" },
-  ]), []);
-  assert.deepEqual(multiMonitorDefaultSelections([{ identity: null, state: "Live" }]), []);
+  ], currentNow), []);
+  assert.deepEqual(multiMonitorDefaultSelections([
+    { ...feeds[0], activityAt: "2026-07-31T11:00:00.000Z" },
+  ], currentNow), []);
+  assert.deepEqual(multiMonitorDefaultSelections([{ identity: null, state: "Live" }], currentNow), []);
 });
 
 test("Multi Monitor projects Codex turns with the worked row before the final answer", () => {

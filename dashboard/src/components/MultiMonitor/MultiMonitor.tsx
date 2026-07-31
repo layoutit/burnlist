@@ -8,6 +8,7 @@ import {
 } from "@hooks";
 import {
   agentMonitorFeedHref,
+  agentMonitorRepositories,
   agentMonitorSnapshotNotice,
   parseMultiMonitorSelections,
   shortThreadSession,
@@ -19,7 +20,7 @@ import {
   multiMonitorHref,
   multiMonitorThreadTitle,
 } from "@lib";
-import type { AgentMonitorFeed, AgentMonitorIdentity, AgentMonitorPayload } from "@lib";
+import type { AgentMonitorFeed, AgentMonitorIdentity, AgentMonitorPayload, Project } from "@lib";
 import { Button, Select } from "@layout";
 import { OvenRuntime } from "@/oven/runtime/OvenRuntime";
 import { MultiMonitorComposer } from "./MultiMonitorComposer";
@@ -212,7 +213,17 @@ function ThreadColumn({
   </article>;
 }
 
-export function MultiMonitor({ ir, repoKey }: { ir: ResolvedOvenIr; repoKey: string | null }) {
+export function MultiMonitor({
+  ir,
+  projects,
+  projectsLoading,
+  repoKey,
+}: {
+  ir: ResolvedOvenIr;
+  projects: Project[];
+  projectsLoading: boolean;
+  repoKey: string | null;
+}) {
   const initial = useMemo(
     () => repoKey ? parseMultiMonitorSelections({ repoKey, search: window.location.search }) as AgentMonitorIdentity[] : [],
     [repoKey],
@@ -224,12 +235,13 @@ export function MultiMonitor({ ir, repoKey }: { ir: ResolvedOvenIr; repoKey: str
   const [selections, setSelections] = useState<AgentMonitorIdentity[]>(initial);
   const [explicitEmpty, setExplicitEmpty] = useState(initialExplicitEmpty);
   const defaulted = useRef(initial.length > 0 || initialExplicitEmpty);
-  const repositories = useMemo(
-    () => repoKey ? [{ repoKey, label: repoKey }] : [],
-    [repoKey],
-  );
+  const repositories = useMemo(() => {
+    const discovered = agentMonitorRepositories(projects);
+    if (!repoKey || discovered.some((repository) => repository.repoKey === repoKey)) return discovered;
+    return [{ repoKey, label: repoKey }, ...discovered];
+  }, [projects, repoKey]);
   const activation = useAgentMonitorActivation(repositories);
-  const feeds = useAgentMonitorFeeds(repositories, activation.loading, false);
+  const feeds = useAgentMonitorFeeds(repositories, projectsLoading || activation.loading, false);
   const available = multiMonitorAvailableFeeds(feeds.feeds, selections) as AgentMonitorFeed[];
   const [candidate, setCandidate] = useState("");
   const feedsByKey = useMemo(

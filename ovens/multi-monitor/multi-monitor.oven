@@ -1,4 +1,4 @@
-<oven id="multi-monitor" version="0.3.0" contract="checklist-progress@1" theme="checklist">
+<oven id="multi-monitor" version="0.4.0" contract="checklist-progress@1" theme="checklist">
   <box element="section" class="multi-monitor-conversation">
     <collection id="thread-events"
                 source="/raw/completed"

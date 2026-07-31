@@ -2,8 +2,8 @@
   "schema": "burnlist-console-oven-behavior-policy@2",
   "capabilities": [
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:0c030c0dfa138bb9",
-      "fingerprint": "0c030c0dfa138bb971baad58e100a7e2b3e33df0933cc179fe95fa14dd89030c",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:0e91c0434dab74c6",
+      "fingerprint": "0e91c0434dab74c6d8099893af17ae51154dda739455b280188621ce4a0fb170",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -18,8 +18,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:0e91c0434dab74c6",
-      "fingerprint": "0e91c0434dab74c6d8099893af17ae51154dda739455b280188621ce4a0fb170",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:10bedb27a03d310a",
+      "fingerprint": "10bedb27a03d310a246386793cb403cd20e610cc2c650d21ccefecfdd4e3995c",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -66,40 +66,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:348023dcedfc8bf9",
-      "fingerprint": "348023dcedfc8bf92174e824d346f2569ac05891a69ec78b3b92b8de7db726a9",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:3f9dd4948879086e",
       "fingerprint": "3f9dd4948879086e4c6599576c739a8e8f4e7ffb67849810e4dcf23a2532c8ed",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:40dd702cfe5c952b",
-      "fingerprint": "40dd702cfe5c952bd16e0dc222cec01de3d65aad36c598ad70682aec306e3a82",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -162,6 +130,54 @@
       }
     },
     {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:68a3db856ece0739",
+      "fingerprint": "68a3db856ece0739019b2f6beca343e2b9dba4060ea8d21599c32ab7af721caa",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:6b1e97d05299ab17",
+      "fingerprint": "6b1e97d05299ab17e61c705a6791b9118cff892176a570a42cec2899ca661da9",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:7aa30eec4e9c77b6",
+      "fingerprint": "7aa30eec4e9c77b6d32a8ffb50ecbf49d5bf4f0666632b0f1fd560fb3d71bbc1",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:7d3765175c92ae64",
       "fingerprint": "7d3765175c92ae644ab7e8855b741b70a96ba3cf523c86f7040498ad373dd15e",
       "classification": "blocker-to-migrate",
@@ -196,6 +212,22 @@
     {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:92efbbb36b7932f9",
       "fingerprint": "92efbbb36b7932f9fbe99cfde78b210e3c2bb7477e0d0926b34abee167c80be1",
+      "classification": "blocker-to-migrate",
+      "semanticOwner": {
+        "ownerType": "migration-target",
+        "ownerTarget": "B17",
+        "path": "dashboard/src/App.tsx",
+        "export": "App",
+        "version": "burnlist-console-oven-behavior@1"
+      },
+      "blocker": {
+        "burnlistItem": "B17",
+        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
+      }
+    },
+    {
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:94e4bdf018fa3626",
+      "fingerprint": "94e4bdf018fa3626dff4dc82397229e7889d7000d17b09a2ae13c7d4d5d13508",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -258,8 +290,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c0432f0723f8faf4",
-      "fingerprint": "c0432f0723f8faf4ced05a5833aa36d99e75a2cacbeec421fe80d8178e14a41c",
+      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:c006eeb91632bb10",
+      "fingerprint": "c006eeb91632bb10ed84a2af8baae287e41d9f5c87faaaf87775b95b6b8f0d89",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -306,40 +338,8 @@
       }
     },
     {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:d8527748576a174f",
-      "fingerprint": "d8527748576a174f4d9aa25552207e5865c86d416665403ffa5ef00b5f4d4e7f",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
       "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:e5e69239b717d7ed",
       "fingerprint": "e5e69239b717d7ed083f57f7581e511c4d236ce9c4e5342c9b275a3ec42bf3a5",
-      "classification": "blocker-to-migrate",
-      "semanticOwner": {
-        "ownerType": "migration-target",
-        "ownerTarget": "B17",
-        "path": "dashboard/src/App.tsx",
-        "export": "App",
-        "version": "burnlist-console-oven-behavior@1"
-      },
-      "blocker": {
-        "burnlistItem": "B17",
-        "condition": "terminal runtime must implement dashboard/src/App.tsx:App"
-      }
-    },
-    {
-      "id": "branch:dashboard/src/App.tsx:App:ConditionalExpression:e778a1cabcd841f7",
-      "fingerprint": "e778a1cabcd841f722e748714b059589f00ce9e5c1eb6c40b7ff380c326cb612",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",
@@ -30919,7 +30919,7 @@
     },
     {
       "id": "surface:dashboard/src/App.tsx",
-      "fingerprint": "2f54e6d106504fd73a4640ff1afc0d9ac4cf76cad4c39d90fd995b8c7008c55f",
+      "fingerprint": "7b049b7287174256cb489ae176fe1e8a1bb984a9e05eb5911b4056bd6a82e2a1",
       "classification": "blocker-to-migrate",
       "semanticOwner": {
         "ownerType": "migration-target",

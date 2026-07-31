@@ -269,6 +269,7 @@ export type AgentMonitorIdentity = { logicalRepoKey: string; worktreeKey: string
 export type AgentMonitorFeed = {
   identity: AgentMonitorIdentity;
   updatedAt: string | null;
+  activityAt?: string | null;
   href: string;
   repoLabel?: string;
   title?: string;

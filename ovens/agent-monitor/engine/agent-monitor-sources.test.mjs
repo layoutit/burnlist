@@ -104,6 +104,50 @@ test("Codex discovery marks subagents and parented sessions as non-top-level", (
   }
 });
 
+test("Codex discovery follows the current turn or tool worktree", () => {
+  const root = mkdtempSync(join(tmpdir(), "agent-monitor-codex-current-cwd-"));
+  try {
+    const staging = join(root, "staging");
+    const repo = join(root, "repo");
+    const sessions = join(root, "sessions");
+    for (const path of [staging, repo, sessions]) mkdirSync(path);
+    execFileSync("git", ["init", "--quiet"], { cwd: repo });
+    const write = (id, records) => {
+      const path = join(sessions, `${id}.jsonl`);
+      writeFileSync(path, `${records.map(JSON.stringify).join("\n")}\n`);
+      utimesSync(path, new Date(NOW), new Date(NOW));
+    };
+    const metadata = (id) => ({
+      type: "session_meta",
+      payload: { session_id: id, cwd: staging, thread_source: "user" },
+    });
+    write("turn-context", [
+      metadata("turn-context"),
+      { type: "turn_context", payload: { cwd: repo } },
+    ]);
+    write("tool-workdir", [
+      metadata("tool-workdir"),
+      {
+        type: "response_item",
+        payload: {
+          type: "custom_tool_call",
+          input: `const result = await tools.exec_command({ cmd: "pwd", workdir: "${repo}" });`,
+        },
+      },
+    ]);
+
+    const found = discoverAgentSessionSources({
+      roots: { codex: sessions },
+      limits,
+      nowMs: Date.parse(NOW),
+      providers: ["codex"],
+    });
+    assert.deepEqual(found.map(({ cwd }) => cwd), [repo, repo]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("forked Codex rollouts keep unique feed sessions and their provider session for correlation", () => {
   const root = mkdtempSync(join(tmpdir(), "agent-monitor-codex-forks-"));
   try {

@@ -59,7 +59,7 @@
     },
     {
       "id": "multi-monitor",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "inputContract": "burnlist-agent-monitor-data@1",
       "renderContract": "checklist-progress@1",
       "dataInput": "producer-managed",

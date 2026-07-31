@@ -42,6 +42,7 @@ test("Agent Monitor feed discovery preserves exact session identity", () => {
   assert.equal(feeds[0].title, "Live · COMMAND · line 42");
   assert.equal(feeds[0].detail, "Thread …1ce69bef · 42 events · 1 failure");
   assert.equal(feeds[0].state, "Live");
+  assert.equal(feeds[0].activityAt, "2026-07-26T12:00:00.000Z");
   assert.equal(feeds[0].provider, "codex");
   assert.equal(feeds[0].threadSource, "user");
   assert.equal(feeds[0].topLevel, true);

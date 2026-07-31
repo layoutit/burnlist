@@ -1,7 +1,7 @@
 # Multi Monitor
 
-Multi Monitor is the multi-column conversation workspace for recent Codex
-sessions associated with a repository.
+Multi Monitor is the multi-column conversation workspace for current Codex
+sessions across the repositories discovered by the Burnlist service.
 
 ## Data Shape
 
@@ -15,15 +15,24 @@ session identity, atomic snapshots, bounded retention, and service lease.
 
 ## Route behavior
 
-Open `/r/<repoKey>/o/multi-monitor`. A bare route opens every caught-up,
-top-level Codex task whose transcript has an unmatched `task_started` event
-and fresh session activity. Recent file activity qualifies display freshness
-but never removes a mounted column. Subagents, provider-qualified
-sessions, completed turns, and feeds still catching up never auto-mount. Add
-and remove controls update repeated `thread=<worktreeKey>:<session>` URL fields,
-preserving column order across reloads and shared URLs. Removing the final
-column writes `columns=empty`, so an intentional empty workspace remains empty
-after reload and back/forward navigation.
+Open `/r/<repoKey>/o/multi-monitor`. The route repository anchors the page; a
+bare route opens caught-up, top-level Codex tasks with activity in the last 30
+minutes across every discovered repository. This includes running turns and
+freshly completed responses while excluding old feed history, subagents,
+provider-qualified sessions, and feeds still catching up. Recent activity is
+only an initial-selection rule: mounted columns remain until the user removes
+them. Add and remove controls update repeated
+`thread=<logicalRepoKey>:<worktreeKey>:<session>` URL fields, preserving exact
+cross-repository identity and column order across reloads and shared URLs.
+Legacy two-field URLs remain readable. Removing the final column writes
+`columns=empty`, so an intentional empty workspace remains empty after reload
+and back/forward navigation.
+
+Large or lagging JSONL feeds begin from their latest bounded complete tail
+instead of replaying stale history for minutes. The producer counts the skipped
+prefix, marks retention as truncated, derives current lifecycle state from the
+latest source records, and follows the latest valid turn/tool worktree when a
+task began in a temporary folder.
 
 Every column is a literal Codex task surface: user bubbles, assistant prose,
 worked-time dividers, edit summaries, and a browser-local draft that survives

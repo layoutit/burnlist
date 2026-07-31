@@ -1,4 +1,5 @@
 const keyPattern = /^[a-f0-9]{12}$/u;
+const MULTI_MONITOR_RECENT_MS = 30 * 60_000;
 
 function object(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -12,8 +13,9 @@ function validSession(value) {
 }
 
 export function multiMonitorFeedKey(identity) {
-  return object(identity) && keyPattern.test(identity.worktreeKey ?? "") && validSession(identity.session)
-    ? `${identity.worktreeKey}:${identity.session}`
+  return object(identity) && keyPattern.test(identity.logicalRepoKey ?? "")
+    && keyPattern.test(identity.worktreeKey ?? "") && validSession(identity.session)
+    ? `${identity.logicalRepoKey}:${identity.worktreeKey}:${identity.session}`
     : "";
 }
 
@@ -22,14 +24,22 @@ export function parseMultiMonitorSelections({ repoKey, search = "" } = {}) {
   const selections = [];
   const seen = new Set();
   for (const token of new URLSearchParams(search).getAll("thread")) {
-    const separator = token.indexOf(":");
-    const worktreeKey = token.slice(0, separator);
-    const session = token.slice(separator + 1);
-    if (separator < 0 || !keyPattern.test(worktreeKey) || !validSession(session)) continue;
-    const key = `${worktreeKey}:${session}`;
+    const first = token.indexOf(":");
+    const second = token.indexOf(":", first + 1);
+    const firstKey = token.slice(0, first);
+    const secondKey = token.slice(first + 1, second);
+    const crossRepository = first >= 0 && second >= 0
+      && keyPattern.test(firstKey) && keyPattern.test(secondKey);
+    const logicalRepoKey = crossRepository ? firstKey : repoKey;
+    const worktreeKey = crossRepository ? secondKey : firstKey;
+    const session = token.slice((crossRepository ? second : first) + 1);
+    if (first < 0 || !keyPattern.test(worktreeKey) || !validSession(session)) continue;
+    const selection = { logicalRepoKey, worktreeKey, session };
+    const key = multiMonitorFeedKey(selection);
+    if (!key) continue;
     if (seen.has(key)) continue;
     seen.add(key);
-    selections.push({ logicalRepoKey: repoKey, worktreeKey, session });
+    selections.push(selection);
   }
   return selections;
 }
@@ -42,7 +52,7 @@ export function multiMonitorHref({ repoKey, selections = [], explicitEmpty = fal
   const query = new URLSearchParams();
   for (const selection of selections) {
     const key = multiMonitorFeedKey(selection);
-    if (key && selection.logicalRepoKey === repoKey) query.append("thread", key);
+    if (key) query.append("thread", key);
   }
   if (!query.has("thread") && explicitEmpty) query.set("columns", "empty");
   const search = query.toString();
@@ -56,18 +66,25 @@ function selectableCodexFeed(feed) {
     && feed.caughtUp === true;
 }
 
-export function multiMonitorAvailableFeeds(feeds = [], selections = []) {
+function currentCodexFeed(feed, nowMs) {
+  const activityAt = Date.parse(feed?.activityAt ?? "");
+  return selectableCodexFeed(feed)
+    && Number.isFinite(activityAt)
+    && nowMs - activityAt >= 0
+    && nowMs - activityAt <= MULTI_MONITOR_RECENT_MS;
+}
+
+export function multiMonitorAvailableFeeds(feeds = [], selections = [], nowMs = Date.now()) {
   const selected = new Set(selections.map(multiMonitorFeedKey));
   return feeds.filter((feed) => {
-    const key = selectableCodexFeed(feed) ? multiMonitorFeedKey(feed.identity) : "";
+    const key = currentCodexFeed(feed, nowMs) ? multiMonitorFeedKey(feed.identity) : "";
     return key && !selected.has(key);
   });
 }
 
-export function multiMonitorDefaultSelections(feeds = []) {
+export function multiMonitorDefaultSelections(feeds = [], nowMs = Date.now()) {
   return feeds
-    .filter((feed) =>
-      selectableCodexFeed(feed) && feed.turnOpen === true && feed.state === "Live")
+    .filter((feed) => currentCodexFeed(feed, nowMs))
     .map((feed) => feed.identity);
 }
 

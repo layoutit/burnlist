@@ -34,6 +34,7 @@ import {
 } from "./agent-monitor-reproject.mjs";
 import { discoverAgentSessionSources } from "./agent-monitor-sources.mjs";
 import {
+  agentMonitorTailPosition,
   agentMonitorThreadMetadata,
   foldCodexTurnOpen,
   priorCodexTurnOpen,
@@ -47,7 +48,7 @@ export const AGENT_MONITOR_PRODUCER_LIMITS = Object.freeze({
   maxChunkBytes: 16 * 1024 * 1024,
   maxCandidateFiles: 4_096,
   maxDirectories: 4_096,
-  maxFileBytes: 128 * 1024 * 1024,
+  maxFileBytes: 1024 * 1024 * 1024,
   maxSessions: 128,
   metadataBytes: 512 * 1024,
 });
@@ -115,11 +116,32 @@ function validManifestCursor(cursor, candidate, stat) {
     && cursor.line >= 0;
 }
 
-function sourcePosition(prior, stored, candidate, stat) {
+function sourcePosition(prior, stored, candidate, stat, limits) {
+  const tail = (continuing) => {
+    const position = agentMonitorTailPosition(
+      candidate.path,
+      stat,
+      limits.maxChunkBytes,
+      limits.maxFileBytes,
+    );
+    return {
+      continuing,
+      fastForwarded: position.fastForwarded,
+      cursor: {
+        file: basename(candidate.path),
+        dev: stat.dev,
+        ino: stat.ino,
+        offset: position.offset,
+        line: position.line,
+      },
+    };
+  };
   if (validManifestCursor(prior?.manifest?.cursor, candidate, stat)) {
+    if (stat.size - prior.manifest.cursor.offset > limits.maxChunkBytes) return tail(true);
     return { continuing: true, cursor: prior.manifest.cursor };
   }
   if (prior && validProducerState(stored, candidate, stat) && stored.digest === prior.manifest.digest) {
+    if (stat.size - stored.offset > limits.maxChunkBytes) return tail(true);
     return {
       continuing: true,
       cursor: {
@@ -131,6 +153,7 @@ function sourcePosition(prior, stored, candidate, stat) {
       },
     };
   }
+  if (stat.size > limits.maxChunkBytes) return tail(false);
   return {
     continuing: false,
     cursor: { file: basename(candidate.path), dev: stat.dev, ino: stat.ino, offset: 0, line: 0 },
@@ -195,11 +218,17 @@ export function updateAgentMonitorSession(candidate, {
   const stored = readAgentMonitorJson(statePath);
   const stat = statSync(candidate.path);
   const prior = priorFeed(candidate.resolved);
-  const position = sourcePosition(prior, stored, candidate, stat);
+  const position = sourcePosition(prior, stored, candidate, stat, limits);
   const generatedAt = now();
   const nowMs = Date.parse(generatedAt);
   const loop = loopContext(candidate);
-  const retainedTurnOpen = priorCodexTurnOpen(prior, candidate, position.cursor, limits);
+  const retainedTurnOpen = priorCodexTurnOpen(
+    prior,
+    candidate,
+    position.cursor,
+    limits,
+    position.fastForwarded,
+  );
   if (position.continuing && prior
       && prior.snapshot.monitor?.projectionVersion !== AGENT_MONITOR_PROJECTION_VERSION) {
     const replayed = reprojectRecentAgentMonitorEvents({
@@ -282,7 +311,9 @@ export function updateAgentMonitorSession(candidate, {
     generatedAt,
     candidate.provider,
   );
-  const retained = position.continuing ? snapshotMonitorEvents(prior.snapshot) ?? [] : [];
+  const retained = position.continuing && !position.fastForwarded
+    ? snapshotMonitorEvents(prior.snapshot) ?? []
+    : [];
   const visibleEvents = coalesceAgentMonitorEvents([...retained].reverse().concat(parsedEvents))
     .filter(isVisibleAgentMonitorEvent)
     .reverse();

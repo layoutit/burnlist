@@ -29,6 +29,7 @@ function summary(value) {
   return {
     state: value.state,
     current: value.current,
+    updatedAt: text(value.updatedAt),
     lines: value.lines,
     failures: value.failures,
     provider: hasThreadMetadata ? value.provider : null,
@@ -64,6 +65,7 @@ export function mapAgentMonitorFeeds(value) {
         ? `Thread ${shortSession(feedIdentity.session)} · ${feedSummary.lines.toLocaleString()} events${feedSummary.failures ? ` · ${feedSummary.failures} failure${feedSummary.failures === 1 ? "" : "s"}` : ""}`
         : `Exact session ${feedIdentity.session}`,
       state: feedSummary?.state ?? null,
+      activityAt: feedSummary?.updatedAt ?? null,
       provider: feedSummary?.provider ?? null,
       threadSource: feedSummary?.threadSource ?? null,
       topLevel: feedSummary?.topLevel ?? null,
