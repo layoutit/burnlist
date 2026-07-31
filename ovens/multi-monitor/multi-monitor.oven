@@ -4,7 +4,7 @@
                 source="/raw/completed"
                 item-key="/key"
                 paging="client"
-                page-size="300">
+                page-size="100">
       <each>
         <agent-monitor-event-card source="@item"/>
       </each>
